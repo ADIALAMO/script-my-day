@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScriptMyDay - היום שלך, הסרט שלך.</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #7B68EE; /* Medium Slate Blue */
+            --secondary-color: #FFD700; /* Gold */
+            --accent-color: #3CB371; /* Medium Sea Green */
+            --bg-color: #f8f8ff; /* Ghost White */
+            --text-color: #333;
+            --light-text-color: #666;
+            --card-bg: #ffffff;
+            --border-color: #e0e6ec;
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            --border-radius: 12px;
+        }
+
+        body {
+            font-family: 'Rubik', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--card-bg);
+            width: 100%;
+            padding: 40px 20px;
+            box-shadow: var(--shadow);
+            margin-bottom: 40px;
+        }
+
+        .logo-container {
+            margin-bottom: 20px;
+        }
+
+        .logo-container img {
+            max-width: 150px; /* Adjust logo size */
+            height: auto;
+            border-radius: var(--border-radius); /* If your logo is square/rounded */
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .tagline {
+            font-size: 1.8rem;
+            color: var(--light-text-color);
+            margin-bottom: 40px;
+            font-weight: 500;
+        }
+
+        .call-to-action {
+            margin-top: 30px;
+            margin-bottom: 60px;
+        }
+
+        .cta-button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 18px 40px;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1.6rem;
+            font-weight: 600;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+            text-decoration: none; /* For link */
+        }
+
+        .cta-button:hover {
+            background-color: #6A5ACD; /* Darker purple */
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        main {
+            max-width: 900px;
+            width: 100%;
+            padding: 0 20px;
+            box-sizing: border-box;
+            text-align: right; /* RTL support */
+        }
+
+        section {
+            background-color: var(--card-bg);
+            padding: 40px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 40px;
+            text-align: right;
+        }
+
+        section h2 {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 25px;
+            text-align: center; /* Center section headings */
+        }
+
+        section p {
+            font-size: 1.15rem;
+            margin-bottom: 15px;
+            line-height: 1.8;
+        }
+
+        .screenshot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+            justify-content: center;
+        }
+
+        .screenshot-item {
+            background-color: var(--bg-color);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .screenshot-item img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 15px;
+        }
+
+        .screenshot-item h3 {
+            font-size: 1.3rem;
+            color: var(--primary-color);
+            margin-top: 0;
+        }
+
+        .privacy-note {
+            font-size: 0.95rem;
+            color: #888;
+            margin-top: 20px;
+            margin-bottom: 40px;
+            text-align: center;
+            max-width: 700px;
+            line-height: 1.5;
+            padding: 0 20px;
+        }
+
+        footer {
+            background-color: var(--primary-color);
+            color: white;
+            width: 100%;
+            padding: 30px 20px;
+            margin-top: auto; /* Push footer to bottom */
+            font-size: 1rem;
+        }
+
+        /* RTL for Hebrew */
+        html[lang="he"] body {
+            direction: rtl;
+        }
+        html[lang="he"] main {
+            text-align: right;
+        }
+        html[lang="he"] section p {
+            text-align: right;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.8rem;
+            }
+            .tagline {
+                font-size: 1.5rem;
+            }
+            .cta-button {
+                font-size: 1.4rem;
+                padding: 15px 30px;
+            }
+            section {
+                padding: 30px;
+            }
+            section h2 {
+                font-size: 2rem;
+            }
+            section p {
+                font-size: 1.05rem;
+            }
+            .screenshot-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="images/scriptmyday_logo.png" alt="ScriptMyDay Logo">
+        </div>
+        <h1>ScriptMyDay</h1>
+        <p class="tagline">היום שלך, הסרט שלך.</p>
+        <div class="call-to-action">
+            <a href="http://localhost:50000" target="_blank" class="cta-button">נסה את ScriptMyDay עכשיו!</a>
+        </div>
+    </header>
+
+    <main>
+        <section>
+            <h2>הפוך את החוויות שלך לתסריט קולנועי</h2>
+            <p><strong>נמאס לכם מיומנים רגילים? רוצים לראות את החיים שלכם דרך עדשה חדשה?</strong></p>
+            <p>הכירו את ScriptMyDay – האפליקציה החדשנית שהופכת את החוויות היומיומיות שלכם לתסריטים קולנועיים או קומיים מרתקים, בנגיעה אחת. בין אם זה רגע מצחיק בסופר, שיחה משמעותית עם חבר, או סתם יום שגרתי במשרד – ScriptMyDay לוקחת את הרשומות שלכם ומעניקה להן חיים חדשים, כאילו נכתבו על ידי תסריטאי הוליוודי.</p>
+        </section>
+
+        <section>
+            <h2>איך זה עובד? פשוט, מהיר, ומרגש!</h2>
+            <p>אין צורך בניסיון קודם בכתיבת תסריטים. ScriptMyDay עושה את כל העבודה בשבילכם.</p>
+            <div class="screenshot-grid">
+                <div class="screenshot-item">
+                    <img src="images/screenshot1_input.png" alt="שלב 1: כתוב את היום שלך">
+                    <h3>כתוב את היום שלך</h3>
+                    <p>רשום את המחשבות, האירועים והרגשות שלך ביומן הדיגיטלי האישי שלך.</p>
+                </div>
+                <div class="screenshot-item">
+                    <img src="images/screenshot2_genre.png" alt="שלב 2: בחר ז'אנר">
+                    <h3>בחר ז'אנר</h3>
+                    <p>האם החוויה שלך היא קומדיה פרועה, דרמה נוגעת ללב, הרפתקה מסעירה, או אולי בכלל מדע בדיוני? בחור את הז'אנר שהכי מתאים למצב הרוח.</p>
+                </div>
+                <div class="screenshot-item">
+                    <img src="images/screenshot3_script.png" alt="שלב 3: צפה בקסם קורה">
+                    <h3>צפה בקסם קורה</h3>
+                    <p>הבינה המלאכותית המתקדמת שלנו תיקח את הסיפור שלך ותהפוך אותו לתסריט מקורי ומפורט, כולל כותרת, דמויות, תיאורי סצנות ודיאלוגים שנונים.</p>
+                </div>
+                <div class="screenshot-item">
+                    <img src="images/screenshot4_saved_files.png" alt="שלב 4: ערוך ושמור">
+                    <h3>ערוך ושמור</h3>
+                    <p>התסריט לא מושלם? ערוך אותו בקלות, שמור אותו בבטחה בארכיון האישי שלך, וחזור אליו בכל עת.</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>למה ScriptMyDay?</h2>
+            <p>ScriptMyDay מציעה לך דרך ייחודית ויצירתית להתחבר לסיפור האישי שלך:</p>
+            <ul>
+                <li><strong>פרספקטיבה חדשה:</strong> הפכו את ה"רגיל" ל"בלתי רגיל" וגלו את הסיפורים הנסתרים בחיי היומיום שלכם.</li>
+                <li><strong>שחרור יצירתי:</strong> תנו לבינה המלאכותית להיות שותפתכם לכתיבה וצרו תסריטים גם ללא ניסיון קודם.</li>
+                <li><strong>קל לשימוש:</strong> ממשק אינטואיטיבי ומהיר שמאפשר לכם להתחיל לכתוב ולשחק עם ז'אנרים תוך שניות.</li>
+                <li><strong>ארכיון אישי:</strong> כל התסריטים והיומנים שלכם נשמרים בצורה מסודרת וזמינה לצפייה חוזרת.</li>
+            </ul>
+        </section>
+
+        <div class="call-to-action">
+            <a href="http://localhost:50000" target="_blank" class="cta-button">התחילו לכתוב את הסרט של חייכם היום!</a>
+        </div>
+
+        <p class="privacy-note">
+            <strong>הערה חשובה בנוגע לפרטיות:</strong> אנו רואים בחשיבות עליונה את פרטיותך. כרגע, יומניך נשמרים על השרת שלנו ללא הצפנה. אנו עובדים במרץ על הטמעת הצפנה מתקדמת שתהיה זמינה בקרוב כדי להגן על נתוניך בצורה הטובה ביותר.
+        </p>
+    </main>
+
+    <footer>
+        &copy; 2025 ScriptMyDay. כל הזכויות שמורות.
+    </footer>
+</body>
+</html>
