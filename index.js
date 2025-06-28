@@ -15,18 +15,36 @@ const __dirname = path.dirname(__filename);
 
 // הגדרות CORS
 app.use((req, res, next) => {
-    const allowedOrigins = [
-        process.env.APP_FRONTEND_URL || `http://localhost:${PORT}`,
-        'http://localhost:50000',
-        'http://127.0.0.1:50000'
-    ];
+    // APP_FRONTEND_URL יגיע ממשתני הסביבה ב-Render בסביבת פרודקשן
+    const appFrontendUrl = process.env.APP_FRONTEND_URL;
+    
+    // בודק אם הסביבה היא פרודקשן ו-APP_FRONTEND_URL מוגדר,
+    // אחרת משתמש בכתובות מקומיות (localhost)
+    const allowedOrigins = [];
+    if (process.env.NODE_ENV === 'production' && appFrontendUrl) {
+        allowedOrigins.push(appFrontendUrl);
+    } else {
+        allowedOrigins.push(`http://localhost:${PORT}`);
+        allowedOrigins.push('http://127.0.0.1:50000');
+    }
+    
     const origin = req.headers.origin;
 
-    if (allowedOrigins.includes(origin)) {
+    if (origin && allowedOrigins.includes(origin)) {
         res.setHeader('Access-Control-Allow-Origin', origin);
     } else if (!origin && req.method === 'GET') {
+        // לאפשר גישה לבקשות GET ללא Origin (כמו גישה ישירה לקובץ)
         res.setHeader('Access-Control-Allow-Origin', '*');
+    } else if (process.env.NODE_ENV === 'production' && appFrontendUrl && req.headers.referer && req.headers.referer.startsWith(appFrontendUrl)) {
+        // מנגנון גיבוי עבור Referer במידה ו-Origin לא נשלח מאיזושהי סיבה
+        res.setHeader('Access-Control-Allow-Origin', appFrontendUrl);
+    } else if (process.env.NODE_ENV === 'production' && origin && !allowedOrigins.includes(origin)) {
+        // במצב פרודקשן, אם ה-Origin לא מורשה, דחה את הבקשה.
+        // אזהרה: יש לוודא ש-APP_FRONTEND_URL מוגדר נכון לפני הפריסה.
+        console.warn(`Blocked request from untrusted origin in production: ${origin}`);
+        return res.status(403).send('Forbidden');
     }
+
 
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -43,10 +61,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ודא שמפתח ה-API של OpenRouter מוגדר
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 if (!OPENROUTER_API_KEY) {
-    console.error('Error: OPENROUTER_API_KEY is not set in your .env file.');
+    // ההודעה הזו תופיע בלוגים רק אם המפתח חסר לגמרי (ולא רק אם הוא ריק או שגוי)
+    console.error('Error: OPENROUTER_API_KEY is not set. Please set this environment variable.');
     process.exit(1);
 }
 
+// הודעה זו תופיע תמיד כיוון שהיא אינפורמטיבית לגבי הטעינה של משתני הסביבה.
 console.log('[dotenv] Environment variables loaded.');
 
 // הגדרת נתיבי תיקיות השמירה
@@ -58,6 +78,7 @@ async function ensureDirectoriesExist() {
     try {
         await fs.mkdir(DIARY_DIR, { recursive: true });
         await fs.mkdir(SCRIPT_DIR, { recursive: true });
+        // הודעה זו תופיע תמיד, מכיוון שהיא קשורה לפעולה של השרת
         console.log('Save directories ensured.');
     } catch (error) {
         console.error('Error ensuring directories:', error);
@@ -78,20 +99,23 @@ app.post('/api/generateScript', async (req, res) => {
     const diaryLength = diaryEntry.split(/\s+/).length; // מספר מילים ביומן
     let desiredScriptLengthHint;
 
-    if (diaryLength < 30) { // יומן קצר מאוד
-        desiredScriptLengthHint = lang === 'he' ? 
-            `צור תסריט קצר מאוד (1-2 סצנות, כ-50-100 מילים).` :
-            `Create a very short script (1-2 scenes, about 50-100 words).`;
-    } else if (diaryLength < 100) { // יומן בינוני
-        desiredScriptLengthHint = lang === 'he' ?
-            `צור תסריט קצר (2-3 סצנות, כ-100-300 מילים), בהתאם לאורך היומן.` :
-            `Create a short script (2-3 scenes, about 100-300 words), adapting to the diary length.`;
-    } else { // יומן ארוך
-        desiredScriptLengthHint = lang === 'he' ?
-            `צור תסריט באורך בינוני עד ארוך (3-5 סצנות, עד 500 מילים), בהתאם לאורך היומן.` :
-            `Create a medium to long script (3-5 scenes, up to 500 words), adapting to the diary length.`;
+    if (lang === 'he') {
+        if (diaryLength < 30) { // יומן קצר מאוד
+            desiredScriptLengthHint = `צור תסריט קצר מאוד (1-2 סצנות, כ-50-100 מילים).`;
+        } else if (diaryLength < 100) { // יומן בינוני
+            desiredScriptLengthHint = `צור תסריט קצר (2-3 סצנות, כ-100-300 מילים), בהתאם לאורך היומן.`;
+        } else { // יומן ארוך
+            desiredScriptLengthHint = `צור תסריט באורך בינוני עד ארוך (3-5 סצנות, עד 500 מילים), בהתאם לאורך היומן.`;
+        }
+    } else { // English (default or 'en')
+        if (diaryLength < 30) { // Very short entry
+            desiredScriptLengthHint = `Create a very short script (1-2 scenes, about 50-100 words).`;
+        } else if (diaryLength < 100) { // Medium entry
+            desiredScriptLengthHint = `Create a short script (2-3 scenes, about 100-300 words), adapting to the diary length.`;
+        } else { // Long entry
+            desiredScriptLengthHint = `Create a medium to long script (3-5 scenes, up to 500 words), adapting to the diary length.`;
+        }
     }
-
 
     const promptTemplate = {
         he: `אתה תסריטאי מומחה.
@@ -249,7 +273,17 @@ app.get('/api/scriptContent/:filename', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Personal Diary Script is running on: http://localhost:${PORT}`);
-    console.log('💡 Remember to set OPENROUTER_API_KEY in your .env file.');
-    console.warn(`⚠️ Warning: HTTP-Referer is set to localhost. In a production environment, change APP_FRONTEND_URL in .env to your app's actual domain.`);
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // הודעת הפעלה של השרת
+    // תציג את localhost רק אם אינה בסביבת פרודקשן
+    if (!isProduction) {
+        console.log(`🚀 Personal Diary Script is running on: http://localhost:${PORT}`);
+        console.log('💡 Remember to set OPENROUTER_API_KEY in your .env file for local development.');
+        console.warn(`⚠️ Warning: HTTP-Referer is set to localhost. In a production environment, change APP_FRONTEND_URL in .env to your app's actual domain.`);
+    } else {
+        // בפריסה, נציג את ה-URL הציבורי שבו השרת באמת זמין
+        console.log(`🚀 Personal Diary Script Backend is running.`);
+        console.log(`==> Available at your primary URL ${process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`}`); // RENDER_EXTERNAL_URL הוא משתנה סביבה ש-Render מגדיר
+    }
 });
