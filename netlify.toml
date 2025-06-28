@@ -1,0 +1,3 @@
+[build]
+  publish = "public"
+  command = "echo 'Netlify is building your static site...'"
