@@ -11,13 +11,7 @@
   timeout = 30 
 
   # Explicitly tell Netlify to bundle 'axios' as an external Node module.
-  # This can help prevent 'ERR_MODULE_NOT_FOUND' issues by ensuring it's
-  # packaged correctly for the function's runtime environment.
   external_node_modules = ["axios"]
 
   # Use esbuild for bundling functions.
   node_bundler = "esbuild"
-
-# Optional: You can set specific settings for a single function like this:
-# [functions.generateScript]
-#   timeout = 60 # Set a specific timeout for only this function (e.g., 60 seconds)
