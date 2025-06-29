@@ -2,7 +2,9 @@
 
 # Build configuration for the static site
 [build]
+  # Directory where the built site files are located (your frontend)
   publish = "public"
+  # Command to run during the build process
   command = "echo 'Netlify is building your static site...'"
 
 # Functions configuration for Netlify Functions
@@ -10,8 +12,21 @@
   # Directory where your serverless functions are located
   directory = "netlify/functions"
 
-  # The following properties (timeout, external_node_modules, node_bundler)
-  # are temporarily removed due to persistent parsing errors in Netlify.
-  # If the build succeeds with this minimal configuration, we can try to
-  # add them back one by one if specific issues (like timeouts or module not found)
-  # resurface later.
+  # Set the timeout for functions in seconds.
+  # For Netlify's free tier, the default timeout is usually 10 seconds (10000 ms).
+  # You can configure it up to 26 seconds (26000 ms) in the free tier,
+  # or higher in paid tiers. Setting it to 30 will use the maximum allowed.
+  timeout = 30 
+
+  # Explicitly tell Netlify to bundle 'axios' as an external Node module.
+  # This helps prevent 'ERR_MODULE_NOT_FOUND' issues by ensuring it's
+  # correctly packaged and available to your functions.
+  external_node_modules = ["axios"]
+
+  # Use 'esbuild' for bundling your functions.
+  # esbuild is a very fast and efficient bundler for JavaScript.
+  node_bundler = "esbuild"
+
+# Example of how to set specific settings for a single function (uncomment to use):
+# [functions.generateScript]
+#   timeout = 60 # Set a specific timeout for only this function (e.g., 60 seconds)
