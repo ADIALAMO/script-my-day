@@ -1,0 +1,16 @@
+{
+  "functions": {
+    "api/generateScript.cjs": {
+      "runtime": "node18.x",
+      "memory": 256,
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    { "source": "/.netlify/functions/generateScript", "destination": "/api/generateScript" },
+    { "source": "/.netlify/functions/saveDiaryEntry", "destination": "/api/saveDiaryEntry" },
+    { "source": "/.netlify/functions/getSavedDiaries", "destination": "/api/getSavedDiaries" },
+    { "source": "/.netlify/functions/saveScript", "destination": "/api/saveScript" },
+    { "source": "/.netlify/functions/getSavedScripts", "destination": "/api/getSavedScripts" }
+  ]
+}
