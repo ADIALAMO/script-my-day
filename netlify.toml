@@ -1,47 +1,17 @@
 # netlify.toml
 
 # Build configuration for the static site
-# הגדרות בנייה עבור האתר הסטטי
 [build]
-  # Directory where the built site files are located (your frontend)
-  # התיקייה שבה נמצאים קבצי האתר הבנויים (הפרונטאנד שלך)
   publish = "public"
-  # Command to run during the build process
-  # הפקודה שתופעל בתהליך הבנייה
   command = "echo 'Netlify is building your static site...'"
 
 # Functions configuration for Netlify Functions
-# הגדרות פונקציות עבור Netlify Functions
 [functions]
   # Directory where your serverless functions are located
-  # התיקייה שבה נמצאות פונקציות השרת (serverless functions) שלך
   directory = "netlify/functions"
 
-  # Set the timeout for functions in seconds.
-  # For Netlify's free tier, the default timeout is usually 10 seconds (10000 ms).
-  # You can configure it up to 26 seconds (26000 ms) in the free tier,
-  # or higher in paid tiers. Setting it to 30 will use the maximum allowed.
-  # הגדר את זמן הקצוב של הפונקציות בשניות.
-  # בתוכנית החינמית של Netlify, מגבלת זמן הריצה הסטנדרטית היא 10 שניות (10000 אלפיות השנייה).
-  # ניתן להגדיר עד 26 שניות (26000 אלפיות השנייה) בתוכנית החינמית,
-  # או יותר בתוכניות בתשלום. הגדרת 30 תשתמש במקסימום המותר.
-  timeout = 30 
-
-  # Explicitly tell Netlify to bundle 'axios' as an external Node module.
-  # This helps prevent 'ERR_MODULE_NOT_FOUND' issues by ensuring 'axios'
-  # is correctly packaged and available to your functions.
-  # הנחה מפורשת ל-Netlify לארוז את 'axios' כמודול Node חיצוני.
-  # זה עוזר למנוע שגיאות 'ERR_MODULE_NOT_FOUND' על ידי הבטחת 'axios'
-  # ארוז כראוי וזמין לפונקציות שלך.
-  external_node_modules = ["axios"]
-
-  # Use 'esbuild' for bundling your functions.
-  # esbuild is a very fast and efficient bundler for JavaScript.
-  # השתמש ב-'esbuild' לאריזת הפונקציות שלך.
-  # esbuild הוא כלי אריזה מהיר ויעיל מאוד עבור JavaScript.
-  node_bundler = "esbuild"
-
-# Example of how to set specific settings for a single function (uncomment to use):
-# דוגמה כיצד להגדיר הגדרות ספציפיות עבור פונקציה בודדת (בטל את ההערה לשימוש):
-# [functions.generateScript]
-#   timeout = 60 # Set a specific timeout for only this function (e.g., 60 seconds)
+  # The following properties (timeout, external_node_modules, node_bundler)
+  # are temporarily removed due to persistent parsing errors in Netlify.
+  # If the build succeeds with this minimal configuration, we can try to
+  # add them back one by one if specific issues (like timeouts or module not found)
+  # resurface later.
