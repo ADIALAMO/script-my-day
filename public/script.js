@@ -121,9 +121,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     const BASE_API_URL = window.location.origin;
-    const API_GENERATE_SCRIPT_URL = `${BASE_API_URL}/api/generateScript`;
-    const API_SAVE_DIARY_URL = `${BASE_API_URL}/api/saveDiaryEntry`;
-    const API_SAVE_SCRIPT_URL = `${BASE_API_URL}/api/saveScript`;
+
+    // --- שינוי כאן: הפנייה ישירה לנתיב הפונקציה של Netlify ---
+    // Change here: Direct reference to the Netlify function path
+    const API_GENERATE_SCRIPT_URL = `${BASE_API_URL}/.netlify/functions/generateScript`; // Changed from /api/generateScript
+    // -----------------------------------------------------------
+
+    const API_SAVE_DIARY_URL = `${BASE_API_URL}/api/saveDiaryEntry`; // Assuming these will be separate functions, keep /api/ for now
+    const API_SAVE_SCRIPT_URL = `${BASE_API_URL}/api/saveScript`; // Assuming these will be separate functions, keep /api/ for now
+
 
     let currentLang = localStorage.getItem('appLanguage') || 'he';
     let currentDiaryEntry = "";
@@ -234,7 +240,9 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoadingMessage(`loading_message_fetching_${type}`);
 
         try {
-            const response = await fetch(`${BASE_API_URL}/api/saved${type.charAt(0).toUpperCase() + type.slice(1)}`);
+            // Adjust API URL for fetching saved files (assuming these are separate Netlify functions or static files)
+            const apiPath = type === 'diaries' ? '/.netlify/functions/getSavedDiaries' : '/.netlify/functions/getSavedScripts'; // Placeholder
+            const response = await fetch(`${BASE_API_URL}${apiPath}`); // Changed from /api/saved...
             const files = await response.json();
 
             if (response.ok) {
@@ -300,8 +308,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     generateButton.addEventListener("click", async () => {
         clearStatusMessages();
-        scriptOutput.value = translations[currentLang].script_placeholder; // שינוי ל-.value
-        updateWordCount(scriptOutput, scriptWordCount); // עדכון מונה מילים
+        scriptOutput.value = translations[currentLang].script_placeholder;
+        updateWordCount(scriptOutput, scriptWordCount);
         scriptOutputContainer.style.display = 'none';
         disableSaveButtons();
 
@@ -318,13 +326,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         currentDiaryEntry = diaryEntry;
-        currentScript = ""; // איפוס תסריט נוכחי לפני יצירה חדשה
+        currentScript = "";
 
         generateButton.disabled = true;
         showLoadingMessage('loading_message_script');
 
         try {
-            const response = await fetch(API_GENERATE_SCRIPT_URL, {
+            const response = await fetch(API_GENERATE_SCRIPT_URL, { // This URL is now /.netlify/functions/generateScript
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -335,26 +343,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             if (response.ok) {
-                scriptOutput.value = data.script; // שינוי ל-.value
+                scriptOutput.value = data.script;
                 currentScript = data.script;
                 scriptOutputContainer.style.display = 'block';
                 enableSaveButtons();
-                updateWordCount(scriptOutput, scriptWordCount); // עדכון מונה מילים
+                updateWordCount(scriptOutput, scriptWordCount);
             } else {
                 const errorMsg = data.error || translations[currentLang].error_unknown_server;
                 showErrorMessage('error_script_creation_failed', errorMsg);
-                scriptOutput.value = translations[currentLang].error_script_creation_failed; // שינוי ל-.value
-                currentScript = ""; // אם נכשלה היצירה, אין תסריט לשמור
+                scriptOutput.value = translations[currentLang].error_script_creation_failed;
+                currentScript = "";
                 scriptOutputContainer.style.display = 'block';
-                updateWordCount(scriptOutput, scriptWordCount); // עדכון מונה מילים גם בשגיאה
+                updateWordCount(scriptOutput, scriptWordCount);
             }
 
         } catch (error) {
             console.error("שגיאה בשליחת הבקשה או בקבלת התשובה:", error);
             showErrorMessage('error_connection_server');
-            scriptOutput.value = translations[currentLang].error_script_creation_failed; // שינוי ל-.value
+            scriptOutput.value = translations[currentLang].error_script_creation_failed;
             scriptOutputContainer.style.display = 'block';
-            updateWordCount(scriptOutput, scriptWordCount); // עדכון מונה מילים גם בשגיאה
+            updateWordCount(scriptOutput, scriptWordCount);
         } finally {
             generateButton.disabled = false;
             loadingMessage.style.display = "none";
@@ -371,7 +379,8 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoadingMessage('saving_diary_message');
 
         try {
-            const response = await fetch(API_SAVE_DIARY_URL, {
+            // Adjust API URL for saving diary
+            const response = await fetch(`${BASE_API_URL}/.netlify/functions/saveDiaryEntry`, { // Changed from /api/saveDiaryEntry
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ diaryEntry: currentDiaryEntry, lang: currentLang }),
@@ -402,7 +411,8 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoadingMessage('saving_script_message');
 
         try {
-            const response = await fetch(API_SAVE_SCRIPT_URL, {
+            // Adjust API URL for saving script
+            const response = await fetch(`${BASE_API_URL}/.netlify/functions/saveScript`, { // Changed from /api/saveScript
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ script: currentScript, lang: currentLang }),
@@ -424,13 +434,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     diaryEntryInput.addEventListener('input', () => {
-        currentDiaryEntry = diaryEntryInput.value.trim(); // עדכן את currentDiaryEntry
+        currentDiaryEntry = diaryEntryInput.value.trim();
         saveDiaryButton.disabled = currentDiaryEntry === "";
         updateWordCount(diaryEntryInput, diaryWordCount);
     });
 
     scriptOutput.addEventListener('input', () => {
-        currentScript = scriptOutput.value.trim(); // עדכן את currentScript עם התוכן הערוך
+        currentScript = scriptOutput.value.trim();
         saveScriptButton.disabled = currentScript === "";
         updateWordCount(scriptOutput, scriptWordCount);
     });
@@ -438,11 +448,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // אירוע לחיצה על כפתור "הצג שמורים"
     showSavedButton.addEventListener('click', async () => {
         clearStatusMessages();
-        document.querySelector('.input-section').style.display = 'none'; // הסתר את אזור הקלט
-        scriptOutputContainer.style.display = 'none'; // הסתר תוצאות
-        savedFilesContainer.style.display = 'block'; // הצג את אזור הקבצים השמורים
-        savedContentDisplay.style.display = 'none'; // וודא שתצוגת תוכן נסתרת
+        document.querySelector('.input-section').style.display = 'none';
+        scriptOutputContainer.style.display = 'none';
+        savedFilesContainer.style.display = 'block';
+        savedContentDisplay.style.display = 'none';
 
+        // Assuming you'll have actual functions for getSavedDiaries/Scripts.
+        // For now, these API calls might lead to 404s if the functions don't exist yet.
         await fetchAndDisplayFiles('diaries', diariesList);
         await fetchAndDisplayFiles('scripts', scriptsList);
     });
@@ -452,8 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clearStatusMessages();
         savedFilesContainer.style.display = 'none';
         savedContentDisplay.style.display = 'none';
-        document.querySelector('.input-section').style.display = 'block'; // הצג בחזרה את אזור הקלט
-        // איפוס מונה המילים של התסריט כשהממשק הראשי חוזר
+        document.querySelector('.input-section').style.display = 'block';
         scriptOutput.value = translations[currentLang].script_placeholder;
         currentScript = "";
         updateWordCount(scriptOutput, scriptWordCount);
