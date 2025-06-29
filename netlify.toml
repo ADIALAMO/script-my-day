@@ -6,3 +6,20 @@
 
 [functions]
   directory = "netlify/functions"
+  # Set the timeout for functions to a higher value.
+  # Netlify's free tier typically has a 10-second default limit,
+  # but allows configuration up to 26 seconds. Paid tiers have higher limits.
+  # The value is in seconds.
+  timeout = 30 # Sets the function timeout to 30 seconds
+
+  # Explicitly tell Netlify to bundle 'axios' as an external Node module.
+  # This can help prevent 'ERR_MODULE_NOT_FOUND' issues by ensuring it's
+  # packaged correctly for the function's runtime environment.
+  external_node_modules = ["axios"]
+
+  # Use esbuild for bundling functions. It's generally faster and more efficient.
+  node_bundler = "esbuild"
+
+# Optional: You can set specific settings for a single function like this:
+# [functions.generateScript]
+#   timeout = 60 # Set a specific timeout for only this function (e.g., 60 seconds)
