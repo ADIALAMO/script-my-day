@@ -1,9 +1,8 @@
 // netlify/functions/generateScript.cjs
 
-// Removing the direct require for node-fetch at the top level
-// as it conflicts with ESM.
-// נסיר את ה-require הישיר ל-node-fetch מהרמה העליונה
-// מכיוון שהוא מתנגש עם ESM.
+// Import axios - axios is already listed in your package.json dependencies.
+// ייבוא axios - axios כבר מופיע בתלויות ב-package.json שלך.
+const axios = require('axios');
 
 exports.handler = async (event, context) => {
     // Log the incoming HTTP method for debugging purposes.
@@ -59,10 +58,6 @@ exports.handler = async (event, context) => {
     let generatedScript = "";
 
     try {
-        // Dynamic import of 'node-fetch' to resolve ERR_REQUIRE_ESM
-        // ייבוא דינמי של 'node-fetch' כדי לפתור את ERR_REQUIRE_ESM
-        const { default: fetch } = await import('node-fetch');
-
         // Access the API key from Netlify Environment Variables (or .env locally).
         const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
@@ -80,41 +75,39 @@ exports.handler = async (event, context) => {
                             Start the script with a scene heading (e.g., "SCENE 1: LIVING ROOM - MORNING").`;
 
 
-        // Make the API call to OpenRouter.
-        const openrouterResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
+        // Make the API call to OpenRouter using Axios instead of fetch.
+        const openrouterResponse = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+            // Axios automatically handles JSON stringification for the body
+            "model": "deepseek/deepseek-chat-v3-0324:free",
+            "messages": [
+                {"role": "system", "content": "You are a creative assistant that writes short, engaging comic scripts."},
+                {"role": "user", "content": promptText}
+            ],
+            "temperature": 0.7,
+            "max_tokens": 500
+        }, {
+            // Axios headers are passed as a third argument
             headers: {
                 "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
                 "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                "model": "deepseek/deepseek-chat-v3-0324:free",
-                "messages": [
-                    {"role": "system", "content": "You are a creative assistant that writes short, engaging comic scripts."},
-                    {"role": "user", "content": promptText}
-                ],
-                "temperature": 0.7,
-                "max_tokens": 500
-            })
+            }
         });
 
-        const openrouterData = await openrouterResponse.json();
-
-        // Check if the API call was successful (status 2xx).
-        if (!openrouterResponse.ok) {
-            console.error("OpenRouter API Error Response:", openrouterData);
-            return {
-                statusCode: openrouterResponse.status,
-                body: JSON.stringify({ error: `OpenRouter API error: ${openrouterData.message || 'Unknown error'}` })
-            };
-        }
-
-        // Extract the generated script from the API response.
-        generatedScript = openrouterData.choices[0]?.message?.content || "Failed to get script from AI.";
+        // Axios response data is directly in openrouterResponse.data
+        generatedScript = openrouterResponse.data.choices[0]?.message?.content || "Failed to get script from AI.";
 
     } catch (error) {
-        console.error("Error during OpenRouter API call:", error);
-        return { statusCode: 500, body: JSON.stringify({ error: "Failed to generate script due to API call error: " + error.message }) };
+        // Axios errors have a 'response' object for server errors
+        if (error.response) {
+            console.error("OpenRouter API Error Response (Axios):", error.response.data);
+            return {
+                statusCode: error.response.status,
+                body: JSON.stringify({ error: `OpenRouter API error: ${error.response.data.message || 'Unknown error'}` })
+            };
+        } else {
+            console.error("Error during OpenRouter API call (Axios):", error);
+            return { statusCode: 500, body: JSON.stringify({ error: "Failed to generate script due to API call error: " + error.message }) };
+        }
     }
 
     // Return the generated script to the frontend.
