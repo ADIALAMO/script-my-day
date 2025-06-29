@@ -1,30 +1,26 @@
 // netlify/functions/generateScript.cjs
 
-// Explicitly import fetch for local Node.js environment.
-// Ensure 'node-fetch' is installed in your project: npm install node-fetch
-// This specifically imports the 'default' export of node-fetch, which helps resolve
-// 'fetch is not a function' or 'fetch2 is not a function' errors in some environments.
-const fetch = require('node-fetch').default;
+// Removing the direct require for node-fetch at the top level
+// as it conflicts with ESM.
+// נסיר את ה-require הישיר ל-node-fetch מהרמה העליונה
+// מכיוון שהוא מתנגש עם ESM.
 
 exports.handler = async (event, context) => {
     // Log the incoming HTTP method for debugging purposes.
     console.log(`Incoming HTTP method: ${event.httpMethod}`);
 
     // Handle OPTIONS method for CORS preflight requests.
-    // This is crucial for web browsers to allow cross-origin requests.
     if (event.httpMethod === 'OPTIONS') {
         console.log('Handling OPTIONS preflight request.');
         return {
             statusCode: 200,
             headers: {
-                // IMPORTANT: In production, consider restricting 'Access-Control-Allow-Origin'
-                // to your actual frontend domain (e.g., 'https://your-domain.netlify.app')
-                'Access-Control-Allow-Origin': '*', // Allows requests from any origin
-                'Access-Control-Allow-Methods': 'POST, GET, OPTIONS', // Allowed HTTP methods
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization', // Allowed request headers
-                'Access-Control-Max-Age': '86400', // Cache preflight response for 24 hours
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                'Access-Control-Max-Age': '86400',
             },
-            body: '' // No content needed for OPTIONS preflight
+            body: ''
         };
     }
 
@@ -63,13 +59,15 @@ exports.handler = async (event, context) => {
     let generatedScript = "";
 
     try {
+        // Dynamic import of 'node-fetch' to resolve ERR_REQUIRE_ESM
+        // ייבוא דינמי של 'node-fetch' כדי לפתור את ERR_REQUIRE_ESM
+        const { default: fetch } = await import('node-fetch');
+
         // Access the API key from Netlify Environment Variables (or .env locally).
         const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
         // Log to verify if the API key is being loaded correctly in Netlify logs.
-        // This log will show 'true' and its length if the key is present.
         console.log(`OpenRouter API Key defined: ${!!OPENROUTER_API_KEY}. Length: ${OPENROUTER_API_KEY ? OPENROUTER_API_KEY.length : 0}`);
-
 
         if (!OPENROUTER_API_KEY) {
             console.error("OPENROUTER_API_KEY is not configured in Netlify Environment Variables (or .env locally).");
@@ -90,14 +88,13 @@ exports.handler = async (event, context) => {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                // Using the requested Deepseek model.
                 "model": "deepseek/deepseek-chat-v3-0324:free",
                 "messages": [
                     {"role": "system", "content": "You are a creative assistant that writes short, engaging comic scripts."},
                     {"role": "user", "content": promptText}
                 ],
-                "temperature": 0.7, // Controls creativity (0.0-1.0)
-                "max_tokens": 500 // Maximum length of the generated script
+                "temperature": 0.7,
+                "max_tokens": 500
             })
         });
 
@@ -124,7 +121,7 @@ exports.handler = async (event, context) => {
     return {
         statusCode: 200,
         headers: {
-            'Access-Control-Allow-Origin': '*', // Ensure this is also present on the successful response for CORS
+            'Access-Control-Allow-Origin': '*',
             "Content-Type": "application/json"
         },
         body: JSON.stringify({ script: generatedScript }),

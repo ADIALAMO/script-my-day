@@ -122,13 +122,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const BASE_API_URL = window.location.origin;
 
-    // --- שינוי כאן: הפנייה ישירה לנתיב הפונקציה של Netlify ---
-    // Change here: Direct reference to the Netlify function path
-    const API_GENERATE_SCRIPT_URL = `${BASE_API_URL}/.netlify/functions/generateScript`; // Changed from /api/generateScript
-    // -----------------------------------------------------------
-
-    const API_SAVE_DIARY_URL = `${BASE_API_URL}/api/saveDiaryEntry`; // Assuming these will be separate functions, keep /api/ for now
-    const API_SAVE_SCRIPT_URL = `${BASE_API_URL}/api/saveScript`; // Assuming these will be separate functions, keep /api/ for now
+    // Direct reference to the Netlify function path for generation
+    const API_GENERATE_SCRIPT_URL = `${BASE_API_URL}/.netlify/functions/generateScript`; 
+    
+    // Consistent direct references to Netlify function paths for saving
+    const API_SAVE_DIARY_URL = `${BASE_API_URL}/.netlify/functions/saveDiaryEntry`; // Changed for consistency
+    const API_SAVE_SCRIPT_URL = `${BASE_API_URL}/.netlify/functions/saveScript`;   // Changed for consistency
 
 
     let currentLang = localStorage.getItem('appLanguage') || 'he';
@@ -171,19 +170,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const initialScriptPlaceholderHebrew = "התסריט יופיע כאן לאחר יצירתו.";
         const initialScriptPlaceholderEnglish = "The script will appear here after generation.";
-        if (scriptOutput.value.trim() === initialScriptPlaceholderHebrew || // השתמש ב-.value
-            scriptOutput.value.trim() === initialScriptPlaceholderEnglish || // השתמש ב-.value
-            scriptOutput.value.trim() === "") { // השתמש ב-.value
-            scriptOutput.value = translations[currentLang].script_placeholder; // השתמש ב-.value
+        if (scriptOutput.value.trim() === initialScriptPlaceholderHebrew || 
+            scriptOutput.value.trim() === initialScriptPlaceholderEnglish || 
+            scriptOutput.value.trim() === "") { 
+            scriptOutput.value = translations[currentLang].script_placeholder; 
         }
-        // עדכן את מוני המילים עם השפה הנכונה
         updateWordCount(diaryEntryInput, diaryWordCount);
         updateWordCount(scriptOutput, scriptWordCount);
     }
 
     setLanguage(currentLang);
     updateWordCount(diaryEntryInput, diaryWordCount);
-    updateWordCount(scriptOutput, scriptWordCount); // הצג 0 מילים בהתחלה אם אין תוכן
+    updateWordCount(scriptOutput, scriptWordCount); 
 
     languageSelect.addEventListener('change', (event) => {
         setLanguage(event.target.value);
@@ -233,16 +231,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     disableSaveButtons();
 
-    // פונקציה כללית להצגת קבצים
+    // Generic function to fetch and display saved files
     async function fetchAndDisplayFiles(type, listElement) {
         clearStatusMessages();
-        listElement.innerHTML = ''; // נקה רשימה קודמת
+        listElement.innerHTML = ''; 
         showLoadingMessage(`loading_message_fetching_${type}`);
 
         try {
             // Adjust API URL for fetching saved files (assuming these are separate Netlify functions or static files)
-            const apiPath = type === 'diaries' ? '/.netlify/functions/getSavedDiaries' : '/.netlify/functions/getSavedScripts'; // Placeholder
-            const response = await fetch(`${BASE_API_URL}${apiPath}`); // Changed from /api/saved...
+            const apiPath = type === 'diaries' ? '/.netlify/functions/getSavedDiaries' : '/.netlify/functions/getSavedScripts'; 
+            const response = await fetch(`${BASE_API_URL}${apiPath}`); 
             const files = await response.json();
 
             if (response.ok) {
@@ -253,8 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     files.forEach(file => {
                         const li = document.createElement('li');
                         const fileNameSpan = document.createElement('span');
-                        // Remove the timestamp for display, keep only relevant name part
-                        const displayFileName = file.name.replace(/(diary_|script_)/, '').replace(/\.txt$/, '').split('T')[0]; // Adjust as needed
+                        const displayFileName = file.name.replace(/(diary_|script_)/, '').replace(/\.txt$/, '').split('T')[0]; 
                         fileNameSpan.textContent = displayFileName;
 
                         const viewButton = document.createElement('button');
@@ -279,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // פונקציה להצגת תוכן קובץ
+    // Function to display file content
     async function fetchFileContent(filePath, fileName) {
         clearStatusMessages();
         showLoadingMessage('loading_message_fetching_content');
@@ -332,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoadingMessage('loading_message_script');
 
         try {
-            const response = await fetch(API_GENERATE_SCRIPT_URL, { // This URL is now /.netlify/functions/generateScript
+            const response = await fetch(API_GENERATE_SCRIPT_URL, { 
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -358,7 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
         } catch (error) {
-            console.error("שגיאה בשליחת הבקשה או בקבלת התשובה:", error);
+            console.error("Error sending request or receiving response:", error);
             showErrorMessage('error_connection_server');
             scriptOutput.value = translations[currentLang].error_script_creation_failed;
             scriptOutputContainer.style.display = 'block';
@@ -380,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // Adjust API URL for saving diary
-            const response = await fetch(`${BASE_API_URL}/.netlify/functions/saveDiaryEntry`, { // Changed from /api/saveDiaryEntry
+            const response = await fetch(API_SAVE_DIARY_URL, { // Now directly uses the updated API_SAVE_DIARY_URL
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ diaryEntry: currentDiaryEntry, lang: currentLang }),
@@ -393,7 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showErrorMessage('error_saving_diary', errorData.error);
             }
         } catch (error) {
-            console.error("שגיאה בשמירת יומן:", error);
+            console.error("Error saving diary:", error);
             showErrorMessage('error_connection_server');
         } finally {
             saveDiaryButton.disabled = false;
@@ -412,7 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // Adjust API URL for saving script
-            const response = await fetch(`${BASE_API_URL}/.netlify/functions/saveScript`, { // Changed from /api/saveScript
+            const response = await fetch(API_SAVE_SCRIPT_URL, { // Now directly uses the updated API_SAVE_SCRIPT_URL
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ script: currentScript, lang: currentLang }),
@@ -425,7 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showErrorMessage('error_saving_script', errorData.error);
             }
         } catch (error) {
-            console.error("שגיאה בשמירת תסריט:", error);
+            console.error("Error saving script:", error);
             showErrorMessage('error_connection_server');
         } finally {
             saveScriptButton.disabled = false;
@@ -445,32 +442,30 @@ document.addEventListener('DOMContentLoaded', () => {
         updateWordCount(scriptOutput, scriptWordCount);
     });
 
-    // אירוע לחיצה על כפתור "הצג שמורים"
+    // Event listener for "Show Saved" button
     showSavedButton.addEventListener('click', async () => {
         clearStatusMessages();
-        document.querySelector('.input-section').style.display = 'none';
-        scriptOutputContainer.style.display = 'none';
-        savedFilesContainer.style.display = 'block';
-        savedContentDisplay.style.display = 'none';
+        document.querySelector('.input-section').style.display = 'none'; 
+        scriptOutputContainer.style.display = 'none'; 
+        savedFilesContainer.style.display = 'block'; 
+        savedContentDisplay.style.display = 'none'; 
 
-        // Assuming you'll have actual functions for getSavedDiaries/Scripts.
-        // For now, these API calls might lead to 404s if the functions don't exist yet.
         await fetchAndDisplayFiles('diaries', diariesList);
         await fetchAndDisplayFiles('scripts', scriptsList);
     });
 
-    // אירוע לחיצה על כפתור "סגור" באזור הקבצים השמורים
+    // Event listener for "Close" button in saved files area
     closeSavedFilesButton.addEventListener('click', () => {
         clearStatusMessages();
         savedFilesContainer.style.display = 'none';
         savedContentDisplay.style.display = 'none';
-        document.querySelector('.input-section').style.display = 'block';
+        document.querySelector('.input-section').style.display = 'block'; 
         scriptOutput.value = translations[currentLang].script_placeholder;
         currentScript = "";
         updateWordCount(scriptOutput, scriptWordCount);
     });
 
-    // אירוע לחיצה על כפתור "סגור" בתצוגת תוכן הקובץ
+    // Event listener for "Close" button in file content display
     closeContentDisplayButton.addEventListener('click', () => {
         clearStatusMessages();
         savedContentDisplay.style.display = 'none';
