@@ -120,14 +120,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const scriptWordCount = document.getElementById("scriptWordCount");
 
 
-    const BASE_API_URL = window.location.origin;
+    // Updated API URLs to use Vercel's standard /api/ function path
+    // Assuming functions are now directly in the 'api' directory, e.g., api/generateScript.cjs
+    const API_GENERATE_SCRIPT_URL = '/api/generateScript';
+    const API_SAVE_DIARY_URL = '/api/saveDiaryEntry';
+    const API_SAVE_SCRIPT_URL = '/api/saveScript';
 
-    // Direct reference to the Netlify function path for generation
-    const API_GENERATE_SCRIPT_URL = `${BASE_API_URL}/.netlify/functions/generateScript`; 
-    
-    // Consistent direct references to Netlify function paths for saving
-    const API_SAVE_DIARY_URL = `${BASE_API_URL}/.netlify/functions/saveDiaryEntry`; // Changed for consistency
-    const API_SAVE_SCRIPT_URL = `${BASE_API_URL}/.netlify/functions/saveScript`;   // Changed for consistency
+    // The other saving/fetching functions' URLs also need to be updated.
+    // For these, we will assume they are also directly in the 'api' directory.
+    const API_GET_SAVED_DIARIES_URL = '/api/getSavedDiaries';
+    const API_GET_SAVED_SCRIPTS_URL = '/api/getSavedScripts';
 
 
     let currentLang = localStorage.getItem('appLanguage') || 'he';
@@ -163,17 +165,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (translations[currentLang] && translations[currentLang][key]) {
                 option.textContent = translations[currentLang][key];
             } else if (originalValue === "") {
+                // Ensure placeholder text is correctly translated if option value is empty
                 option.textContent = translations[currentLang].genre_label.replace("בחר ז'אנר לתסריט", "-- בחר ז'אנר --");
             }
-            option.value = originalValue;
+            option.value = originalValue; // Keep original value for submission
         });
 
         const initialScriptPlaceholderHebrew = "התסריט יופיע כאן לאחר יצירתו.";
         const initialScriptPlaceholderEnglish = "The script will appear here after generation.";
-        if (scriptOutput.value.trim() === initialScriptPlaceholderHebrew || 
-            scriptOutput.value.trim() === initialScriptPlaceholderEnglish || 
-            scriptOutput.value.trim() === "") { 
-            scriptOutput.value = translations[currentLang].script_placeholder; 
+        if (scriptOutput.value.trim() === initialScriptPlaceholderHebrew ||
+            scriptOutput.value.trim() === initialScriptPlaceholderEnglish ||
+            scriptOutput.value.trim() === "") {
+            scriptOutput.value = translations[currentLang].script_placeholder;
         }
         updateWordCount(diaryEntryInput, diaryWordCount);
         updateWordCount(scriptOutput, scriptWordCount);
@@ -181,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setLanguage(currentLang);
     updateWordCount(diaryEntryInput, diaryWordCount);
-    updateWordCount(scriptOutput, scriptWordCount); 
+    updateWordCount(scriptOutput, scriptWordCount);
 
     languageSelect.addEventListener('change', (event) => {
         setLanguage(event.target.value);
@@ -234,13 +237,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Generic function to fetch and display saved files
     async function fetchAndDisplayFiles(type, listElement) {
         clearStatusMessages();
-        listElement.innerHTML = ''; 
+        listElement.innerHTML = '';
         showLoadingMessage(`loading_message_fetching_${type}`);
 
         try {
-            // Adjust API URL for fetching saved files (assuming these are separate Netlify functions or static files)
-            const apiPath = type === 'diaries' ? '/.netlify/functions/getSavedDiaries' : '/.netlify/functions/getSavedScripts'; 
-            const response = await fetch(`${BASE_API_URL}${apiPath}`); 
+            // Adjust API URL for fetching saved files to Vercel paths
+            const apiPath = type === 'diaries' ? API_GET_SAVED_DIARIES_URL : API_GET_SAVED_SCRIPTS_URL;
+            const response = await fetch(apiPath); // No need for BASE_API_URL here as paths are now absolute from root
             const files = await response.json();
 
             if (response.ok) {
@@ -251,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     files.forEach(file => {
                         const li = document.createElement('li');
                         const fileNameSpan = document.createElement('span');
-                        const displayFileName = file.name.replace(/(diary_|script_)/, '').replace(/\.txt$/, '').split('T')[0]; 
+                        const displayFileName = file.name.replace(/(diary_|script_)/, '').replace(/\.txt$/, '').split('T')[0];
                         fileNameSpan.textContent = displayFileName;
 
                         const viewButton = document.createElement('button');
@@ -329,7 +332,8 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoadingMessage('loading_message_script');
 
         try {
-            const response = await fetch(API_GENERATE_SCRIPT_URL, { 
+            // Using the Vercel API path directly
+            const response = await fetch(API_GENERATE_SCRIPT_URL, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -376,8 +380,8 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoadingMessage('saving_diary_message');
 
         try {
-            // Adjust API URL for saving diary
-            const response = await fetch(API_SAVE_DIARY_URL, { // Now directly uses the updated API_SAVE_DIARY_URL
+            // Using the Vercel API path directly
+            const response = await fetch(API_SAVE_DIARY_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ diaryEntry: currentDiaryEntry, lang: currentLang }),
@@ -408,8 +412,8 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoadingMessage('saving_script_message');
 
         try {
-            // Adjust API URL for saving script
-            const response = await fetch(API_SAVE_SCRIPT_URL, { // Now directly uses the updated API_SAVE_SCRIPT_URL
+            // Using the Vercel API path directly
+            const response = await fetch(API_SAVE_SCRIPT_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ script: currentScript, lang: currentLang }),
@@ -445,10 +449,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event listener for "Show Saved" button
     showSavedButton.addEventListener('click', async () => {
         clearStatusMessages();
-        document.querySelector('.input-section').style.display = 'none'; 
-        scriptOutputContainer.style.display = 'none'; 
-        savedFilesContainer.style.display = 'block'; 
-        savedContentDisplay.style.display = 'none'; 
+        document.querySelector('.input-section').style.display = 'none';
+        scriptOutputContainer.style.display = 'none';
+        savedFilesContainer.style.display = 'block';
+        savedContentDisplay.style.display = 'none';
 
         await fetchAndDisplayFiles('diaries', diariesList);
         await fetchAndDisplayFiles('scripts', scriptsList);
@@ -459,7 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clearStatusMessages();
         savedFilesContainer.style.display = 'none';
         savedContentDisplay.style.display = 'none';
-        document.querySelector('.input-section').style.display = 'block'; 
+        document.querySelector('.input-section').style.display = 'block';
         scriptOutput.value = translations[currentLang].script_placeholder;
         currentScript = "";
         updateWordCount(scriptOutput, scriptWordCount);
