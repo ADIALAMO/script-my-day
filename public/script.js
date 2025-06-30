@@ -119,16 +119,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const diaryWordCount = document.getElementById("diaryWordCount");
     const scriptWordCount = document.getElementById("scriptWordCount");
 
-
-    // Updated API URLs to use Vercel's standard /api/ function path.
-    // These paths are relative to the root of your Vercel deployment.
-    // Removed BASE_API_URL as it's no longer needed for /api/ paths.
+    // הנתיבים ל-API של Vercel.
+    // וודא שהפונקציות שלך נמצאות בתיקיית 'api' בשורש הפרויקט
+    // ושקובץ ה-package.json מוגדר כראוי ליצירת פונקציות אלה.
     const API_GENERATE_SCRIPT_URL = '/api/generateScript';
     const API_SAVE_DIARY_URL = '/api/saveDiaryEntry';
     const API_SAVE_SCRIPT_URL = '/api/saveScript';
-
-    // The other saving/fetching functions' URLs also need to be updated.
-    // For these, we assume they are also directly in the 'api' directory.
     const API_GET_SAVED_DIARIES_URL = '/api/getSavedDiaries';
     const API_GET_SAVED_SCRIPTS_URL = '/api/getSavedScripts';
 
@@ -166,10 +162,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (translations[currentLang] && translations[currentLang][key]) {
                 option.textContent = translations[currentLang][key];
             } else if (originalValue === "") {
-                // Ensure placeholder text is correctly translated if option value is empty
                 option.textContent = translations[currentLang].genre_label.replace("בחר ז'אנר לתסריט", "-- בחר ז'אנר --");
             }
-            option.value = originalValue; // Keep original value for submission
+            option.value = originalValue;
         });
 
         const initialScriptPlaceholderHebrew = "התסריט יופיע כאן לאחר יצירתו.";
@@ -242,7 +237,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoadingMessage(`loading_message_fetching_${type}`);
 
         try {
-            // Use the directly defined API paths for Vercel
             const apiPath = type === 'diaries' ? API_GET_SAVED_DIARIES_URL : API_GET_SAVED_SCRIPTS_URL;
             const response = await fetch(apiPath);
             const files = await response.json();
@@ -261,8 +255,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         const viewButton = document.createElement('button');
                         viewButton.textContent = translations[currentLang].view_button;
                         viewButton.classList.add('save-button');
-                        // For fetching content, the path might be a direct static file URL on Vercel
-                        // or another function. Assuming direct access for now.
                         viewButton.onclick = () => fetchFileContent(file.path, file.name);
 
                         li.appendChild(fileNameSpan);
@@ -289,9 +281,6 @@ document.addEventListener('DOMContentLoaded', () => {
         savedContentDisplay.style.display = 'none';
 
         try {
-            // This fetch might need a full URL if file.path does not start with '/'
-            // and files are served from a different domain or a complex Vercel route.
-            // For now, assuming file.path is relative to the root or a full URL.
             const response = await fetch(filePath);
             const content = await response.text();
 
@@ -338,7 +327,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoadingMessage('loading_message_script');
 
         try {
-            // Using the Vercel API path directly
             const response = await fetch(API_GENERATE_SCRIPT_URL, {
                 method: "POST",
                 headers: {
@@ -386,7 +374,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoadingMessage('saving_diary_message');
 
         try {
-            // Using the Vercel API path directly
             const response = await fetch(API_SAVE_DIARY_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -418,7 +405,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoadingMessage('saving_script_message');
 
         try {
-            // Using the Vercel API path directly
             const response = await fetch(API_SAVE_SCRIPT_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

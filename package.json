@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "vercel-build": "mkdir -p .vercel/output/static && cp -r public/* .vercel/output/static/ && mkdir -p .vercel/output/functions/api/generateScript.func && cp api/generateScript.cjs .vercel/output/functions/api/generateScript.func/index.cjs && cp package.json .vercel/output/functions/api/generateScript.func/package.json && echo '{\"runtime\":\"nodejs18.x\",\"handler\":\"index.cjs\",\"maxDuration\":60}' > .vercel/output/functions/api/generateScript.func/.vc-config.json",
+    "vercel-build": "mkdir -p .vercel/output/static && cp -r public/* .vercel/output/static/ && mkdir -p .vercel/output/functions/api/generateScript.func && cp api/generateScript.cjs .vercel/output/functions/api/generateScript.func/index.cjs && echo '{\"dependencies\":{\"axios\":\"^1.7.2\"}}' > .vercel/output/functions/api/generateScript.func/package.json && echo '{\"runtime\":\"nodejs18.x\",\"handler\":\"index.cjs\",\"maxDuration\":60}' > .vercel/output/functions/api/generateScript.func/.vc-config.json",
     "build": "echo 'No default build command. Use npm run vercel-build for Vercel deployment.'"
   },
   "keywords": [
