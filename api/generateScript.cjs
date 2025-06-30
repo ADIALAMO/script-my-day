@@ -6,6 +6,7 @@ exports.handler = async (event, context) => {
     // רשום את שיטת ה-HTTP הנכנסת לצרכי דיבוג
     console.log(`Incoming HTTP method: ${event.httpMethod}`);
     console.log(`Request Path: ${event.path}`); // הוספת לוג לנתיב הבקשה
+    console.log(`Request Headers: ${JSON.stringify(event.headers)}`); // הוספת לוג לכותרות הבקשה
 
     // טיפול בבקשות OPTIONS עבור בדיקות Preflight של CORS
     if (event.httpMethod === 'OPTIONS') {

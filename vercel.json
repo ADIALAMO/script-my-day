@@ -1,0 +1,22 @@
+{
+  "builds": [
+    {
+      "src": "public/**",
+      "use": "@vercel/static-build"
+    },
+    {
+      "src": "api/*.cjs",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/public/$1"
+    }
+  ]
+}
