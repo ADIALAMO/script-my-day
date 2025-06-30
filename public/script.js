@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedFilesContainer = document.getElementById("savedFilesContainer");
     const closeSavedFilesButton = document.getElementById("closeSavedFiles");
     const diariesList = document.getElementById("diariesList");
-    const scriptsList = document.getElementById("scriptsList");
+    const scriptsList = document.getElementById("scriptsList"); // <-- התיקון כאן
     const savedContentDisplay = document.getElementById("savedContentDisplay");
     const savedContentTitle = document.getElementById("savedContentTitle");
     const savedContentText = document.getElementById("savedContentText");
@@ -120,8 +120,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const scriptWordCount = document.getElementById("scriptWordCount");
 
 
-    // Updated API URLs to use Vercel's standard /api/ function path
-    // Assuming functions are now directly in the 'api' directory, e.g., api/generateScript.cjs
+    // Updated API URLs to use Vercel's standard /api/ function path.
+    // These paths are relative to the root of your Vercel deployment.
     const API_GENERATE_SCRIPT_URL = '/api/generateScript';
     const API_SAVE_DIARY_URL = '/api/saveDiaryEntry';
     const API_SAVE_SCRIPT_URL = '/api/saveScript';
@@ -241,9 +241,9 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoadingMessage(`loading_message_fetching_${type}`);
 
         try {
-            // Adjust API URL for fetching saved files to Vercel paths
+            // Use the directly defined API paths for Vercel
             const apiPath = type === 'diaries' ? API_GET_SAVED_DIARIES_URL : API_GET_SAVED_SCRIPTS_URL;
-            const response = await fetch(apiPath); // No need for BASE_API_URL here as paths are now absolute from root
+            const response = await fetch(apiPath);
             const files = await response.json();
 
             if (response.ok) {
@@ -260,6 +260,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         const viewButton = document.createElement('button');
                         viewButton.textContent = translations[currentLang].view_button;
                         viewButton.classList.add('save-button');
+                        // For fetching content, the path might be a direct static file URL on Vercel
+                        // or another function. Assuming direct access for now.
                         viewButton.onclick = () => fetchFileContent(file.path, file.name);
 
                         li.appendChild(fileNameSpan);
@@ -286,6 +288,9 @@ document.addEventListener('DOMContentLoaded', () => {
         savedContentDisplay.style.display = 'none';
 
         try {
+            // This fetch might need a full URL if file.path does not start with '/'
+            // and files are served from a different domain or a complex Vercel route.
+            // For now, assuming file.path is relative to the root or a full URL.
             const response = await fetch(filePath);
             const content = await response.text();
 

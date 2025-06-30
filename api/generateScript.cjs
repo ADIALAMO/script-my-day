@@ -1,6 +1,5 @@
-// netlify/functions/generateScript.cjs
+// api/generateScript.cjs
 
-// Import axios - axios is already listed in your package.json dependencies.
 // ייבוא axios - axios כבר מופיע בתלויות ב-package.json שלך.
 const axios = require('axios');
 
@@ -14,7 +13,7 @@ exports.handler = async (event, context) => {
         return {
             statusCode: 200,
             headers: {
-                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Origin': '*', // IMPORTANT: In production, consider restricting this to your actual frontend URL
                 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type, Authorization',
                 'Access-Control-Max-Age': '86400',
@@ -58,14 +57,14 @@ exports.handler = async (event, context) => {
     let generatedScript = "";
 
     try {
-        // Access the API key from Netlify Environment Variables (or .env locally).
+        // Access the API key from Vercel Environment Variables (or .env locally).
         const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
-        // Log to verify if the API key is being loaded correctly in Netlify logs.
+        // Log to verify if the API key is being loaded correctly in Vercel logs.
         console.log(`OpenRouter API Key defined: ${!!OPENROUTER_API_KEY}. Length: ${OPENROUTER_API_KEY ? OPENROUTER_API_KEY.length : 0}`);
 
         if (!OPENROUTER_API_KEY) {
-            console.error("OPENROUTER_API_KEY is not configured in Netlify Environment Variables (or .env locally).");
+            console.error("OPENROUTER_API_KEY is not configured in Vercel Environment Variables (or .env locally).");
             return { statusCode: 500, body: JSON.stringify({ error: 'OpenRouter API key is not configured.' }) };
         }
 
@@ -75,9 +74,8 @@ exports.handler = async (event, context) => {
                             Start the script with a scene heading (e.g., "SCENE 1: LIVING ROOM - MORNING").`;
 
 
-        // Make the API call to OpenRouter using Axios instead of fetch.
+        // Make the API call to OpenRouter using Axios.
         const openrouterResponse = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
-            // Axios automatically handles JSON stringification for the body
             "model": "deepseek/deepseek-chat-v3-0324:free",
             "messages": [
                 {"role": "system", "content": "You are a creative assistant that writes short, engaging comic scripts."},
@@ -86,7 +84,6 @@ exports.handler = async (event, context) => {
             "temperature": 0.7,
             "max_tokens": 500
         }, {
-            // Axios headers are passed as a third argument
             headers: {
                 "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
                 "Content-Type": "application/json"
@@ -97,7 +94,7 @@ exports.handler = async (event, context) => {
         generatedScript = openrouterResponse.data.choices[0]?.message?.content || "Failed to get script from AI.";
 
     } catch (error) {
-        // Axios errors have a 'response' object for server errors
+        // Axios errors have a 'response' object for server errors.
         if (error.response) {
             console.error("OpenRouter API Error Response (Axios):", error.response.data);
             return {
@@ -114,7 +111,7 @@ exports.handler = async (event, context) => {
     return {
         statusCode: 200,
         headers: {
-            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Origin': '*', // Ensure this is also present on the successful response for CORS
             "Content-Type": "application/json"
         },
         body: JSON.stringify({ script: generatedScript }),
