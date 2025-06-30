@@ -1,19 +1,19 @@
 // api/generateScript.cjs
 
-// ייבוא axios - axios כבר מופיע בתלויות ב-package.json שלך.
-const axios = require('axios');
+const axios = require('axios'); // ייבוא axios
 
 exports.handler = async (event, context) => {
-    // Log the incoming HTTP method for debugging purposes.
+    // רשום את שיטת ה-HTTP הנכנסת לצרכי דיבוג
     console.log(`Incoming HTTP method: ${event.httpMethod}`);
 
-    // Handle OPTIONS method for CORS preflight requests.
+    // טיפול בבקשות OPTIONS עבור בדיקות Preflight של CORS
     if (event.httpMethod === 'OPTIONS') {
         console.log('Handling OPTIONS preflight request.');
         return {
             statusCode: 200,
             headers: {
-                'Access-Control-Allow-Origin': '*', // IMPORTANT: In production, consider restricting this to your actual frontend URL
+                // חשוב: בסביבת פרודקשן, החלף את '*' בכתובת ה-URL האמיתית של הפרונטאנד שלך
+                'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type, Authorization',
                 'Access-Control-Max-Age': '86400',
@@ -22,7 +22,7 @@ exports.handler = async (event, context) => {
         };
     }
 
-    // 1. Ensure this is a POST request and has a valid body.
+    // וודא שזו בקשת POST עם גוף תקין
     if (event.httpMethod !== 'POST') {
         console.log(`Method Not Allowed: Received ${event.httpMethod}, expected POST.`);
         return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
@@ -43,7 +43,7 @@ exports.handler = async (event, context) => {
         genre = requestBody.genre;
         lang = requestBody.lang;
 
-        // Ensure all required parameters are present.
+        // וודא שכל הנתונים הנדרשים קיימים
         if (!diaryEntry || !genre || !lang) {
             console.log('Missing required data in request body.');
             return { statusCode: 400, body: JSON.stringify({ error: 'Missing diary entry, genre, or language in request.' }) };
@@ -57,10 +57,10 @@ exports.handler = async (event, context) => {
     let generatedScript = "";
 
     try {
-        // Access the API key from Vercel Environment Variables (or .env locally).
+        // ניגש למפתח ה-API ממשתני הסביבה של Vercel (או קובץ .env מקומית).
         const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
-        // Log to verify if the API key is being loaded correctly in Vercel logs.
+        // רשום ללוג כדי לוודא שמפתח ה-API נטען כראוי
         console.log(`OpenRouter API Key defined: ${!!OPENROUTER_API_KEY}. Length: ${OPENROUTER_API_KEY ? OPENROUTER_API_KEY.length : 0}`);
 
         if (!OPENROUTER_API_KEY) {
@@ -68,13 +68,13 @@ exports.handler = async (event, context) => {
             return { statusCode: 500, body: JSON.stringify({ error: 'OpenRouter API key is not configured.' }) };
         }
 
-        // Construct the prompt for the AI model based on user input.
+        // בניית הפרומפט למודל ה-AI
         const promptText = `Create a comic script in the ${genre} genre based on this diary entry: "${diaryEntry}".
                             The script should be in ${lang === 'he' ? 'Hebrew' : 'English'} and include short, engaging dialogues, and visual scene descriptions.
                             Start the script with a scene heading (e.g., "SCENE 1: LIVING ROOM - MORNING").`;
 
 
-        // Make the API call to OpenRouter using Axios.
+        // ביצוע קריאה ל-OpenRouter API באמצעות Axios.
         const openrouterResponse = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
             "model": "deepseek/deepseek-chat-v3-0324:free",
             "messages": [
@@ -90,11 +90,11 @@ exports.handler = async (event, context) => {
             }
         });
 
-        // Axios response data is directly in openrouterResponse.data
+        // נתוני התגובה של Axios נמצאים ישירות ב-openrouterResponse.data
         generatedScript = openrouterResponse.data.choices[0]?.message?.content || "Failed to get script from AI.";
 
     } catch (error) {
-        // Axios errors have a 'response' object for server errors.
+        // שגיאות Axios מכילות אובייקט 'response' עבור שגיאות שרת
         if (error.response) {
             console.error("OpenRouter API Error Response (Axios):", error.response.data);
             return {
@@ -107,11 +107,11 @@ exports.handler = async (event, context) => {
         }
     }
 
-    // Return the generated script to the frontend.
+    // החזר את התסריט שנוצר ל-Frontend
     return {
         statusCode: 200,
         headers: {
-            'Access-Control-Allow-Origin': '*', // Ensure this is also present on the successful response for CORS
+            'Access-Control-Allow-Origin': '*', // וודא שזה קיים גם בתגובה מוצלחת עבור CORS
             "Content-Type": "application/json"
         },
         body: JSON.stringify({ script: generatedScript }),

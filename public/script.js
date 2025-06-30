@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedFilesContainer = document.getElementById("savedFilesContainer");
     const closeSavedFilesButton = document.getElementById("closeSavedFiles");
     const diariesList = document.getElementById("diariesList");
-    const scriptsList = document.getElementById("scriptsList"); // <-- התיקון כאן
+    const scriptsList = document.getElementById("scriptsList");
     const savedContentDisplay = document.getElementById("savedContentDisplay");
     const savedContentTitle = document.getElementById("savedContentTitle");
     const savedContentText = document.getElementById("savedContentText");
@@ -122,12 +122,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Updated API URLs to use Vercel's standard /api/ function path.
     // These paths are relative to the root of your Vercel deployment.
+    // Removed BASE_API_URL as it's no longer needed for /api/ paths.
     const API_GENERATE_SCRIPT_URL = '/api/generateScript';
     const API_SAVE_DIARY_URL = '/api/saveDiaryEntry';
     const API_SAVE_SCRIPT_URL = '/api/saveScript';
 
     // The other saving/fetching functions' URLs also need to be updated.
-    // For these, we will assume they are also directly in the 'api' directory.
+    // For these, we assume they are also directly in the 'api' directory.
     const API_GET_SAVED_DIARIES_URL = '/api/getSavedDiaries';
     const API_GET_SAVED_SCRIPTS_URL = '/api/getSavedScripts';
 
