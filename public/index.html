@@ -1,80 +1,36 @@
 <!DOCTYPE html>
-<html lang="he">
+<html lang="he" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-i18n="app_title">יומן חיים 🎬 - תסריט מהיום שלי</title>
-    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css"> </head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>יומן חיים - מחולל תסריטי קומיקס</title>
+  <link rel="stylesheet" href="style.css">
+</head>
 <body>
-    <div class="container">
-        <div class="language-selector">
-            <label for="languageSelect" data-i18n="language_selector_label">שפה:</label>
-            <select id="languageSelect">
-                <option value="he">עברית</option>
-                <option value="en">English</option>
-            </select>
-        </div>
-
-        <h1 data-i18n="main_title">✍️ יומן החיים שלי בראי הקומיקס</h1>
-
-        <div class="input-section">
-            <label for="diaryEntry" data-i18n="diary_label">מה קרה היום? רשום כאן את מחשבותיך/חוויותיך:</label>
-            <textarea id="diaryEntry" rows="6" data-i18n-placeholder="diary_placeholder"></textarea>
-            <span id="diaryWordCount" style="display: block; text-align: right; font-size: 0.9em; color: var(--light-text-color); margin-top: -20px; margin-bottom: 20px;" data-i18n="word_count">0 מילים</span>
-
-
-            <label for="genre" data-i18n="genre_label">בחר ז'אנר לתסריט</label>
-            <select id="genre">
-                <option value="">-- בחר ז'אנר --</option>
-                <option value="comedy" data-i18n="genre_comedy">קומדיה</option>
-                <option value="drama" data-i18n="genre_drama">דרמה</option>
-                <option value="fantasy" data-i18n="genre_fantasy">פנטזיה</option>
-                <option value="sci-fi" data-i18n="genre_scifi">מדע בדיוני</option>
-                <option value="adventure" data-i18n="genre_adventure">הרפתקאות</option>
-                <option value="action" data-i18n="genre_action">פעולה</option>
-                <option value="slice of life" data-i18n="genre_slice_of_life">פרוסת חיים (פרוזאי)</option>
-            </select>
-
-            <div class="button-group">
-                <button id="generateButton" data-i18n="generate_script_button">הפוך לסיפור קומיקס!</button>
-                <button id="saveDiaryButton" class="save-button" data-i18n="save_diary_button" disabled>שמור יומן</button>
-                <button id="showSavedButton" class="save-button" data-i18n="show_saved_button">הצג שמורים</button>
-            </div>
-        </div>
-
-        <div id="loadingMessage" class="status-message" style="display: none;"></div>
-        <div id="errorMessage" class="status-message error-message" style="display: none;"></div>
-        <div id="successMessage" class="status-message" style="display: none;"></div>
-
-
-        <div id="resultContainer" style="display: none;">
-            <h2 data-i18n="script_output_title">התסריט של היום שלך:</h2>
-            <textarea id="scriptOutput" rows="15" data-i18n-placeholder="script_placeholder"></textarea>
-            <span id="scriptWordCount" style="display: block; text-align: right; font-size: 0.9em; color: var(--light-text-color); margin-top: -20px; margin-bottom: 20px;" data-i18n="word_count">0 מילים</span>
-            <div class="button-group">
-                <button id="saveScriptButton" class="save-button" data-i18n="save_script_button" disabled>שמור תסריט</button>
-            </div>
-        </div>
-
-        <div id="savedFilesContainer" style="display: none; text-align: right; margin-top: 40px;">
-            <h2 data-i18n="saved_files_title">יומנים ותסריטים שמורים:</h2>
-            <button id="closeSavedFiles" class="save-button" style="margin-bottom: 20px;" data-i18n="close_button">סגור</button>
-            <div id="savedDiariesList">
-                <h3 data-i18n="saved_diaries_list_title">יומנים:</h3>
-                <ul id="diariesList"></ul>
-            </div>
-            <div id="savedScriptsList" style="margin-top: 20px;">
-                <h3 data-i18n="saved_scripts_list_title">תסריטים:</h3>
-                <ul id="scriptsList"></ul>
-            </div>
-            <div id="savedContentDisplay" style="display: none; margin-top: 30px; padding: 20px; background: #f0f4f7; border-radius: 10px;">
-                <h3 id="savedContentTitle"></h3>
-                <pre id="savedContentText"></pre>
-                <button id="closeContentDisplay" class="save-button" data-i18n="close_button">סגור</button>
-            </div>
-        </div>
-    </div>
-
-    <script src="script.js"></script> </body>
+  <header>
+    <h1>יומן חיים - מחולל תסריטי קומיקס</h1>
+  </header>
+  <main>
+    <section aria-labelledby="journal-section">
+      <h2 id="journal-section">כתוב את היומן שלך</h2>
+      <form id="journal-form" role="form">
+        <label for="journal-entry">רשומה יומית:</label>
+        <textarea id="journal-entry" rows="5" required aria-required="true"></textarea>
+        <label for="genre">בחר ז'אנר קומיקס:</label>
+        <select id="genre" required aria-required="true">
+          <option value="" disabled selected>בחר ז'אנר</option>
+          <option value="adventure">הרפתקאות</option>
+          <option value="comedy">קומדיה</option>
+          <option value="drama">דרמה</option>
+          <option value="sci-fi">מדע בדיוני</option>
+        </select>
+        <button type="submit">צור תסריט</button>
+      </form>
+      <div id="loading" style="display: none;">טוען...</div>
+      <div id="error" style="display: none; color: red;"></div>
+      <div id="script-output" aria-live="polite"></div>
+    </section>
+  </main>
+  <script src="script.js"></script>
+</body>
 </html>

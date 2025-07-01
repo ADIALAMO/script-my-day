@@ -1,25 +1,11 @@
 {
   "name": "my-life-script",
   "version": "1.0.0",
-  "description": "A personal diary app that turns entries into comic scripts using AI.",
-  "main": "index.js",
-  "type": "module",
   "scripts": {
-    "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "echo 'Vercel will build this project automatically using vercel.json.'"
+    "start": "vercel dev",
+    "build": "vercel build",
+    "test": "echo \"No tests specified\" && exit 0"
   },
-  "keywords": [
-    "diary",
-    "personal",
-    "AI",
-    "script",
-    "comic",
-    "nodejs",
-    "express"
-  ],
-  "author": "Your Name (Optional)",
-  "license": "ISC",
   "dependencies": {
     "axios": "^1.7.2",
     "dotenv": "^16.4.5",
