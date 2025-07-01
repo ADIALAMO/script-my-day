@@ -16,8 +16,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.post('/api/generateScript', async (req, res) => {
-  console.log('POST /api/generateScript received:', req.body);
+app.post('/generateScript', async (req, res) => {
+  console.log('Received request:', req.body);
 
   const { journalEntry, genre } = req.body;
   if (!journalEntry || !genre) {
