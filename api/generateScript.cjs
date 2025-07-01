@@ -6,6 +6,7 @@ const app = express();
 app.use(express.json());
 
 app.use((req, res, next) => {
+  console.log(`Received ${req.method} request to ${req.url}`);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -16,17 +17,18 @@ app.use((req, res, next) => {
 });
 
 app.post('/generateScript', async (req, res) => {
-  console.log('Received request:', req.body);
+  console.log('POST /api/generateScript received:', req.body);
 
   const { journalEntry, genre } = req.body;
   if (!journalEntry || !genre) {
     console.error('Missing journalEntry or genre');
-    return res.status(400).json({ error: 'חסרים נתונים.' });
+    return res.status(400).json({ error: 'Diary entry and genre are required.' });
   }
 
   try {
+    console.log('Calling OpenRouter with model: deepseek/deepseek');
     const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
-      model: 'deepseek/deepseek-chat-v3-0324:free',
+      model: 'deepseek/deepseek',
       messages: [
         {
           role: 'user',
@@ -44,9 +46,14 @@ app.post('/generateScript', async (req, res) => {
     const script = response.data.choices[0].message.content;
     res.json({ script });
   } catch (error) {
-    console.error('Error calling OpenRouter:', error.message);
-    res.status(500).json({ error: 'שגיאה ביצירת התסריט.' });
+    console.error('Error calling OpenRouter:', error.message, error.response ? error.response.data : {});
+    res.status(500).json({ error: 'שגיאה ביצירת התסריט.', details: error.message });
   }
+});
+
+// הוסף את השורה הזו כדי שהשרת יאזין לפורט
+app.listen(process.env.PORT || 3000, () => {
+  console.log(`Server is running on port ${process.env.PORT || 3000}`);
 });
 
 module.exports = app;
