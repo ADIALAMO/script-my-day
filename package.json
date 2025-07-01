@@ -2,8 +2,9 @@
   "name": "my-life-script",
   "version": "1.0.0",
   "scripts": {
-    "start": "vercel dev",
-    "build": "vercel build",
+    "start": "node api/generatescript.cjs",
+    "dev": "vercel dev",
+    "build": "echo 'No build required' && exit 0",
     "test": "echo \"No tests specified\" && exit 0"
   },
   "dependencies": {
