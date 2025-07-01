@@ -16,7 +16,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.post('/generateScript', async (req, res) => {
+app.post('/api/generateScript', async (req, res) => {
   console.log('POST /api/generateScript received:', req.body);
 
   const { journalEntry, genre } = req.body;
@@ -51,7 +51,6 @@ app.post('/generateScript', async (req, res) => {
   }
 });
 
-// הוסף את השורה הזו כדי שהשרת יאזין לפורט
 app.listen(process.env.PORT || 3000, () => {
   console.log(`Server is running on port ${process.env.PORT || 3000}`);
 });

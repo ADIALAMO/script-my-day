@@ -1,11 +1,10 @@
 {
-  "name": "my-life-script",
+  "name": "script-my-day-backend",
   "version": "1.0.0",
+  "main": "api/generateScript.cjs",
   "scripts": {
-    "start": "node api/generatescript.cjs",
-    "dev": "vercel dev",
-    "build": "echo 'No build required' && exit 0",
-    "test": "echo \"No tests specified\" && exit 0"
+    "start": "node api/generateScript.cjs",
+    "build": "echo 'No build required' && exit 0"
   },
   "dependencies": {
     "axios": "^1.7.2",
