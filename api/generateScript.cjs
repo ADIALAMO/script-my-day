@@ -1,20 +1,17 @@
 const express = require('express');
 const axios = require('axios');
-const path = require('path');
+// אין צורך ב-path כאן, כי לא משרתים קבצים סטטיים
 require('dotenv').config();
 
 const app = express();
 app.use(express.json());
 
-// משרת את תיקיית public
-app.use(express.static(path.join(__dirname, '../public')));
-
-// תומך ב-CORS
+// CORS - נשאר, אבל ודא שהוא מתאים לצרכים שלך בפונקציית API
 app.use((req, res, next) => {
   console.log(`Received ${req.method} request to ${req.url}`);
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', '*'); // ניתן להיות ספציפי יותר לדומיין של Vercel אם תרצה
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization'); // הוספתי Authorization למקרה שתצטרך
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -25,18 +22,17 @@ app.use((req, res, next) => {
 function detectLanguage(text) {
   if (typeof text !== 'string') {
     console.warn('detectLanguage received non-string input:', text);
-    return 'en'; // ברירת מחדל לאנגלית או טיפול מתאים
+    return 'en';
   }
-  // טווח יוניקוד עבור תווים עבריים
   const hebrewPattern = /[\u0590-\u05FF]/;
   return hebrewPattern.test(text) ? 'he' : 'en';
 }
 
-// פונקציה להערכת אורך הטקסט והגדרת תיאור אורך מתאים
+// פונקציה להערכת אורך הטקסט
 function estimateLength(journalText) {
   if (typeof journalText !== 'string') {
     console.warn('estimateLength received non-string input:', journalText);
-    return 'בינוני, עד 20 שורות'; // ברירת מחדל או טיפול מתאים
+    return 'בינוני, עד 20 שורות';
   }
   const wordCount = journalText.trim().split(/\s+/).length;
   if (wordCount <= 10) return 'קצר מאוד, עד 5 שורות';
@@ -45,21 +41,20 @@ function estimateLength(journalText) {
   return 'מפורט, לא יותר מ-500 מילים';
 }
 
-app.post('/api/generateScript', async (req, res) => {
-  console.log('POST /api/generateScript received:', req.body);
+// שינוי הנתיב מ-'/api/generateScript' ל-'/' בתוך ה-Serverless Function
+app.post('/', async (req, res) => { // <--- שים לב שהנתיב הוא עכשיו '/'
+  console.log('POST /api/generateScript received (via Vercel Serverless Function):', req.body);
 
   const { journalEntry, genre } = req.body;
   if (!journalEntry || !genre) {
     console.error('Missing journalEntry or genre');
-    // שפת הודעות שגיאה עקבית
-    return res.status(400).json({ error: 'יש להזין רשומה וז׳אנר.' });
+    return res.status(400).json({ error: 'Journal entry and genre are required.' });
   }
 
   const lang = detectLanguage(journalEntry);
   const lengthDesc = estimateLength(journalEntry);
-  const modelToUse = 'deepseek/deepseek-chat-v3-0324:free'; // הגדרת המודל במפורש
+  const modelToUse = 'deepseek/deepseek-chat-v3-0324:free';
 
-  // ההנחיה למודל, מתאימה שפה ואורך
   const prompt = lang === 'he'
   ? `כתוב תסריט קומיקס מקצועי בעברית, בפורמט ברור ומסודר הכולל:
 - כותרות סצנה (למשל: "סצנה 1 – רחוב הומה אדם")
@@ -79,11 +74,10 @@ Match the script length to the journal entry: short if the entry is short, longe
 Keep it visual, structured, and clear.`;
 
   try {
-    // תיקון הצגת המודל ביומן
     console.log(`Calling OpenRouter with model: ${modelToUse}`);
 
     const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
-      model: modelToUse, // שימוש במשתנה המודל שהוגדר
+      model: modelToUse,
       messages: [
         {
           role: 'user',
@@ -97,9 +91,9 @@ Keep it visual, structured, and clear.`;
       }
     });
 
-    console.log('OpenRouter response received.'); // יומן פשוט יותר
+    console.log('OpenRouter response received.');
     const script = response.data.choices[0].message.content;
-    console.log('Script content length:', script.length); // רישום אורך במקום תוכן מלא עבור סקריפטים גדולים
+    console.log('Script content length:', script.length);
 
     res.json({ script });
   } catch (error) {
@@ -108,13 +102,9 @@ Keep it visual, structured, and clear.`;
       console.error('OpenRouter error response data:', error.response.data);
       console.error('OpenRouter error response status:', error.response.status);
     }
-    // שפת הודעות שגיאה עקבית
-    res.status(500).json({ error: 'שגיאה ביצירת התסריט.', details: error.message });
+    res.status(500).json({ error: 'Failed to generate script.', details: error.message });
   }
 });
 
-app.listen(process.env.PORT || 3000, () => {
-  console.log(`Server is running on port ${process.env.PORT || 3000}`);
-});
-
+// ייצוא המופע של Express כ-Serverless Function
 module.exports = app;
