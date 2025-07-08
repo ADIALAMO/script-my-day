@@ -1,19 +1,19 @@
 const express = require('express');
 const axios = require('axios');
-// אין צורך ב-path כאן, כי לא משרתים קבצים סטטיים
+// אין צורך ב-path כאן, כי לא משרתים קבצים סטטיים מה-API
 require('dotenv').config();
 
 const app = express();
 app.use(express.json());
 
-// CORS - נשאר, אבל ודא שהוא מתאים לצרכים שלך בפונקציית API
+// טיפול ב-CORS: חיוני עבור תקשורת בין ה-frontend ל-API
 app.use((req, res, next) => {
-  console.log(`Received ${req.method} request to ${req.url}`);
-  res.setHeader('Access-Control-Allow-Origin', '*'); // ניתן להיות ספציפי יותר לדומיין של Vercel אם תרצה
+  // ניתן להיות ספציפי יותר לדומיין של Vercel (לדוגמה, 'https://your-app-name.vercel.app')
+  res.setHeader('Access-Control-Allow-Origin', '*'); 
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization'); // הוספתי Authorization למקרה שתצטרך
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    return res.status(200).end(); // מטפל בבקשות preflight של CORS
   }
   next();
 });
@@ -41,13 +41,14 @@ function estimateLength(journalText) {
   return 'מפורט, לא יותר מ-500 מילים';
 }
 
-// שינוי הנתיב מ-'/api/generateScript' ל-'/' בתוך ה-Serverless Function
-app.post('/', async (req, res) => { // <--- שים לב שהנתיב הוא עכשיו '/'
-  console.log('POST /api/generateScript received (via Vercel Serverless Function):', req.body);
+// הנתיב משתנה מ-'/api/generateScript' ל-'/' בתוך ה-Serverless Function
+// Vercel כבר מנתב את הבקשות ל-/api/generateScript לקובץ הזה.
+app.post('/', async (req, res) => { 
+  console.log('Received request for script generation.');
 
   const { journalEntry, genre } = req.body;
   if (!journalEntry || !genre) {
-    console.error('Missing journalEntry or genre');
+    console.error('Missing journalEntry or genre in request body.');
     return res.status(400).json({ error: 'Journal entry and genre are required.' });
   }
 
@@ -97,7 +98,7 @@ Keep it visual, structured, and clear.`;
 
     res.json({ script });
   } catch (error) {
-    console.error('Error calling OpenRouter:', error.message);
+    console.error('Error calling OpenRouter API:', error.message);
     if (error.response) {
       console.error('OpenRouter error response data:', error.response.data);
       console.error('OpenRouter error response status:', error.response.status);
@@ -106,5 +107,5 @@ Keep it visual, structured, and clear.`;
   }
 });
 
-// ייצוא המופע של Express כ-Serverless Function
+// ייצוא מופע ה-Express כ-Serverless Function עבור Vercel
 module.exports = app;
