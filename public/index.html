@@ -3,34 +3,49 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>יומן חיים - מחולל תסריטי קומיקס</title>
+  <title id="app-title">יומן חיים - מחולל תסריטי קומיקס</title>
   <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700&family=Roboto+Mono&display=swap" rel="stylesheet">
 </head>
 <body>
-  <header>
-    <h1>יומן חיים - מחולל תסריטי קומיקס</h1>
-  </header>
-  <main>
-    <section aria-labelledby="journal-section">
-      <h2 id="journal-section">כתוב את היומן שלך</h2>
-      <form id="journal-form" role="form">
-        <label for="journal-entry">רשומה יומית:</label>
-        <textarea id="journal-entry" rows="5" required aria-required="true"></textarea>
-        <label for="genre">בחר ז'אנר קומיקס:</label>
-        <select id="genre" required aria-required="true">
-          <option value="" disabled selected>בחר ז'אנר</option>
-          <option value="adventure">הרפתקאות</option>
-          <option value="comedy">קומדיה</option>
-          <option value="drama">דרמה</option>
-          <option value="sci-fi">מדע בדיוני</option>
-        </select>
-        <button type="submit">צור תסריט</button>
-      </form>
-      <div id="loading" style="display: none;">טוען...</div>
-      <div id="error" style="display: none; color: red;"></div>
-      <div id="script-output" aria-live="polite"></div>
-    </section>
-  </main>
+  <div class="container">
+    <header>
+      <div class="lang-switcher">
+        <button id="lang-toggle-he" class="active">עברית</button>
+        <button id="lang-toggle-en">English</button>
+      </div>
+      <h1 id="main-heading">יומן חיים - מחולל תסריטי קומיקס</h1>
+    </header>
+
+    <main>
+      <section aria-labelledby="journal-section">
+        <h2 id="journal-section-heading">כתוב את היומן שלך</h2>
+        <form id="journal-form" role="form">
+          <label for="journal-entry" id="journal-label">רשומה יומית:</label>
+          <textarea id="journal-entry" rows="7" required aria-required="true" placeholder="כתוב כאן את הרשומה היומית שלך..."></textarea>
+
+          <label for="genre" id="genre-label">בחר ז'אנר קומיקס:</label>
+          <select id="genre" required aria-required="true">
+            <option value="" disabled selected id="select-genre-option">בחר ז'אנר</option>
+            <option value="adventure" data-he="הרפתקאות" data-en="Adventure">הרפתקאות</option>
+            <option value="comedy" data-he="קומדיה" data-en="Comedy">קומדיה</option>
+            <option value="drama" data-he="דרמה" data-en="Drama">דרמה</option>
+            <option value="sci-fi" data-he="מדע בדיוני" data-en="Sci-Fi">מדע בדיוני</option>
+          </select>
+
+          <button type="submit" id="generate-button">צור תסריט</button>
+        </form>
+
+        <div id="loading" class="message loading" style="display: none;">טוען...</div>
+        <div id="error" class="message error" style="display: none;"></div>
+
+        <div class="script-output-container">
+          <h3 id="script-output-heading" style="display: none;">התסריט שלך:</h3>
+          <div id="script-output" aria-live="polite"></div>
+        </div>
+      </section>
+    </main>
+  </div>
   <script src="script.js"></script>
 </body>
 </html>

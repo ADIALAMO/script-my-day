@@ -1,62 +1,266 @@
+:root {
+    --primary-color: #5C67F2; /* כחול-סגול נעים */
+    --primary-hover: #4a54d3;
+    --secondary-color: #E0E0E0; /* אפור בהיר לרקעים */
+    --text-color: #333333;
+    --light-text-color: #666666;
+    --background-color: #F8F9FA; /* אוף-ווייט */
+    --border-color: #DDDDDD;
+    --error-color: #D9534F; /* אדום */
+    --success-color: #5CB85C; /* ירוק */
+    --font-family-main: 'Heebo', sans-serif; /* פונט ראשי קריא */
+    --font-family-mono: 'Roboto Mono', monospace; /* פונט מונוספייס לתסריט */
+}
+
 body {
-  font-family: Arial, sans-serif;
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-  direction: rtl;
-  text-align: right;
+    font-family: var(--font-family-main);
+    background-color: var(--background-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 20px;
+    line-height: 1.6;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+.container {
+    background-color: #FFFFFF;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    max-width: 900px; /* הגדלת רוחב מקסימלי לפריסה טובה יותר */
+    width: 100%;
+    padding: 30px;
+    box-sizing: border-box;
 }
 
 header {
-  text-align: center;
-  margin-bottom: 20px;
+    text-align: center;
+    margin-bottom: 30px;
+    position: relative; /* למיקום בורר השפות */
 }
 
-h1, h2 {
-  color: #333;
+h1 {
+    color: var(--primary-color);
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    font-weight: 700;
 }
+
+h2 {
+    color: var(--light-text-color);
+    font-size: 1.8em;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+h3 {
+    color: var(--text-color);
+    font-size: 1.4em;
+    margin-top: 30px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 5px;
+    text-align: center;
+}
+
+/* בורר שפות */
+.lang-switcher {
+    position: absolute;
+    top: 0; /* יישור לחלק העליון של הכותרת */
+    right: 0; /* מתכוונן עבור RTL/LTR מאוחר יותר אם צריך */
+    display: flex;
+    gap: 5px;
+    z-index: 10;
+}
+
+.lang-switcher button {
+    background-color: var(--secondary-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    padding: 5px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.lang-switcher button.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.lang-switcher button:hover:not(.active) {
+    background-color: var(--border-color);
+}
+
 
 form {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background-color: var(--background-color);
 }
 
-textarea, select, button {
-  padding: 10px;
-  font-size: 16px;
+label {
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 5px;
+    display: block; /* מוודא שהתווית תופסת את כל הרוחב */
+}
+
+textarea,
+select {
+    padding: 12px 15px;
+    font-size: 1em;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    width: 100%;
+    box-sizing: border-box; /* כולל ריפוד וגבול ברוחב ובגובה הכוללים של האלמנט */
+    background-color: #FFFFFF;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+textarea:focus,
+select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(92, 103, 242, 0.2);
+    outline: none;
 }
 
 textarea {
-  resize: vertical;
-  min-height: 100px;
+    resize: vertical;
+    min-height: 120px;
 }
 
-button {
-  background-color: #007bff;
-  color: white;
-  border: none;
-  cursor: pointer;
-  padding: 12px;
+button[type="submit"] {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 15px 25px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.1em;
+    font-weight: 700;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    align-self: center; /* ממקם את הכפתור במרכז הטופס */
+    width: fit-content; /* מתאים את הרוחב לתוכן */
 }
 
-button:hover {
-  background-color: #0056b3;
+button[type="submit"]:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-2px); /* אפקט הרמה קל */
+}
+
+.message {
+    padding: 12px;
+    margin-top: 20px;
+    border-radius: 8px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.loading {
+    background-color: #E6F7FF; /* כחול בהיר */
+    color: #336699;
+    border: 1px solid #99CCFF;
+}
+
+.error {
+    background-color: #FFEEEE; /* אדום בהיר */
+    color: var(--error-color);
+    border: 1px solid #FFCCCC;
+}
+
+.script-output-container {
+    margin-top: 30px;
+    background-color: #FFFFFF;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05); /* צל פנימי לעומק */
 }
 
 #script-output {
-  margin-top: 20px;
-  padding: 15px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
+    /* שימוש ב-pre-wrap לשמירה על רווחים וירידות שורה מפלט המודל */
+    white-space: pre-wrap;
+    /* זה ישבור מילים ארוכות מדי כדי להתאים לשורה, וידחוף אותן לשורה הבאה */
+    word-wrap: break-word; /* לדפדפנים ישנים */
+    overflow-wrap: break-word; /* לדפדפנים מודרניים */
+    font-family: var(--font-family-mono); /* פונט מונוספייס לתסריט */
+    font-size: 0.95em;
+    line-height: 1.7;
+    color: var(--text-color);
+    max-height: 500px; /* הגבלת גובה ואפשרות גלילה */
+    overflow-y: auto;
+    padding: 10px 0; /* הוספת ריפוד פנימי */
 }
 
-@media (max-width: 600px) {
-  body {
-    padding: 10px;
-  }
+/* התאמות ל-RTL/LTR */
+html[dir="rtl"] body {
+    text-align: right;
+    direction: rtl;
+}
 
-  textarea, select, button {
-    font-size: 14px;
-  }
+html[dir="ltr"] body {
+    text-align: left;
+    direction: ltr;
+}
+
+html[dir="rtl"] .lang-switcher {
+    right: 0;
+    left: auto; /* וודא שנשאר בצד ימין ב-RTL */
+}
+
+html[dir="ltr"] .lang-switcher {
+    left: 0;
+    right: auto; /* וודא שנשאר בצד שמאל ב-LTR */
+}
+
+
+/* שאילתות מדיה לרספונסיביות */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 2em;
+    }
+    h2 {
+        font-size: 1.5em;
+    }
+    .container {
+        padding: 20px;
+        margin: 10px; /* הוספת מרווח במסכים קטנים יותר */
+    }
+    .lang-switcher {
+        position: static; /* ערימת כפתורי שפה במסכים קטנים יותר */
+        justify-content: center;
+        margin-bottom: 15px;
+    }
+    header {
+        margin-bottom: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+    h1 {
+        font-size: 1.8em;
+    }
+    h2 {
+        font-size: 1.3em;
+    }
+    button[type="submit"] {
+        font-size: 1em;
+        padding: 12px 20px;
+    }
+    textarea, select {
+        font-size: 0.9em;
+    }
 }
