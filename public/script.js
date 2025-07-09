@@ -352,4 +352,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     `;
     document.head.appendChild(modalStyle);
+
+    // ודא שחלון התסריט לא יגלוש ויהיה גלילה פנימית
+    const scriptOutputStyle = document.createElement('style');
+    scriptOutputStyle.textContent = `
+    #script-output {
+        max-width: 100%;
+        max-height: 350px;
+        overflow-x: auto;
+        overflow-y: auto;
+        background: #f7f7fa;
+        border-radius: 10px;
+        border: 1px solid #d1d1e0;
+        margin: 0.5em 0 1em 0;
+        padding: 1em 1.2em;
+        font-size: 1.08em;
+        white-space: pre-wrap;
+        word-break: break-word;
+        box-sizing: border-box;
+        transition: box-shadow 0.2s;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+    #script-output pre {
+        margin: 0;
+        font-family: inherit;
+        background: none;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+    `;
+    document.head.appendChild(scriptOutputStyle);
 });
