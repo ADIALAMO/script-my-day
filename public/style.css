@@ -1,64 +1,74 @@
 :root {
-    --primary-color: #5C67F2; /* כחול-סגול נעים */
+    --primary-color: #5C67F2;
     --primary-hover: #4a54d3;
-    --secondary-color: #E0E0E0; /* אפור בהיר לרקעים */
-    --text-color: #333333;
-    --light-text-color: #666666;
-    --background-color: #F8F9FA; /* אוף-ווייט */
+    --secondary-color: #E0E0E0;
+    --text-color: #222;
+    --light-text-color: #666;
+    --background-color: #f3f6fd;
+    --background-gradient: linear-gradient(135deg, #f3f6fd 0%, #e0e7ff 100%);
+    --container-bg: rgba(255,255,255,0.95);
     --border-color: #DDDDDD;
-    --error-color: #D9534F; /* אדום */
-    --success-color: #5CB85C; /* ירוק */
-    --font-family-main: 'Heebo', sans-serif; /* פונט ראשי קריא */
-    --font-family-mono: 'Roboto Mono', monospace; /* פונט מונוספייס לתסריט */
+    --error-color: #D9534F;
+    --success-color: #5CB85C;
+    --fun-accent: #ffb347;
+    --font-family-main: 'Heebo', 'Varela Round', sans-serif;
+    --font-family-mono: 'Roboto Mono', monospace;
 }
 
 body {
     font-family: var(--font-family-main);
-    background-color: var(--background-color);
+    background: var(--background-gradient);
     color: var(--text-color);
     margin: 0;
     padding: 20px;
-    line-height: 1.6;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     box-sizing: border-box;
+    transition: background 0.5s;
 }
 
 .container {
-    background-color: #FFFFFF;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    max-width: 900px; /* הגדלת רוחב מקסימלי לפריסה טובה יותר */
+    background: var(--container-bg);
+    border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(44, 62, 80, 0.13), 0 1.5px 6px #ffb34733;
+    max-width: 950px;
     width: 100%;
-    padding: 30px;
+    padding: 36px 32px 32px 32px;
+    margin-top: 32px;
+    margin-bottom: 24px;
     box-sizing: border-box;
+    position: relative;
+    z-index: 1;
 }
 
 header {
     text-align: center;
     margin-bottom: 30px;
-    position: relative; /* למיקום בורר השפות */
+    position: relative;
 }
 
 h1 {
     color: var(--primary-color);
-    font-size: 2.5em;
+    font-size: 2.7em;
     margin-bottom: 10px;
-    font-weight: 700;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 8px #e0e7ff77;
 }
 
 h2 {
-    color: var(--light-text-color);
-    font-size: 1.8em;
+    color: var(--fun-accent);
+    font-size: 1.7em;
     margin-bottom: 25px;
     text-align: center;
+    font-weight: 700;
 }
 
 h3 {
-    color: var(--text-color);
-    font-size: 1.4em;
+    color: var(--primary-hover);
+    font-size: 1.3em;
     margin-top: 30px;
     margin-bottom: 15px;
     border-bottom: 2px solid var(--border-color);
@@ -77,24 +87,27 @@ h3 {
 }
 
 .lang-switcher button {
-    background-color: var(--secondary-color);
+    background: var(--fun-accent);
     color: var(--text-color);
-    border: 1px solid var(--border-color);
-    padding: 5px 10px;
+    border: none;
+    padding: 7px 16px;
     border-radius: 8px;
     cursor: pointer;
-    font-size: 0.9em;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    font-size: 1em;
+    font-weight: 700;
+    box-shadow: 0 1px 4px #ffb34733;
+    transition: background 0.2s, color 0.2s, transform 0.2s;
 }
 
 .lang-switcher button.active {
-    background-color: var(--primary-color);
-    color: white;
-    border-color: var(--primary-color);
+    background: var(--primary-color);
+    color: #fff;
+    transform: scale(1.08);
 }
 
 .lang-switcher button:hover:not(.active) {
-    background-color: var(--border-color);
+    background: #ffe0a3;
+    color: var(--primary-hover);
 }
 
 
@@ -102,35 +115,35 @@ form {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    padding: 20px;
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    background-color: var(--background-color);
+    padding: 24px 18px 18px 18px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 12px;
+    background: #f8faffcc;
+    box-shadow: 0 1px 6px #5C67F222;
 }
 
 label {
     font-weight: 700;
-    color: var(--text-color);
+    color: var(--primary-hover);
     margin-bottom: 5px;
     display: block; /* מוודא שהתווית תופסת את כל הרוחב */
 }
 
 textarea,
 select {
-    padding: 12px 15px;
-    font-size: 1em;
-    border: 1px solid var(--border-color);
+    padding: 13px 15px;
+    font-size: 1.08em;
+    border: 1.5px solid var(--border-color);
     border-radius: 8px;
     width: 100%;
-    box-sizing: border-box; /* כולל ריפוד וגבול ברוחב ובגובה הכוללים של האלמנט */
-    background-color: #FFFFFF;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    background: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 textarea:focus,
 select:focus {
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(92, 103, 242, 0.2);
+    box-shadow: 0 0 0 3px #5C67F233;
     outline: none;
 }
 
@@ -140,22 +153,24 @@ textarea {
 }
 
 button[type="submit"] {
-    background-color: var(--primary-color);
-    color: white;
+    background: linear-gradient(90deg, var(--primary-color) 60%, var(--fun-accent) 100%);
+    color: #fff;
     border: none;
-    padding: 15px 25px;
+    padding: 15px 32px;
     border-radius: 8px;
     cursor: pointer;
-    font-size: 1.1em;
-    font-weight: 700;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+    font-size: 1.15em;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px #5C67F233;
     align-self: center; /* ממקם את הכפתור במרכז הטופס */
     width: fit-content; /* מתאים את הרוחב לתוכן */
+    transition: background 0.3s, transform 0.2s;
 }
 
 button[type="submit"]:hover {
-    background-color: var(--primary-hover);
-    transform: translateY(-2px); /* אפקט הרמה קל */
+    background: linear-gradient(90deg, var(--primary-hover) 60%, #ffb347 100%);
+    transform: translateY(-2px) scale(1.04);
 }
 
 .message {
@@ -167,24 +182,24 @@ button[type="submit"]:hover {
 }
 
 .loading {
-    background-color: #E6F7FF; /* כחול בהיר */
+    background: #E6F7FF; /* כחול בהיר */
     color: #336699;
     border: 1px solid #99CCFF;
 }
 
 .error {
-    background-color: #FFEEEE; /* אדום בהיר */
+    background: #FFEEEE; /* אדום בהיר */
     color: var(--error-color);
     border: 1px solid #FFCCCC;
 }
 
 .script-output-container {
     margin-top: 30px;
-    background-color: #FFFFFF;
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 20px;
-    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05); /* צל פנימי לעומק */
+    background: #fff;
+    border: 1.5px solid var(--border-color);
+    border-radius: 12px;
+    padding: 22px 16px;
+    box-shadow: 0 1px 6px #5C67F222 inset;
 }
 
 #script-output {
@@ -194,7 +209,7 @@ button[type="submit"]:hover {
     word-wrap: break-word; /* לדפדפנים ישנים */
     overflow-wrap: break-word; /* לדפדפנים מודרניים */
     font-family: var(--font-family-mono); /* פונט מונוספייס לתסריט */
-    font-size: 0.95em;
+    font-size: 1.05em;
     line-height: 1.7;
     color: var(--text-color);
     max-height: 500px; /* הגבלת גובה ואפשרות גלילה */
@@ -223,6 +238,17 @@ html[dir="ltr"] .lang-switcher {
     right: auto; /* וודא שנשאר בצד שמאל ב-LTR */
 }
 
+.footer {
+    text-align: center;
+    color: #888;
+    font-size: 1em;
+    margin-bottom: 10px;
+    margin-top: 0;
+    letter-spacing: 0.5px;
+    font-family: 'Varela Round', 'Heebo', sans-serif;
+    opacity: 0.85;
+}
+
 
 /* שאילתות מדיה לרספונסיביות */
 @media (max-width: 768px) {
@@ -230,11 +256,11 @@ html[dir="ltr"] .lang-switcher {
         font-size: 2em;
     }
     h2 {
-        font-size: 1.5em;
+        font-size: 1.3em;
     }
     .container {
-        padding: 20px;
-        margin: 10px; /* הוספת מרווח במסכים קטנים יותר */
+        padding: 12px;
+        margin: 8px; /* הוספת מרווח במסכים קטנים יותר */
     }
     .lang-switcher {
         position: static; /* ערימת כפתורי שפה במסכים קטנים יותר */
@@ -248,17 +274,17 @@ html[dir="ltr"] .lang-switcher {
 
 @media (max-width: 480px) {
     body {
-        padding: 10px;
+        padding: 4px;
     }
     h1 {
-        font-size: 1.8em;
-    }
-    h2 {
         font-size: 1.3em;
     }
+    h2 {
+        font-size: 1.1em;
+    }
     button[type="submit"] {
-        font-size: 1em;
-        padding: 12px 20px;
+        font-size: 0.95em;
+        padding: 10px 12px;
     }
     textarea, select {
         font-size: 0.9em;

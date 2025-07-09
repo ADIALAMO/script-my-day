@@ -12,6 +12,11 @@ const translations = {
         comedy: 'קומדיה',
         drama: 'דרמה',
         sciFi: 'מדע בדיוני',
+        horror: 'אימה',
+        fantasy: 'פנטזיה',
+        romance: 'רומנטיקה',
+        action: 'פעולה',
+        mystery: 'מסתורין',
         generateButton: 'צור תסריט',
         loadingMessage: 'טוען...',
         errorMessagePrefix: 'שגיאה: ',
@@ -33,6 +38,11 @@ const translations = {
         comedy: 'Comedy',
         drama: 'Drama',
         sciFi: 'Sci-Fi',
+        horror: 'Horror',
+        fantasy: 'Fantasy',
+        romance: 'Romance',
+        action: 'Action',
+        mystery: 'Mystery',
         generateButton: 'Generate Script',
         loadingMessage: 'Loading...',
         errorMessagePrefix: 'Error: ',
@@ -91,11 +101,11 @@ function updateContent(lang) {
     if (lang === 'he') {
         htmlElement.setAttribute('lang', 'he');
         htmlElement.setAttribute('dir', 'rtl');
-        document.body.style.textAlign = 'right'; // ליתר ביטחון
+        document.body.style.textAlign = 'right';
     } else {
         htmlElement.setAttribute('lang', 'en');
         htmlElement.setAttribute('dir', 'ltr');
-        document.body.style.textAlign = 'left'; // ליתר ביטחון
+        document.body.style.textAlign = 'left';
     }
 
     // עדכון כפתורי בחירת השפה
