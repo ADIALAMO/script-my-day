@@ -77,48 +77,68 @@ document.addEventListener('DOMContentLoaded', () => {
         { value: 'mystery', he: 'מסתורין', en: 'Mystery' }
     ];
 
-    // עדכון בחירת ז'אנר לרדיו
-    const genreRadios = document.querySelectorAll('input[name="genre"]');
-    function getSelectedGenre() {
-        return genreSelect.value;
-    }
-    // עדכון טקסטים של אפשרויות הז'אנר (רדיו) כולל ערך value
-    function updateGenreRadios(lang) {
-        const genreRadioLabels = document.querySelectorAll('.genre-list label');
-        const genreRadioValues = [
-            'adventure', 'comedy', 'drama', 'sci-fi', 'horror', 'fantasy', 'romance', 'action', 'mystery'
-        ];
-        genreRadioLabels.forEach((label, i) => {
-            const value = genreRadioValues[i];
-            const input = label.querySelector('input');
-            if (input && value) {
-                input.value = value;
-                // עדכון טקסט בלבד
-                label.lastChild.nodeValue = ' ' + translations[lang][value.replace('-', '')];
-            }
+    // יצירת כפתור בחירת ז'אנר וחלונית (modal) לבחירה
+    const genreSelectBtn = document.createElement('button');
+    genreSelectBtn.id = 'genre-select-btn';
+    genreSelectBtn.type = 'button';
+    genreSelectBtn.className = 'genre-select-btn';
+    genreSelectBtn.textContent = translations[currentLang]?.genreLabel || 'בחר ז\'אנר קומיקס:';
+    genreLabel.parentNode.insertBefore(genreSelectBtn, genreLabel.nextSibling);
+
+    // יצירת modal
+    const genreModal = document.createElement('div');
+    genreModal.id = 'genre-modal';
+    genreModal.className = 'genre-modal';
+    genreModal.style.display = 'none';
+    genreModal.innerHTML = `
+        <div class="genre-modal-content">
+            <span class="genre-modal-close">&times;</span>
+            <h3 id="genre-modal-title"></h3>
+            <ul id="genre-modal-list" class="genre-modal-list"></ul>
+        </div>
+    `;
+    document.body.appendChild(genreModal);
+    const genreModalTitle = genreModal.querySelector('#genre-modal-title');
+    const genreModalList = genreModal.querySelector('#genre-modal-list');
+    const genreModalClose = genreModal.querySelector('.genre-modal-close');
+
+    let selectedGenre = '';
+
+    // פונקציה לעדכון רשימת הז'אנרים במודל
+    function renderGenreModalOptions(lang) {
+        genreModalList.innerHTML = '';
+        genres.forEach(g => {
+            const li = document.createElement('li');
+            li.className = 'genre-modal-item';
+            li.dataset.value = g.value;
+            li.textContent = g[lang];
+            if (g.value === selectedGenre) li.classList.add('selected');
+            li.addEventListener('click', () => {
+                selectedGenre = g.value;
+                genreSelectBtn.textContent = g[lang];
+                genreModal.style.display = 'none';
+            });
+            genreModalList.appendChild(li);
         });
     }
 
-    // יצירת select דינמי לז'אנרים
-    const genreSelect = document.createElement('select');
-    genreSelect.id = 'genre-select';
-    genreSelect.required = true;
-    genreSelect.className = 'genre-select';
-    function renderGenreOptions(lang) {
-        genreSelect.innerHTML = '';
-        const defaultOption = document.createElement('option');
-        defaultOption.value = '';
-        defaultOption.disabled = true;
-        defaultOption.selected = true;
-        defaultOption.hidden = true;
-        defaultOption.textContent = lang === 'he' ? 'בחר ז׳אנר' : 'Select Genre';
-        genreSelect.appendChild(defaultOption);
-        genres.forEach(g => {
-            const opt = document.createElement('option');
-            opt.value = g.value;
-            opt.textContent = g[lang];
-            genreSelect.appendChild(opt);
-        });
+    // פותח את המודל
+    genreSelectBtn.addEventListener('click', () => {
+        genreModal.style.display = 'block';
+        renderGenreModalOptions(currentLang);
+        genreModalTitle.textContent = translations[currentLang].genreLabel;
+    });
+    // סגירת המודל
+    genreModalClose.addEventListener('click', () => {
+        genreModal.style.display = 'none';
+    });
+    window.addEventListener('click', (e) => {
+        if (e.target === genreModal) genreModal.style.display = 'none';
+    });
+
+    // מחזיר את הז'אנר הנבחר
+    function getSelectedGenre() {
+        return selectedGenre;
     }
 
     // כפתור המשך תסריט
@@ -150,7 +170,10 @@ document.addEventListener('DOMContentLoaded', () => {
         langToggleHe.textContent = translations[lang].langHebrew;
         langToggleEn.textContent = translations[lang].langEnglish;
         continueScriptBtn.textContent = translations[lang].continueScriptBtn;
-        renderGenreOptions(lang);
+        genreSelectBtn.textContent = selectedGenre
+            ? genres.find(g => g.value === selectedGenre)[lang]
+            : translations[lang].genreLabel;
+        renderGenreModalOptions(lang); // <-- עדכון הז'אנרים בשפה הנכונה
         // עדכון כפתורי שמירה
         saveScriptBtn.textContent = translations[lang].saveScriptBtn || (lang === 'he' ? 'שמור תסריט' : 'Save Script');
         saveStoryBtn.textContent = translations[lang].saveStoryBtn || (lang === 'he' ? 'שמור סיפור' : 'Save Story');
@@ -223,6 +246,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // הסר קוד ישן של רדיו/רשימת ז'אנרים
+
     // הסר את כפתור המשך תסריט מה-DOM
     if (document.getElementById('continue-script')) {
         document.getElementById('continue-script').remove();
@@ -255,7 +280,70 @@ document.addEventListener('DOMContentLoaded', () => {
         a.click();
     });
 
-    // הסתר כפתור שמירה אם אין תסריט
+    // הסתרת כפתור שמירה אם אין תסריט
     scriptOutput.textContent = '';
     showSaveScriptBtn(false);
+
+    // CSS בסיסי לחלונית (modal) ולכפתור
+    const modalStyle = document.createElement('style');
+    modalStyle.textContent = `
+    .genre-select-btn {
+        padding: 0.5em 1.2em;
+        font-size: 1em;
+        border-radius: 8px;
+        border: 1px solid #888;
+        background: #f7f7fa;
+        cursor: pointer;
+        margin-bottom: 1em;
+        margin-top: 0.5em;
+        transition: background 0.2s;
+    }
+    .genre-select-btn:hover {
+        background: #e0e0f7;
+    }
+    .genre-modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0; top: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.3);
+        justify-content: center;
+        align-items: center;
+    }
+    .genre-modal-content {
+        background: #fff;
+        margin: 10vh auto;
+        padding: 2em 1.5em 1.5em 1.5em;
+        border-radius: 12px;
+        max-width: 350px;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+        position: relative;
+        text-align: center;
+    }
+    .genre-modal-close {
+        position: absolute;
+        top: 0.7em; right: 1em;
+        font-size: 1.5em;
+        color: #888;
+        cursor: pointer;
+    }
+    .genre-modal-list {
+        list-style: none;
+        padding: 0;
+        margin: 1em 0 0 0;
+    }
+    .genre-modal-item {
+        padding: 0.6em 0.5em;
+        margin: 0.2em 0;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 1.08em;
+        transition: background 0.15s;
+    }
+    .genre-modal-item.selected, .genre-modal-item:hover {
+        background: #e0e0f7;
+        font-weight: bold;
+    }
+    `;
+    document.head.appendChild(modalStyle);
 });
