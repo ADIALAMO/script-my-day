@@ -43,10 +43,18 @@ module.exports = async (req, res) => {
   const lang = detectLanguage(trimmedEntry);
   const modelToUse = 'deepseek/deepseek-chat-v3-0324:free';
 
+  // קביעת max_tokens דינמית לפי אורך הקלט
+  let maxTokens = 700;
+  const wordCount = trimmedEntry.split(/\s+/).length;
+  if (wordCount <= 8) maxTokens = 80; // סיפור קצר מאוד
+  else if (wordCount <= 20) maxTokens = 180;
+  else if (wordCount <= 50) maxTokens = 350;
+  // אחרת, ברירת מחדל 700
+
   // פרומפט מקוצר
   const prompt = lang === 'he'
-    ? `כתוב תסריט קומיקס קצר בעברית על פי הטקסט הבא: "${trimmedEntry}" בז'אנר ${genre}. שמור על מבנה פשוט וברור.`
-    : `Write a short comic script in English based on: "${trimmedEntry}" in the ${genre} genre. Keep it simple and clear.`;
+    ? `כתוב תסריט קומיקס קצר בעברית על פי הטקסט הבא: "${trimmedEntry}" בז'אנר ${genre}. שמור על מבנה פשוט וברור. אם הסיפור קצר, כתוב תסריט של 3-5 משפטים בלבד.`
+    : `Write a short comic script in English based on: "${trimmedEntry}" in the ${genre} genre. Keep it simple and clear. If the story is short, write a script of only 3-5 sentences.`;
 
   try {
     const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
@@ -57,7 +65,7 @@ module.exports = async (req, res) => {
           content: prompt
         }
       ],
-      max_tokens: 350 // הגבלת אורך תשובה
+      max_tokens: maxTokens // הגבלת אורך תשובה דינמית
     }, {
       headers: {
         Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
