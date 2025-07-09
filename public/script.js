@@ -38,6 +38,8 @@ const translations = {
     }
 };
 
+let currentLang; // הגדרה גלובלית בלבד
+
 document.addEventListener('DOMContentLoaded', () => {
     // אלמנטים ב-DOM
     const appTitle = document.getElementById('app-title');
@@ -76,7 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let lastScript = '';
     let continueUsed = false;
-    let currentLang; // הגדרה גלובלית בלבד
 
     // פונקציה לעדכון טקסטים לפי שפה
     function updateContent(lang) {
