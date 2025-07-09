@@ -7,16 +7,6 @@ const translations = {
         journalLabel: 'רשומה יומית:',
         journalPlaceholder: 'כתוב כאן את הרשומה היומית שלך...',
         genreLabel: 'בחר ז\'אנר קומיקס:',
-        selectGenreOption: 'בחר ז\'אנר',
-        adventure: 'הרפתקאות',
-        comedy: 'קומדיה',
-        drama: 'דרמה',
-        sciFi: 'מדע בדיוני',
-        horror: 'אימה',
-        fantasy: 'פנטזיה',
-        romance: 'רומנטיקה',
-        action: 'פעולה',
-        mystery: 'מסתורין',
         generateButton: 'צור תסריט',
         loadingMessage: 'טוען...',
         errorMessagePrefix: 'שגיאה: ',
@@ -33,16 +23,6 @@ const translations = {
         journalLabel: 'Journal Entry:',
         journalPlaceholder: 'Write your daily entry here...',
         genreLabel: 'Select Comic Genre:',
-        selectGenreOption: 'Select a genre',
-        adventure: 'Adventure',
-        comedy: 'Comedy',
-        drama: 'Drama',
-        sciFi: 'Sci-Fi',
-        horror: 'Horror',
-        fantasy: 'Fantasy',
-        romance: 'Romance',
-        action: 'Action',
-        mystery: 'Mystery',
         generateButton: 'Generate Script',
         loadingMessage: 'Loading...',
         errorMessagePrefix: 'Error: ',
@@ -61,8 +41,6 @@ const journalSectionHeading = document.getElementById('journal-section-heading')
 const journalLabel = document.getElementById('journal-label');
 const journalEntry = document.getElementById('journal-entry');
 const genreLabel = document.getElementById('genre-label');
-const selectGenreOption = document.getElementById('select-genre-option');
-const genreSelect = document.getElementById('genre');
 const generateButton = document.getElementById('generate-button');
 const loadingDiv = document.getElementById('loading');
 const errorDiv = document.getElementById('error');
@@ -80,7 +58,6 @@ function updateContent(lang) {
     journalLabel.textContent = translations[lang].journalLabel;
     journalEntry.placeholder = translations[lang].journalPlaceholder;
     genreLabel.textContent = translations[lang].genreLabel;
-    selectGenreOption.textContent = translations[lang].selectGenreOption;
     generateButton.textContent = translations[lang].generateButton;
     loadingDiv.textContent = translations[lang].loadingMessage;
     // עדכון כותרת התסריט רק אם היא מוצגת
@@ -90,10 +67,20 @@ function updateContent(lang) {
     langToggleHe.textContent = translations[lang].langHebrew;
     langToggleEn.textContent = translations[lang].langEnglish;
 
-    // עדכון טקסטים של אפשרויות הז'אנר
-    Array.from(genreSelect.options).forEach(option => {
-        if (option.value) { // לדלג על האפשרות הריקה (בחר ז'אנר)
-            option.textContent = translations[lang][option.value.replace('-', '')]; // adventure -> adventure, sci-fi -> sciFi
+    // עדכון טקסטים של אפשרויות הז'אנר (רדיו)
+    const genreRadioLabels = document.querySelectorAll('.genre-list label');
+    const genreRadioValues = [
+        'adventure', 'comedy', 'drama', 'sci-fi', 'horror', 'fantasy', 'romance', 'action', 'mystery'
+    ];
+    genreRadioLabels.forEach((label, i) => {
+        const value = genreRadioValues[i];
+        if (value && translations[lang][value.replace('-', '')]) {
+            // עדכן את הטקסט של הלייבל (הטקסט אחרי ה-input)
+            const input = label.querySelector('input');
+            if (input) {
+                // שמור את הטקסט המקורי (אם צריך)
+                label.childNodes[label.childNodes.length - 1].nodeValue = ' ' + translations[lang][value.replace('-', '')];
+            }
         }
     });
 
