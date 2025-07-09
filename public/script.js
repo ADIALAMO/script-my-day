@@ -76,6 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let lastScript = '';
     let continueUsed = false;
+    let currentLang = 'he'; // גלובלי לכל הסקריפט
 
     // פונקציה לעדכון טקסטים לפי שפה
     function updateContent(lang) {
@@ -122,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // קביעת שפת ברירת המחדל
-    let currentLang = htmlElement.getAttribute('lang') || 'he';
+    currentLang = htmlElement.getAttribute('lang') || 'he';
     updateContent(currentLang);
 
     // הוספת מאזינים לכפתורי השפה
