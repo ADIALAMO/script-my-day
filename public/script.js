@@ -16,7 +16,9 @@ const translations = {
         scriptOutputHeading: 'התסריט שלך:',
         langHebrew: 'עברית',
         langEnglish: 'English',
-        continueScriptBtn: 'המשך תסריט'
+        continueScriptBtn: 'המשך תסריט',
+        saveScriptBtn: 'שמור תסריט',
+        saveStoryBtn: 'שמור סיפור'
     },
     en: {
         appTitle: 'Dear Diary, Script My Life',
@@ -34,7 +36,9 @@ const translations = {
         scriptOutputHeading: 'Your Script:',
         langHebrew: 'עברית',
         langEnglish: 'English',
-        continueScriptBtn: 'Continue Script'
+        continueScriptBtn: 'Continue Script',
+        saveScriptBtn: 'Save Script',
+        saveStoryBtn: 'Save Story'
     }
 };
 
@@ -106,10 +110,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (value && translations[lang][value.replace('-', '')]) {
                 const input = label.querySelector('input');
                 if (input) {
+                    // עדכון גם של value וגם של הטקסט
+                    input.value = value;
                     label.childNodes[label.childNodes.length - 1].nodeValue = ' ' + translations[lang][value.replace('-', '')];
                 }
             }
         });
+        // עדכון כפתורי שמירה
+        saveScriptBtn.textContent = translations[lang].saveScriptBtn || (lang === 'he' ? 'שמור תסריט' : 'Save Script');
+        saveStoryBtn.textContent = translations[lang].saveStoryBtn || (lang === 'he' ? 'שמור סיפור' : 'Save Story');
         if (lang === 'he') {
             htmlElement.setAttribute('lang', 'he');
             htmlElement.setAttribute('dir', 'rtl');
@@ -179,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // כפתור המשך תסריט - ניתן ללחוץ רק פעם אחת
+    // כפתור המשך תסריט - ניתן ללחץ רק פעם אחת
     continueScriptBtn.addEventListener('click', async () => {
         if (continueUsed || !lastScript) return;
         continueScriptBtn.disabled = true;
@@ -196,8 +205,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(`${translations[currentLang].serverErrorPrefix}${response.status} - ${errorData.error || 'Unknown error'}`);
             }
             const data = await response.json();
-            scriptOutput.innerHTML = `<pre>${lastScript}\n${data.script}</pre>`;
-            lastScript += '\n' + data.script;
+            // הוסף המשך רק אם יש טקסט חדש
+            if (data.script && data.script.trim()) {
+                scriptOutput.innerHTML = `<pre>${lastScript}\n${data.script}</pre>`;
+                lastScript += '\n' + data.script;
+            }
             continueUsed = true;
             continueScriptBtn.style.display = 'none';
         } catch (err) {
