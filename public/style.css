@@ -296,6 +296,27 @@ html[dir="ltr"] body {
     letter-spacing: 0.01em;
 }
 
+.genre-select {
+    width: 220px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border-color);
+    font-size: 1.08rem;
+    background: #fff8f2;
+    color: var(--text-color);
+    margin-bottom: 12px;
+    margin-top: 4px;
+    box-shadow: 0 1.5px 6px #e6b07a22;
+    transition: border 0.2s;
+}
+.genre-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+.genre-select option[disabled][selected] {
+    color: #b6a08a;
+}
+
 @media (max-width: 768px) {
     h1 {
         font-size: 2em;

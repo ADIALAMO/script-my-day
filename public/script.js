@@ -64,11 +64,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveScriptBtn = document.getElementById('save-script');
     const saveStoryBtn = document.getElementById('save-story');
 
+    // ז'אנרים - מיפוי לערכים ולתרגום
+    const genres = [
+        { value: 'adventure', he: 'הרפתקאות', en: 'Adventure' },
+        { value: 'comedy', he: 'קומדיה', en: 'Comedy' },
+        { value: 'drama', he: 'דרמה', en: 'Drama' },
+        { value: 'sci-fi', he: 'מדע בדיוני', en: 'Sci-Fi' },
+        { value: 'horror', he: 'אימה', en: 'Horror' },
+        { value: 'fantasy', he: 'פנטזיה', en: 'Fantasy' },
+        { value: 'romance', he: 'רומנטיקה', en: 'Romance' },
+        { value: 'action', he: 'פעולה', en: 'Action' },
+        { value: 'mystery', he: 'מסתורין', en: 'Mystery' }
+    ];
+
     // עדכון בחירת ז'אנר לרדיו
     const genreRadios = document.querySelectorAll('input[name="genre"]');
     function getSelectedGenre() {
-        const checked = Array.from(genreRadios).find(r => r.checked);
-        return checked ? checked.value : '';
+        return genreSelect.value;
     }
     // עדכון טקסטים של אפשרויות הז'אנר (רדיו) כולל ערך value
     function updateGenreRadios(lang) {
@@ -84,6 +96,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 // עדכון טקסט בלבד
                 label.lastChild.nodeValue = ' ' + translations[lang][value.replace('-', '')];
             }
+        });
+    }
+
+    // יצירת select דינמי לז'אנרים
+    const genreSelect = document.createElement('select');
+    genreSelect.id = 'genre-select';
+    genreSelect.required = true;
+    genreSelect.className = 'genre-select';
+    function renderGenreOptions(lang) {
+        genreSelect.innerHTML = '';
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.disabled = true;
+        defaultOption.selected = true;
+        defaultOption.hidden = true;
+        defaultOption.textContent = lang === 'he' ? 'בחר ז׳אנר' : 'Select Genre';
+        genreSelect.appendChild(defaultOption);
+        genres.forEach(g => {
+            const opt = document.createElement('option');
+            opt.value = g.value;
+            opt.textContent = g[lang];
+            genreSelect.appendChild(opt);
         });
     }
 
@@ -116,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
         langToggleHe.textContent = translations[lang].langHebrew;
         langToggleEn.textContent = translations[lang].langEnglish;
         continueScriptBtn.textContent = translations[lang].continueScriptBtn;
-        updateGenreRadios(lang);
+        renderGenreOptions(lang);
         // עדכון כפתורי שמירה
         saveScriptBtn.textContent = translations[lang].saveScriptBtn || (lang === 'he' ? 'שמור תסריט' : 'Save Script');
         saveStoryBtn.textContent = translations[lang].saveStoryBtn || (lang === 'he' ? 'שמור סיפור' : 'Save Story');
