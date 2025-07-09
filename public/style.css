@@ -50,13 +50,13 @@ header {
 }
 
 .lang-switcher.lang-switcher-corner {
-    position: absolute;
-    top: -18px;
-    left: 18px;
+    position: fixed;
+    top: 24px;
+    left: 32px;
     right: auto;
     z-index: 20;
     display: flex;
-    gap: 5px;
+    gap: 8px;
 }
 
 h1 {
@@ -277,6 +277,16 @@ html[dir="ltr"] body {
     letter-spacing: 0.5px;
     font-family: 'Varela Round', 'Heebo', sans-serif;
     opacity: 0.85;
+}
+
+.subtitle {
+    font-size: 1.25rem;
+    font-weight: 400;
+    color: var(--light-text-color);
+    margin-top: 0.5em;
+    margin-bottom: 1.5em;
+    text-align: center;
+    letter-spacing: 0.01em;
 }
 
 @media (max-width: 768px) {

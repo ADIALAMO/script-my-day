@@ -1,8 +1,9 @@
 // תרגומים לשפות שונות
 const translations = {
     he: {
-        appTitle: 'יומן חיים - מחולל תסריטי קומיקס',
-        mainHeading: 'יומן חיים - מחולל תסריטי קומיקס',
+        appTitle: 'יומני היקר, תסרט לי את חיי',
+        mainHeading: 'יומני היקר, תסרט לי את חיי',
+        subtitle: 'ספר לי מה עבר עליך היום ואת השאר תשאיר לי',
         journalSectionHeading: 'כתוב את היומן שלך',
         journalLabel: 'רשומה יומית:',
         journalPlaceholder: 'כתוב כאן את הרשומה היומית שלך...',
@@ -17,8 +18,9 @@ const translations = {
         langEnglish: 'English'
     },
     en: {
-        appTitle: 'Life Journal - Comic Script Generator',
-        mainHeading: 'Life Journal - Comic Script Generator',
+        appTitle: 'Dear Diary, Script My Life',
+        mainHeading: 'Dear Diary, Script My Life',
+        subtitle: 'Tell me about your day, and I’ll do the rest',
         journalSectionHeading: 'Write Your Journal Entry',
         journalLabel: 'Journal Entry:',
         journalPlaceholder: 'Write your daily entry here...',
@@ -49,11 +51,14 @@ const scriptOutputHeading = document.getElementById('script-output-heading');
 const langToggleHe = document.getElementById('lang-toggle-he');
 const langToggleEn = document.getElementById('lang-toggle-en');
 const htmlElement = document.documentElement; // אלמנט ה-html כולו
+// עדכון תת-כותרת בדינמיות
+const subtitle = document.getElementById('subtitle');
 
 // פונקציה לעדכון טקסטים לפי שפה
 function updateContent(lang) {
     appTitle.textContent = translations[lang].appTitle;
     mainHeading.textContent = translations[lang].mainHeading;
+    if (subtitle) subtitle.textContent = translations[lang].subtitle;
     journalSectionHeading.textContent = translations[lang].journalSectionHeading;
     journalLabel.textContent = translations[lang].journalLabel;
     journalEntry.placeholder = translations[lang].journalPlaceholder;
