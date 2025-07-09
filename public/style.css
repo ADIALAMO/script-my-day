@@ -146,36 +146,40 @@ textarea:focus {
     outline: none;
 }
 
+/* שדרוג עיצובי: סימטריה וסידור */
 .genre-list {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 10px 0;
     display: flex;
     flex-wrap: wrap;
-    gap: 8px 18px;
+    gap: 10px 24px;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    margin: 0 0 18px 0;
+    list-style: none;
 }
 
 .genre-list li {
     margin: 0;
     padding: 0;
-    display: inline-block;
+    min-width: 120px;
+    text-align: center;
 }
 
 .genre-list label {
-    font-weight: 500;
-    color: var(--text-color);
-    background: #f3e3d3;
-    border-radius: 6px;
-    padding: 4px 12px 4px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.08rem;
+    font-weight: 400;
     cursor: pointer;
+    padding: 4px 0;
+    border-radius: 8px;
     transition: background 0.2s;
-    font-size: 1em;
 }
 
 .genre-list input[type="radio"] {
+    margin-inline-end: 6px;
     accent-color: var(--primary-color);
-    margin-left: 4px;
-    margin-right: 0;
 }
 
 button[type="submit"], .secondary-btn {
@@ -237,7 +241,10 @@ button[type="submit"]:hover, .secondary-btn:hover {
 }
 
 .script-output-container {
-    margin-top: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 18px;
     background: #fff7f0;
     border: 1.5px solid var(--border-color);
     border-radius: 12px;

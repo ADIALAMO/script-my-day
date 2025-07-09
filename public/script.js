@@ -70,6 +70,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const checked = Array.from(genreRadios).find(r => r.checked);
         return checked ? checked.value : '';
     }
+    // עדכון טקסטים של אפשרויות הז'אנר (רדיו) כולל ערך value
+    function updateGenreRadios(lang) {
+        const genreRadioLabels = document.querySelectorAll('.genre-list label');
+        const genreRadioValues = [
+            'adventure', 'comedy', 'drama', 'sci-fi', 'horror', 'fantasy', 'romance', 'action', 'mystery'
+        ];
+        genreRadioLabels.forEach((label, i) => {
+            const value = genreRadioValues[i];
+            const input = label.querySelector('input');
+            if (input && value) {
+                input.value = value;
+                // עדכון טקסט בלבד
+                label.lastChild.nodeValue = ' ' + translations[lang][value.replace('-', '')];
+            }
+        });
+    }
 
     // כפתור המשך תסריט
     const continueScriptBtn = document.createElement('button');
@@ -100,22 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
         langToggleHe.textContent = translations[lang].langHebrew;
         langToggleEn.textContent = translations[lang].langEnglish;
         continueScriptBtn.textContent = translations[lang].continueScriptBtn;
-        // עדכון טקסטים של אפשרויות הז'אנר (רדיו)
-        const genreRadioLabels = document.querySelectorAll('.genre-list label');
-        const genreRadioValues = [
-            'adventure', 'comedy', 'drama', 'sci-fi', 'horror', 'fantasy', 'romance', 'action', 'mystery'
-        ];
-        genreRadioLabels.forEach((label, i) => {
-            const value = genreRadioValues[i];
-            if (value && translations[lang][value.replace('-', '')]) {
-                const input = label.querySelector('input');
-                if (input) {
-                    // עדכון גם של value וגם של הטקסט
-                    input.value = value;
-                    label.childNodes[label.childNodes.length - 1].nodeValue = ' ' + translations[lang][value.replace('-', '')];
-                }
-            }
-        });
+        updateGenreRadios(lang);
         // עדכון כפתורי שמירה
         saveScriptBtn.textContent = translations[lang].saveScriptBtn || (lang === 'he' ? 'שמור תסריט' : 'Save Script');
         saveStoryBtn.textContent = translations[lang].saveStoryBtn || (lang === 'he' ? 'שמור סיפור' : 'Save Story');
@@ -188,38 +189,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // כפתור המשך תסריט - ניתן ללחץ רק פעם אחת
-    continueScriptBtn.addEventListener('click', async () => {
-        if (continueUsed || !lastScript) return;
-        continueScriptBtn.disabled = true;
-        loadingDiv.style.display = 'block';
-        errorDiv.style.display = 'none';
-        try {
-            const response = await fetch('/api/generateScript', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ journalEntry: journalEntry.value.trim(), genre: getSelectedGenre(), continueScript: lastScript })
-            });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(`${translations[currentLang].serverErrorPrefix}${response.status} - ${errorData.error || 'Unknown error'}`);
-            }
-            const data = await response.json();
-            // הוסף המשך רק אם יש טקסט חדש
-            if (data.script && data.script.trim()) {
-                scriptOutput.innerHTML = `<pre>${lastScript}\n${data.script}</pre>`;
-                lastScript += '\n' + data.script;
-            }
-            continueUsed = true;
-            continueScriptBtn.style.display = 'none';
-        } catch (err) {
-            errorDiv.style.display = 'block';
-            errorDiv.textContent = `${translations[currentLang].errorMessagePrefix}${err.message}`;
-            continueScriptBtn.disabled = false;
-        } finally {
-            loadingDiv.style.display = 'none';
-        }
-    });
+    // הסר את כפתור המשך תסריט מה-DOM
+    if (document.getElementById('continue-script')) {
+        document.getElementById('continue-script').remove();
+    }
 
     // כפתור שמירת תסריט
     saveScriptBtn.addEventListener('click', () => {
