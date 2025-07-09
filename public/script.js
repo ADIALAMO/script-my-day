@@ -139,6 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // מאזין לשליחת הטופס
     document.getElementById('journal-form').addEventListener('submit', async (event) => {
         event.preventDefault();
+        console.log('submit event fired');
         const journalEntryValue = journalEntry.value.trim();
         const genre = getSelectedGenre();
         if (!journalEntryValue || !genre) {
