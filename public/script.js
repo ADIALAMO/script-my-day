@@ -248,6 +248,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // הסר קוד ישן של רדיו/רשימת ז'אנרים
 
+    // הסר את האלמנט הישן של בחירת ז'אנר (אם קיים)
+    const oldGenreSelect = document.getElementById('genre-select');
+    if (oldGenreSelect) oldGenreSelect.remove();
+    const oldGenreRadios = document.querySelector('.genre-list');
+    if (oldGenreRadios) oldGenreRadios.remove();
+
     // הסר את כפתור המשך תסריט מה-DOM
     if (document.getElementById('continue-script')) {
         document.getElementById('continue-script').remove();
