@@ -128,12 +128,19 @@ langToggleEn.addEventListener('click', () => {
     updateContent('en');
 });
 
+// עדכון בחירת ז'אנר לרדיו
+const genreRadios = document.querySelectorAll('input[name="genre"]');
+function getSelectedGenre() {
+    const checked = Array.from(genreRadios).find(r => r.checked);
+    return checked ? checked.value : '';
+}
+
 // מאזין לשליחת הטופס
 document.getElementById('journal-form').addEventListener('submit', async (event) => {
     event.preventDefault();
 
     const journalEntryValue = journalEntry.value.trim();
-    const genre = genreSelect.value;
+    const genre = getSelectedGenre();
 
     // אימות קלט
     if (!journalEntryValue || !genre) {
@@ -163,6 +170,7 @@ document.getElementById('journal-form').addEventListener('submit', async (event)
         const data = await response.json();
         // הצגת התסריט בתוך תג <pre> לשמירה על עיצוב
         scriptOutput.innerHTML = `<pre>${data.script}</pre>`;
+        showSaveScriptBtn(true);
         scriptOutputHeading.textContent = translations[currentLang].scriptOutputHeading; // עדכן את כותרת התסריט
         scriptOutputHeading.style.display = 'block'; // הצג את כותרת התסריט
     } catch (err) {
@@ -172,3 +180,36 @@ document.getElementById('journal-form').addEventListener('submit', async (event)
         loadingDiv.style.display = 'none';
     }
 });
+
+// כפתור שמירת תסריט
+const saveScriptBtn = document.getElementById('save-script');
+saveScriptBtn.addEventListener('click', () => {
+    const script = scriptOutput.textContent;
+    if (!script) return;
+    const blob = new Blob([script], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'comic-script.txt';
+    a.click();
+});
+
+// הצג כפתור שמירה רק אם יש תסריט
+function showSaveScriptBtn(show) {
+    saveScriptBtn.style.display = show ? 'inline-block' : 'none';
+}
+
+// כפתור שמירת סיפור
+const saveStoryBtn = document.getElementById('save-story');
+saveStoryBtn.addEventListener('click', () => {
+    const story = journalEntry.value.trim();
+    if (!story) return;
+    const blob = new Blob([story], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'my-story.txt';
+    a.click();
+});
+
+// הסתר כפתור שמירה אם אין תסריט
+scriptOutput.textContent = '';
+showSaveScriptBtn(false);

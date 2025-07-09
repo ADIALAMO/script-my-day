@@ -10,11 +10,11 @@
 <body>
   <div class="container">
     <header>
-      <div class="lang-switcher">
+      <h1 id="main-heading">יומן חיים - מחולל תסריטי קומיקס</h1>
+      <div class="lang-switcher lang-switcher-corner">
         <button id="lang-toggle-he" class="active">עברית</button>
         <button id="lang-toggle-en">English</button>
       </div>
-      <h1 id="main-heading">יומן חיים - מחולל תסריטי קומיקס</h1>
     </header>
 
     <main>
@@ -25,20 +25,20 @@
           <textarea id="journal-entry" rows="7" required aria-required="true" placeholder="כתוב כאן את הרשומה היומית שלך..."></textarea>
 
           <label for="genre" id="genre-label">בחר ז'אנר קומיקס:</label>
-          <select id="genre" required aria-required="true">
-            <option value="" disabled selected id="select-genre-option">בחר ז'אנר</option>
-            <option value="adventure" data-he="הרפתקאות" data-en="Adventure">הרפתקאות</option>
-            <option value="comedy" data-he="קומדיה" data-en="Comedy">קומדיה</option>
-            <option value="drama" data-he="דרמה" data-en="Drama">דרמה</option>
-            <option value="sci-fi" data-he="מדע בדיוני" data-en="Sci-Fi">מדע בדיוני</option>
-            <option value="horror" data-he="אימה" data-en="Horror">אימה</option>
-            <option value="fantasy" data-he="פנטזיה" data-en="Fantasy">פנטזיה</option>
-            <option value="romance" data-he="רומנטיקה" data-en="Romance">רומנטיקה</option>
-            <option value="action" data-he="פעולה" data-en="Action">פעולה</option>
-            <option value="mystery" data-he="מסתורין" data-en="Mystery">מסתורין</option>
-          </select>
+          <ul class="genre-list">
+            <li><label><input type="radio" name="genre" value="adventure" required> הרפתקאות</label></li>
+            <li><label><input type="radio" name="genre" value="comedy"> קומדיה</label></li>
+            <li><label><input type="radio" name="genre" value="drama"> דרמה</label></li>
+            <li><label><input type="radio" name="genre" value="sci-fi"> מדע בדיוני</label></li>
+            <li><label><input type="radio" name="genre" value="horror"> אימה</label></li>
+            <li><label><input type="radio" name="genre" value="fantasy"> פנטזיה</label></li>
+            <li><label><input type="radio" name="genre" value="romance"> רומנטיקה</label></li>
+            <li><label><input type="radio" name="genre" value="action"> פעולה</label></li>
+            <li><label><input type="radio" name="genre" value="mystery"> מסתורין</label></li>
+          </ul>
 
           <button type="submit" id="generate-button">צור תסריט</button>
+          <button type="button" id="save-story" class="secondary-btn">שמור סיפור</button>
         </form>
 
         <div id="loading" class="message loading" style="display: none;">טוען...</div>
@@ -47,6 +47,7 @@
         <div class="script-output-container">
           <h3 id="script-output-heading" style="display: none;">התסריט שלך:</h3>
           <div id="script-output" aria-live="polite"></div>
+          <button type="button" id="save-script" class="secondary-btn" style="display:none;">שמור תסריט</button>
         </div>
       </section>
     </main>
