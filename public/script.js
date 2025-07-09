@@ -15,7 +15,8 @@ const translations = {
         serverErrorPrefix: 'שגיאת שרת: ',
         scriptOutputHeading: 'התסריט שלך:',
         langHebrew: 'עברית',
-        langEnglish: 'English'
+        langEnglish: 'English',
+        continueScriptBtn: 'המשך תסריט'
     },
     en: {
         appTitle: 'Dear Diary, Script My Life',
@@ -32,7 +33,8 @@ const translations = {
         serverErrorPrefix: 'Server error: ',
         scriptOutputHeading: 'Your Script:',
         langHebrew: 'עברית',
-        langEnglish: 'English'
+        langEnglish: 'English',
+        continueScriptBtn: 'Continue Script'
     }
 };
 
@@ -71,6 +73,7 @@ function updateContent(lang) {
     }
     langToggleHe.textContent = translations[lang].langHebrew;
     langToggleEn.textContent = translations[lang].langEnglish;
+    continueScriptBtn.textContent = 'המשך תסריט';
 
     // עדכון טקסטים של אפשרויות הז'אנר (רדיו)
     const genreRadioLabels = document.querySelectorAll('.genre-list label');
@@ -127,6 +130,18 @@ function getSelectedGenre() {
     return checked ? checked.value : '';
 }
 
+// כפתור המשך תסריט
+const continueScriptBtn = document.createElement('button');
+continueScriptBtn.type = 'button';
+continueScriptBtn.id = 'continue-script';
+continueScriptBtn.className = 'secondary-btn';
+continueScriptBtn.style.display = 'none';
+continueScriptBtn.textContent = 'המשך תסריט';
+scriptOutput.parentNode.appendChild(continueScriptBtn);
+
+let lastScript = '';
+let continueUsed = false;
+
 // מאזין לשליחת הטופס
 document.getElementById('journal-form').addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -160,11 +175,15 @@ document.getElementById('journal-form').addEventListener('submit', async (event)
         }
 
         const data = await response.json();
-        // הצגת התסריט בתוך תג <pre> לשמירה על עיצוב
         scriptOutput.innerHTML = `<pre>${data.script}</pre>`;
+        lastScript = data.script;
+        continueUsed = false;
         showSaveScriptBtn(true);
-        scriptOutputHeading.textContent = translations[currentLang].scriptOutputHeading; // עדכן את כותרת התסריט
-        scriptOutputHeading.style.display = 'block'; // הצג את כותרת התסריט
+        scriptOutputHeading.textContent = translations[currentLang].scriptOutputHeading;
+        scriptOutputHeading.style.display = 'block';
+        // הצג כפתור המשך תסריט
+        continueScriptBtn.style.display = 'inline-block';
+        continueScriptBtn.disabled = false;
     } catch (err) {
         errorDiv.style.display = 'block';
         errorDiv.textContent = `${translations[currentLang].errorMessagePrefix}${err.message}`;
@@ -200,6 +219,36 @@ saveStoryBtn.addEventListener('click', () => {
     a.href = URL.createObjectURL(blob);
     a.download = 'my-story.txt';
     a.click();
+});
+
+// כפתור המשך תסריט - ניתן ללחוץ רק פעם אחת
+continueScriptBtn.addEventListener('click', async () => {
+    if (continueUsed || !lastScript) return;
+    continueScriptBtn.disabled = true;
+    loadingDiv.style.display = 'block';
+    errorDiv.style.display = 'none';
+    try {
+        const response = await fetch('/api/generateScript', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ journalEntry: journalEntry.value.trim(), genre: getSelectedGenre(), continueScript: lastScript })
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`${translations[currentLang].serverErrorPrefix}${response.status} - ${errorData.error || 'Unknown error'}`);
+        }
+        const data = await response.json();
+        scriptOutput.innerHTML = `<pre>${lastScript}\n${data.script}</pre>`;
+        lastScript += '\n' + data.script;
+        continueUsed = true;
+        continueScriptBtn.style.display = 'none';
+    } catch (err) {
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = `${translations[currentLang].errorMessagePrefix}${err.message}`;
+        continueScriptBtn.disabled = false;
+    } finally {
+        loadingDiv.style.display = 'none';
+    }
 });
 
 // הסתר כפתור שמירה אם אין תסריט

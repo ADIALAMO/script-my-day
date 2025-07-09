@@ -31,7 +31,7 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { journalEntry, genre } = req.body || {};
+  const { journalEntry, genre, continueScript } = req.body || {};
   if (!journalEntry || !genre) {
     return res.status(400).json({ error: 'Journal entry and genre are required.' });
   }
@@ -52,9 +52,17 @@ module.exports = async (req, res) => {
   // אחרת, ברירת מחדל 700
 
   // פרומפט מקוצר
-  const prompt = lang === 'he'
-    ? `כתוב תסריט קומיקס קצר בעברית על פי הטקסט הבא: "${trimmedEntry}" בז'אנר ${genre}. שמור על מבנה פשוט וברור. אם הסיפור קצר, כתוב תסריט של 3-5 משפטים בלבד.`
-    : `Write a short comic script in English based on: "${trimmedEntry}" in the ${genre} genre. Keep it simple and clear. If the story is short, write a script of only 3-5 sentences.`;
+  let prompt;
+  if (continueScript) {
+    prompt = lang === 'he'
+      ? `המשך את התסריט הקומיקס הבא בעברית וסיים אותו בצורה מקצועית, בלי להוסיף סצנות חדשות, רק לסגור את הסיפור: \n${continueScript}`
+      : `Continue and finish the following comic script in English, just to close the story, not to add new scenes: \n${continueScript}`;
+    maxTokens = 300;
+  } else {
+    prompt = lang === 'he'
+      ? `כתוב תסריט קומיקס קצר בעברית על פי הטקסט הבא: "${trimmedEntry}" בז'אנר ${genre}. שמור על מבנה פשוט וברור. אם הסיפור קצר, כתוב תסריט של 3-5 משפטים בלבד.`
+      : `Write a short comic script in English based on: "${trimmedEntry}" in the ${genre} genre. Keep it simple and clear. If the story is short, write a script of only 3-5 sentences.`;
+  }
 
   try {
     const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
