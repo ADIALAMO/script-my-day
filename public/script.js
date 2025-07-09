@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let lastScript = '';
     let continueUsed = false;
-    let currentLang = 'he'; // גלובלי לכל הסקריפט
+    let currentLang; // הגדרה גלובלית בלבד
 
     // פונקציה לעדכון טקסטים לפי שפה
     function updateContent(lang) {
