@@ -390,4 +390,65 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     `;
     document.head.appendChild(scriptOutputStyle);
+
+    // === Word Count Indicator ===
+    const wordLimit = 300;
+    const wordCountDiv = document.createElement('div');
+    wordCountDiv.id = 'word-count-indicator';
+    wordCountDiv.style.textAlign = 'left';
+    wordCountDiv.style.fontSize = '0.98em';
+    wordCountDiv.style.color = '#888';
+    wordCountDiv.style.marginTop = '0.2em';
+    journalEntry.parentNode.insertBefore(wordCountDiv, journalEntry.nextSibling);
+
+    function updateWordCount() {
+        const count = journalEntry.value.trim() ? journalEntry.value.trim().split(/\s+/).length : 0;
+        wordCountDiv.textContent = `${count}/${wordLimit}`;
+        if (count > wordLimit) {
+            wordCountDiv.style.color = '#d32f2f';
+        } else {
+            wordCountDiv.style.color = '#888';
+        }
+    }
+    journalEntry.addEventListener('input', updateWordCount);
+    updateWordCount();
+
+    // === Spinner Animation ===
+    loadingDiv.innerHTML = '<span class="spinner"></span>' + translations[currentLang].loadingMessage;
+    const spinnerStyle = document.createElement('style');
+    spinnerStyle.textContent = `
+    .spinner {
+      display: inline-block;
+      width: 1.1em;
+      height: 1.1em;
+      border: 3px solid #bdbdf7;
+      border-top: 3px solid #5a5ad6;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-inline-end: 0.5em;
+      vertical-align: middle;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    `;
+    document.head.appendChild(spinnerStyle);
+
+    // === Button Hover Effects ===
+    const buttonHoverStyle = document.createElement('style');
+    buttonHoverStyle.textContent = `
+    button, .genre-select-btn {
+      transition: background 0.18s, box-shadow 0.18s, color 0.18s;
+    }
+    button:hover, .genre-select-btn:hover {
+      background: #e0e0f7 !important;
+      color: #222;
+      box-shadow: 0 2px 8px rgba(90,90,214,0.10);
+    }
+    #save-script:hover, #save-story:hover {
+      background: #d1d1e0 !important;
+    }
+    `;
+    document.head.appendChild(buttonHoverStyle);
 });
