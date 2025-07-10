@@ -23,7 +23,9 @@ module.exports = async (req, res) => {
   }
 
   const maxInputLength = 300;
-  const trimmedEntry = journalEntry.trim().slice(0, maxInputLength);
+  // חיתוך הקלט ל-300 מילים (ולא תווים)
+  const words = journalEntry.trim().split(/\s+/).slice(0, maxInputLength);
+  const trimmedEntry = words.join(' ');
   const lang = detectLanguage(trimmedEntry);
   const modelToUse = 'deepseek/deepseek-chat-v3-0324:free';
 
