@@ -413,6 +413,38 @@ document.addEventListener('DOMContentLoaded', () => {
     journalEntry.addEventListener('input', updateWordCount);
     updateWordCount();
 
+    // === Word Count Enforcement + Professional Feedback ===
+    journalEntry.addEventListener('input', () => {
+        const words = journalEntry.value.trim() ? journalEntry.value.trim().split(/\s+/) : [];
+        if (words.length > wordLimit) {
+            journalEntry.value = words.slice(0, wordLimit).join(' ');
+            wordCountDiv.classList.add('word-limit-reached');
+            wordCountDiv.textContent = `${wordLimit}/${wordLimit} (Limit reached)`;
+            // רטט קל במכשירים תומכים
+            if (window.navigator.vibrate) window.navigator.vibrate(80);
+        } else {
+            wordCountDiv.classList.remove('word-limit-reached');
+            updateWordCount();
+        }
+    });
+
+    // עיצוב מקצועי לאזהרת מגבלה
+    const wordLimitStyle = document.createElement('style');
+    wordLimitStyle.textContent = `
+    #word-count-indicator.word-limit-reached {
+      color: #d32f2f !important;
+      font-weight: bold;
+      animation: shake 0.18s 1;
+    }
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      30% { transform: translateX(-4px); }
+      60% { transform: translateX(4px); }
+      100% { transform: translateX(0); }
+    }
+    `;
+    document.head.appendChild(wordLimitStyle);
+
     // === Spinner Animation ===
     loadingDiv.innerHTML = '<span class="spinner"></span>' + translations[currentLang].loadingMessage;
     const spinnerStyle = document.createElement('style');
