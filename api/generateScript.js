@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
   if (wordCount <= 8) maxTokens = 80;
   else if (wordCount <= 20) maxTokens = 180;
   else if (wordCount <= 50) maxTokens = 350;
-  else if (wordCount > 100) maxTokens = 1200;
+  else if (wordCount > 100) maxTokens = 1600; // הגדלת מגבלת הפלט לכ-800-1000 מילים
 
   let prompt;
   if (continueScript) {
@@ -43,11 +43,11 @@ module.exports = async (req, res) => {
   } else {
     if (lang === 'he') {
       prompt = wordCount > 50
-        ? `כתוב תסריט קומיקס מפורט בעברית על פי הטקסט הבא: "${trimmedEntry}" בז'אנר ${genre}. שמור על מבנה ברור, הוסף דיאלוגים, תאר סצנות, וכתוב לפחות 10-15 שורות. אל תוסיף הערות מיותרות.`
+        ? `כתוב תסריט קומיקס מפורט בעברית על פי הטקסט הבא: "${trimmedEntry}" בז'אנר ${genre}. שמור על מבנה ברור, הוסף דיאלוגים, תאר סצנות, וכתוב לפחות 10-15 שורות. אל תוסיף הערות מיותרות. נסח את התסריט עד 800 מילים לכל היותר.`
         : `כתוב תסריט קומיקס קצר בעברית על פי הטקסט הבא: "${trimmedEntry}" בז'אנר ${genre}. שמור על מבנה פשוט וברור. אם הסיפור קצר, כתוב תסריט של 3-5 משפטים בלבד. אל תוסיף הערות מיותרות.`;
     } else {
       prompt = wordCount > 50
-        ? `Write a detailed comic script in English based on: "${trimmedEntry}" in the ${genre} genre. Use clear structure, add dialogues, describe scenes, and write at least 10-15 lines. Do not add unnecessary comments.`
+        ? `Write a detailed comic script in English based on: "${trimmedEntry}" in the ${genre} genre. Use clear structure, add dialogues, describe scenes, and write at most 800 words. Do not add unnecessary comments.`
         : `Write a short comic script in English based on: "${trimmedEntry}" in the ${genre} genre. Keep it simple and clear. If the story is short, write a script of only 3-5 sentences. Do not add unnecessary comments.`;
     }
   }
