@@ -1,3 +1,11 @@
+/*
+Copyright (c) 2025 adi alamo. All rights reserved.
+This file and all related source code are the intellectual property of adi alamo.
+Unauthorized copying, distribution, or use of this code or its concept is strictly prohibited.
+For license details, see the LICENSE file in the project root.
+Contact: adialamo@gmail.com
+*/
+
 // תרגומים לשפות שונות
 const translations = {
     he: {

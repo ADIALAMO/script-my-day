@@ -1,0 +1,9 @@
+# Copyright and Intellectual Property Notice
+
+This project, its code, and its concept are the intellectual property of adi alamo (2025).
+Contact: adialamo@gmail.com
+
+- All rights reserved. Unauthorized copying, distribution, or use of the code, design, or idea is strictly prohibited.
+- For commercial use, adaptation, or questions regarding rights, please contact the author: adi alamo (adialamo@gmail.com).
+
+This notice applies to all files and content in this repository.
