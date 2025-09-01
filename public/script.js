@@ -235,6 +235,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (!response.ok) {
                 const errorData = await response.json();
+                if (response.status === 429) {
+                    throw new Error('המערכת עמוסה כרגע. נסה שוב בעוד מספר דקות.');
+                }
                 throw new Error(`${translations[currentLang].serverErrorPrefix}${response.status} - ${errorData.error || 'Unknown error'}`);
             }
             const data = await response.json();
