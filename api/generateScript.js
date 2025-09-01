@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
   const words = journalEntry.trim().split(/\s+/).slice(0, maxInputLength);
   const trimmedEntry = words.join(' ');
   const lang = detectLanguage(trimmedEntry);
-  const modelToUse = 'deepseek/deepseek-chat-v3.1:free';
+  const modelToUse = 'openai/gpt-oss-20b:free';
 
   let maxTokens = 700;
   const wordCount = trimmedEntry.split(/\s+/).length;
@@ -72,7 +72,7 @@ module.exports = async (req, res) => {
       max_tokens: maxTokens
     }, {
       headers: {
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        Authorization: 'Bearer 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',
         'Content-Type': 'application/json'
       }
     });
