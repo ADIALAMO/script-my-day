@@ -3,12 +3,20 @@
 
 const axios = require('axios');
 require('dotenv').config();
+const Joi = require('joi'); // ולידציה
 
 function detectLanguage(text) {
   if (typeof text !== 'string') return 'en';
   const hebrewPattern = /[\u0590-\u05FF]/;
   return hebrewPattern.test(text) ? 'he' : 'en';
 }
+
+// סכימת ולידציה
+const schema = Joi.object({
+  journalEntry: Joi.string().min(3).max(3000).required(),
+  genre: Joi.string().min(2).max(40).required(),
+  continueScript: Joi.string().allow('').optional()
+});
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -17,24 +25,25 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { journalEntry, genre, continueScript } = req.body || {};
-  if (!journalEntry || !genre) {
-    return res.status(400).json({ error: 'Journal entry and genre are required.' });
+  // ולידציה
+  const { error, value } = schema.validate(req.body || {});
+  if (error) {
+    return res.status(400).json({ error: 'Invalid input', details: error.details });
   }
+  const { journalEntry, genre, continueScript } = value;
 
   const maxInputLength = 300;
-  // חיתוך הקלט ל-300 מילים (ולא תווים)
   const words = journalEntry.trim().split(/\s+/).slice(0, maxInputLength);
   const trimmedEntry = words.join(' ');
   const lang = detectLanguage(trimmedEntry);
-  const modelToUse = 'deepseek/deepseek-chat-v3-0324:free';
+  const modelToUse = 'deepseek/deepseek-chat-v3.1:free';
 
   let maxTokens = 700;
   const wordCount = trimmedEntry.split(/\s+/).length;
   if (wordCount <= 8) maxTokens = 80;
   else if (wordCount <= 20) maxTokens = 180;
   else if (wordCount <= 50) maxTokens = 350;
-  else if (wordCount > 100) maxTokens = 1600; // הגדלת מגבלת הפלט לכ-800-1000 מילים
+  else if (wordCount > 100) maxTokens = 1600;
 
   let prompt;
   if (continueScript) {
@@ -67,9 +76,14 @@ module.exports = async (req, res) => {
         'Content-Type': 'application/json'
       }
     });
-    const script = response.data.choices[0].message.content;
+    const script = response.data?.choices?.[0]?.message?.content || response.data?.choices?.[0]?.text || '';
+    if (!script) {
+      console.error('No script returned from API:', response.data);
+      throw new Error('No script returned from API');
+    }
     res.json({ script });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to generate script.', details: error.message });
+    console.error('API error:', error?.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to generate script.', details: error?.response?.data || error.message });
   }
 };
