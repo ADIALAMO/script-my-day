@@ -27,16 +27,18 @@ Contact: adialamo@gmail.com
   </header>
   <section class="hero">
     <div class="hero-content">
-      <h1 class="hero-title">יומני היקר, תסרט לי את חיי</h1>
-      <p class="hero-desc">ספר לי מה עבר עליך היום, בחר ז'אנר, ואני אצור עבורך קומיקס!</p>
+      <h1 class="hero-title" id="main-heading">יומני היקר, תסרט לי את חיי</h1>
+      <p class="hero-desc subtitle" id="subtitle">ספר לי מה עבר עליך היום, בחר ז'אנר, ואני אצור עבורך קומיקס!</p>
       <img src="/comic-hero.svg" alt="איור קומיקס" class="hero-img">
     </div>
   </section>
   <main>
     <div class="card input-card">
-      <h2 class="section-title">כתוב את היומן שלך</h2>
+      <h2 class="section-title" id="journal-section-heading">כתוב את היומן שלך</h2>
       <form id="journal-form" role="form">
+        <label id="journal-label" for="journal-entry">רשומה יומית:</label>
         <textarea id="journal-entry" rows="7" required aria-required="true" placeholder="כתוב כאן את הרשומה היומית שלך... (לדוג' - היום פגשתי חבר ישן...)" class="input-textarea"></textarea>
+        <label id="genre-label" for="genre-carousel">בחר ז'אנר קומיקס:</label>
         <div class="genre-carousel" id="genre-carousel">
           <!-- כפתורי ז'אנרים עם אייקונים יוזנו דינמית -->
         </div>

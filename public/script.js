@@ -50,8 +50,6 @@ const translations = {
     }
 };
 
-let currentLang; // הגדרה גלובלית בלבד
-
 document.addEventListener('DOMContentLoaded', () => {
     // אלמנטים ב-DOM
     const appTitle = document.getElementById('app-title');
@@ -71,10 +69,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const subtitle = document.getElementById('subtitle');
     const saveScriptBtn = document.getElementById('save-script');
     const saveStoryBtn = document.getElementById('save-story');
+    const themeToggle = document.getElementById('theme-toggle');
+
+    // בדיקת קיום אלמנטים קריטיים
+    if (!appTitle || !mainHeading || !journalSectionHeading || !journalLabel || !journalEntry || !genreLabel || !generateButton || !loadingDiv || !errorDiv || !scriptOutput || !scriptOutputHeading || !langToggleHe || !langToggleEn || !saveScriptBtn || !saveStoryBtn || !themeToggle) {
+        console.error('חסר אלמנט קריטי ב-HTML. ודא שכל ה-id-ים קיימים.');
+        return;
+    }
 
     // ז'אנרים עם אייקונים SVG (בהתאם לעיצוב המצורף)
     const genres = [
-        { value: 'adventure', he: 'הרפתקאות', en: 'Adventure', icon: '<svg width="32" height="32" fill="none" stroke="#6d28d9" stroke-width="2" viewBox="0 0 24 24"><path d="M3 21l9-18 9 18H3z"/></svg>' },
+        { value: 'adventure', he: 'הרפתקאות', en: 'Adventure', icon: "<span style='font-size:2em;color:red;'>X</span>" },
         { value: 'comedy', he: 'קומדיה', en: 'Comedy', icon: '<svg width="32" height="32" fill="none" stroke="#6d28d9" stroke-width="2" viewBox="0 0 24 24"><circle cx="8" cy="8" r="4"/><circle cx="16" cy="16" r="4"/><path d="M12 12l4-4"/></svg>' },
         { value: 'drama', he: 'דרמה', en: 'Drama', icon: '<svg width="32" height="32" fill="none" stroke="#6d28d9" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 15c1.333-1.333 2.667-1.333 4 0"/></svg>' },
         { value: 'sci-fi', he: 'מדע בדיוני', en: 'Sci-Fi', icon: '<svg width="32" height="32" fill="none" stroke="#6d28d9" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="10" ry="4"/><ellipse cx="12" cy="12" rx="4" ry="10"/></svg>' },
@@ -83,72 +88,11 @@ document.addEventListener('DOMContentLoaded', () => {
         { value: 'romance', he: 'רומנטיקה', en: 'Romance', icon: '<svg width="32" height="32" fill="none" stroke="#6d28d9" stroke-width="2" viewBox="0 0 24 24"><path d="M12 21s-8-6-8-10a6 6 0 0 1 12 0 6 6 0 0 1 12 0c0 4-8 10-8 10z"/></svg>' },
         { value: 'action', he: 'פעולה', en: 'Action', icon: '<svg width="32" height="32" fill="none" stroke="#6d28d9" stroke-width="2" viewBox="0 0 24 24"><path d="M2 12h20M12 2v20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"/></svg>' },
     ];
-
     let selectedGenre = genres[0].value;
 
-    // יצירת כפתור בחירת ז'אנר וחלונית (modal) לבחירה
-    const genreSelectBtn = document.createElement('button');
-    genreSelectBtn.id = 'genre-select-btn';
-    genreSelectBtn.type = 'button';
-    genreSelectBtn.className = 'genre-select-btn';
-    genreSelectBtn.textContent = translations[currentLang]?.genreLabel || 'בחר ז\'אנר קומיקס:';
-    genreLabel.parentNode.insertBefore(genreSelectBtn, genreLabel.nextSibling);
+    // כפתור המשך תסריט (רק אחרי currentLang)
+    let currentLang = htmlElement.getAttribute('lang') || 'he';
 
-    // יצירת modal
-    const genreModal = document.createElement('div');
-    genreModal.id = 'genre-modal';
-    genreModal.className = 'genre-modal';
-    genreModal.style.display = 'none';
-    genreModal.innerHTML = `
-        <div class="genre-modal-content">
-            <span class="genre-modal-close">&times;</span>
-            <h3 id="genre-modal-title"></h3>
-            <ul id="genre-modal-list" class="genre-modal-list"></ul>
-        </div>
-    `;
-    document.body.appendChild(genreModal);
-    const genreModalTitle = genreModal.querySelector('#genre-modal-title');
-    const genreModalList = genreModal.querySelector('#genre-modal-list');
-    const genreModalClose = genreModal.querySelector('.genre-modal-close');
-
-    // פונקציה לעדכון רשימת הז'אנרים במודל
-    function renderGenreModalOptions(lang) {
-        genreModalList.innerHTML = '';
-        genres.forEach(g => {
-            const li = document.createElement('li');
-            li.className = 'genre-modal-item';
-            li.dataset.value = g.value;
-            li.textContent = g[lang];
-            if (g.value === selectedGenre) li.classList.add('selected');
-            li.addEventListener('click', () => {
-                selectedGenre = g.value;
-                genreSelectBtn.textContent = g[lang];
-                genreModal.style.display = 'none';
-            });
-            genreModalList.appendChild(li);
-        });
-    }
-
-    // פותח את המודל
-    genreSelectBtn.addEventListener('click', () => {
-        genreModal.style.display = 'block';
-        renderGenreModalOptions(currentLang);
-        genreModalTitle.textContent = translations[currentLang].genreLabel;
-    });
-    // סגירת המודל
-    genreModalClose.addEventListener('click', () => {
-        genreModal.style.display = 'none';
-    });
-    window.addEventListener('click', (e) => {
-        if (e.target === genreModal) genreModal.style.display = 'none';
-    });
-
-    // מחזיר את הז'אנר הנבחר
-    function getSelectedGenre() {
-        return selectedGenre;
-    }
-
-    // כפתור המשך תסריט
     const continueScriptBtn = document.createElement('button');
     continueScriptBtn.type = 'button';
     continueScriptBtn.id = 'continue-script';
@@ -160,8 +104,36 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastScript = '';
     let continueUsed = false;
 
+    // פונקציה ליצירת גריד ז'אנרים
+    function renderGenreGrid(lang) {
+        console.log('renderGenreGrid called with lang:', lang);
+        const grid = document.getElementById('genre-carousel');
+        if (!grid) {
+            console.error('genre-carousel לא קיים ב-DOM!');
+            return;
+        }
+        grid.innerHTML = '';
+        genres.forEach(g => {
+            console.log('יוצר כפתור עבור ז׳אנר:', g.value);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'genre-btn';
+            btn.dataset.value = g.value;
+            btn.innerHTML = g.icon + `<span>${g[lang]}</span>`;
+            if (g.value === selectedGenre) btn.classList.add('selected');
+            btn.addEventListener('click', () => {
+                selectedGenre = g.value;
+                document.querySelectorAll('.genre-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+            });
+            grid.appendChild(btn);
+        });
+        console.log('סיום renderGenreGrid, כפתורים ב-grid:', grid.children.length);
+    }
+
     // פונקציה לעדכון טקסטים לפי שפה
     function updateContent(lang) {
+        console.log('updateContent called with lang:', lang);
         appTitle.textContent = translations[lang].appTitle;
         mainHeading.textContent = translations[lang].mainHeading;
         if (subtitle) subtitle.textContent = translations[lang].subtitle;
@@ -177,11 +149,6 @@ document.addEventListener('DOMContentLoaded', () => {
         langToggleHe.textContent = translations[lang].langHebrew;
         langToggleEn.textContent = translations[lang].langEnglish;
         continueScriptBtn.textContent = translations[lang].continueScriptBtn;
-        genreSelectBtn.textContent = selectedGenre
-            ? genres.find(g => g.value === selectedGenre)[lang]
-            : translations[lang].genreLabel;
-        renderGenreModalOptions(lang); // <-- עדכון הז'אנרים בשפה הנכונה
-        // עדכון כפתורי שמירה
         saveScriptBtn.textContent = translations[lang].saveScriptBtn || (lang === 'he' ? 'שמור תסריט' : 'Save Script');
         saveStoryBtn.textContent = translations[lang].saveStoryBtn || (lang === 'he' ? 'שמור סיפור' : 'Save Story');
         if (lang === 'he') {
@@ -199,7 +166,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // קביעת שפת ברירת המחדל
-    currentLang = htmlElement.getAttribute('lang') || 'he';
     updateContent(currentLang);
 
     // הוספת מאזינים לכפתורי השפה
@@ -212,12 +178,18 @@ document.addEventListener('DOMContentLoaded', () => {
         updateContent('en');
     });
 
+    // מאזין למצב כהה
+    themeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark');
+        themeToggle.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+    });
+
     // מאזין לשליחת הטופס
     document.getElementById('journal-form').addEventListener('submit', async (event) => {
         event.preventDefault();
         console.log('submit event fired');
         const journalEntryValue = journalEntry.value.trim();
-        const genre = getSelectedGenre();
+        const genre = selectedGenre;
         if (!journalEntryValue || !genre) {
             errorDiv.style.display = 'block';
             errorDiv.textContent = translations[currentLang].missingFieldsError;
@@ -402,7 +374,18 @@ document.addEventListener('DOMContentLoaded', () => {
     wordCountDiv.style.fontSize = '0.98em';
     wordCountDiv.style.color = '#888';
     wordCountDiv.style.marginTop = '0.2em';
-    journalEntry.parentNode.insertBefore(wordCountDiv, journalEntry.nextSibling);
+    if (journalEntry && journalEntry.parentNode) {
+        journalEntry.parentNode.insertBefore(wordCountDiv, journalEntry.nextSibling);
+    } else {
+        console.error('journalEntry או הורה שלו לא קיימים ב-DOM. לא ניתן להוסיף word-count-indicator.');
+    }
+    // בדיקה עבור genreLabel
+    if (!genreLabel) {
+        console.error('genreLabel לא קיים ב-DOM. ודא שיש אלמנט עם id="genre-label" ב-HTML.');
+    } else if (!genreLabel.parentNode) {
+        console.error('genreLabel.parentNode הוא null. ייתכן שהאלמנט לא שובץ נכון ב-HTML.');
+    }
+    // אין גישה ל-genreLabel.parentNode מעבר לבדיקה זו!
 
     function updateWordCount() {
         const count = journalEntry.value.trim() ? journalEntry.value.trim().split(/\s+/).length : 0;
@@ -487,40 +470,7 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.head.appendChild(buttonHoverStyle);
 
-    // יצירת גריד של ז'אנרים עם אייקונים
-    function renderGenreGrid(lang) {
-        const grid = document.getElementById('genre-grid');
-        grid.innerHTML = '';
-        genres.forEach(g => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'genre-btn';
-            btn.dataset.value = g.value;
-            btn.innerHTML = `${g.icon}<span>${g[lang]}</span>`;
-            if (g.value === selectedGenre) btn.classList.add('selected');
-            btn.addEventListener('click', () => {
-                selectedGenre = g.value;
-                document.querySelectorAll('.genre-btn').forEach(b => b.classList.remove('selected'));
-                btn.classList.add('selected');
-            });
-            grid.appendChild(btn);
-        });
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        renderGenreGrid(currentLang);
-        // ...existing code...
-        // עדכון גריד בשינוי שפה
-        function updateContent(lang) {
-            // ...existing code...
-            renderGenreGrid(lang);
-            // ...existing code...
-        }
-        // ...existing code...
-    });
-
     // Dark Mode Toggle
-    const themeToggle = document.getElementById('theme-toggle');
     themeToggle.addEventListener('click', () => {
         document.body.classList.toggle('dark');
         themeToggle.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
