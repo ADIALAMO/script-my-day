@@ -9,8 +9,8 @@ Contact: adialamo@gmail.com
 // תרגומים לשפות שונות
 const translations = {
     he: {
-        appTitle: 'יומני היקר, תסרט לי את חיי',
-        mainHeading: 'יומני היקר, תסרט לי את חיי',
+        appTitle: 'החיים כסרט',
+        mainHeading: 'החיים כסרט',
         subtitle: 'ספר לי מה עבר עליך היום ואת השאר תשאיר לי',
         journalSectionHeading: 'כתוב את היומן שלך',
         journalLabel: 'רשומה יומית:',
@@ -29,8 +29,8 @@ const translations = {
         saveStoryBtn: 'שמור סיפור'
     },
     en: {
-        appTitle: 'Dear Diary, Script My Life',
-        mainHeading: 'Dear Diary, Script My Life',
+        appTitle: 'Life as a Movie',
+        mainHeading: 'Life as a Movie',
         subtitle: 'Tell me about your day, and I’ll do the rest',
         journalSectionHeading: 'Write Your Journal Entry',
         journalLabel: 'Journal Entry:',
@@ -219,6 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showSaveScriptBtn(true);
             scriptOutputHeading.textContent = translations[currentLang].scriptOutputHeading;
             scriptOutputHeading.style.display = 'block';
+            document.getElementById('result-card').style.display = 'block';
             continueScriptBtn.style.display = 'inline-block';
             continueScriptBtn.disabled = false;
         } catch (err) {
@@ -256,6 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // הצג כפתור שמירה רק אם יש תסריט
     function showSaveScriptBtn(show) {
         saveScriptBtn.style.display = show ? 'inline-block' : 'none';
+        document.getElementById('result-card').style.display = show ? 'block' : 'none';
     }
 
     // כפתור שמירת סיפור

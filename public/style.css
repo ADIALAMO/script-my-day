@@ -37,6 +37,11 @@ body {
     transition: background 0.5s;
 }
 
+body.dark {
+    background: #181818 !important;
+    color: #f6ede3 !important;
+}
+
 .container {
     background: var(--container-bg);
     border-radius: 18px;
@@ -49,6 +54,12 @@ body {
     box-sizing: border-box;
     position: relative;
     z-index: 1;
+}
+
+body.dark .container, body.dark .card, body.dark .input-card, body.dark .result-card {
+    background: #232323 !important;
+    color: #f6ede3 !important;
+    border-color: #444 !important;
 }
 
 header {
@@ -76,12 +87,20 @@ h1 {
     text-shadow: 0 2px 8px #e6d3c277;
 }
 
+body.dark h1 {
+    color: #ffe6b3 !important;
+}
+
 h2 {
     color: var(--fun-accent);
     font-size: 1.7em;
     margin-bottom: 25px;
     text-align: center;
     font-weight: 700;
+}
+
+body.dark h2 {
+    color: #ffe6b3 !important;
 }
 
 h3 {
@@ -92,6 +111,10 @@ h3 {
     border-bottom: 2px solid var(--border-color);
     padding-bottom: 5px;
     text-align: center;
+}
+
+body.dark h3 {
+    color: #ffe6b3 !important;
 }
 
 .lang-switcher button {
@@ -136,6 +159,10 @@ label {
     display: block;
 }
 
+body.dark label {
+    color: #ffe6b3 !important;
+}
+
 textarea {
     padding: 13px 15px;
     font-size: 1.08em;
@@ -146,6 +173,12 @@ textarea {
     transition: border-color 0.2s, box-shadow 0.2s;
     resize: vertical;
     min-height: 120px;
+}
+
+body.dark textarea {
+    background: #181818 !important;
+    color: #fff !important;
+    border-color: #444 !important;
 }
 
 textarea:focus {
@@ -170,26 +203,26 @@ textarea:focus {
     align-items: center;
     justify-content: center;
     background: #fff8f2;
-    border: 4px solid red !important;
+    border: 2px solid var(--border-color);
     border-radius: 12px;
     box-shadow: 0 1.5px 6px #e6b07a22;
-    padding: 16px 18px 10px 18px;
-    min-width: 120px;
-    min-height: 120px;
-    font-size: 1.08em;
+    padding: 12px 12px 8px 12px;
+    min-width: 90px;
+    min-height: 90px;
+    font-size: 1em;
     font-weight: 700;
     color: var(--primary-hover);
     cursor: pointer;
     transition: background 0.18s, border 0.18s, color 0.18s, box-shadow 0.18s;
     margin: 0;
     outline: none;
-    gap: 8px;
+    gap: 6px;
 }
 .genre-btn svg {
     display: block;
-    margin-bottom: 4px;
-    width: 36px;
-    height: 36px;
+    margin-bottom: 2px;
+    width: 28px;
+    height: 28px;
     stroke: var(--primary-hover);
     fill: none;
 }
@@ -260,12 +293,23 @@ button[type="submit"]:hover, .secondary-btn:hover {
     background: var(--primary-hover);
 }
 
+body.dark .secondary-btn, body.dark button[type="submit"] {
+    background: linear-gradient(90deg, #6d4c2b 60%, #e6b07a 100%) !important;
+    color: #fff !important;
+}
+
 .message {
     padding: 12px;
     margin-top: 20px;
     border-radius: 8px;
     font-weight: 700;
     text-align: center;
+}
+
+body.dark .message {
+    background: #232323 !important;
+    color: #ffe6b3 !important;
+    border-color: #444 !important;
 }
 
 .loading {
@@ -293,16 +337,35 @@ button[type="submit"]:hover, .secondary-btn:hover {
 }
 
 #script-output {
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    font-family: var(--font-family-mono);
-    font-size: 1.05em;
-    line-height: 1.7;
-    color: var(--text-color);
-    max-height: 500px;
+    max-width: 100%;
+    max-height: 300px;
+    overflow-x: auto;
     overflow-y: auto;
-    padding: 10px 0;
+    background: #f7f7fa;
+    border-radius: 10px;
+    border: 1px solid #d1d1e0;
+    margin: 0.5em 0 1em 0;
+    padding: 1em 1.2em;
+    font-size: 1.05em;
+    white-space: pre-wrap;
+    word-break: break-word;
+    box-sizing: border-box;
+    transition: box-shadow 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+
+body.dark #script-output {
+    background: #232323;
+    color: #ffe6b3;
+    border-color: #444;
+}
+
+#script-output pre {
+    margin: 0;
+    font-family: inherit;
+    background: none;
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 html[dir="rtl"] body {
@@ -334,6 +397,10 @@ html[dir="ltr"] body {
     margin-bottom: 1.5em;
     text-align: center;
     letter-spacing: 0.01em;
+}
+
+body.dark .subtitle {
+    color: #ffe6b3 !important;
 }
 
 .genre-select {
@@ -401,4 +468,19 @@ html[dir="ltr"] body {
         left: 2px;
         top: -6px;
     }
+}
+
+.result-card {
+    display: block !important;
+    background: #fff7f0;
+    border: 1.5px solid var(--border-color);
+    border-radius: 12px;
+    padding: 22px 16px;
+    box-shadow: 0 1px 6px #8d674822 inset;
+    margin-top: 18px;
+}
+body.dark .result-card {
+    background: #232323 !important;
+    color: #ffe6b3 !important;
+    border-color: #444 !important;
 }

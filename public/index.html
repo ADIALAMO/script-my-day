@@ -10,7 +10,7 @@ Contact: adialamo@gmail.com
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title id="app-title">יומן חיים - מחולל תסריטי קומיקס</title>
+  <title id="app-title">החיים כסרט - מחולל תסריטי קומיקס</title>
   <link rel="stylesheet" href="style.css">
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700;900&family=Heebo:wght@300;400;700&display=swap" rel="stylesheet">
 </head>
@@ -21,13 +21,13 @@ Contact: adialamo@gmail.com
       <div class="header-actions">
         <button id="lang-toggle-he" class="lang-btn active">עברית</button>
         <button id="lang-toggle-en" class="lang-btn">English</button>
-        <button id="theme-toggle" class="theme-btn" title="החלף מצב כהה/בהיר">🌙</button>
+        <button id="theme-toggle" class="theme-btn" title="החלף מצב חשוך/בהיר">🌙</button>
       </div>
     </div>
   </header>
   <section class="hero">
     <div class="hero-content">
-      <h1 class="hero-title" id="main-heading">יומני היקר, תסרט לי את חיי</h1>
+      <h1 class="hero-title" id="main-heading">החיים כסרט</h1>
       <p class="hero-desc subtitle" id="subtitle">ספר לי מה עבר עליך היום, בחר ז'אנר, ואני אצור עבורך קומיקס!</p>
       <img src="/comic-hero.svg" alt="איור קומיקס" class="hero-img">
     </div>
@@ -48,7 +48,7 @@ Contact: adialamo@gmail.com
       <div id="loading" class="message loading" style="display: none;">מייצר את הקומיקס שלך... ✨</div>
       <div id="error" class="message error" style="display: none;"></div>
     </div>
-    <div class="card result-card" id="result-card" style="display:none;">
+    <div class="card result-card" id="result-card" style="display:block;">
       <h3 id="script-output-heading" class="result-title">התסריט שלך:</h3>
       <div id="script-output" aria-live="polite"></div>
       <div class="result-actions">
