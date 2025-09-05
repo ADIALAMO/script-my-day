@@ -58,7 +58,7 @@ body.dark {
 
 body.dark .container, body.dark .card, body.dark .input-card, body.dark .result-card {
     background: #232323 !important;
-    color: #f6ede3 !important;
+    color: #ffe6b3 !important;
     border-color: #444 !important;
 }
 
@@ -159,7 +159,7 @@ label {
     display: block;
 }
 
-body.dark label {
+body.dark label, body.dark h1, body.dark h2, body.dark h3, body.dark .subtitle {
     color: #ffe6b3 !important;
 }
 
@@ -175,7 +175,7 @@ textarea {
     min-height: 120px;
 }
 
-body.dark textarea {
+body.dark input, body.dark textarea {
     background: #181818 !important;
     color: #fff !important;
     border-color: #444 !important;
@@ -203,26 +203,26 @@ textarea:focus {
     align-items: center;
     justify-content: center;
     background: #fff8f2;
-    border: 2px solid var(--border-color);
+    border: 1.5px solid var(--border-color);
     border-radius: 12px;
     box-shadow: 0 1.5px 6px #e6b07a22;
-    padding: 12px 12px 8px 12px;
-    min-width: 90px;
-    min-height: 90px;
-    font-size: 1em;
+    padding: 10px 10px 6px 10px;
+    min-width: 80px;
+    min-height: 80px;
+    font-size: 0.98em;
     font-weight: 700;
     color: var(--primary-hover);
     cursor: pointer;
     transition: background 0.18s, border 0.18s, color 0.18s, box-shadow 0.18s;
     margin: 0;
     outline: none;
-    gap: 6px;
+    gap: 4px;
 }
 .genre-btn svg {
     display: block;
     margin-bottom: 2px;
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
     stroke: var(--primary-hover);
     fill: none;
 }
@@ -237,7 +237,6 @@ textarea:focus {
     color: var(--primary-hover);
     border-color: var(--primary-hover);
 }
-/* Dark mode for genre grid */
 body.dark #genre-carousel {
     background: none;
 }
@@ -480,6 +479,50 @@ body.dark .subtitle {
     margin-top: 18px;
 }
 body.dark .result-card {
+    background: #232323 !important;
+    color: #ffe6b3 !important;
+    border-color: #444 !important;
+}
+
+.hero-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin: 0 auto;
+    max-width: 600px;
+}
+.hero-title, h1 {
+    text-align: center;
+    margin: 0.5em 0 0.2em 0;
+    font-size: 2.7em;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: var(--primary-color);
+    text-shadow: 0 2px 8px #e6d3c277;
+}
+.subtitle, .hero-desc {
+    text-align: center;
+    font-size: 1.25rem;
+    font-weight: 400;
+    color: var(--light-text-color);
+    margin-top: 0.5em;
+    margin-bottom: 1.5em;
+    letter-spacing: 0.01em;
+}
+.card, .input-card, .result-card {
+    margin: 0 auto 24px auto;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(44,62,80,0.10), 0 1.5px 6px #e6b07a33;
+    border: 1.5px solid var(--border-color);
+    background: var(--container-bg);
+    padding: 32px 24px;
+    max-width: 600px;
+    width: 100%;
+    box-sizing: border-box;
+}
+body.dark .card, body.dark .input-card, body.dark .result-card {
     background: #232323 !important;
     color: #ffe6b3 !important;
     border-color: #444 !important;

@@ -473,8 +473,20 @@ document.addEventListener('DOMContentLoaded', () => {
     document.head.appendChild(buttonHoverStyle);
 
     // Dark Mode Toggle
+    function setDarkMode(active) {
+        if (active) {
+            document.body.classList.add('dark');
+            themeToggle.textContent = '☀️';
+        } else {
+            document.body.classList.remove('dark');
+            themeToggle.textContent = '🌙';
+        }
+    }
     themeToggle.addEventListener('click', () => {
-        document.body.classList.toggle('dark');
-        themeToggle.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+        setDarkMode(!document.body.classList.contains('dark'));
     });
+    // טעינה ראשונית לפי העדפת מערכת
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        setDarkMode(true);
+    }
 });
