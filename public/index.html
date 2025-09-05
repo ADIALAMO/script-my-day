@@ -12,60 +12,56 @@ Contact: adialamo@gmail.com
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title id="app-title">יומן חיים - מחולל תסריטי קומיקס</title>
   <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700&family=Roboto+Mono&family=Varela+Round&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700;900&family=Heebo:wght@300;400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1 id="main-heading">יומני היקר, תסרט לי את חיי</h1>
-      <div class="lang-switcher lang-switcher-corner">
-        <button id="lang-toggle-he" class="active">עברית</button>
-        <button id="lang-toggle-en">English</button>
+  <header class="main-header">
+    <div class="header-row">
+      <img src="/logo.svg" alt="Logo" class="logo">
+      <div class="header-actions">
+        <button id="lang-toggle-he" class="lang-btn active">עברית</button>
+        <button id="lang-toggle-en" class="lang-btn">English</button>
+        <button id="theme-toggle" class="theme-btn" title="החלף מצב כהה/בהיר">🌙</button>
       </div>
-      <h2 id="subtitle" class="subtitle">ספר לי מה עבר עליך היום ואת השאר תשאיר לי</h2>
-    </header>
-
-    <main>
-      <section aria-labelledby="journal-section">
-        <h2 id="journal-section-heading">כתוב את היומן שלך</h2>
-        <form id="journal-form" role="form">
-          <label for="journal-entry" id="journal-label">רשומה יומית:</label>
-          <textarea id="journal-entry" rows="7" required aria-required="true" placeholder="כתוב כאן את הרשומה היומית שלך..."></textarea>
-
-          <label for="genre-select" id="genre-label">בחר ז'אנר קומיקס:</label>
-          <ul class="genre-list">
-            <li><label><input type="radio" name="genre" value="adventure" required> הרפתקאות</label></li>
-            <li><label><input type="radio" name="genre" value="comedy"> קומדיה</label></li>
-            <li><label><input type="radio" name="genre" value="drama"> דרמה</label></li>
-            <li><label><input type="radio" name="genre" value="sci-fi"> מדע בדיוני</label></li>
-            <li><label><input type="radio" name="genre" value="horror"> אימה</label></li>
-            <li><label><input type="radio" name="genre" value="fantasy"> פנטזיה</label></li>
-            <li><label><input type="radio" name="genre" value="romance"> רומנטיקה</label></li>
-            <li><label><input type="radio" name="genre" value="action"> פעולה</label></li>
-            <li><label><input type="radio" name="genre" value="mystery"> מסתורין</label></li>
-          </ul>
-
-          <button type="submit" id="generate-button">צור תסריט</button>
-          <button type="button" id="save-story" class="secondary-btn">שמור סיפור</button>
-        </form>
-
-        <div id="loading" class="message loading" style="display: none;">טוען...</div>
-        <div id="error" class="message error" style="display: none;"></div>
-
-        <div class="script-output-container">
-          <h3 id="script-output-heading" style="display: none;">התסריט שלך:</h3>
-          <div id="script-output" aria-live="polite"></div>
-          <button type="button" id="save-script" class="secondary-btn" style="display:none;">שמור תסריט</button>
-          <!-- כפתור המשך תסריט יתווסף דינמית ע"י JS -->
+    </div>
+  </header>
+  <section class="hero">
+    <div class="hero-content">
+      <h1 class="hero-title">יומני היקר, תסרט לי את חיי</h1>
+      <p class="hero-desc">ספר לי מה עבר עליך היום, בחר ז'אנר, ואני אצור עבורך קומיקס!</p>
+      <img src="/comic-hero.svg" alt="איור קומיקס" class="hero-img">
+    </div>
+  </section>
+  <main>
+    <div class="card input-card">
+      <h2 class="section-title">כתוב את היומן שלך</h2>
+      <form id="journal-form" role="form">
+        <textarea id="journal-entry" rows="7" required aria-required="true" placeholder="כתוב כאן את הרשומה היומית שלך... (לדוג' - היום פגשתי חבר ישן...)" class="input-textarea"></textarea>
+        <div class="genre-carousel" id="genre-carousel">
+          <!-- כפתורי ז'אנרים עם אייקונים יוזנו דינמית -->
         </div>
-      </section>
-    </main>
-  </div>
+        <button type="submit" id="generate-button" class="button main-cta">צור תסריט 🎬</button>
+        <button type="button" id="save-story" class="secondary-btn">שמור סיפור</button>
+      </form>
+      <div id="loading" class="message loading" style="display: none;">מייצר את הקומיקס שלך... ✨</div>
+      <div id="error" class="message error" style="display: none;"></div>
+    </div>
+    <div class="card result-card" id="result-card" style="display:none;">
+      <h3 id="script-output-heading" class="result-title">התסריט שלך:</h3>
+      <div id="script-output" aria-live="polite"></div>
+      <div class="result-actions">
+        <button type="button" id="save-script" class="secondary-btn">שמור תסריט</button>
+        <button type="button" id="share-script" class="secondary-btn">שתף</button>
+        <button type="button" id="copy-script" class="secondary-btn">העתק</button>
+      </div>
+    </div>
+  </main>
   <footer class="footer">
-    <span>נבנה באהבה ובכיף &copy; 2025</span>
-    <footer style="text-align:center; margin-top:2em; color:#888; font-size:0.95em;">
-      © 2025 adi alamo. All rights reserved. This website and its concept are the intellectual property of adi alamo. Unauthorized copying or use is prohibited.
-    </footer>
+    <span>נבנה באהבה &copy; 2025 adi alamo</span>
+    <div class="footer-links">
+      <a href="mailto:adialamo@gmail.com">צור קשר</a>
+      <a href="#" id="feedback-link">פידבק</a>
+    </div>
   </footer>
   <script src="script.js"></script>
 </body>

@@ -72,17 +72,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveScriptBtn = document.getElementById('save-script');
     const saveStoryBtn = document.getElementById('save-story');
 
-    // ז'אנרים - מיפוי לערכים ולתרגום
+    // ז'אנרים עם אייקונים
     const genres = [
-        { value: 'adventure', he: 'הרפתקאות', en: 'Adventure' },
-        { value: 'comedy', he: 'קומדיה', en: 'Comedy' },
-        { value: 'drama', he: 'דרמה', en: 'Drama' },
-        { value: 'sci-fi', he: 'מדע בדיוני', en: 'Sci-Fi' },
-        { value: 'horror', he: 'אימה', en: 'Horror' },
-        { value: 'fantasy', he: 'פנטזיה', en: 'Fantasy' },
-        { value: 'romance', he: 'רומנטיקה', en: 'Romance' },
-        { value: 'action', he: 'פעולה', en: 'Action' },
-        { value: 'mystery', he: 'מסתורין', en: 'Mystery' }
+        { value: 'adventure', he: 'הרפתקאות', en: 'Adventure', icon: '🧭' },
+        { value: 'comedy', he: 'קומדיה', en: 'Comedy', icon: '🎭' },
+        { value: 'drama', he: 'דרמה', en: 'Drama', icon: '🎬' },
+        { value: 'sci-fi', he: 'מדע בדיוני', en: 'Sci-Fi', icon: '🤖' },
+        { value: 'horror', he: 'אימה', en: 'Horror', icon: '👻' },
+        { value: 'fantasy', he: 'פנטזיה', en: 'Fantasy', icon: '🧙‍♂️' },
+        { value: 'romance', he: 'רומנטיקה', en: 'Romance', icon: '💖' },
+        { value: 'action', he: 'פעולה', en: 'Action', icon: '💥' },
+        { value: 'mystery', he: 'מסתורין', en: 'Mystery', icon: '🕵️‍♂️' }
     ];
 
     // יצירת כפתור בחירת ז'אנר וחלונית (modal) לבחירה
@@ -196,6 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         langToggleHe.classList.toggle('active', lang === 'he');
         langToggleEn.classList.toggle('active', lang === 'en');
+        renderGenreCarousel(lang);
     }
 
     // קביעת שפת ברירת המחדל
@@ -486,4 +487,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     `;
     document.head.appendChild(buttonHoverStyle);
+
+    // יצירת carousel של ז'אנרים עם אייקונים
+    function renderGenreCarousel(lang) {
+        const carousel = document.getElementById('genre-carousel');
+        carousel.innerHTML = '';
+        genres.forEach(g => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'genre-btn';
+            btn.dataset.value = g.value;
+            btn.innerHTML = `<span class="genre-icon">${g.icon}</span><span>${g[lang]}</span>`;
+            if (g.value === selectedGenre) btn.classList.add('selected');
+            btn.addEventListener('click', () => {
+                selectedGenre = g.value;
+                document.querySelectorAll('.genre-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+            });
+            carousel.appendChild(btn);
+        });
+    }
+
+    // קריאה ראשונית
+    renderGenreCarousel(currentLang);
+
+    // Dark Mode Toggle
+    const themeToggle = document.getElementById('theme-toggle');
+    themeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark');
+        themeToggle.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+    });
 });
