@@ -114,11 +114,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         grid.innerHTML = '';
         genres.forEach(g => {
-            console.log('יוצר כפתור עבור ז׳אנר:', g.value);
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'genre-btn';
             btn.dataset.value = g.value;
+            btn.setAttribute('aria-label', g[lang]);
             btn.innerHTML = g.icon + `<span>${g[lang]}</span>`;
             if (g.value === selectedGenre) btn.classList.add('selected');
             btn.addEventListener('click', () => {
