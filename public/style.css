@@ -199,8 +199,8 @@ body.dark .card, body.dark .input-card, body.dark .result-card {
 
 #genre-carousel {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-  gap: 0.7em;
+  grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+  gap: 0.5em;
   margin: 1.1em 0 0.7em 0;
   justify-items: center;
 }
@@ -209,27 +209,33 @@ body.dark .card, body.dark .input-card, body.dark .result-card {
   background: #fff;
   border: 2px solid #e3e6ed;
   border-radius: 50%;
-  width: 56px; height: 56px;
-  font-size: 1.5em;
+  width: 44px; height: 44px;
+  font-size: 1.15em;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  transition: box-shadow var(--transition), border var(--transition), background var(--transition), color var(--transition);
+  transition: box-shadow var(--transition), border var(--transition), background var(--transition), color var(--transition), transform var(--transition);
   cursor: pointer;
   margin: 0 auto;
-  gap: 0.1em;
+  gap: 0.05em;
   color: #6c63ff;
   box-shadow: 0 1.5px 6px #6c63ff22;
   outline: none;
   position: relative;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .genre-btn span {
-  font-size: 0.8em;
+  font-size: 0.7em;
   margin-top: 0.1em;
   color: #23272e;
+  line-height: 1.1;
+  word-break: break-word;
+  max-width: 90%;
+  text-align: center;
 }
 
 .genre-btn.selected, .genre-btn:focus {
-  box-shadow: 0 0 0 4px #6c63ff33;
+  box-shadow: 0 0 0 3px #6c63ff33;
   border-color: #6c63ff;
   background: #f5f6fa;
   color: #fff;
