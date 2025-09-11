@@ -477,9 +477,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (active) {
             document.body.classList.add('dark');
             themeToggle.textContent = '☀️';
+            themeToggle.setAttribute('aria-label', 'מצב בהיר');
         } else {
             document.body.classList.remove('dark');
             themeToggle.textContent = '🌙';
+            themeToggle.setAttribute('aria-label', 'מצב כהה');
         }
     }
     themeToggle.addEventListener('click', () => {
@@ -489,4 +491,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
         setDarkMode(true);
     }
+
+    // נגישות: פוקוס אוטומטי על תיבת תסריט כשיש תוצאה
+    const observer = new MutationObserver(() => {
+        if (scriptOutput.textContent.trim().length > 0) {
+            scriptOutput.setAttribute('tabindex', '0');
+            scriptOutput.focus();
+        }
+    });
+    observer.observe(scriptOutput, { childList: true });
+
+    // Tooltip לכל כפתור פעולה
+    document.querySelectorAll('.result-actions button').forEach(btn => {
+        btn.addEventListener('focus', function() {
+            this.classList.add('show-tooltip');
+        });
+        btn.addEventListener('blur', function() {
+            this.classList.remove('show-tooltip');
+        });
+    });
 });

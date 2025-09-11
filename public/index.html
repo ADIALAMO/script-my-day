@@ -39,22 +39,22 @@ Contact: adialamo@gmail.com
         <label id="journal-label" for="journal-entry">רשומה יומית:</label>
         <textarea id="journal-entry" rows="7" required aria-required="true" placeholder="כתוב כאן את הרשומה היומית שלך... (לדוג' - היום פגשתי חבר ישן...)" class="input-textarea"></textarea>
         <label id="genre-label" for="genre-carousel">בחר ז'אנר קומיקס:</label>
-        <div class="genre-carousel" id="genre-carousel">
+        <div class="genre-carousel" id="genre-carousel" aria-label="בחירת ז'אנר קומיקס" role="group">
           <!-- כפתורי ז'אנרים עם אייקונים יוזנו דינמית -->
         </div>
-        <button type="submit" id="generate-button" class="button main-cta">צור תסריט 🎬</button>
-        <button type="button" id="save-story" class="secondary-btn">שמור סיפור</button>
+        <button type="submit" id="generate-button" class="button main-cta" aria-label="צור תסריט">צור תסריט 🎬</button>
+        <button type="button" id="save-story" class="secondary-btn" aria-label="שמור סיפור">שמור סיפור</button>
       </form>
-      <div id="loading" class="message loading" style="display: none;">מייצר את הקומיקס שלך... ✨</div>
-      <div id="error" class="message error" style="display: none;"></div>
+      <div id="loading" class="message loading" style="display: none;" aria-live="polite">מייצר את הקומיקס שלך... ✨</div>
+      <div id="error" class="message error" style="display: none;" aria-live="assertive"></div>
     </div>
     <div class="card result-card" id="result-card" style="display:block;">
       <h3 id="script-output-heading" class="result-title">התסריט שלך:</h3>
-      <div id="script-output" aria-live="polite"></div>
+      <div id="script-output" aria-live="polite" tabindex="0"></div>
       <div class="result-actions">
-        <button type="button" id="save-script" class="secondary-btn">שמור תסריט</button>
-        <button type="button" id="share-script" class="secondary-btn">שתף</button>
-        <button type="button" id="copy-script" class="secondary-btn">העתק</button>
+        <button type="button" id="save-script" class="secondary-btn" aria-label="שמור תסריט" title="שמור תסריט">💾</button>
+        <button type="button" id="share-script" class="secondary-btn" aria-label="שתף" title="שתף">🔗</button>
+        <button type="button" id="copy-script" class="secondary-btn" aria-label="העתק" title="העתק">📋</button>
       </div>
     </div>
   </main>
