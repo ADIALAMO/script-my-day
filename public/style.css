@@ -206,76 +206,53 @@ body.dark .card, body.dark .input-card, body.dark .result-card {
 }
 
 .genre-btn {
-  background: #fff;
-  border: 2px solid #e3e6ed;
-  border-radius: 50%;
-  width: 44px; height: 44px;
-  font-size: 1.15em;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  transition: box-shadow var(--transition), border var(--transition), background var(--transition), color var(--transition), transform var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 7.5em;
+  min-height: 3.5em;
+  padding: 0.7em 1.6em;
+  font-size: 1.35em;
+  font-family: inherit;
+  border-radius: 2.2em;
+  border: 3px solid #111;
+  background: #fffbe6;
+  color: #222;
+  font-weight: 700;
+  margin: 0.4em 0.5em 0.4em 0.5em;
+  box-shadow: 0 2px 8px #0001, 0 0 0 4px #fff inset;
+  transition: background 0.18s, box-shadow 0.18s, color 0.18s, border 0.18s;
   cursor: pointer;
-  margin: 0 auto;
-  gap: 0.05em;
-  color: #6c63ff;
-  box-shadow: 0 1.5px 6px #6c63ff22;
-  outline: none;
-  position: relative;
-  min-width: 44px;
-  min-height: 44px;
-}
-
-.genre-btn[aria-label]:hover::after, .genre-btn[aria-label]:focus::after {
-  content: attr(aria-label);
-  position: absolute;
-  bottom: -2.2em;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #23272e;
-  color: #fff;
-  font-size: 0.85em;
-  padding: 0.25em 0.7em;
-  border-radius: 8px;
+  overflow: hidden;
+  gap: 0.7em;
   white-space: nowrap;
-  box-shadow: 0 2px 8px #23272e33;
-  opacity: 0.95;
-  pointer-events: none;
-  z-index: 10;
 }
 
 .genre-btn span {
-  font-size: 0.7em;
-  margin-top: 0.1em;
-  color: #23272e;
-  line-height: 1.1;
-  word-break: break-word;
-  max-width: 90%;
-  text-align: center;
+  font-size: 1em;
+  margin-inline-start: 0.4em;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
-.genre-btn.selected, .genre-btn:focus {
-  box-shadow: 0 0 0 3px #6c63ff33;
-  border-color: #6c63ff;
-  background: #f5f6fa;
-  color: #fff;
-  transform: scale(1.08);
+.genre-btn.selected {
+  background: #ffe600;
+  color: #111;
+  border-color: #222;
+  box-shadow: 0 0 0 4px #ffe60055;
 }
 
-.genre-btn:hover:not(.selected) {
-  background: #e3e6ed;
-  color: #6c63ff;
-  border-color: #48c6ef;
+.genre-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px #ffe600, 0 2px 8px #0001;
 }
 
-body.dark .genre-btn {
-  background: #23272e;
-  color: #f5f6fa;
-  border-color: #353a40;
-}
-
-body.dark .genre-btn.selected, body.dark .genre-btn:focus {
-  background: #6c63ff;
-  color: #fff;
-  border-color: #48c6ef;
+.genre-carousel {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.7em;
+  margin-bottom: 1.2em;
 }
 
 /* כפתור CTA קופץ */
@@ -501,8 +478,14 @@ body.dark #script-output {
     height: 80px;
   }
   .genre-btn {
-    width: 40px;
-    height: 40px;
+    min-width: 90vw;
+    font-size: 1.1em;
+    padding: 0.7em 0.7em;
+  }
+  .input-textarea {
+    min-height: 120px;
+    height: 150px;
     font-size: 1em;
+    padding: 0.8em 0.7em;
   }
 }
