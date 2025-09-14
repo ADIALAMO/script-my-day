@@ -213,7 +213,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(`${translations[currentLang].serverErrorPrefix}${response.status} - ${errorData.error || 'Unknown error'}`);
             }
             const data = await response.json();
-            scriptOutput.innerHTML = `<pre>${data.script}</pre>`;
+            // === Comic Panels Script Output ===
+            // פיצול התסריט לפאנלים (פסקאות/שורות)
+            const scriptPanels = (data.script || '').split(/\n{2,}|\r?\n/).filter(Boolean);
+            // צבע רקע קומיקס מתחלף
+            const panelColors = ["yellow", "blue", "red", "green"];
+            // בניית HTML של פאנלים קומיקס
+            scriptOutput.innerHTML = scriptPanels.map((panel, i) => `
+              <div class="comic-panel-card comic-bg-${panelColors[i % panelColors.length]}" tabindex="0" role="region" aria-label="פאנל קומיקס ${i+1}">
+                <div class="comic-bubble">
+                  <span class="bubble-icon" aria-hidden="true">💬</span>
+                  <span class="bubble-text">${panel.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
+                  <span class="bubble-tail" aria-hidden="true"></span>
+                </div>
+              </div>
+            `).join("");
             lastScript = data.script;
             continueUsed = false;
             showSaveScriptBtn(true);
