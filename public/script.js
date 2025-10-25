@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // מאזין למצב כהה
     themeToggle.addEventListener('click', () => {
-        setDarkMode(!document.body.classList.contains('dark'));
+        setDarkMode(!document.documentElement.classList.contains('dark'));
     });
 
     // מאזין לשליחת הטופס
@@ -488,17 +488,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Dark Mode Toggle
     function setDarkMode(active) {
         if (active) {
-            document.body.classList.add('dark');
+            document.documentElement.classList.add('dark');
             themeToggle.textContent = '☀️';
             themeToggle.setAttribute('aria-label', 'מצב בהיר');
         } else {
-            document.body.classList.remove('dark');
+            document.documentElement.classList.remove('dark');
             themeToggle.textContent = '🌙';
             themeToggle.setAttribute('aria-label', 'מצב כהה');
         }
     }
     themeToggle.addEventListener('click', () => {
-        setDarkMode(!document.body.classList.contains('dark'));
+        setDarkMode(!document.documentElement.classList.contains('dark'));
     });
     // טעינה ראשונית לפי העדפת מערכת
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
