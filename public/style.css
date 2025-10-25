@@ -397,3 +397,21 @@ body.dark #script-output {
   color: #48c6ef;
   border-bottom: 2px solid var(--accent-color);
 }
+
+/* === Journal Textarea Larger === */
+.input-textarea {
+  min-height: 308px;
+  height: 431px;
+  max-height: 616px;
+  font-size: 1.79em;
+  padding: 1.82em 1.68em;
+}
+@media (max-width: 600px) {
+  .input-textarea {
+    min-height: 140px;
+    height: 196px;
+    max-height: 308px;
+    font-size: 1.4em;
+    padding: 1.12em 0.98em;
+  }
+}
