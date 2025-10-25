@@ -110,13 +110,13 @@ body.dark {
   color: #6c63ff;
 }
 
-body.dark .lang-btn, body.dark .theme-btn {
+html.dark .lang-btn, html.dark .theme-btn {
   background: #23272e;
   color: #f5f6fa;
   border: 1.5px solid #353a40;
 }
 
-body.dark .lang-btn.active, body.dark .theme-btn.active {
+html.dark .lang-btn.active, html.dark .theme-btn.active {
   background: linear-gradient(90deg, #48c6ef 0%, #6c63ff 100%);
   color: #fff;
 }
@@ -183,7 +183,7 @@ body.dark .lang-btn.active, body.dark .theme-btn.active {
   transition: background var(--transition), box-shadow var(--transition);
 }
 
-body.dark .card, body.dark .input-card, body.dark .result-card {
+html.dark .card, html.dark .input-card, html.dark .result-card {
   background: var(--card-bg-dark) !important;
   color: #f5f6fa !important;
   border-color: #353a40 !important;
@@ -364,7 +364,7 @@ body.dark .card, body.dark .input-card, body.dark .result-card {
   100% { box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
 }
 
-body.dark #script-output {
+html.dark #script-output {
   background: #23272e;
   color: #f5f6fa;
   border-color: #353a40;
