@@ -25,6 +25,13 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  // Ensure API key is present - common cause for 500/401
+  const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_KEY || null;
+  if (!OPENROUTER_API_KEY) {
+    console.error('Missing OPENROUTER_API_KEY environment variable');
+    return res.status(500).json({ error: 'Server configuration error: missing API key (OPENROUTER_API_KEY).' });
+  }
+
   // ולידציה
   const { error, value } = schema.validate(req.body || {});
   if (error) {
@@ -36,7 +43,7 @@ module.exports = async (req, res) => {
   const words = journalEntry.trim().split(/\s+/).slice(0, maxInputLength);
   const trimmedEntry = words.join(' ');
   const lang = detectLanguage(trimmedEntry);
-  const modelToUse = 'deepseek/deepseek-chat-v3.1:free';
+  const modelToUse = 'google/gemini-flash-1.5:free';
 
   let maxTokens = 700;
   const wordCount = trimmedEntry.split(/\s+/).length;
@@ -64,26 +71,48 @@ module.exports = async (req, res) => {
   }
 
   try {
+    // Set reasonable timeout to avoid hanging serverless function
+    const axiosOpts = {
+      headers: {
+        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      timeout: 20000 // 20s
+    };
+
     const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
       model: modelToUse,
       messages: [
         { role: 'user', content: prompt }
       ],
       max_tokens: maxTokens
-    }, {
-      headers: {
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    }, axiosOpts);
+
+    // Defensive checks on response shape
+    if (!response || !response.data) {
+      console.error('Empty response from OpenRouter:', response);
+      return res.status(502).json({ error: 'Bad gateway: empty response from upstream API.' });
+    }
+
     const script = response.data?.choices?.[0]?.message?.content || response.data?.choices?.[0]?.text || '';
     if (!script) {
       console.error('No script returned from API:', response.data);
-      throw new Error('No script returned from API');
+      return res.status(502).json({ error: 'No script returned from API', details: response.data });
     }
+
     res.json({ script });
   } catch (error) {
-    console.error('API error:', error?.response?.data || error.message);
-    res.status(500).json({ error: 'Failed to generate script.', details: error?.response?.data || error.message });
+    // Improve logging for easier debugging
+    console.error('API error status:', error?.response?.status);
+    console.error('API error data:', error?.response?.data || error.message);
+
+    // If upstream returned a status, forward meaningful info (but avoid leaking secrets)
+    const upstream = error?.response;
+    if (upstream && upstream.status) {
+      return res.status(502).json({ error: 'Upstream API error', status: upstream.status, details: upstream.data });
+    }
+
+    // Fallback generic error
+    res.status(500).json({ error: 'Failed to generate script.', details: error.message });
   }
 };
