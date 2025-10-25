@@ -400,18 +400,18 @@ body.dark #script-output {
 
 /* === Journal Textarea Larger === */
 .input-textarea {
-  min-height: 308px;
-  height: 431px;
-  max-height: 616px;
-  font-size: 1.79em;
-  padding: 1.82em 1.68em;
+  min-height: 262px;
+  height: 366px;
+  max-height: 524px;
+  font-size: 1.52em;
+  padding: 1.55em 1.43em;
 }
 @media (max-width: 600px) {
   .input-textarea {
-    min-height: 140px;
-    height: 196px;
-    max-height: 308px;
-    font-size: 1.4em;
-    padding: 1.12em 0.98em;
+    min-height: 119px;
+    height: 167px;
+    max-height: 262px;
+    font-size: 1.19em;
+    padding: 0.95em 0.83em;
   }
 }
