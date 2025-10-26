@@ -178,10 +178,33 @@ document.addEventListener('DOMContentLoaded', () => {
         updateContent('en');
     });
 
-    // מאזין למצב כהה
+    // מאזין למצב כהה - איחוד ותיקון מלא
+    function setDarkMode(active, persist = true) {
+        if (active) {
+            document.documentElement.classList.add('dark');
+            themeToggle.textContent = '☀️';
+            themeToggle.setAttribute('aria-label', 'מצב בהיר');
+            if (persist) localStorage.setItem('theme', 'dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+            themeToggle.textContent = '🌙';
+            themeToggle.setAttribute('aria-label', 'מצב כהה');
+            if (persist) localStorage.setItem('theme', 'light');
+        }
+    }
     themeToggle.addEventListener('click', () => {
         setDarkMode(!document.documentElement.classList.contains('dark'));
     });
+    // טעינה ראשונית: קודם localStorage, אם אין – לפי מערכת
+    (function() {
+        const userPref = localStorage.getItem('theme');
+        const systemPref = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (userPref === 'dark' || (!userPref && systemPref)) {
+            setDarkMode(true, false);
+        } else {
+            setDarkMode(false, false);
+        }
+    })();
 
     // מאזין לשליחת הטופס
     document.getElementById('journal-form').addEventListener('submit', async (event) => {
@@ -212,21 +235,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(`${translations[currentLang].serverErrorPrefix}${response.status} - ${errorData.error || 'Unknown error'}`);
             }
             const data = await response.json();
-            // === Comic Panels Script Output ===
-            // פיצול התסריט לפאנלים (פסקאות/שורות)
-            const scriptPanels = (data.script || '').split(/\n{2,}|\r?\n/).filter(Boolean);
-            // צבע רקע קומיקס מתחלף
-            const panelColors = ["yellow", "blue", "red", "green"];
-            // בניית HTML של פאנלים קומיקס
-            scriptOutput.innerHTML = scriptPanels.map((panel, i) => `
-              <div class="comic-panel-card comic-bg-${panelColors[i % panelColors.length]}" tabindex="0" role="region" aria-label="פאנל קומיקס ${i+1}">
-                <div class="comic-bubble">
-                  <span class="bubble-icon" aria-hidden="true">💬</span>
-                  <span class="bubble-text">${panel.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
-                  <span class="bubble-tail" aria-hidden="true"></span>
-                </div>
-              </div>
-            `).join("");
+            // === Professional Script Output ===
+            scriptOutput.innerHTML = `<pre class="script-professional">${(data.script || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').trim()}</pre>`;
             lastScript = data.script;
             continueUsed = false;
             showSaveScriptBtn(true);
@@ -500,10 +510,16 @@ document.addEventListener('DOMContentLoaded', () => {
     themeToggle.addEventListener('click', () => {
         setDarkMode(!document.documentElement.classList.contains('dark'));
     });
-    // טעינה ראשונית לפי העדפת מערכת
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        setDarkMode(true);
-    }
+    // טעינה ראשונית: קודם localStorage, אם אין – לפי מערכת
+    (function() {
+        const userPref = localStorage.getItem('theme');
+        const systemPref = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (userPref === 'dark' || (!userPref && systemPref)) {
+            setDarkMode(true, false);
+        } else {
+            setDarkMode(false, false);
+        }
+    })();
 
     // נגישות: פוקוס אוטומטי על תיבת תסריט כשיש תוצאה
     const observer = new MutationObserver(() => {

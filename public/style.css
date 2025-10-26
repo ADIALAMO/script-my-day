@@ -415,3 +415,31 @@ html.dark #script-output {
     padding: 0.95em 0.83em;
   }
 }
+
+/* === Professional Script Block === */
+.script-professional {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.08em;
+  background: #fff;
+  color: #23272e;
+  border-radius: 10px;
+  border: 1.5px solid #e3e6ed;
+  padding: 1.1em 1.3em;
+  margin: 0;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  direction: rtl;
+}
+html.dark .script-professional {
+  background: #23272e;
+  color: #f5f6fa;
+  border-color: #353a40;
+}
+@media (max-width: 600px) {
+  .script-professional {
+    font-size: 0.98em;
+    padding: 0.7em 0.5em;
+  }
+}
