@@ -680,9 +680,91 @@ html.dark .script-professional {
   border-color: #353a40;
   box-shadow: 0 2px 8px #48c6ef33;
 }
-@media (max-width: 600px) {
+
+/* === RESPONSIVE FINE-TUNING === */
+@media (max-width: 900px) {
+  .header-row, .hero-content, .card, .input-card, .result-card {
+    max-width: 98vw;
+    padding: 0.7em 0.5em;
+  }
+  .logo {
+    width: 36px;
+    height: 36px;
+  }
+  .hero-img {
+    width: 80px;
+    height: 80px;
+  }
+  .genre-btn {
+    min-width: 45vw;
+    font-size: 0.95em;
+    padding: 0.35em 0.35em;
+  }
+  .input-textarea {
+    min-height: 119px;
+    height: 167px;
+    max-height: 262px;
+    font-size: 1.09em;
+    padding: 0.95em 0.83em;
+  }
   .script-professional {
     font-size: 0.98em;
     padding: 0.7em 0.5em;
   }
+}
+@media (max-width: 500px) {
+  .header-row, .hero-content, .card, .input-card, .result-card {
+    padding: 0.3em 0.1em;
+  }
+  .hero-title {
+    font-size: 1.3em;
+  }
+  .hero-img {
+    width: 56px;
+    height: 56px;
+  }
+  .logo {
+    width: 28px;
+    height: 28px;
+  }
+  .genre-btn {
+    min-width: 90vw;
+    font-size: 0.85em;
+    padding: 0.25em 0.15em;
+  }
+  .input-textarea {
+    font-size: 0.98em;
+    padding: 0.5em 0.3em;
+  }
+  .script-professional {
+    font-size: 0.89em;
+    padding: 0.4em 0.2em;
+  }
+}
+
+/* === RTL/LTR SUPPORT === */
+[dir="rtl"] .card, [dir="rtl"] .input-card, [dir="rtl"] .result-card, [dir="rtl"] .script-professional {
+  direction: rtl;
+  text-align: right;
+}
+[dir="ltr"] .card, [dir="ltr"] .input-card, [dir="ltr"] .result-card, [dir="ltr"] .script-professional {
+  direction: ltr;
+  text-align: left;
+}
+
+/* === ACCESSIBILITY === */
+:focus-visible {
+  outline: 3px solid #ffe600;
+  outline-offset: 2px;
+}
+[aria-live] {
+  outline: none !important;
+}
+
+/* === ELEVATION/DEPTH === */
+.card, .input-card, .result-card {
+  box-shadow: 0 4px 24px rgba(44,62,80,0.10), 0 1.5px 6px #6c63ff22;
+}
+html.dark .card, html.dark .input-card, html.dark .result-card {
+  box-shadow: 0 4px 24px #48c6ef33, 0 1.5px 6px #ffe60033;
 }
