@@ -61,12 +61,12 @@ module.exports = async (req, res) => {
   } else {
     if (lang === 'he') {
       prompt = wordCount > 50
-        ? `כתוב תסריט קומיקס מפורט בעברית על פי הטקסט הבא: "${trimmedEntry}" בז'אנר ${genre}. שמור על מבנה ברור, הוסף דיאלוגים, תאר סצנות, וכתוב לפחות 10-15 שורות. אל תוסיף הערות מיותרות. נסח את התסריט עד 800 מילים לכל היותר. סיים את התסריט בצורה ברורה, אל תקטע אותו באמצע.`
-        : `כתוב תסריט קומיקס קצר בעברית על פי הטקסט הבא: "${trimmedEntry}" בז'אנר ${genre}. שמור על מבנה פשוט וברור. אם הסיפור קצר, כתוב תסריט של 3-5 משפטים בלבד. אל תוסיף הערות מיותרות. סיים את התסריט בצורה ברורה, אל תקטע אותו באמצע.`;
+        ? `כתוב תסריט קומיקס מקצועי בעברית בלבד על פי הטקסט הבא: "${trimmedEntry}" בז'אנר ${genre}. שמור על מבנה ברור, הוסף דיאלוגים, תאר סצנות, וכתוב לפחות 10-15 שורות. אל תכתוב מספרי שורות, אל תכתוב את המילה 'שורה', אל תערבב שפות, אל תוסיף הערות מיותרות. כתוב תסריט מקצועי בלבד, ללא הקדמות, ללא סיכומים, וללא מילים מיותרות. נסח את התסריט עד 800 מילים לכל היותר. סיים את התסריט בצורה ברורה, אל תקטע אותו באמצע.`
+        : `כתוב תסריט קומיקס מקצועי בעברית בלבד על פי הטקסט הבא: "${trimmedEntry}" בז'אנר ${genre}. שמור על מבנה פשוט וברור. אם הסיפור קצר, כתוב תסריט של 3-5 משפטים בלבד. אל תכתוב מספרי שורות, אל תכתוב את המילה 'שורה', אל תערבב שפות, אל תוסיף הערות מיותרות. כתוב תסריט מקצועי בלבד, ללא הקדמות, ללא סיכומים, וללא מילים מיותרות. סיים את התסריט בצורה ברורה, אל תקטע אותו באמצע.`;
     } else {
       prompt = wordCount > 50
-        ? `Write a detailed comic script in English based on: "${trimmedEntry}" in the ${genre} genre. Use clear structure, add dialogues, describe scenes, and write at most 800 words. Do not add unnecessary comments. Make sure to finish the script with a clear ending, do not cut it off in the middle.`
-        : `Write a short comic script in English based on: "${trimmedEntry}" in the ${genre} genre. Keep it simple and clear. If the story is short, write a script of only 3-5 sentences. Do not add unnecessary comments. Make sure to finish the script with a clear ending, do not cut it off in the middle.`;
+        ? `Write a professional comic script in English only, based on: "${trimmedEntry}" in the ${genre} genre. Use clear structure, add dialogues, describe scenes, and write at most 800 words. Do not write line numbers, do not write the word 'line', do not mix languages, do not add unnecessary comments. Write only a professional script, no introductions, no summaries, no extra words. Make sure to finish the script with a clear ending, do not cut it off in the middle.`
+        : `Write a professional comic script in English only, based on: "${trimmedEntry}" in the ${genre} genre. Keep it simple and clear. If the story is short, write a script of only 3-5 sentences. Do not write line numbers, do not write the word 'line', do not mix languages, do not add unnecessary comments. Write only a professional script, no introductions, no summaries, no extra words. Make sure to finish the script with a clear ending, do not cut it off in the middle.`;
     }
   }
 
