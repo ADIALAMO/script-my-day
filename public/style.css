@@ -39,11 +39,6 @@ body {
   transition: background var(--transition), color var(--transition);
 }
 
-body.dark {
-  background: linear-gradient(135deg, #181c20 0%, #23272e 100%) !important;
-  color: #f5f6fa !important;
-}
-
 .main-header {
   background: transparent;
   box-shadow: none;
