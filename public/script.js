@@ -552,4 +552,15 @@ document.addEventListener('DOMContentLoaded', () => {
             this.classList.remove('show-tooltip');
         });
     });
+
+    // DEBUG: Log themeToggle and add fallback click handler
+    console.log('themeToggle:', themeToggle);
+    if (!themeToggle) {
+        alert('כפתור מצב כהה (theme-toggle) לא נמצא ב-DOM!');
+    } else {
+        themeToggle.addEventListener('click', () => {
+            console.log('Night mode button clicked!');
+            setDarkMode(!document.documentElement.classList.contains('dark'));
+        });
+    }
 });
