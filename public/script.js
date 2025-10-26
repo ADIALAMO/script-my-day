@@ -178,17 +178,21 @@ document.addEventListener('DOMContentLoaded', () => {
         updateContent('en');
     });
 
-    // מאזין למצב כהה - איחוד ותיקון מלא
+    // מאזין למצב כהה - תיקון סופי: תמיכה גם בכפתור עם אייקון/טקסט, סנכרון ראשוני מלא
     function setDarkMode(active, persist = true) {
         if (active) {
             document.documentElement.classList.add('dark');
-            themeToggle.textContent = '☀️';
-            themeToggle.setAttribute('aria-label', 'מצב בהיר');
+            if (themeToggle) {
+                themeToggle.innerHTML = '<span aria-hidden="true">☀️</span><span class="visually-hidden">מצב בהיר</span>';
+                themeToggle.setAttribute('aria-label', 'מצב בהיר');
+            }
             if (persist) localStorage.setItem('theme', 'dark');
         } else {
             document.documentElement.classList.remove('dark');
-            themeToggle.textContent = '🌙';
-            themeToggle.setAttribute('aria-label', 'מצב כהה');
+            if (themeToggle) {
+                themeToggle.innerHTML = '<span aria-hidden="true">🌙</span><span class="visually-hidden">מצב כהה</span>';
+                themeToggle.setAttribute('aria-label', 'מצב כהה');
+            }
             if (persist) localStorage.setItem('theme', 'light');
         }
     }
@@ -203,6 +207,15 @@ document.addEventListener('DOMContentLoaded', () => {
             setDarkMode(true, false);
         } else {
             setDarkMode(false, false);
+        }
+    })();
+    // עזר נגישות: מחלקה ל-visually-hidden
+    (function() {
+        if (!document.getElementById('visually-hidden-style')) {
+            const style = document.createElement('style');
+            style.id = 'visually-hidden-style';
+            style.textContent = `.visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }`;
+            document.head.appendChild(style);
         }
     })();
 
@@ -499,11 +512,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function setDarkMode(active) {
         if (active) {
             document.documentElement.classList.add('dark');
-            themeToggle.textContent = '☀️';
+            themeToggle.innerHTML = '☀️';
             themeToggle.setAttribute('aria-label', 'מצב בהיר');
         } else {
             document.documentElement.classList.remove('dark');
-            themeToggle.textContent = '🌙';
+            themeToggle.innerHTML = '🌙';
             themeToggle.setAttribute('aria-label', 'מצב כהה');
         }
     }
