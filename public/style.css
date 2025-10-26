@@ -39,6 +39,11 @@ body {
   transition: background var(--transition), color var(--transition);
 }
 
+html.dark body {
+  background: #111 !important;
+  border: 6px solid #ff2222 !important;
+}
+
 .main-header {
   background: transparent;
   box-shadow: none;
