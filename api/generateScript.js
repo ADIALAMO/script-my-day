@@ -43,7 +43,7 @@ module.exports = async (req, res) => {
   const words = journalEntry.trim().split(/\s+/).slice(0, maxInputLength);
   const trimmedEntry = words.join(' ');
   const lang = detectLanguage(trimmedEntry);
-  const modelToUse = 'qwen/qwen3-vl-32b-instruct';
+  const modelToUse = 'google/gemma-3n-e4b-it:free';
 
   let maxTokens = 700;
   const wordCount = trimmedEntry.split(/\s+/).length;
