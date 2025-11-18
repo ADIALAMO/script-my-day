@@ -249,7 +249,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const data = await response.json();
             // === Professional Script Output ===
-            scriptOutput.innerHTML = `<pre class="script-professional">${(data.script || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').trim()}</pre>`;
+            let warningHtml = '';
+            if (data.warning) {
+                warningHtml = `<div class="script-warning" style="color:#b71c1c;font-weight:bold;background:#fff3f3;border:1.5px solid #b71c1c;padding:0.7em 1em;margin-bottom:0.7em;border-radius:8px;direction:rtl;text-align:right;">⚠️ ${data.warning}</div>`;
+            }
+            scriptOutput.innerHTML = warningHtml + `<pre class="script-professional">${(data.script || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').trim()}</pre>`;
             lastScript = data.script;
             continueUsed = false;
             showSaveScriptBtn(true);
