@@ -4,8 +4,7 @@
 const axios = require('axios');
 require('dotenv').config();
 const Joi = require('joi'); // ולידציה
-const { buildComicScriptPrompt } = require('./buildComicScriptPrompt');
-const { generateScript } = require("../lib/story-service");
+const { generateScript } = require("../lib/story-service.js");
 
 function detectLanguage(text) {
   if (typeof text !== 'string') return 'en';
@@ -35,8 +34,10 @@ module.exports = async (req, res) => {
   }
 
   // ולידציה
+  console.log("API BODY RECEIVED:", req.body);
   const { error, value } = schema.validate(req.body || {});
   if (error) {
+    console.error("Validation error details:", error.details);
     return res.status(400).json({ error: 'Invalid input', details: error.details });
   }
   const { journalEntry, genre, continueScript } = value;
@@ -45,7 +46,7 @@ module.exports = async (req, res) => {
   const words = journalEntry.trim().split(/\s+/).slice(0, maxInputLength);
   const trimmedEntry = words.join(' ');
   const lang = detectLanguage(trimmedEntry);
-  const modelToUse = 'google/gemma-3n-e4b-it:free';
+  const modelToUse = 'google/gemma-3-27b-it:free';
 
   let maxTokens = 700;
   const wordCount = trimmedEntry.split(/\s+/).length;
