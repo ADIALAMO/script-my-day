@@ -63,18 +63,12 @@ module.exports = async (req, res) => {
       : `Continue and finish the following comic script in English, just to close the story, not to add new scenes. Make sure the script ends with a clear and complete ending, do not cut it off in the middle: \n${continueScript}`;
     maxTokens = 700;
   } else {
-    if (lang === 'he' || lang === 'en') {
-      // Use the agent's generateScript for both Hebrew and English
-      const result = await generateScript(trimmedEntry, genre);
-      if (result.success) {
-        return res.json({ script: result.output });
-      } else {
-        return res.status(500).json({ error: result.error || 'Failed to generate script.' });
-      }
+    // Use the agent's generateScript for both Hebrew and English
+    const result = await generateScript(trimmedEntry, genre);
+    if (result.success) {
+      return res.json({ script: result.output });
     } else {
-      prompt = wordCount > 50
-        ? `Write a professional comic script in English only, based on: "${trimmedEntry}" in the ${genre} genre.\n\n- Turn every event, action, encounter, or character that appears in the user's text into a separate scene in the script.\n- Do not omit any event, action, or character that appears in the text.\n- Arrange the scenes in the order they appear in the text.\n- You may invent characters, names, scenes, and dialogues according to the genre, but the entire script must be based on the events, feelings, and topics that appear in the user's text only.\n- Do not deviate from the plot and feelings of the original text.\n- Finish the script with a clear and complete ending, do not cut it off in the middle. If you have not finished all the events, continue until a clear ending.\n- Write a clear, logical, realistic or imaginative (according to the genre), and flowing script.\n- Every sentence must be in correct English only, with no Hebrew, no transliterations, and no language mixing.\n- Do not invent illogical words, do not use non-existent words, do not use foreign words, abbreviations, or unrelated symbols.\n- Do not write line numbers, do not write the word 'line', do not add titles, introductions, summaries, or comments.\n- Maintain a professional script style: scene descriptions, dialogues, and narration – all in correct English only.\n- Do not use any language other than English.\n- If there is dialogue – write it in the format: Character: "text"\n- If there is a description – write it simply, without unnecessary words.`
-        : `Write a professional comic script in English only, based on: "${trimmedEntry}" in the ${genre} genre.\n\n- Turn every event, action, encounter, or character that appears in the user's text into a separate scene in the script.\n- Do not omit any event, action, or character that appears in the text.\n- Arrange the scenes in the order they appear in the text.\n- You may invent characters, names, scenes, and dialogues according to the genre, but the entire script must be based on the events, feelings, and topics that appear in the user's text only.\n- Do not deviate from the plot and feelings of the original text.\n- Finish the script with a clear and complete ending, do not cut it off in the middle. If you have not finished all the events, continue until a clear ending.\n- Write a clear, logical, realistic or imaginative (according to the genre), and flowing script.\n- Every sentence must be in correct English only, with no Hebrew, no transliterations, and no language mixing.\n- Do not invent illogical words, do not use non-existent words, do not use foreign words, abbreviations, or unrelated symbols.\n- Do not write line numbers, do not write the word 'line', do not add titles, introductions, summaries, or comments.\n- Maintain a professional script style: scene descriptions, dialogues, and narration – all in correct English only.\n- Do not use any language other than English.\n- If there is dialogue – write it in the format: Character: "text"\n- If there is a description – write it simply, without unnecessary words.`;
+      return res.status(500).json({ error: result.error || 'Failed to generate script.' });
     }
   }
 
