@@ -1,3 +1,11 @@
+/*
+Copyright (c) 2025 adi alamo. All rights reserved.
+This file and all related source code are the intellectual property of adi alamo.
+Unauthorized copying, distribution, or use of this code or its concept is strictly prohibited.
+For license details, see the LICENSE file in the project root.
+Contact: adialamo@gmail.com
+*/
+
 // תרגומים לשפות שונות
 const translations = {
     he: {
@@ -8,7 +16,6 @@ const translations = {
         journalLabel: 'רשומה יומית:',
         journalPlaceholder: 'כתוב כאן את הרשומה היומית שלך...',
         genreLabel: 'בחר ז\'אנר קומיקס:',
-        genreTip: 'בחר ז\'אנר שיתאים לסיפור שלך - זה ישפיע על הסגנון והטון של התסריט.',
         generateButton: 'צור תסריט',
         loadingMessage: 'טוען...',
         errorMessagePrefix: 'שגיאה: ',
@@ -29,7 +36,6 @@ const translations = {
         journalLabel: 'Journal Entry:',
         journalPlaceholder: 'Write your daily entry here...',
         genreLabel: 'Select Comic Genre:',
-        genreTip: 'Choose a genre that fits your story - it will affect the style and tone of the script.',
         generateButton: 'Generate Script',
         loadingMessage: 'Loading...',
         errorMessagePrefix: 'Error: ',
@@ -63,7 +69,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const subtitle = document.getElementById('subtitle');
     const saveScriptBtn = document.getElementById('save-script');
     const saveStoryBtn = document.getElementById('save-story');
-    const genreTip = document.getElementById('genre-tip');
     const themeToggle = document.getElementById('theme-toggle');
 
     // בדיקת קיום אלמנטים קריטיים
@@ -72,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // ז'אנרים עם אייקונים
+    // ז'אנרים עם אייקונים SVG (בהתאם לעיצוב המצורף)
     const genres = [
         { value: 'adventure', he: 'הרפתקאות', en: 'Adventure', icon: '🧭' },
         { value: 'comedy', he: 'קומדיה', en: 'Comedy', icon: '😂' },
@@ -85,8 +90,9 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
     let selectedGenre = genres[0].value;
 
-    // כפתור המשך תסריט
+    // כפתור המשך תסריט (רק אחרי currentLang)
     let currentLang = htmlElement.getAttribute('lang') || 'he';
+
     const continueScriptBtn = document.createElement('button');
     continueScriptBtn.type = 'button';
     continueScriptBtn.id = 'continue-script';
@@ -135,7 +141,6 @@ document.addEventListener('DOMContentLoaded', () => {
         journalLabel.textContent = translations[lang].journalLabel;
         journalEntry.placeholder = translations[lang].journalPlaceholder;
         genreLabel.textContent = translations[lang].genreLabel;
-        if (genreTip) genreTip.textContent = translations[lang].genreTip;
         generateButton.textContent = translations[lang].generateButton;
         loadingDiv.textContent = translations[lang].loadingMessage;
         if (scriptOutputHeading.style.display !== 'none') {
@@ -173,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateContent('en');
     });
 
-    // מאזין למצב כהה
+    // מאזין למצב כהה - תיקון סופי: תמיכה גם בכפתור עם אייקון/טקסט, סנכרון ראשוני מלא
     function setDarkMode(active, persist = true) {
         if (active) {
             document.documentElement.classList.add('dark');
@@ -194,8 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
     themeToggle.addEventListener('click', () => {
         setDarkMode(!document.documentElement.classList.contains('dark'));
     });
-
-    // טעינה ראשונית
+    // טעינה ראשונית: קודם localStorage, אם אין – לפי מערכת
     (function() {
         const userPref = localStorage.getItem('theme');
         const systemPref = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -203,6 +207,15 @@ document.addEventListener('DOMContentLoaded', () => {
             setDarkMode(true, false);
         } else {
             setDarkMode(false, false);
+        }
+    })();
+    // עזר נגישות: מחלקה ל-visually-hidden
+    (function() {
+        if (!document.getElementById('visually-hidden-style')) {
+            const style = document.createElement('style');
+            style.id = 'visually-hidden-style';
+            style.textContent = `.visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }`;
+            document.head.appendChild(style);
         }
     })();
 
@@ -235,6 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(`${translations[currentLang].serverErrorPrefix}${response.status} - ${errorData.error || 'Unknown error'}`);
             }
             const data = await response.json();
+            // === Professional Script Output ===
             let warningHtml = '';
             if (data.warning) {
                 warningHtml = `<div class="script-warning" style="color:#b71c1c;font-weight:bold;background:#fff3f3;border:1.5px solid #b71c1c;padding:0.7em 1em;margin-bottom:0.7em;border-radius:8px;direction:rtl;text-align:right;">⚠️ ${data.warning}</div>`;
@@ -255,6 +269,19 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingDiv.style.display = 'none';
         }
     });
+
+    // הסר קוד ישן של רדיו/רשימת ז'אנרים
+
+    // הסר את האלמנט הישן של בחירת ז'אנר (אם קיים)
+    const oldGenreSelect = document.getElementById('genre-select');
+    if (oldGenreSelect) oldGenreSelect.remove();
+    const oldGenreRadios = document.querySelector('.genre-list');
+    if (oldGenreRadios) oldGenreRadios.remove();
+
+    // הסר את כפתור המשך תסריט מה-DOM
+    if (document.getElementById('continue-script')) {
+        document.getElementById('continue-script').remove();
+    }
 
     // כפתור שמירת תסריט
     saveScriptBtn.addEventListener('click', () => {
@@ -287,4 +314,257 @@ document.addEventListener('DOMContentLoaded', () => {
     // הסתרת כפתור שמירה אם אין תסריט
     scriptOutput.textContent = '';
     showSaveScriptBtn(false);
+
+    // CSS בסיסי לחלונית (modal) ולכפתור
+    const modalStyle = document.createElement('style');
+    modalStyle.textContent = `
+    .genre-select-btn {
+        padding: 0.5em 1.2em;
+        font-size: 1em;
+        border-radius: 8px;
+        border: 1px solid #888;
+        background: #f7f7fa;
+        cursor: pointer;
+        margin-bottom: 1em;
+        margin-top: 0.5em;
+        transition: background 0.2s;
+    }
+    .genre-select-btn:hover {
+        background: #e0e0f7;
+    }
+    .genre-modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0; top: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.3);
+        justify-content: center;
+        align-items: center;
+    }
+    .genre-modal-content {
+        background: #fff;
+        margin: 10vh auto;
+        padding: 2em 1.5em 1.5em 1.5em;
+        border-radius: 12px;
+        max-width: 350px;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+        position: relative;
+        text-align: center;
+    }
+    .genre-modal-close {
+        position: absolute;
+        top: 0.7em; right: 1em;
+        font-size: 1.5em;
+        color: #888;
+        cursor: pointer;
+    }
+    .genre-modal-list {
+        list-style: none;
+        padding: 0;
+        margin: 1em 0 0 0;
+    }
+    .genre-modal-item {
+        padding: 0.6em 0.5em;
+        margin: 0.2em 0;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 1.08em;
+        transition: background 0.15s;
+    }
+    .genre-modal-item.selected, .genre-modal-item:hover {
+        background: #e0e0f7;
+        font-weight: bold;
+    }
+    `;
+    document.head.appendChild(modalStyle);
+
+    // ודא שחלון התסריט לא יגלוש ויהיה גלילה פנימית
+    const scriptOutputStyle = document.createElement('style');
+    scriptOutputStyle.textContent = `
+    #script-output {
+        max-width: 100%;
+        max-height: 350px;
+        overflow-x: auto;
+        overflow-y: auto;
+        background: #f7f7fa;
+        border-radius: 10px;
+        border: 1px solid #d1d1e0;
+        margin: 0.5em 0 1em 0;
+        padding: 1em 1.2em;
+        font-size: 1.08em;
+        white-space: pre-wrap;
+        word-break: break-word;
+        box-sizing: border-box;
+        transition: box-shadow 0.2s;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+    #script-output pre {
+        margin: 0;
+        font-family: inherit;
+        background: none;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+    `;
+    document.head.appendChild(scriptOutputStyle);
+
+    // === Word Count Indicator ===
+    const wordLimit = 300;
+    const wordCountDiv = document.createElement('div');
+    wordCountDiv.id = 'word-count-indicator';
+    wordCountDiv.style.textAlign = 'left';
+    wordCountDiv.style.fontSize = '0.98em';
+    wordCountDiv.style.color = '#888';
+    wordCountDiv.style.marginTop = '0.2em';
+    if (journalEntry && journalEntry.parentNode) {
+        journalEntry.parentNode.insertBefore(wordCountDiv, journalEntry.nextSibling);
+    } else {
+        console.error('journalEntry או הורה שלו לא קיימים ב-DOM. לא ניתן להוסיף word-count-indicator.');
+    }
+    // בדיקה עבור genreLabel
+    if (!genreLabel) {
+        console.error('genreLabel לא קיים ב-DOM. ודא שיש אלמנט עם id="genre-label" ב-HTML.');
+    } else if (!genreLabel.parentNode) {
+        console.error('genreLabel.parentNode הוא null. ייתכן שהאלמנט לא שובץ נכון ב-HTML.');
+    }
+    // אין גישה ל-genreLabel.parentNode מעבר לבדיקה זו!
+
+    function updateWordCount() {
+        const count = journalEntry.value.trim() ? journalEntry.value.trim().split(/\s+/).length : 0;
+        wordCountDiv.textContent = `${count}/${wordLimit}`;
+        if (count > wordLimit) {
+            wordCountDiv.style.color = '#d32f2f';
+        } else {
+            wordCountDiv.style.color = '#888';
+        }
+    }
+    journalEntry.addEventListener('input', updateWordCount);
+    updateWordCount();
+
+    // === Word Count Enforcement + Professional Feedback ===
+    journalEntry.addEventListener('input', () => {
+        const words = journalEntry.value.trim() ? journalEntry.value.trim().split(/\s+/) : [];
+        if (words.length > wordLimit) {
+            journalEntry.value = words.slice(0, wordLimit).join(' ');
+            wordCountDiv.classList.add('word-limit-reached');
+            wordCountDiv.textContent = `${wordLimit}/${wordLimit} (Limit reached)`;
+            // רטט קל במכשירים תומכים
+            if (window.navigator.vibrate) window.navigator.vibrate(80);
+        } else {
+            wordCountDiv.classList.remove('word-limit-reached');
+            updateWordCount();
+        }
+    });
+
+    // עיצוב מקצועי לאזהרת מגבלה
+    const wordLimitStyle = document.createElement('style');
+    wordLimitStyle.textContent = `
+    #word-count-indicator.word-limit-reached {
+      color: #d32f2f !important;
+      font-weight: bold;
+      animation: shake 0.18s 1;
+    }
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      30% { transform: translateX(-4px); }
+      60% { transform: translateX(4px); }
+      100% { transform: translateX(0); }
+    }
+    `;
+    document.head.appendChild(wordLimitStyle);
+
+    // === Spinner Animation ===
+    loadingDiv.innerHTML = '<span class="spinner"></span>' + translations[currentLang].loadingMessage;
+    const spinnerStyle = document.createElement('style');
+    spinnerStyle.textContent = `
+    .spinner {
+      display: inline-block;
+      width: 1.1em;
+      height: 1.1em;
+      border: 3px solid #bdbdf7;
+      border-top: 3px solid #5a5ad6;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-inline-end: 0.5em;
+      vertical-align: middle;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    `;
+    document.head.appendChild(spinnerStyle);
+
+    // === Button Hover Effects ===
+    const buttonHoverStyle = document.createElement('style');
+    buttonHoverStyle.textContent = `
+    button, .genre-select-btn {
+      transition: background 0.18s, box-shadow 0.18s, color 0.18s;
+    }
+    button:hover, .genre-select-btn:hover {
+      background: #e0e0f7 !important;
+      color: #222;
+      box-shadow: 0 2px 8px rgba(90,90,214,0.10);
+    }
+    #save-script:hover, #save-story:hover {
+      background: #d1d1e0 !important;
+    }
+    `;
+    document.head.appendChild(buttonHoverStyle);
+
+    // Dark Mode Toggle
+    function setDarkMode(active) {
+        if (active) {
+            document.documentElement.classList.add('dark');
+            themeToggle.innerHTML = '☀️';
+            themeToggle.setAttribute('aria-label', 'מצב בהיר');
+        } else {
+            document.documentElement.classList.remove('dark');
+            themeToggle.innerHTML = '🌙';
+            themeToggle.setAttribute('aria-label', 'מצב כהה');
+        }
+    }
+    themeToggle.addEventListener('click', () => {
+        setDarkMode(!document.documentElement.classList.contains('dark'));
+    });
+    // טעינה ראשונית: קודם localStorage, אם אין – לפי מערכת
+    (function() {
+        const userPref = localStorage.getItem('theme');
+        const systemPref = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (userPref === 'dark' || (!userPref && systemPref)) {
+            setDarkMode(true, false);
+        } else {
+            setDarkMode(false, false);
+        }
+    })();
+
+    // נגישות: פוקוס אוטומטי על תיבת תסריט כשיש תוצאה
+    const observer = new MutationObserver(() => {
+        if (scriptOutput.textContent.trim().length > 0) {
+            scriptOutput.setAttribute('tabindex', '0');
+            scriptOutput.focus();
+        }
+    });
+    observer.observe(scriptOutput, { childList: true });
+
+    // Tooltip לכל כפתור פעולה
+    document.querySelectorAll('.result-actions button').forEach(btn => {
+        btn.addEventListener('focus', function() {
+            this.classList.add('show-tooltip');
+        });
+        btn.addEventListener('blur', function() {
+            this.classList.remove('show-tooltip');
+        });
+    });
+
+    // DEBUG: Log themeToggle and add fallback click handler
+    console.log('themeToggle:', themeToggle);
+    if (!themeToggle) {
+        alert('כפתור מצב כהה (theme-toggle) לא נמצא ב-DOM!');
+    } else {
+        themeToggle.addEventListener('click', () => {
+            console.log('Night mode button clicked!');
+            setDarkMode(!document.documentElement.classList.contains('dark'));
+        });
+    }
 });
