@@ -1,0 +1,68 @@
+/* ייבוא פונטים ישירות ל-CSS כדי למנוע אזהרות ב-Next.js */
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime&family=Heebo:wght@300;400;700;900&display=swap');
+
+/* הגדרות ליבה של Tailwind v4 */
+@import "tailwindcss";
+
+@theme {
+  --color-gold: #d4a373;
+  --color-dark-bg: #0a0a0a;
+  
+  /* הגדרת פונטים כמשתנים של Tailwind */
+  --font-heebo: "Heebo", sans-serif;
+  --font-courier: "Courier Prime", monospace;
+}
+
+/* הגדרות בסיס */
+:root {
+  background-color: var(--color-dark-bg);
+  color: white;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-heebo);
+  background-color: var(--color-dark-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* עיצוב גלובלי לכרטיסים (Glassmorphism) */
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+}
+
+/* התאמות לטקסט תסריט (לשימוש בתוך ScriptOutput) */
+.script-font {
+  font-family: var(--font-courier);
+  line-height: 1.6;
+}
+
+/* אפקט גלילה יפה (Custom Scrollbar) */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #222;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #d4a373;
+}
+
+/* מניעת קפיצות בטעינה */
+.animate-in {
+  animation-fill-mode: forwards;
+}
