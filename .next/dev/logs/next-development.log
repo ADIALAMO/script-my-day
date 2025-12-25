@@ -1,7 +1,0 @@
-[00:00:00.261] Server  LOG     ✓ Ready in 168ms
-[00:00:35.581] Server  ERROR   API Error: Error: Cannot read properties of undefined (reading 'he')
-[00:00:35.684] Browser ERROR   Frontend Logic Error: {}
-[00:04:09.817] Server  ERROR   API Error: Error: Cannot read properties of undefined (reading 'he')
-[00:04:09.918] Browser ERROR   Frontend Logic Error: {}
-[00:08:07.923] Server  ERROR   API Error: Error: Cannot read properties of undefined (reading 'he')
-[00:08:08.025] Browser ERROR   Frontend Logic Error: {}

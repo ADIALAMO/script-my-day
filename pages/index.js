@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Film, Copyright } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import ScriptForm from '../components/ScriptForm';
 import ScriptOutput from '../components/ScriptOutput';
@@ -9,114 +11,93 @@ function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [lang, setLang] = useState('he');
+  const [mounted, setMounted] = useState(false);
 
-  const toggleLanguage = () => {
-    setLang(prev => prev === 'he' ? 'en' : 'he');
-  };
+  useEffect(() => setMounted(true), []);
+
+  const toggleLanguage = () => setLang(prev => prev === 'he' ? 'en' : 'he');
 
   const handleGenerateScript = async (journalEntry, genre) => {
     setLoading(true);
     setError('');
-    setScript(''); // איפוס התוצאה הקודמת למען חווית משתמש נקייה
-
+    setScript('');
     try {
       const response = await fetch('/api/generate-script', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json' 
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ journalEntry, genre }),
       });
-
-      // חילוץ נתונים גם במקרה של שגיאה כדי להציג הודעה מהשרת
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(data.message || (lang === 'he' ? 'שגיאה בחיבור לשרת' : 'Server connection error'));
-      }
-
-      // ה-Service שלך מחזיר את התוצאה תחת המפתח script ב-API
-      if (data.script) {
-        setScript(data.script);
-      } else {
-        throw new Error(lang === 'he' ? 'לא התקבל תסריט מה-AI' : 'No script received from AI');
-      }
-
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Error');
+      setScript(data.script);
     } catch (err) {
-      console.error("Frontend Logic Error:", err);
-      setError(err.message || (lang === 'he' ? 'אירעה שגיאה בלתי צפויה' : 'An unexpected error occurred'));
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
+  if (!mounted) return null;
+
   return (
-    <div 
-      className={`min-h-screen bg-[#0a0a0a] text-white flex flex-col transition-all duration-500 ${lang === 'he' ? 'font-heebo text-right' : 'text-left'}`} 
-      dir={lang === 'he' ? 'rtl' : 'ltr'}
-    >
+    <div className={`min-h-screen text-white flex flex-col selection:bg-[#d4a373]/30 ${lang === 'he' ? 'font-heebo' : ''}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
       <Head>
         <title>LifeScript | Cinematic AI Studio</title>
-        <meta name="description" content="Transform your life into a cinematic masterpiece" />
       </Head>
+
+      <div className="mesh-gradient fixed inset-0 -z-10">
+        <div className="mesh-sphere w-[600px] h-[600px] bg-purple-900/10 top-[-10%] left-[-10%]" />
+        <div className="mesh-sphere w-[500px] h-[500px] bg-blue-900/10 bottom-[-10%] right-[-10%]" />
+      </div>
 
       <Navbar lang={lang} onLanguageToggle={toggleLanguage} />
 
-      <main className="container mx-auto py-12 px-6 max-w-4xl flex-grow">
-        <header className="text-center mb-16 animate-in fade-in slide-in-from-top-4 duration-1000">
-          <h1 className="text-7xl font-black mb-4 bg-gradient-to-b from-[#d4a373] via-[#fefae0] to-[#d4a373] bg-clip-text text-transparent italic tracking-tighter uppercase">
+      <main className="container mx-auto py-16 px-6 max-w-5xl flex-grow relative z-10">
+        <motion.header 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-16"
+        >
+          <div className="inline-block mb-4 px-4 py-1 rounded-full border border-[#d4a373]/30 bg-[#d4a373]/5 text-[#d4a373] text-xs font-bold tracking-[0.2em] uppercase">
+            {lang === 'he' ? 'חזון קולנועי' : 'Cinematic Vision'}
+          </div>
+          <h1 className="text-7xl md:text-8xl font-black mb-6 bg-gradient-to-b from-[#d4a373] via-[#fefae0] to-[#d4a373] bg-clip-text text-transparent italic tracking-tighter uppercase leading-none">
             LIFESCRIPT
           </h1>
-          <div className="h-1 w-24 bg-[#d4a373] mx-auto mb-6 rounded-full shadow-[0_0_15px_rgba(212,163,115,0.5)]"></div>
-          <p className="text-gray-400 text-xl font-light max-w-xl mx-auto leading-relaxed">
-            {lang === 'he' 
-              ? 'הפוך את רגעי היום-יום שלך לתסריט הוליוודי מהפנט בלחיצת כפתור אחת.' 
-              : 'Transform your daily moments into a captivating Hollywood script with a single click.'}
+          <p className="text-gray-400 text-xl font-light max-w-2xl mx-auto leading-relaxed">
+            {lang === 'he' ? 'הפוך את היום שלך לתסריט קולנועי מרתק' : 'Turn your day into a captivating cinematic script'}
           </p>
-        </header>
+        </motion.header>
 
-        <section className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-[#d4a373]/20 to-transparent rounded-[2rem] blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
-          <div className="relative glass-card p-10 rounded-[2rem] border border-white/10 bg-[#121212]/80 backdrop-blur-xl shadow-2xl">
-            {/* הקומפוננטה מקבלת את כל ה-Props הדרושים */}
-            <ScriptForm 
-              onGenerateScript={handleGenerateScript} 
-              loading={loading} 
-              lang={lang} 
-            />
+        <motion.section 
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className={`glass-panel rounded-[2.5rem] overflow-hidden ${loading ? 'ai-loading-active' : ''}`}
+        >
+          <div className="bg-[#030712]/40 backdrop-blur-3xl p-8 md:p-10">
+            <ScriptForm onGenerateScript={handleGenerateScript} loading={loading} lang={lang} />
           </div>
-        </section>
+        </motion.section>
 
-        {/* Loading State - Cinematic Style */}
-        {loading && (
-          <div className="flex flex-col items-center justify-center space-y-6 py-20 animate-pulse">
-            <div className="relative">
-              <div className="w-16 h-16 border-2 border-[#d4a373]/20 rounded-full"></div>
-              <div className="absolute top-0 w-16 h-16 border-t-2 border-[#d4a373] rounded-full animate-spin"></div>
-            </div>
-            <p className="text-[#d4a373] font-bold tracking-[0.3em] text-sm uppercase italic">
-              {lang === 'he' ? 'מפתח את הסצנה...' : 'Developing Scene...'}
-            </p>
-          </div>
-        )}
-
-        {/* Error Handling */}
-        {error && (
-          <div className="mt-10 p-5 bg-red-950/30 border border-red-500/50 rounded-2xl text-red-400 text-center font-medium backdrop-blur-sm animate-in zoom-in-95 duration-300">
-            <span className="mr-2">⚠️</span> {error}
-          </div>
-        )}
-
-        {/* Output Canvas */}
-        {script && !loading && (
-          <div className="mt-16 animate-in fade-in slide-in-from-bottom-12 duration-1000">
-            <ScriptOutput script={script} lang={lang} />
-          </div>
-        )}
+        <AnimatePresence>
+          {script && !loading && (
+            <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} className="mt-16">
+              <ScriptOutput script={script} lang={lang} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
-      <footer className="py-8 text-center text-gray-600 text-xs tracking-widest uppercase">
-        © {new Date().getFullYear()} LifeScript Studio | Premium AI Experience
+      <footer className="py-12 text-center border-t border-white/5 bg-black/20">
+        <div className="flex flex-col items-center justify-center gap-3">
+          <div className="flex items-center gap-2">
+            <Film size={16} className="text-[#d4a373]" />
+            <span className="text-white font-black tracking-[0.4em] text-sm italic">LIFESCRIPT STUDIO</span>
+          </div>
+          <p className="text-gray-600 text-[10px] tracking-[0.2em] uppercase flex items-center gap-1">
+            <Copyright size={10} /> 2025 BY ADIALAMO • ALL RIGHTS RESERVED
+          </p>
+        </div>
       </footer>
     </div>
   );

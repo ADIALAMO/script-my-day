@@ -1,8 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ייבוא פונטים ישירות ל-CSS כדי למנוע אזהרות ב-Next.js */
 @import url('https://fonts.googleapis.com/css2?family=Courier+Prime&family=Heebo:wght@300;400;700;900&display=swap');
-
-/* הגדרות ליבה של Tailwind v4 */
-@import "tailwindcss";
 
 @theme {
   --color-gold: #d4a373;
@@ -65,4 +66,79 @@ body {
 /* מניעת קפיצות בטעינה */
 .animate-in {
   animation-fill-mode: forwards;
+}@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime&family=Heebo:wght@300;400;700;900&display=swap');
+
+:root {
+  --color-gold: #d4a373;
+  --color-gold-light: #fefae0;
+  --color-dark-bg: #030712; /* עמוק יותר מבעבר */
 }
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Heebo', sans-serif;
+  background-color: var(--color-dark-bg);
+  color: white;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* אפקט זכוכית יוקרתי (Ultra-Glass) */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* אנימציית הילה לכתיבת ה-AI */
+@keyframes ai-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(212, 163, 115, 0.1); border-color: rgba(212, 163, 115, 0.2); }
+  50% { box-shadow: 0 0 40px rgba(212, 163, 115, 0.3); border-color: rgba(212, 163, 115, 0.5); }
+}
+
+.ai-loading-active {
+  animation: ai-glow 2s infinite ease-in-out;
+}
+
+/* רקע ערפילית נע */
+.mesh-gradient {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background: radial-gradient(circle at 50% 50%, #111827 0%, #030712 100%);
+}
+
+.mesh-sphere {
+  position: absolute;
+  filter: blur(100px);
+  border-radius: 50%;
+  opacity: 0.15;
+  animation: float 20s infinite alternate ease-in-out;
+}
+
+@keyframes float {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(100px, 50px) scale(1.2); }
+}
+
+/* פונט תסריט */
+.script-font {
+  font-family: 'Courier Prime', monospace;
+  line-height: 1.8;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-gold); }
