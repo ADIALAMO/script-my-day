@@ -11,7 +11,7 @@ function ScriptOutput({ script, lang }) {
   const isAutoScrollPaused = useRef(false);
   const resumeTimerRef = useRef(null);
 
-  // אפקט ההקלדה
+  // אפקט ההקלדה (מכונת כתיבה) - קצב הוליוודי 40ms
   useEffect(() => {
     if (script) {
       setIsTyping(true);
@@ -26,6 +26,8 @@ function ScriptOutput({ script, lang }) {
         if (i >= script.length) { 
           clearInterval(timer); 
           setIsTyping(false); 
+          // בסיום ההקלדה, אנחנו מקפיאים את הגלילה האוטומטית כדי שלא תקפוץ למשתמש
+          isAutoScrollPaused.current = true;
         }
       }, speed);
 
@@ -36,7 +38,7 @@ function ScriptOutput({ script, lang }) {
     }
   }, [script]);
 
-  // פונקציית הגלילה האוטומטית
+  // לוגיקת הגלילה האוטומטית - רצה רק בזמן הקלדה ורק אם המשתמש לא "תפס" את המסך
   useEffect(() => {
     if (isTyping && scrollRef.current && !isAutoScrollPaused.current) {
       scrollRef.current.scrollTo({
@@ -46,25 +48,33 @@ function ScriptOutput({ script, lang }) {
     }
   }, [displayText, isTyping]);
 
-  // טיפול באירועי משתמש - עצירה וחזרה חלקה
-  const handleUserInteraction = () => {
-    // 1. הפסקת הגלילה האוטומטית מייד
+  // ניהול אינטראקציית משתמש - עצירה ל-4 שניות וחזרה חלקה
+  const handleUserInteraction = (e) => {
+    // אם ההקלדה הסתיימה, אין צורך להפעיל טיימרים של חזרה
+    if (!isTyping) {
+      isAutoScrollPaused.current = true;
+      return;
+    }
+
+    // הפסקה מיידית של הגלילה האוטומטית
     isAutoScrollPaused.current = true;
 
-    // 2. ניקוי טיימר קודם אם קיים
+    // ניקוי טיימר קודם במידה והמשתמש עדיין גולל
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
 
-    // 3. הגדרת טיימר לחזרה לגלילה אוטומטית אחרי 4 שניות של חוסר פעילות
+    // הגדרת חזרה לגלילה אוטומטית רק אחרי 4 שניות של שקט
     resumeTimerRef.current = setTimeout(() => {
-      isAutoScrollPaused.current = false;
-      // גלילה ראשונית חלקה חזרה למטה ברגע שהטיימר נגמר
-      if (scrollRef.current) {
-        scrollRef.current.scrollTo({
-          top: scrollRef.current.scrollHeight,
-          behavior: 'smooth'
-        });
+      if (isTyping) {
+        isAutoScrollPaused.current = false;
+        // גלילה ראשונית חלקה חזרה למקום ההקלדה
+        if (scrollRef.current) {
+          scrollRef.current.scrollTo({
+            top: scrollRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
       }
-    }, 4000); // 4 שניות השהייה
+    }, 4000);
   };
 
   const handleCopy = () => {
@@ -77,14 +87,17 @@ function ScriptOutput({ script, lang }) {
     const blob = new Blob([script], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `lifescript_${new Date().getTime()}.txt`;
+    a.href = url; 
+    a.download = `lifescript_${new Date().getTime()}.txt`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   if (!script) return null;
 
   return (
     <div className="space-y-6">
+      {/* Header של אזור הפלט */}
       <div className="flex justify-between items-center px-6">
         <div className="flex items-center gap-3">
           <Film size={18} className="text-[#d4a373]" />
@@ -93,49 +106,73 @@ function ScriptOutput({ script, lang }) {
           </h2>
         </div>
         <div className="flex gap-3">
-          <button onClick={handleCopy} className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all">
-            {isCopied ? <Check size={18} className="text-green-500" /> : <Copy size={18} className="text-gray-400" />}
+          <button 
+            onClick={handleCopy} 
+            className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all group"
+            title="Copy to clipboard"
+          >
+            {isCopied ? <Check size={18} className="text-green-500" /> : <Copy size={18} className="text-gray-400 group-hover:text-[#d4a373]" />}
           </button>
-          <button onClick={handleDownload} className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all">
-            <Download size={18} className="text-gray-400" />
+          <button 
+            onClick={handleDownload} 
+            className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all group"
+            title="Download as TXT"
+          >
+            <Download size={18} className="text-gray-400 group-hover:text-[#d4a373]" />
           </button>
         </div>
       </div>
 
+      {/* מיכל הטקסט הראשי */}
       <div className="relative glass-panel rounded-[2rem] overflow-hidden bg-black/40 border border-white/10 shadow-2xl">
         <div 
           ref={scrollRef}
-          onWheel={handleUserInteraction}      // גלילה עם עכבר
-          onTouchStart={handleUserInteraction} // מגע בטלפון
+          onWheel={handleUserInteraction}
+          onTouchStart={handleUserInteraction}
+          onTouchMove={handleUserInteraction}
           onScroll={(e) => {
-            // אם הגלילה בוצעה על ידי המשתמש (ולא על ידי הקוד)
-            if (e.nativeEvent instanceof WheelEvent || e.nativeEvent.type === 'touchmove') {
-              handleUserInteraction();
-            }
+            // אם הגלילה מגיעה מהמשתמש בזמן הקלדה, עוצרים אוטומציה
+            if (isTyping) handleUserInteraction();
           }}
-          className="h-[500px] overflow-y-auto p-10 md:p-16 scroll-smooth custom-scrollbar"
+          className="h-[450px] md:h-[550px] overflow-y-auto p-10 md:p-16 scroll-smooth custom-scrollbar"
         >
-          <div className={`script-font text-xl leading-[2] text-gray-100 whitespace-pre-wrap ${lang === 'he' ? 'text-right' : 'text-left'}`}>
+          <div className={`script-font text-lg md:text-xl leading-[2.2] text-gray-100 whitespace-pre-wrap ${lang === 'he' ? 'text-right' : 'text-left'}`}>
             {displayText}
+            
+            {/* הסמן המהבהב (Cursor) */}
             {isTyping && (
               <motion.span 
                 animate={{ opacity: [1, 0] }} 
                 transition={{ duration: 0.5, repeat: Infinity }} 
-                className="inline-block w-2 h-6 bg-[#d4a373] ml-2 align-middle" 
+                className="inline-block w-2 h-6 bg-[#d4a373] ml-2 align-middle shadow-[0_0_10px_#d4a373]" 
               />
             )}
-            <div className="h-40" />
+            
+            {/* שטח ריק לנשימה בתחתית */}
+            <div className="h-32" />
           </div>
         </div>
 
-        <div className="px-10 py-5 bg-white/[0.03] border-t border-white/5 flex justify-between items-center">
-          <span className="text-[10px] text-gray-500 uppercase tracking-[0.3em] font-bold flex items-center gap-2">
-            <Sparkles size={12} className={isTyping ? "animate-spin" : "text-[#d4a373]"} />
-            {isTyping ? (lang === 'he' ? 'התסריט נכתב...' : 'Scripting...') : (lang === 'he' ? 'התסריט מוכן' : 'Script Ready')}
-          </span>
-          <span className="text-[10px] text-[#d4a373]/40 font-black italic uppercase tracking-widest">
-            PRODUCED BY LIFESCRIPT STUDIO
-          </span>
+        {/* Footer של חלון הפלט */}
+        <div className="px-10 py-6 bg-white/[0.03] border-t border-white/5 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className={`p-1.5 rounded-full ${isTyping ? 'bg-amber-500/20' : 'bg-green-500/20'}`}>
+              <Sparkles size={14} className={isTyping ? "animate-spin text-amber-500" : "text-green-500"} />
+            </div>
+            <span className="text-[10px] text-gray-400 uppercase tracking-[0.3em] font-black">
+              {isTyping ? (lang === 'he' ? 'מעבד נתונים...' : 'Processing...') : (lang === 'he' ? 'הפקה הושלמה' : 'Production Ready')}
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <span className="text-[10px] text-[#d4a373]/30 font-black italic uppercase tracking-[0.2em] hidden sm:inline">
+              Cinematic Engine v3.0
+            </span>
+            <div className="h-4 w-[1px] bg-white/10 hidden sm:block" />
+            <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">
+              LIFESCRIPT STUDIO
+            </span>
+          </div>
         </div>
       </div>
     </div>

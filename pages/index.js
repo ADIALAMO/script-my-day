@@ -61,7 +61,8 @@ function HomePage() {
           <div className="inline-block mb-4 px-4 py-1 rounded-full border border-[#d4a373]/30 bg-[#d4a373]/5 text-[#d4a373] text-xs font-bold tracking-[0.2em] uppercase">
             {lang === 'he' ? 'חזון קולנועי' : 'Cinematic Vision'}
           </div>
-          <h1 className="text-7xl md:text-8xl font-black mb-6 bg-gradient-to-b from-[#d4a373] via-[#fefae0] to-[#d4a373] bg-clip-text text-transparent italic tracking-tighter uppercase leading-none">
+          {/* התיקון כאן: leading-[1.2] ו-pt-4 למניעת חיתוך ה-T */}
+          <h1 className="text-7xl md:text-8xl font-black mb-6 bg-gradient-to-b from-[#d4a373] via-[#fefae0] to-[#d4a373] bg-clip-text text-transparent italic tracking-tighter uppercase leading-[1.2] pt-4">
             LIFESCRIPT
           </h1>
           <p className="text-gray-400 text-xl font-light max-w-2xl mx-auto leading-relaxed">
