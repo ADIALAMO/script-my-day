@@ -12,6 +12,12 @@ function HomePage() {
   const [error, setError] = useState('');
   const [lang, setLang] = useState('he');
   const [mounted, setMounted] = useState(false);
+  
+  // שינוי: מתחיל כ-null כדי שדרמה לא תיתקע בטעינה הראשונה
+  const [selectedGenre, setSelectedGenre] = useState(null);
+  
+  // ה-State הקריטי לנעילת הממשק בזמן שהתסריט נכתב פיזית
+  const [isTyping, setIsTyping] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
@@ -21,6 +27,8 @@ function HomePage() {
     setLoading(true);
     setError('');
     setScript('');
+    setSelectedGenre(genre);
+
     try {
       const response = await fetch('/api/generate-script', {
         method: 'POST',
@@ -61,7 +69,6 @@ function HomePage() {
           <div className="inline-block mb-4 px-4 py-1 rounded-full border border-[#d4a373]/30 bg-[#d4a373]/5 text-[#d4a373] text-xs font-bold tracking-[0.2em] uppercase">
             {lang === 'he' ? 'חזון קולנועי' : 'Cinematic Vision'}
           </div>
-          {/* התיקון כאן: leading-[1.2] ו-pt-4 למניעת חיתוך ה-T */}
           <h1 className="text-7xl md:text-8xl font-black mb-6 bg-gradient-to-b from-[#d4a373] via-[#fefae0] to-[#d4a373] bg-clip-text text-transparent italic tracking-tighter uppercase leading-[1.2] pt-4">
             LIFESCRIPT
           </h1>
@@ -73,17 +80,29 @@ function HomePage() {
         <motion.section 
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className={`glass-panel rounded-[2.5rem] overflow-hidden ${loading ? 'ai-loading-active' : ''}`}
+          className={`glass-panel rounded-[2.5rem] overflow-hidden ${(loading || isTyping) ? 'ai-loading-active' : ''}`}
         >
           <div className="bg-[#030712]/40 backdrop-blur-3xl p-8 md:p-10">
-            <ScriptForm onGenerateScript={handleGenerateScript} loading={loading} lang={lang} />
+            {/* הטופס עכשיו מודע למצב ההקלדה וינעל את הז'אנרים בהתאם */}
+            <ScriptForm 
+              onGenerateScript={handleGenerateScript} 
+              loading={loading} 
+              lang={lang} 
+              isTyping={isTyping} 
+            />
           </div>
         </motion.section>
 
         <AnimatePresence>
           {script && !loading && (
             <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} className="mt-16">
-              <ScriptOutput script={script} lang={lang} />
+              {/* הפלט מעדכן את מצב ההקלדה הגלובלי כדי לשלוט בנעילה */}
+              <ScriptOutput 
+                script={script} 
+                lang={lang} 
+                genre={selectedGenre} 
+                setIsTypingGlobal={setIsTyping}
+              />
             </motion.div>
           )}
         </AnimatePresence>
