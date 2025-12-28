@@ -4,10 +4,7 @@ import Redis from 'ioredis';
 const kv = new Redis(process.env.REDIS_URL, {
   connectTimeout: 5000,
   maxRetriesPerRequest: 1,
-  retryStrategy: (times) => (times > 1 ? null : 50)
 });
-
-kv.on('error', (err) => console.warn('Redis Connection Issue (Non-critical):', err.message));
 
 const DAILY_LIMIT = 2;
 
@@ -17,53 +14,59 @@ export default async function handler(req, res) {
   try {
     const { journalEntry, genre } = req.body;
     
-    // זיהוי אדמין חסין טעויות (Case-insensitive headers)
-    const adminKey = req.headers['x-admin-key'] || req.headers['X-Admin-Key'];
-    const serverSecret = process.env.ADMIN_SECRET;
-    const isAdmin = serverSecret && adminKey === serverSecret;
+    // משיכת המפתח מהדפדפן
+    const clientAdminKey = req.headers['x-admin-key'] || '';
+    // משיכת המפתח מהשרת (מה שהגדרת בוורסל או ב-env.)
+    const serverAdminSecret = process.env.ADMIN_SECRET || '';
     
-    const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    const today = new Date().toISOString().split('T')[0];
-    const usageKey = `usage:${userIp}:${today}`;
+    // השוואה נקייה - ללא ערכים "קשיחים" בקוד
+    const isAdmin = serverAdminSecret !== '' && clientAdminKey === serverAdminSecret;
 
-    // בדיקת מכסה למשתמשים רגילים
+    // לוג לדיבוג בטרמינל (תוכל לראות את ההתאמה בזמן אמת)
+    console.log('--- Production Admin Check ---');
+    console.log('Browser Key:', clientAdminKey);
+    console.log('Server Secret:', serverAdminSecret ? 'DEFINED' : 'MISSING');
+    console.log('Match:', isAdmin);
+
     if (!isAdmin) {
+      const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
+      const today = new Date().toISOString().split('T')[0];
+      const usageKey = `usage:${userIp}:${today}`;
+
       try {
         const currentUsageRaw = await kv.get(usageKey);
         const currentUsage = currentUsageRaw ? parseInt(currentUsageRaw) : 0;
 
         if (currentUsage >= DAILY_LIMIT) {
           return res.status(429).json({ 
-            error: 'QUOTA_EXCEEDED',
-            message: `הגעת למכסה היומית (${DAILY_LIMIT} תסריטים). נחזור מחר!` 
+            message: `הגעת למכסה היומית (${DAILY_LIMIT}). נא הכנס קוד מנהל.` 
           });
         }
       } catch (redisError) {
-        console.error("Redis Check Skipped:", redisError.message);
+        console.error("Redis unreachable, bypassing quota...");
       }
     }
 
     if (!journalEntry) return res.status(400).json({ message: 'Missing journal entry' });
 
-    // יצירת התסריט דרך השירות הקיים
     const result = await generateScript(journalEntry, genre || 'drama');
-
     if (!result.success) throw new Error(result.error);
 
-    // עדכון המכסה ב-Redis רק אם אינו אדמין
+    // עדכון מכסה רק אם המשתמש אינו אדמין
     if (!isAdmin) {
       try {
+        const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
+        const today = new Date().toISOString().split('T')[0];
+        const usageKey = `usage:${userIp}:${today}`;
         await kv.incr(usageKey);
         await kv.expire(usageKey, 86400);
-      } catch (e) {
-        console.warn("Failed to update quota");
-      }
+      } catch (e) {}
     }
 
     return res.status(200).json({ script: result.output });
 
   } catch (error) {
     console.error("API Error:", error);
-    return res.status(500).json({ error: 'SERVER_ERROR', message: 'תקלה טכנית באולפנים.' });
+    return res.status(500).json({ message: 'תקלה בייצור התסריט.' });
   }
 }
