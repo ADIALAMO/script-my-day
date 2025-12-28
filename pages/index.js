@@ -22,6 +22,12 @@ function HomePage() {
     setMounted(true);
     const savedKey = localStorage.getItem('lifescript_admin_key');
     if (savedKey) setTempAdminKey(savedKey);
+
+    // יצירת/שליפת מזהה מכשיר קבוע כדי לעקוף בעיות IP משתנה במובייל
+    if (!localStorage.getItem('lifescript_device_id')) {
+      const newId = 'ds_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+      localStorage.setItem('lifescript_device_id', newId);
+    }
   }, []);
 
   const toggleLanguage = () => setLang(prev => prev === 'he' ? 'en' : 'he');
@@ -42,17 +48,21 @@ function HomePage() {
 
     try {
       const savedAdminKey = localStorage.getItem('lifescript_admin_key') || '';
+      // שליפת המזהה הקבוע מהאחסון המקומי
+      const deviceId = localStorage.getItem('lifescript_device_id') || 'unknown';
       
       const response = await fetch('/api/generate-script', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-admin-key': savedAdminKey 
+          'x-admin-key': savedAdminKey,
+          'x-device-id': deviceId // שליחה ב-Header למקצועיות
         },
         body: JSON.stringify({ 
           journalEntry, 
           genre,
-          adminKeyBody: savedAdminKey // גיבוי ב-Body לעקיפת סינון Headers במובייל
+          deviceId, // שליחה ב-Body לגיבוי מלא
+          adminKeyBody: savedAdminKey 
         }),
       });
       
