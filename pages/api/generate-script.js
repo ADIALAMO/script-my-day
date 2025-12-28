@@ -25,8 +25,7 @@ export default async function handler(req, res) {
 
     // לוגיקת המכסה - עכשיו היא חוסמת ומעדכנת מיד
     if (!isAdmin) {
-      const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
-      const today = new Date().toISOString().split('T')[0];
+      const userIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress;      const today = new Date().toISOString().split('T')[0];
       const usageKey = `usage:${userIp}:${today}`;
 
       try {
