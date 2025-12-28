@@ -27,7 +27,6 @@ function HomePage() {
   const toggleLanguage = () => setLang(prev => prev === 'he' ? 'en' : 'he');
 
   const saveAdminKey = () => {
-    // הסרת רווחים מיותרים כבר בשלב השמירה (קריטי למובייל)
     const cleanKey = tempAdminKey.trim();
     localStorage.setItem('lifescript_admin_key', cleanKey);
     setTempAdminKey(cleanKey);
@@ -48,12 +47,12 @@ function HomePage() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-admin-key': savedAdminKey // שליחה ב-Header
+          'x-admin-key': savedAdminKey 
         },
         body: JSON.stringify({ 
           journalEntry, 
           genre,
-          adminKeyBody: savedAdminKey // גיבוי בתוך ה-Body למובייל
+          adminKeyBody: savedAdminKey // גיבוי ב-Body לעקיפת סינון Headers במובייל
         }),
       });
       
@@ -168,18 +167,12 @@ function HomePage() {
       <style jsx global>{`
         :root { font-size: 18px; }
         @media (min-width: 768px) { :root { font-size: 20px; } }
-        
         .font-heebo { font-family: 'Heebo', sans-serif !important; }
-        
         .glass-panel {
           border: 1px solid rgba(212, 163, 115, 0.15);
           box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
-
-        input, textarea, select, button {
-          font-size: 1.2rem !important;
-        }
-
+        input, textarea, select, button { font-size: 1.2rem !important; }
         @media screen and (max-width: 768px) {
           input, textarea, select { font-size: 16px !important; }
         }
