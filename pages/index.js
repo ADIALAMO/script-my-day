@@ -27,7 +27,10 @@ function HomePage() {
   const toggleLanguage = () => setLang(prev => prev === 'he' ? 'en' : 'he');
 
   const saveAdminKey = () => {
-    localStorage.setItem('lifescript_admin_key', tempAdminKey);
+    // הסרת רווחים מיותרים כבר בשלב השמירה (קריטי למובייל)
+    const cleanKey = tempAdminKey.trim();
+    localStorage.setItem('lifescript_admin_key', cleanKey);
+    setTempAdminKey(cleanKey);
     setShowAdminPanel(false);
     alert(lang === 'he' ? 'גישת מנהל הופעלה!' : 'Admin access activated!');
   };
@@ -40,13 +43,18 @@ function HomePage() {
 
     try {
       const savedAdminKey = localStorage.getItem('lifescript_admin_key') || '';
+      
       const response = await fetch('/api/generate-script', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-admin-key': savedAdminKey 
+          'x-admin-key': savedAdminKey // שליחה ב-Header
         },
-        body: JSON.stringify({ journalEntry, genre }),
+        body: JSON.stringify({ 
+          journalEntry, 
+          genre,
+          adminKeyBody: savedAdminKey // גיבוי בתוך ה-Body למובייל
+        }),
       });
       
       const data = await response.json();
@@ -158,7 +166,6 @@ function HomePage() {
       </footer>
 
       <style jsx global>{`
-        /* תיקון פונט Heebo וגודל טקסט גלובלי */
         :root { font-size: 18px; }
         @media (min-width: 768px) { :root { font-size: 20px; } }
         
@@ -169,12 +176,10 @@ function HomePage() {
           box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
 
-        /* הגדלת רכיבי טופס */
         input, textarea, select, button {
           font-size: 1.2rem !important;
         }
 
-        /* מניעת זום אוטומטי במובייל */
         @media screen and (max-width: 768px) {
           input, textarea, select { font-size: 16px !important; }
         }

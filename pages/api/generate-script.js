@@ -1,6 +1,7 @@
 import { generateScript } from '../../lib/story-service.js';
 import Redis from 'ioredis';
 
+// אתחול Redis נשאר בדיוק כפי שהיה
 const kv = new Redis(process.env.REDIS_URL, {
   connectTimeout: 5000,
   maxRetriesPerRequest: 1,
@@ -9,25 +10,26 @@ const kv = new Redis(process.env.REDIS_URL, {
 const DAILY_LIMIT = 2;
 
 export default async function handler(req, res) {
+  // 1. בדיקת מתודה - נשמר
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
 
   try {
-    const { journalEntry, genre } = req.body;
+    // 2. פירוק הבקשה - הוספתי את adminKeyBody כגיבוי למובייל
+    const { journalEntry, genre, adminKeyBody } = req.body;
     
-    // משיכת המפתח מהדפדפן
-    const clientAdminKey = req.headers['x-admin-key'] || '';
-    // משיכת המפתח מהשרת (מה שהגדרת בוורסל או ב-env.)
+    // 3. משיכת המפתח - הוספתי בדיקה משולשת (Headers ו-Body)
+    const clientAdminKey = req.headers['x-admin-key'] || req.headers['X-Admin-Key'] || adminKeyBody || '';
     const serverAdminSecret = process.env.ADMIN_SECRET || '';
     
-    // השוואה נקייה - ללא ערכים "קשיחים" בקוד
-    const isAdmin = serverAdminSecret !== '' && clientAdminKey === serverAdminSecret;
+    // 4. השוואה נקייה (שימוש ב-trim למניעת רווחים מיותרים במובייל)
+    const isAdmin = serverAdminSecret !== '' && clientAdminKey.toString().trim() === serverAdminSecret.toString().trim();
 
-    // לוג לדיבוג בטרמינל (תוכל לראות את ההתאמה בזמן אמת)
+    // לוגים לדיבוג - נשאר זהה
     console.log('--- Production Admin Check ---');
-    console.log('Browser Key:', clientAdminKey);
-    console.log('Server Secret:', serverAdminSecret ? 'DEFINED' : 'MISSING');
-    console.log('Match:', isAdmin);
+    console.log('Browser Key Provided:', !!clientAdminKey);
+    console.log('Match Status:', isAdmin);
 
+    // 5. לוגיקת המכסה - לא נגעה, נשארת פעילה בדיוק באותה צורה
     if (!isAdmin) {
       const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
       const today = new Date().toISOString().split('T')[0];
@@ -47,12 +49,14 @@ export default async function handler(req, res) {
       }
     }
 
+    // 6. בדיקת קלט - נשמר
     if (!journalEntry) return res.status(400).json({ message: 'Missing journal entry' });
 
+    // 7. הפונקציה הקריטית - יצירת התסריט (לא נגעה בכלל)
     const result = await generateScript(journalEntry, genre || 'drama');
     if (!result.success) throw new Error(result.error);
 
-    // עדכון מכסה רק אם המשתמש אינו אדמין
+    // 8. עדכון מכסה - נשמר (רק אם אינו אדמין)
     if (!isAdmin) {
       try {
         const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
@@ -63,6 +67,7 @@ export default async function handler(req, res) {
       } catch (e) {}
     }
 
+    // 9. החזרת התוצאה - נשמר
     return res.status(200).json({ script: result.output });
 
   } catch (error) {
