@@ -42,11 +42,14 @@ function HomePage() {
     setSelectedGenre(genre);
 
     try {
+      // שליפה טרייה של המפתח רגע לפני השליחה
+      const savedAdminKey = localStorage.getItem('lifescript_admin_key') || '';
+      
       const response = await fetch('/api/generate-script', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-admin-key': localStorage.getItem('lifescript_admin_key') || ''
+          'x-admin-key': savedAdminKey // המפתח נשלח כאן
         },
         body: JSON.stringify({ journalEntry, genre }),
       });
