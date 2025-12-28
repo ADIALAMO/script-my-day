@@ -35,8 +35,7 @@ export default async function handler(req, res) {
 
         if (currentUsage >= DAILY_LIMIT) {
           return res.status(429).json({ 
-            message: `הגעת למכסה היומית (${DAILY_LIMIT}). נא הכנס קוד מנהל.` 
-          });
+           message: "🎬 המסך ירד להיום. האורות באולפן כבו והמכסה היומית הסתיימה. נתראה בפרימיירה של מחר."              });
         }
         
         // רישום הבקשה ב-Redis מיד כדי למנוע "מירוץ" בזמן שהשרת נרדם
