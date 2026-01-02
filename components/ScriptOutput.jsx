@@ -210,65 +210,79 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
       )}
 
       {/* פוסטר ואוורלאיי הוליוודי - קומפוזיציה מושלמת */}
+      {/* פוסטר ואוורלאיי הוליוודי - תיקון רספונסיבי למובייל */}
       <AnimatePresence>
         {showPoster && (
-          <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} className="relative max-w-xl mx-auto w-full mt-10">
+          <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} className="relative max-w-xl mx-auto w-full mt-10 pb-20">
             <div className="relative aspect-[2/3] w-full rounded-[3.5rem] overflow-hidden bg-black shadow-4xl border border-[#d4a373]/30">
-              <img src={posterUrl} className={`w-full h-full object-cover transition-opacity duration-1000 ${posterLoading ? 'opacity-0' : 'opacity-100'}`} onLoad={() => setPosterLoading(false)} />
+              <img 
+                src={posterUrl} 
+                className={`w-full h-full object-cover transition-opacity duration-1000 ${posterLoading ? 'opacity-0' : 'opacity-100'}`} 
+                onLoad={() => setPosterLoading(false)} 
+              />
               
               {!posterLoading && (
-                <div className="absolute inset-0 flex flex-col items-center z-10">
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-transparent to-black/50" />
+                <div className="absolute inset-0 z-10 flex flex-col items-center">
+                  {/* גרדיאנט מושחר לשיפור קריאות */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-black/40" />
                   
-                  {/* כותרת מוגדלת ב-35% גובה */}
-                  <div className="relative text-center w-full flex flex-col items-center" style={{ marginTop: '35%' }}>
-                    {(() => {
-                      const hasSubTitle = rawTitle.includes(':');
-                      const titleParts = rawTitle.split(':');
-                      const titleStyle = { fontFamily: 'serif', textShadow: '0 12px 45px rgba(0,0,0,1)' };
-                      
-                      if (hasSubTitle) {
-                        return (
-                          <>
-                            <h1 className="text-white font-black uppercase tracking-tight text-[4.2rem] leading-[0.8]" style={titleStyle}>{titleParts[0].trim()}</h1>
-                            <h2 className="text-[#d4a373] font-bold uppercase tracking-[0.5em] text-[1.8rem] mt-5" style={titleStyle}>{titleParts[1].trim()}</h2>
-                          </>
-                        );
-                      }
-                      return <h1 className="text-white font-black uppercase tracking-wide text-[4.8rem] leading-[0.9]" style={titleStyle}>{rawTitle}</h1>;
-                    })()}
-                  </div>
-
-                  {/* קרדיטים ו-Coming Soon משוחזרים ומורחבים */}
-                  <div className="absolute bottom-12 text-center flex flex-col items-center px-6 w-full space-y-10">
-                    <p className="text-[#d4a373] font-black uppercase tracking-[0.8em] text-[22px] drop-shadow-2xl">
-                      {isHebrew ? 'בקרוב בקולנוע' : 'COMING SOON'}
-                    </p>
+                  {/* מכולת תוכן ראשית - מחלקת את הפוסטר ל-3 אזורים */}
+                  <div className="relative h-full w-full flex flex-col justify-between items-center py-12 px-6">
                     
-                    <div className="flex flex-col gap-2.5 w-full border-t border-white/20 pt-8">
-                      <p className="text-white/95 text-[12px] font-bold tracking-[0.15em] leading-tight uppercase">
-                        {isHebrew ? 'בימוי: עדי אלמו • הפקה: LIFESCRIPT STUDIO' : 'DIRECTED BY ADI ALAMO • PRODUCED BY LIFESCRIPT STUDIO'}
-                      </p>
-                      <p className="text-white/70 text-[9px] font-medium tracking-[0.2em] leading-tight uppercase">
-                        {isHebrew 
-                          ? 'צילום: מעבדת בינה מלאכותית • ליהוק: וירטואלי • עריכה: עולם הקולנוע'
-                          : 'CINEMATOGRAPHY: AI LAB • CASTING: VIRTUAL • EDITING: CINEMA WORLD'}
-                      </p>
-                      <p className="text-white/60 text-[9px] font-medium tracking-[0.2em] leading-tight uppercase">
-                        {isHebrew 
-                          ? 'מוזיקה וסאונד: המאסטר • תסריט: סוכן 2005'
-                          : 'MUSIC & SOUND: THE MASTER • SCRIPT: AGENT 2005'}
-                      </p>
+                    {/* 1. אזור עליון - נקי (לפנים של הדמות) */}
+                    <div className="h-1/4" />
+
+                    {/* 2. אזור הכותרת - ממוקם מעל המרכז */}
+                    <div className="w-full flex flex-col items-center text-center space-y-4">
+                      {(() => {
+                        const hasSubTitle = rawTitle.includes(':');
+                        const titleParts = rawTitle.split(':');
+                        const titleStyle = { fontFamily: 'serif', textShadow: '0 10px 40px rgba(0,0,0,1)' };
+                        
+                        if (hasSubTitle) {
+                          return (
+                            <>
+                              <h1 className="text-white font-black uppercase tracking-tight text-[2.5rem] md:text-[4.2rem] leading-[0.85]" style={titleStyle}>{titleParts[0].trim()}</h1>
+                              <h2 className="text-[#d4a373] font-bold uppercase tracking-[0.4em] text-[1.1rem] md:text-[1.8rem]" style={titleStyle}>{titleParts[1].trim()}</h2>
+                            </>
+                          );
+                        }
+                        return <h1 className="text-white font-black uppercase tracking-wide text-[2.8rem] md:text-[4.8rem] leading-[0.9]" style={titleStyle}>{rawTitle}</h1>;
+                      })()}
                     </div>
+
+                    {/* 3. אזור תחתון - בקרוב וקרדיטים */}
+                    <div className="w-full flex flex-col items-center space-y-6 md:space-y-10">
+                      <p className="text-[#d4a373] font-black uppercase tracking-[0.6em] md:tracking-[0.8em] text-[16px] md:text-[22px] drop-shadow-2xl">
+                        {isHebrew ? 'בקרוב בקולנוע' : 'COMING SOON'}
+                      </p>
+                      
+                      <div className="flex flex-col gap-2 w-full border-t border-white/20 pt-6 md:pt-8 mb-4">
+                        <p className="text-white/95 text-[9px] md:text-[12px] font-bold tracking-[0.1em] md:tracking-[0.15em] leading-tight uppercase">
+                          {isHebrew ? 'בימוי: עדי אלמו • הפקה: LIFESCRIPT STUDIO' : 'DIRECTED BY ADI ALAMO • PRODUCED BY LIFESCRIPT STUDIO'}
+                        </p>
+                        <p className="text-white/70 text-[7px] md:text-[9px] font-medium tracking-[0.15em] md:tracking-[0.2em] leading-tight uppercase">
+                          {isHebrew 
+                            ? 'צילום: מעבדת בינה מלאכותית • ליהוק: וירטואלי • עריכה: עולם הקולנוע'
+                            : 'CINEMATOGRAPHY: AI LAB • CASTING: VIRTUAL • EDITING: CINEMA WORLD'}
+                        </p>
+                        <p className="text-white/60 text-[7px] md:text-[9px] font-medium tracking-[0.15em] md:tracking-[0.2em] leading-tight uppercase">
+                          {isHebrew 
+                            ? 'מוזיקה וסאונד: המאסטר • תסריט: סוכן 2005'
+                            : 'MUSIC & SOUND: THE MASTER • SCRIPT: AGENT 2005'}
+                        </p>
+                      </div>
+                    </div>
+
                   </div>
                 </div>
               )}
 
               {posterLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/80">
+                <div className="absolute inset-0 flex items-center justify-center bg-black/90">
                   <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="w-12 h-12 text-[#d4a373] animate-spin" />
-                    <p className="text-[#d4a373] text-[10px] font-bold tracking-[0.3em] uppercase animate-pulse">Developing Film...</p>
+                    <Loader2 className="w-10 h-10 text-[#d4a373] animate-spin" />
+                    <p className="text-[#d4a373] text-[10px] font-bold tracking-[0.3em] uppercase">Developing...</p>
                   </div>
                 </div>
               )}
