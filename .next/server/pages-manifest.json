@@ -2,7 +2,7 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/": "pages/index.js",
+  "/api/proxy-image": "pages/api/proxy-image.js",
   "/api/generate-script": "pages/api/generate-script.js",
-  "/api/proxy-image": "pages/api/proxy-image.js"
+  "/": "pages/index.js"
 }

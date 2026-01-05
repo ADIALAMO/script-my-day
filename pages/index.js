@@ -23,7 +23,7 @@ function HomePage() {
     const savedKey = localStorage.getItem('lifescript_admin_key');
     if (savedKey) setTempAdminKey(savedKey);
 
-    // יצירת/שליפת מזהה מכשיר קבוע כדי לעקוף בעיות IP משתנה במובייל
+    // יצירת/שליפת מזהה מכשיר קבוע - חיוני לעקיפת בעיות IP משתנה
     if (!localStorage.getItem('lifescript_device_id')) {
       const newId = 'ds_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
       localStorage.setItem('lifescript_device_id', newId);
@@ -48,26 +48,27 @@ function HomePage() {
 
     try {
       const savedAdminKey = localStorage.getItem('lifescript_admin_key') || '';
-      // שליפת המזהה הקבוע מהאחסון המקומי
       const deviceId = localStorage.getItem('lifescript_device_id') || 'unknown';
       
+      // שליחת הבקשה ל-API עם כל המזהים הנדרשים
       const response = await fetch('/api/generate-script', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'x-admin-key': savedAdminKey,
-          'x-device-id': deviceId // שליחה ב-Header למקצועיות
+          'x-device-id': deviceId 
         },
         body: JSON.stringify({ 
           journalEntry, 
           genre,
-          deviceId, // שליחה ב-Body לגיבוי מלא
+          deviceId,
           adminKeyBody: savedAdminKey 
         }),
       });
       
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Error');
+      
       setScript(data.script);
     } catch (err) {
       setError(err.message);
@@ -86,6 +87,7 @@ function HomePage() {
         <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@100;300;400;700;900&display=swap" rel="stylesheet" />
       </Head>
 
+      {/* רקע גרדיאנט קולנועי */}
       <div className="mesh-gradient fixed inset-0 -z-10">
         <div className="mesh-sphere w-[600px] h-[600px] bg-purple-900/10 top-[-10%] left-[-10%]" />
         <div className="mesh-sphere w-[500px] h-[500px] bg-blue-900/10 bottom-[-10%] right-[-10%]" />
@@ -116,6 +118,7 @@ function HomePage() {
           </p>
         </motion.header>
 
+        {/* פאנל ניהול סודי */}
         <AnimatePresence>
           {showAdminPanel && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-12">
@@ -134,6 +137,7 @@ function HomePage() {
           )}
         </AnimatePresence>
 
+        {/* טופס יצירת התסריט */}
         <motion.section 
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -153,6 +157,7 @@ function HomePage() {
           </div>
         </motion.section>
 
+        {/* תצוגת התסריט והפוסטר */}
         <AnimatePresence mode="wait">
           {script && !loading && (
             <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="mt-16 md:mt-24">
@@ -186,6 +191,9 @@ function HomePage() {
         @media screen and (max-width: 768px) {
           input, textarea, select { font-size: 16px !important; }
         }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(212, 163, 115, 0.2); border-radius: 10px; }
       `}</style>
     </div>
   );
