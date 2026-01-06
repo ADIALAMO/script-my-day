@@ -57,42 +57,77 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
   useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
 
   // --- מנוע סאונד ---
+ // --- מנוע סאונד קולנועי משודרג ---
   useEffect(() => {
     const initAudio = async () => {
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        audioContext.current = new AudioCtx();
+        if (!audioContext.current) audioContext.current = new AudioCtx();
+        
         const response = await fetch('/audio/typewriter.m4a');
         const arrayBuffer = await response.arrayBuffer();
         audioBuffer.current = await audioContext.current.decodeAudioData(arrayBuffer);
-      } catch (e) { console.error("Audio engine failed"); }
+        
+        const unlock = () => {
+          if (audioContext.current?.state === 'suspended') {
+            audioContext.current.resume();
+          }
+          // מסירים את ההאזנה אחרי הפעם הראשונה שזה עובד
+          window.removeEventListener('click', unlock);
+          window.removeEventListener('touchstart', unlock);
+          window.removeEventListener('mousemove', unlock);
+        };
+        window.addEventListener('click', unlock);
+        window.addEventListener('touchstart', unlock);
+        window.addEventListener('mousemove', unlock);
+      } catch (e) { console.error("Audio engine failed", e); }
     };
     initAudio();
   }, []);
 
   const playSound = () => {
     if (isMutedRef.current || !audioBuffer.current || !audioContext.current) return;
-    if (audioContext.current.state === 'suspended') audioContext.current.resume();
+    
+    // Resume context if suspended
+    if (audioContext.current.state === 'suspended') {
+      audioContext.current.resume();
+    }
+
     const source = audioContext.current.createBufferSource();
     source.buffer = audioBuffer.current;
+    
     const gainNode = audioContext.current.createGain();
-    gainNode.gain.value = 0.15;
+    // ווליום נקי ומדויק
+    gainNode.gain.setValueAtTime(0.12, audioContext.current.currentTime);
+    // מניעת ה"חריקה" הדיגיטלית - דעיכה מהירה בסוף הצליל
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.current.currentTime + 0.1);
+    
+    // Pitch רנדומלי למכונת כתיבה חיה
+    source.playbackRate.value = 0.96 + Math.random() * 0.08;
+    
     source.connect(gainNode);
     gainNode.connect(audioContext.current.destination);
     source.start(0);
+    // עצירה מוחלטת של ה-buffer לאחר 150ms כדי שלא יצטברו צלילים
+    source.stop(audioContext.current.currentTime + 0.15);
   };
-
   // --- עיבוד טקסט וחילוץ הנחיות ויזואליות ---
+ // --- עיבוד טקסט וחילוץ הנחיות ויזואליות (כולל ניקוי תגיות HTML) ---
   useEffect(() => {
     if (!script) return;
+    
+    // ניקוי תגיות <br> והפיכתן לירידת שורה אמיתית
+    let processedScript = script.replace(/<br\s*\/?>/gi, '\n');
+    
     const marker = "[image:";
-    const markerIndex = script.toLowerCase().indexOf(marker);
+    const markerIndex = processedScript.toLowerCase().indexOf(marker);
+    
     if (markerIndex !== -1) {
-      setCleanScript(script.substring(0, markerIndex).trim());
-      const endBracketIndex = script.indexOf("]", markerIndex);
-      setVisualPrompt(script.substring(markerIndex + marker.length, endBracketIndex).trim());
+      setCleanScript(processedScript.substring(0, markerIndex).trim());
+      const endBracketIndex = processedScript.indexOf("]", markerIndex);
+      setVisualPrompt(processedScript.substring(markerIndex + marker.length, endBracketIndex).trim());
     } else {
-      setCleanScript(script);
+      setCleanScript(processedScript);
       setVisualPrompt("Cinematic masterpiece, dramatic lighting");
     }
     setDisplayText('');
@@ -100,6 +135,7 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
   }, [script]);
 
   // --- מנוע הקלדה רספונסיבי ---
+  // --- מנוע הקלדה הוליוודי רספונסיבי ---
   useEffect(() => {
     if (!cleanScript) return;
     setIsTyping(true);
@@ -112,21 +148,27 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
         setIsTypingGlobal?.(false);
         return;
       }
+      
       setDisplayText(cleanScript.substring(0, i + 1));
-      if (cleanScript[i] && !/\s/.test(cleanScript[i])) playSound();
+      
+      // התיקון הקריטי: מנגנים סאונד רק כל תו שני (i % 2 === 0)
+      // זה מונע מהגלים להתנגש וליצור רעש דיגיטלי, ונשמע כמו קצב הקלדה טבעי
+      if (cleanScript[i] && !/\s/.test(cleanScript[i]) && i % 2 === 0) {
+        playSound();
+      }
       
       if (scrollRef.current && !isAutoScrollPaused.current) {
         scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'auto' });
       }
       
       i++;
-      timerRef.current = setTimeout(typeChar, 30);
+      // מהירות 40ms: מהירה מספיק למקצוענות, איטית מספיק ליציבות סאונד
+      timerRef.current = setTimeout(typeChar, 40);
     };
     
     typeChar();
     return () => clearTimeout(timerRef.current);
   }, [cleanScript]);
-
   // --- יצירת פוסטר ---
   const generatePoster = () => {
     setPosterLoading(true);
@@ -245,9 +287,12 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
       {/* Poster Display with Correct Localization & Credits */}
       <AnimatePresence>
         {showPoster && (
-          <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} className="relative max-w-2xl mx-auto w-full pb-24 px-4 overflow-hidden">
-            <div className="relative aspect-[2/3] w-full rounded-[3.5rem] md:rounded-[4.5rem] overflow-hidden bg-black shadow-4xl border border-[#d4a373]/30">
-              {/* Image Layer - Clean (No Text) */}
+          <motion.div 
+            initial={{ opacity: 0, y: 50 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            className="relative max-w-2xl mx-auto w-full pb-4 px-4 overflow-hidden" // צמצום pb-24 ל-pb-4
+          >
+             <div className="relative aspect-[2/3] w-full max-w-[450px] md:max-h-[75vh] mx-auto rounded-[3.5rem] md:rounded-[4.5rem] overflow-hidden bg-black shadow-4xl border border-[#d4a373]/30">
               <img 
                 src={posterUrl} 
                 className={`w-full h-full object-cover transition-opacity duration-1000 ${posterLoading ? 'opacity-0' : 'opacity-100'}`} 
@@ -256,94 +301,43 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
               
               {!posterLoading && (
                 <div className="absolute inset-0 flex flex-col items-center justify-between p-8 md:p-14 text-center z-20 pointer-events-none">
-                  {/* Dark Gradient Overlay for Readability */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/98 via-transparent to-black/60 -z-10" />
-                  
-                  {/* Title Area */}
                   <div className="w-full pt-4 md:pt-10">
                     <h1 className="text-white font-black uppercase tracking-tight text-[2.5rem] md:text-[4.5rem] leading-[0.85] italic drop-shadow-[0_10px_30px_rgba(0,0,0,1)] break-words">
                       {posterTitle}
                     </h1>
                   </div>
-
-                  {/* Billing Block - Dynamic Language */}
                   <div className="w-full flex flex-col items-center gap-6 pb-4">
                     <p className="text-[#d4a373] font-black uppercase tracking-[0.4em] text-[14px] md:text-[20px]">
                       {credits.comingSoon}
                     </p>
-                    
                     <div className="w-full border-t border-white/20 pt-6 flex flex-col gap-1.5 md:gap-2 font-bold uppercase text-white/90">
-                      {/* שורה 1: בימוי והפקה */}
-                      <p className="text-[9px] md:text-[13px] tracking-[0.15em]">
-                        {credits.line1}
-                      </p>
-                      
-                      {/* שורה 2: צילום, ארט, ליהוק */}
-                      <p className="text-[7px] md:text-[10px] text-white/70 tracking-[0.15em]">
-                        {credits.line2}
-                      </p>
-                      
-                      {/* שורה 3: מוזיקה, עריכה, אפקטים */}
-                      <p className="text-[7px] md:text-[10px] text-white/50 tracking-[0.15em]">
-                        {credits.line3}
-                      </p>
-                      
-                      {/* שורה 4: זכויות יוצרים */}
-                      <p className="text-white/30 text-[6px] md:text-[8px] tracking-[0.3em] mt-1">
-                        {credits.copyright}
-                      </p>
+                      <p className="text-[9px] md:text-[13px] tracking-[0.15em]">{credits.line1}</p>
+                      <p className="text-[7px] md:text-[10px] text-white/70 tracking-[0.15em]">{credits.line2}</p>
+                      <p className="text-[7px] md:text-[10px] text-white/50 tracking-[0.15em]">{credits.line3}</p>
+                      <p className="text-white/30 text-[6px] md:text-[8px] tracking-[0.3em] mt-1">{credits.copyright}</p>
                     </div>
                   </div>
                 </div>
               )}
 
+              {/* Loader נקי ללא כפילויות */}
               {posterLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-[#030712]">
-{posterLoading && (
-  <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#030712] z-50">
-    <div className="relative w-24 h-24">
-      {/* גלגלת פילם חיצונית מסתובבת */}
-      <motion.div 
-        animate={{ rotate: 360 }}
-        transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
-        className="absolute inset-0 border-[3px] border-dashed border-[#d4a373]/30 rounded-full"
-      />
-      
-      {/* צמצם פנימי מהבהב */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        {[0, 60, 120, 180, 240, 300].map((deg, i) => (
-          <motion.div
-            key={i}
-            style={{ rotate: deg, position: 'absolute' }}
-            className="w-full h-full flex items-start justify-center p-1"
-          >
-            <motion.div 
-              animate={{ opacity: [0.2, 1, 0.2], height: ["10%", "30%", "10%"] }}
-              transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.2 }}
-              className="w-[3px] bg-[#d4a373] rounded-full shadow-[0_0_15px_rgba(212,163,115,0.5)]"
-            />
-          </motion.div>
-        ))}
-      </div>
-
-      {/* אפקט סריקה (Scanner) שרץ מצד לצד */}
-      <motion.div 
-        animate={{ top: ["20%", "80%", "20%"] }}
-        transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-        className="absolute left-[-20%] right-[-20%] h-[2px] bg-[#d4a373] shadow-[0_0_15px_#d4a373] opacity-50 z-10"
-      />
-    </div>
-
-    {/* טקסט סטטוס מהבהב */}
-    <motion.p 
-      animate={{ opacity: [0.4, 1, 0.4] }}
-      transition={{ repeat: Infinity, duration: 1.5 }}
-      className="mt-10 text-[#d4a373] text-[10px] font-black uppercase tracking-[0.5em] pl-[0.5em]"
-    >
-      {isHebrew ? 'מפתח פוסטר קולנועי...' : 'DEVELOPING CINEMATIC POSTER...'}
-    </motion.p>
-  </div>
-)}                </div>
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#030712] z-50">
+                  <div className="relative w-24 h-24">
+                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 4, ease: "linear" }} className="absolute inset-0 border-[3px] border-dashed border-[#d4a373]/30 rounded-full" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      {[0, 60, 120, 180, 240, 300].map((deg, i) => (
+                        <motion.div key={i} style={{ rotate: deg, position: 'absolute' }} className="w-full h-full flex items-start justify-center p-1">
+                          <motion.div animate={{ opacity: [0.2, 1, 0.2], height: ["10%", "30%", "10%"] }} transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.2 }} className="w-[3px] bg-[#d4a373] rounded-full" />
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                  <motion.p animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1.5 }} className="mt-10 text-[#d4a373] text-[10px] font-black uppercase tracking-[0.5em] pl-[0.5em]">
+                    {isHebrew ? 'מפתח פוסטר קולנועי...' : 'DEVELOPING CINEMATIC POSTER...'}
+                  </motion.p>
+                </div>
               )}
             </div>
           </motion.div>
