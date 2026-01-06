@@ -19,11 +19,17 @@ const getCinematicTitle = (text) => {
 
 const translateGenre = (genre) => {
   const map = {
+    // תמיכה בעברית (עבור תאימות)
     'אימה': 'Horror', 'קומדיה': 'Comedy', 'דרמה': 'Drama', 'אקשן': 'Action',
     'פעולה': 'Action', 'מדע בדיוני': 'Sci-Fi', 'מתח': 'Thriller', 
-    'רומנטיקה': 'Romance', 'קומיקס': 'Comic'
+    'רומנטיקה': 'Romance', 'קומיקס': 'Comic',
+    // תמיכה ב-IDs באנגלית (מהממשק החדש)
+    'horror': 'Horror', 'comedy': 'Comedy', 'drama': 'Drama', 'action': 'Action',
+    'sci-fi': 'Sci-Fi', 'thriller': 'Thriller', 'romance': 'Romance', 'comic': 'Comic'
   };
-  return map[genre] || genre || 'Cinematic';
+  // הפיכה ל-lowercase כדי לוודא התאמה מושלמת
+  const normalized = genre?.toLowerCase().trim();
+  return map[normalized] || genre || 'Cinematic';
 };
 
 function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
@@ -293,8 +299,51 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
 
               {posterLoading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-[#030712]">
-                  <Loader2 className="w-12 h-12 text-[#d4a373] animate-spin" />
-                </div>
+{posterLoading && (
+  <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#030712] z-50">
+    <div className="relative w-24 h-24">
+      {/* גלגלת פילם חיצונית מסתובבת */}
+      <motion.div 
+        animate={{ rotate: 360 }}
+        transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+        className="absolute inset-0 border-[3px] border-dashed border-[#d4a373]/30 rounded-full"
+      />
+      
+      {/* צמצם פנימי מהבהב */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        {[0, 60, 120, 180, 240, 300].map((deg, i) => (
+          <motion.div
+            key={i}
+            style={{ rotate: deg, position: 'absolute' }}
+            className="w-full h-full flex items-start justify-center p-1"
+          >
+            <motion.div 
+              animate={{ opacity: [0.2, 1, 0.2], height: ["10%", "30%", "10%"] }}
+              transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.2 }}
+              className="w-[3px] bg-[#d4a373] rounded-full shadow-[0_0_15px_rgba(212,163,115,0.5)]"
+            />
+          </motion.div>
+        ))}
+      </div>
+
+      {/* אפקט סריקה (Scanner) שרץ מצד לצד */}
+      <motion.div 
+        animate={{ top: ["20%", "80%", "20%"] }}
+        transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+        className="absolute left-[-20%] right-[-20%] h-[2px] bg-[#d4a373] shadow-[0_0_15px_#d4a373] opacity-50 z-10"
+      />
+    </div>
+
+    {/* טקסט סטטוס מהבהב */}
+    <motion.p 
+      animate={{ opacity: [0.4, 1, 0.4] }}
+      transition={{ repeat: Infinity, duration: 1.5 }}
+      className="mt-10 text-[#d4a373] text-[10px] font-black uppercase tracking-[0.5em] pl-[0.5em]"
+    >
+      {isHebrew ? 'מפתח פוסטר קולנועי...' : 'DEVELOPING CINEMATIC POSTER...'}
+    </motion.p>
+  </div>
+)}                </div>
               )}
             </div>
           </motion.div>

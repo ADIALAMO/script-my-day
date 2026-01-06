@@ -42,12 +42,12 @@ const RomanceScene = ({ isSelected }) => (
 
 // רשימת הז'אנרים המעודכנת - ללא קומיקס, 6 ז'אנרים סה"כ (מושלם ל-Grid)
 const genres = [
-  { label: 'דרמה', value: 'drama', component: DramaScene, activeClass: 'bg-indigo-600/20 border-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.3)]', textClass: 'text-indigo-400', glowColor: '#6366f1' },
-  { label: 'קומדיה', value: 'comedy', component: ComedyScene, activeClass: 'bg-amber-500/20 border-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.3)]', textClass: 'text-amber-400', glowColor: '#f59e0b' },
-  { label: 'פעולה', value: 'action', component: ActionScene, activeClass: 'bg-red-600/20 border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.4)]', textClass: 'text-red-500', glowColor: '#ef4444' },
-  { label: 'מד"ב', value: 'sci-fi', component: SciFiScene, activeClass: 'bg-cyan-500/20 border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.3)]', textClass: 'text-cyan-400', glowColor: '#06b6d4' },
-  { label: 'אימה', value: 'horror', component: HorrorScene, activeClass: 'bg-emerald-900/40 border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.2)]', textClass: 'text-emerald-500', glowColor: '#10b981' },
-  { label: 'רומנטיקה', value: 'romance', component: RomanceScene, activeClass: 'bg-rose-500/20 border-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.3)]', textClass: 'text-rose-400', glowColor: '#f43f5e' },
+  { label: { he: 'דרמה', en: 'Drama' }, value: 'drama', component: DramaScene, activeClass: 'bg-indigo-600/20 border-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.3)]', textClass: 'text-indigo-400', glowColor: '#6366f1' },
+  { label: { he: 'קומדיה', en: 'Comedy' }, value: 'comedy', component: ComedyScene, activeClass: 'bg-amber-500/20 border-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.3)]', textClass: 'text-amber-400', glowColor: '#f59e0b' },
+  { label: { he: 'פעולה', en: 'Action' }, value: 'action', component: ActionScene, activeClass: 'bg-red-600/20 border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.4)]', textClass: 'text-red-500', glowColor: '#ef4444' },
+  { label: { he: 'מד"ב', en: 'Sci-Fi' }, value: 'sci-fi', component: SciFiScene, activeClass: 'bg-cyan-500/20 border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.3)]', textClass: 'text-cyan-400', glowColor: '#06b6d4' },
+  { label: { he: 'אימה', en: 'Horror' }, value: 'horror', component: HorrorScene, activeClass: 'bg-emerald-900/40 border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.2)]', textClass: 'text-emerald-500', glowColor: '#10b981' },
+  { label: { he: 'רומנטיקה', en: 'Romance' }, value: 'romance', component: RomanceScene, activeClass: 'bg-rose-500/20 border-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.3)]', textClass: 'text-rose-400', glowColor: '#f43f5e' },
 ];
 
 function ScriptForm({ onGenerateScript, loading, lang, isTyping }) {
@@ -169,7 +169,7 @@ function ScriptForm({ onGenerateScript, loading, lang, isTyping }) {
                   <Visual isSelected={isSelected} />
                 </div>
                 <span className={`text-[9px] md:text-[10px] font-black uppercase tracking-widest z-10 ${isSelected ? 'text-white' : 'text-gray-600'}`}>
-                  {genre.label}
+                  {lang === 'he' ? genre.label.he : genre.label.en}
                 </span>
                 
                 {isSelected && (
@@ -206,8 +206,29 @@ function ScriptForm({ onGenerateScript, loading, lang, isTyping }) {
         <span className="relative z-20 flex items-center justify-center gap-4 italic">
           {loading ? (
             <div className="flex items-center gap-4">
-              <Loader2 className="animate-spin" size={24} /> 
-              <span className="animate-pulse">{lang === 'he' ? 'מפיק יצירת מופת...' : 'PRODUCING MASTERPIECE...'}</span>
+<div className="relative w-8 h-8 flex items-center justify-center mr-2">
+  {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => (
+    <motion.div
+      key={i}
+      style={{ rotate: deg, position: 'absolute' }}
+      className="inset-0 flex items-start justify-center"
+    >
+      <motion.div 
+        animate={{ 
+          height: ["10%", "40%", "10%"],
+          opacity: [0.3, 1, 0.3]
+        }}
+        transition={{ 
+          repeat: Infinity, 
+          duration: 1, 
+          delay: i * 0.125,
+          ease: "easeInOut"
+        }}
+        className="w-[2.5px] bg-black rounded-full"
+      />
+    </motion.div>
+  ))}
+</div>              <span className="animate-pulse">{lang === 'he' ? 'מפיק יצירת מופת...' : 'PRODUCING MASTERPIECE...'}</span>
             </div>
           ) : (
             <>
