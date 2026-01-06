@@ -84,6 +84,10 @@ function HomePage() {
       <Head>
         <title>LifeScript | Cinematic AI Studio</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+        <link rel="icon" href="/icon.png" />
+       <link rel="apple-touch-icon" href="/icon.png" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#030712" />
         <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@100;300;400;700;900&display=swap" rel="stylesheet" />
       </Head>
 
