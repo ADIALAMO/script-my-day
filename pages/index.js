@@ -101,23 +101,38 @@ function HomePage() {
 
       <main className="container mx-auto py-12 md:py-24 px-6 max-w-5xl flex-grow relative z-10">
         
-        <motion.header 
+      <motion.header 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-16 md:mb-24"
+          className="text-center mb-12 md:mb-20 relative"
         >
-          <div className="inline-block mb-6 px-6 py-2 rounded-full border border-[#d4a373]/30 bg-[#d4a373]/5 text-[#d4a373] text-sm md:text-base font-bold tracking-[0.2em] uppercase">
-            {lang === 'he' ? 'חזון קולנועי' : 'Cinematic Vision'}
+          {/* האייקון בגודל המקורי והמרשים */}
+          <div className="relative inline-block mb-8">
+            <div className="absolute inset-0 bg-[#d4a373] blur-[50px] opacity-20" />
+            
+            <div className="relative w-24 h-24 md:w-32 md:h-32 mx-auto rounded-[2rem] overflow-hidden border-2 border-[#d4a373]/30 shadow-2xl">
+              <img 
+                src="/icon.png" 
+                alt="LifeScript Studio Logo" 
+                className="w-full h-full object-cover"
+              />
+            </div>
+          </div>
+
+          <div className="block mb-6">
+            <div className="inline-block px-6 py-2 rounded-full border border-[#d4a373]/30 bg-[#d4a373]/5 text-[#d4a373] text-sm md:text-base font-bold tracking-[0.3em] uppercase">
+              {lang === 'he' ? 'חזון קולנועי' : 'Cinematic Vision'}
+            </div>
           </div>
           
           <h1 
             onClick={() => setShowAdminPanel(!showAdminPanel)}
-            className="text-6xl md:text-[9rem] font-black mb-8 bg-gradient-to-b from-[#d4a373] via-[#fefae0] to-[#d4a373] bg-clip-text text-transparent italic tracking-tighter uppercase leading-[1.1] pt-4 cursor-pointer select-none"
+            className="text-6xl md:text-[9rem] font-black mb-6 bg-gradient-to-b from-[#d4a373] via-[#fefae0] to-[#d4a373] bg-clip-text text-transparent italic tracking-tighter uppercase leading-[0.85] pt-4 cursor-pointer select-none drop-shadow-[0_10px_30px_rgba(212,163,115,0.2)]"
           >
             LIFESCRIPT
           </h1>
           
-          <p className="text-gray-300 text-2xl md:text-3xl font-light max-w-2xl mx-auto leading-relaxed px-4">
+          <p className="text-gray-300 text-2xl md:text-3xl font-light max-w-2xl mx-auto leading-relaxed px-4 opacity-90">
             {lang === 'he' ? 'הפוך את היום שלך לתסריט קולנועי מרתק' : 'Turn your day into a captivating cinematic script'}
           </p>
         </motion.header>
@@ -172,9 +187,10 @@ function HomePage() {
       </main>
 
       <footer className="py-20 text-center border-t border-white/5 bg-black/40 mt-10">
-        <div className="flex flex-col items-center justify-center gap-4">
-          <div className="flex items-center gap-2">
-            <Film size={24} className="text-[#d4a373]" />
+        <div className="flex flex-col items-center justify-center gap-6">
+          <div className="flex items-center gap-4">
+            {/* אייקון קטן בגרסת ה-Footer */}
+            <img src="/icon.png" className="w-8 h-8 rounded-lg opacity-80 grayscale hover:grayscale-0 transition-all" alt="Studio Icon" />
             <span className="text-white font-black tracking-[0.4em] md:tracking-[0.6em] text-lg md:text-xl italic uppercase">LIFESCRIPT STUDIO</span>
           </div>
           <p className="text-gray-500 text-xs md:text-sm tracking-[0.2em] uppercase flex items-center gap-2">

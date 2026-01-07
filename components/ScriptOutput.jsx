@@ -207,10 +207,25 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
       
       {/* Toolbar */}
       <div className="flex justify-between items-center px-6">
-        <div className="flex items-center gap-2">
-          <Film size={18} className="text-[#d4a373]" />
-          <h2 className="text-[#d4a373] font-black uppercase text-[10px] tracking-widest italic">LIFESCRIPT STUDIO</h2>
-        </div>
+        <div className="flex items-center gap-3">
+  {/* האייקון הממותג שלך */}
+  <div className="relative w-7 h-7 overflow-hidden rounded-md border border-[#d4a373]/30 shadow-[0_0_15px_rgba(212,163,115,0.1)]">
+    <img 
+      src="/icon.png" 
+      alt="Studio Icon" 
+      className="w-full h-full object-cover"
+    />
+  </div>
+  
+  <div className="flex flex-col">
+    <h2 className="text-[#d4a373] font-black uppercase text-[11px] tracking-[0.2em] italic leading-none">
+      LIFESCRIPT
+    </h2>
+    <span className="text-white/30 text-[7px] tracking-[0.3em] uppercase mt-0.5">
+      Studio Edition
+    </span>
+  </div>
+</div>
         
         <div className="flex items-center gap-2">
           {isTyping && (
@@ -270,6 +285,34 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
             {isTyping && <span className="inline-block w-2.5 h-8 bg-[#d4a373] ml-1 animate-pulse align-middle" />}
           </div>
         </div>
+
+        {/* --- חתימה נעוצה בתחתית --- */}
+        {(!isTyping && displayText.length === cleanScript.length && cleanScript.length > 0) && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 1 }}
+            className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#030712] via-[#030712]/95 to-transparent pt-12 pb-8 px-10 flex justify-between items-center z-30"
+          >
+            {/* צד שמאל - טקסט סטטוס */}
+            <div className="flex flex-col items-start gap-1 font-sans">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#d4a373] shadow-[0_0_8px_rgba(212,163,115,0.6)]" />
+                <span className="text-[10px] text-white font-black tracking-widest uppercase italic leading-none">
+                  {isHebrew ? 'הפקה הושלמה' : 'PRODUCTION COMPLETE'}
+                </span>
+              </div>
+              <span className="text-[9px] text-[#d4a373] font-bold tracking-wider uppercase leading-none">
+                {isHebrew ? 'מוכנים לצילום!' : 'READY FOR SHOOT!'}
+              </span>
+            </div>
+
+            {/* צד ימין - לוגו */}
+            <div className="flex items-center">
+              <img src="/icon.png" className="w-8 h-8 object-contain opacity-80" alt="Studio Icon" />
+            </div>
+          </motion.div>
+        )}
       </div>
 
       {/* Generate Poster Button */}
@@ -301,26 +344,69 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
               
               {!posterLoading && (
                 <div className="absolute inset-0 flex flex-col items-center justify-between p-8 md:p-14 text-center z-20 pointer-events-none">
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/98 via-transparent to-black/60 -z-10" />
+                  {/* שכבת הצללה משופרת - חזקה מאוד למטה להגנה על הטקסט */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-transparent to-black/60 -z-10" />
+                  
+                  {/* כותרת הסרט */}
                   <div className="w-full pt-4 md:pt-10">
                     <h1 className="text-white font-black uppercase tracking-tight text-[2.5rem] md:text-[4.5rem] leading-[0.85] italic drop-shadow-[0_10px_30px_rgba(0,0,0,1)] break-words">
                       {posterTitle}
                     </h1>
                   </div>
+
+                  {/* אזור תחתון: Coming Soon + Billing Block */}
                   <div className="w-full flex flex-col items-center gap-6 pb-4">
-                    <p className="text-[#d4a373] font-black uppercase tracking-[0.4em] text-[14px] md:text-[20px]">
+                    {/* Coming Soon עם צל מודגש לקריאות */}
+                    <p className="text-[#d4a373] font-black uppercase tracking-[0.4em] text-[14px] md:text-[20px] drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
                       {credits.comingSoon}
                     </p>
-                    <div className="w-full border-t border-white/20 pt-6 flex flex-col gap-1.5 md:gap-2 font-bold uppercase text-white/90">
-                      <p className="text-[9px] md:text-[13px] tracking-[0.15em]">{credits.line1}</p>
-                      <p className="text-[7px] md:text-[10px] text-white/70 tracking-[0.15em]">{credits.line2}</p>
-                      <p className="text-[7px] md:text-[10px] text-white/50 tracking-[0.15em]">{credits.line3}</p>
-                      <p className="text-white/30 text-[6px] md:text-[8px] tracking-[0.3em] mt-1">{credits.copyright}</p>
+
+                    <div className="w-full border-t border-white/10 pt-4 flex flex-col items-center gap-2">
+                      {/* שורה 1 - הנהגה */}
+                      <div className="flex justify-center gap-x-4 opacity-100 leading-tight drop-shadow-[0_1px_3px_rgba(0,0,0,1)]">
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-[6px] md:text-[8px] font-light tracking-tighter text-white/60 uppercase italic">Directed by</span>
+                          <span className="text-[9px] md:text-[13px] font-black tracking-widest text-white uppercase italic">{isHebrew ? 'עדי אלמו' : 'Adi Alamo'}</span>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-[6px] md:text-[8px] font-light tracking-tighter text-white/60 uppercase italic">Produced by</span>
+                          <span className="text-[9px] md:text-[13px] font-black tracking-widest text-white uppercase italic text-nowrap">LifeScript Studio</span>
+                        </div>
+                      </div>
+
+                      {/* שורה 2 - צוות קריאייטיב */}
+                      <div className="flex justify-center gap-x-3 opacity-90 leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">
+                        <p className="text-[6px] md:text-[9px] tracking-[0.2em] font-medium uppercase text-white/90 text-center">
+                          {isHebrew 
+                            ? 'ליהוק וירטואלי • עיצוב אמנותי הוליווד דיגיטלית • תלבושות AI STYLE' 
+                            : 'CASTING VIRTUAL • ART DIRECTION DIGITAL HOLLYWOOD • COSTUMES AI STYLE'}
+                        </p>
+                      </div>
+
+                      {/* שורה 3 - צוות טכני */}
+                      <div className="flex justify-center gap-x-3 opacity-80 leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">
+                        <p className="text-[5px] md:text-[8px] tracking-[0.15em] font-medium uppercase text-white/80 text-center">
+                          {isHebrew 
+                            ? 'צילום מעבדת AI • עריכה סוכן 2005 • פסקול THE MASTER • אפקטים מנוע קולנועי' 
+                            : 'CINEMATOGRAPHY AI LAB • EDITING AGENT 2005 • MUSIC THE MASTER • VFX ENGINE'}
+                        </p>
+                      </div>
+
+                      {/* חתימה מרכזית - אייקון גדול וזכויות יוצרים */}
+                      <div className="flex flex-col items-center gap-2 mt-1">
+                        <img 
+                          src="/icon.png" 
+                          className="w-7 h-7 md:w-9 md:h-9 object-contain brightness-125 drop-shadow-[0_0_15px_rgba(0,0,0,0.9)]" 
+                          alt="Studio Logo" 
+                        />
+                        <p className="text-[6px] md:text-[7px] tracking-[0.5em] uppercase font-bold text-white/40 drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">
+                          {credits.copyright}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
-
               {/* Loader נקי ללא כפילויות */}
               {posterLoading && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#030712] z-50">

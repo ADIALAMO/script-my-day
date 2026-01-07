@@ -108,31 +108,32 @@ function ScriptForm({ onGenerateScript, loading, lang, isTyping }) {
             <Sparkles size={14} className="animate-pulse" /> {lang === 'he' ? 'היומן שלך' : 'Your Journal'}
           </label>
           <AnimatePresence>
-            {journalEntry.length > 5 && (
-              <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="flex gap-2">
-                <button type="button" onClick={handleDownloadJournal} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-gray-400 hover:text-[#d4a373] transition-all border border-white/10 shadow-lg">
-                  <Download size={14} />
-                </button>
-                <button type="button" onClick={() => { navigator.clipboard.writeText(journalEntry); setIsCopied(true); setTimeout(() => setIsCopied(false), 2000); }} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-gray-400 hover:text-[#d4a373] transition-all border border-white/10 shadow-lg">
-                  {isCopied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+  {journalEntry.length > 5 && (
+    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="flex gap-2">
+      <button type="button" onClick={handleDownloadJournal} className="p-2 bg-white/5 hover:bg-[#d4a373]/20 rounded-xl text-gray-400 hover:text-[#d4a373] transition-all border border-white/10 shadow-lg">
+        <Download size={14} />
+      </button>
+      <button type="button" onClick={() => { navigator.clipboard.writeText(journalEntry); setIsCopied(true); setTimeout(() => setIsCopied(false), 2000); }} className="p-2 bg-white/5 hover:bg-[#d4a373]/20 rounded-xl text-gray-400 hover:text-[#d4a373] transition-all border border-white/10 shadow-lg">
+        {isCopied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+      </button>
+    </motion.div>
+  )}
+</AnimatePresence>
         </div>
         
         <div className="relative">
-          <textarea
-            value={journalEntry}
-            onChange={(e) => setJournalEntry(e.target.value)}
-            disabled={isGlobalLocked}
-            className="w-full px-6 py-6 md:px-8 md:py-8 text-base md:text-lg text-white bg-black/40 border border-white/10 rounded-[1.5rem] md:rounded-3xl focus:border-[#d4a373]/50 focus:bg-black/60 outline-none transition-all duration-500 min-h-[200px] md:min-h-[220px] shadow-[inset_0_2px_40px_rgba(0,0,0,0.7)] leading-relaxed resize-none backdrop-blur-sm placeholder-gray-700"
-            placeholder={lang === 'he' ? 'איך עבר היום? ספר לי במילים שלך...' : 'How was your day? Tell me in your own words...'}
-          />
-          {/* עיטור אופטי של "מיקוד" בפינות */}
-          <div className="absolute top-4 left-4 w-2 h-2 border-t border-l border-white/20 rounded-tl-sm pointer-events-none" />
-          <div className="absolute bottom-4 right-4 w-2 h-2 border-b border-r border-white/20 rounded-br-sm pointer-events-none" />
-        </div>
+  <textarea
+    value={journalEntry}
+    onChange={(e) => setJournalEntry(e.target.value)}
+    disabled={isGlobalLocked}
+    className="w-full px-6 py-8 md:px-10 md:py-10 text-lg md:text-xl text-white bg-black/40 border border-white/10 rounded-[2rem] md:rounded-[3rem] focus:border-[#d4a373]/50 focus:bg-black/60 outline-none transition-all duration-500 min-h-[220px] md:min-h-[280px] shadow-[inset_0_2px_40px_rgba(0,0,0,0.7)] leading-relaxed resize-none backdrop-blur-sm placeholder-gray-700"
+    placeholder={lang === 'he' ? 'איך עבר היום? ספר לי במילים שלך...' : 'How was your day? Tell me in your own words...'}
+    style={{ fontFamily: "'Courier Prime', 'Courier New', monospace" }}
+  />
+  {/* עיטור אופטי של "מיקוד" בפינות - מוחזר למקור המדויק */}
+  <div className="absolute top-6 left-6 w-3 h-3 border-t border-l border-[#d4a373]/30 rounded-tl-sm pointer-events-none" />
+  <div className="absolute bottom-6 right-6 w-3 h-3 border-b border-r border-[#d4a373]/30 rounded-br-sm pointer-events-none" />
+</div>
       </div>
 
       {/* אזור בחירת ז'אנר */}
@@ -186,54 +187,58 @@ function ScriptForm({ onGenerateScript, loading, lang, isTyping }) {
       </div>
 
       {/* כפתור הפקה מרכזי */}
+      {/* כפתור הפקה מרכזי */}
       <motion.button
         type="submit"
         disabled={isGlobalLocked || !journalEntry.trim() || !selectedGenre}
-        className={`w-full py-6 md:py-7 rounded-[1.5rem] md:rounded-2xl font-black text-base md:text-lg uppercase tracking-[0.4em] transition-all duration-700 group relative overflow-hidden ${
+        className={`w-full py-7 md:py-9 rounded-[2rem] md:rounded-[3rem] font-black text-lg md:text-xl uppercase tracking-[0.5em] transition-all duration-700 group relative overflow-hidden ${
           loading 
             ? 'bg-gradient-to-r from-amber-600 via-[#d4a373] to-amber-600 shadow-[0_0_40px_rgba(212,163,115,0.5)] text-black' 
-            : 'bg-[#d4a373] text-black hover:shadow-[0_0_50px_rgba(212,163,115,0.3)] active:scale-[0.98]'
+            : 'bg-[#d4a373] text-black hover:shadow-[0_0_60px_rgba(212,163,115,0.4)] active:scale-[0.98]'
         } ${(!journalEntry.trim() || !selectedGenre) && !loading ? 'opacity-30 grayscale cursor-not-allowed' : 'opacity-100'}`}
       >
+        {/* אפקט הניצוץ הלבן שעובר על הכפתור */}
         {!loading && !isGlobalLocked && (
           <motion.div 
-            initial={{ x: '-100%' }}
-            animate={{ x: '100%' }}
-            transition={{ repeat: Infinity, duration: 2.5, ease: "linear" }}
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent z-10"
+            animate={{ x: ['-100%', '200%'] }}
+            transition={{ repeat: Infinity, duration: 3, ease: "easeInOut", repeatDelay: 1 }}
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12 z-10"
           />
         )}
+        
         <span className="relative z-20 flex items-center justify-center gap-4 italic">
           {loading ? (
             <div className="flex items-center gap-4">
-<div className="relative w-8 h-8 flex items-center justify-center mr-2">
-  {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => (
-    <motion.div
-      key={i}
-      style={{ rotate: deg, position: 'absolute' }}
-      className="inset-0 flex items-start justify-center"
-    >
-      <motion.div 
-        animate={{ 
-          height: ["10%", "40%", "10%"],
-          opacity: [0.3, 1, 0.3]
-        }}
-        transition={{ 
-          repeat: Infinity, 
-          duration: 1, 
-          delay: i * 0.125,
-          ease: "easeInOut"
-        }}
-        className="w-[2.5px] bg-black rounded-full"
-      />
-    </motion.div>
-  ))}
-</div>              <span className="animate-pulse">{lang === 'he' ? 'מפיק יצירת מופת...' : 'PRODUCING MASTERPIECE...'}</span>
+              {/* הספינר המיוחד שלך - 8 קווים מסתובבים */}
+              <div className="relative w-8 h-8 flex items-center justify-center mr-2">
+                {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => (
+                  <motion.div
+                    key={i}
+                    style={{ rotate: deg, position: 'absolute' }}
+                    className="inset-0 flex items-start justify-center"
+                  >
+                    <motion.div 
+                      animate={{ 
+                        height: ["10%", "40%", "10%"],
+                        opacity: [0.3, 1, 0.3]
+                      }}
+                      transition={{ 
+                        repeat: Infinity, 
+                        duration: 1, 
+                        delay: i * 0.125,
+                        ease: "easeInOut"
+                      }}
+                      className="w-[2.5px] bg-black rounded-full"
+                    />
+                  </motion.div>
+                ))}
+              </div>
+              <span className="animate-pulse">{lang === 'he' ? 'מפיק יצירת מופת...' : 'PRODUCING MASTERPIECE...'}</span>
             </div>
           ) : (
             <>
               {lang === 'he' ? 'צור תסריט' : 'GENERATE SCRIPT'} 
-              <Sparkles size={20} className="group-hover:rotate-12 transition-transform duration-300" />
+              <Sparkles size={22} className="group-hover:rotate-12 transition-transform duration-300" />
             </>
           )}
         </span>
