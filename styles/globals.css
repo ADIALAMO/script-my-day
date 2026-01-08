@@ -142,3 +142,30 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-gold); }
+/* אנימציית פלאש משודרגת - מסונכרנת לסאונד טעינה של 3 שניות */
+@keyframes camera-flash {
+  0% { 
+    background-color: rgba(255, 255, 255, 0); 
+  }
+  5% { 
+    background-color: rgba(255, 255, 255, 0.98); /* הבזק חזק ברגע ה"קליק" */
+  }
+  20% { 
+    background-color: rgba(255, 255, 255, 0.4); /* דעיכה מהירה לחצי שקיפות */
+  }
+  100% { 
+    background-color: rgba(255, 255, 255, 0); /* דעיכה איטית מאוד בזמן ה-Charging */
+  }
+}
+
+.flash-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  pointer-events: none;
+  /* שינינו ל-2.5 שניות כדי ללוות את רוב אורך הסאונד */
+  animation: camera-flash 2.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}

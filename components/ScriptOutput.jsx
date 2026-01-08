@@ -43,6 +43,7 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
   const [showPoster, setShowPoster] = useState(false);
   const [posterUrl, setPosterUrl] = useState('');
   const [posterLoading, setPosterLoading] = useState(false);
+const [triggerFlash, setTriggerFlash] = useState(false);
 
   // --- Refs ---
   const scrollRef = useRef(null);
@@ -51,6 +52,7 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
   const timerRef = useRef(null);
   const audioContext = useRef(null);
   const audioBuffer = useRef(null);
+  const flashBuffer = useRef(null);
   const isMutedRef = useRef(isMuted);
 
   // סנכרון Ref להשתקה
@@ -68,6 +70,10 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
         const arrayBuffer = await response.arrayBuffer();
         audioBuffer.current = await audioContext.current.decodeAudioData(arrayBuffer);
         
+        const responseFlash = await fetch('/audio/camera-flash.wav');
+        const arrayBufferFlash = await responseFlash.arrayBuffer();
+        flashBuffer.current = await audioContext.current.decodeAudioData(arrayBufferFlash);
+
         const unlock = () => {
           if (audioContext.current?.state === 'suspended') {
             audioContext.current.resume();
@@ -85,10 +91,10 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
     initAudio();
   }, []);
 
-  const playSound = () => {
+ const playSound = () => {
     if (isMutedRef.current || !audioBuffer.current || !audioContext.current) return;
     
-    // Resume context if suspended
+    // ניסיון "להעיר" את הקונטקסט אם הוא מושהה
     if (audioContext.current.state === 'suspended') {
       audioContext.current.resume();
     }
@@ -97,19 +103,42 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
     source.buffer = audioBuffer.current;
     
     const gainNode = audioContext.current.createGain();
-    // ווליום נקי ומדויק
-    gainNode.gain.setValueAtTime(0.12, audioContext.current.currentTime);
-    // מניעת ה"חריקה" הדיגיטלית - דעיכה מהירה בסוף הצליל
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.current.currentTime + 0.1);
     
-    // Pitch רנדומלי למכונת כתיבה חיה
-    source.playbackRate.value = 0.96 + Math.random() * 0.08;
+    // הגברת עוצמה: העלינו מ-0.12 ל-0.35 (כמעט פי 3)
+    const volume = 0.35; 
+    gainNode.gain.setValueAtTime(volume, audioContext.current.currentTime);
+    
+    // דעיכה עדינה מאוד רק בסוף כדי למנוע קליקים, אבל לשמור על עוצמה
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.current.currentTime + 0.12);
+    
+    source.playbackRate.value = 0.92 + Math.random() * 0.15;
     
     source.connect(gainNode);
     gainNode.connect(audioContext.current.destination);
     source.start(0);
-    // עצירה מוחלטת של ה-buffer לאחר 150ms כדי שלא יצטברו צלילים
     source.stop(audioContext.current.currentTime + 0.15);
+  };
+  const playFlashSound = () => {
+    // בודק אם המשתמש במיוט או אם הסאונד לא נטען
+    if (isMutedRef.current || !flashBuffer.current || !audioContext.current) return;
+    
+    // יצירת מקור סאונד חדש
+    const source = audioContext.current.createBufferSource();
+    source.buffer = flashBuffer.current;
+    
+    // ניהול עוצמת קול (Gain)
+    const gainNode = audioContext.current.createGain();
+    
+    // הגדרת תזמון ווליום (כדי שהקליק יהיה חזק והטעינה שקטה יותר)
+    const now = audioContext.current.currentTime;
+    gainNode.gain.setValueAtTime(0.5, now); // עוצמת ה"קליק"
+    gainNode.gain.exponentialRampToValueAtTime(0.15, now + 1.5); // הנמכה עדינה בזמן ה-Charging
+    
+    source.connect(gainNode);
+    gainNode.connect(audioContext.current.destination);
+    
+    // הפעלה
+    source.start(0);
   };
   // --- עיבוד טקסט וחילוץ הנחיות ויזואליות ---
  // --- עיבוד טקסט וחילוץ הנחיות ויזואליות (כולל ניקוי תגיות HTML) ---
@@ -257,19 +286,77 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
       {/* Script Page View */}
       <div className="relative rounded-[3.5rem] overflow-hidden bg-[#030712]/90 border border-white/5 shadow-2xl mx-2 md:mx-4">
         <div 
-          ref={scrollRef} 
-          className="h-[500px] md:h-[650px] overflow-y-auto p-10 md:p-20 custom-scrollbar relative"
-          onWheel={() => {
-            isAutoScrollPaused.current = true;
-            if (pauseTimer.current) clearTimeout(pauseTimer.current);
-            pauseTimer.current = setTimeout(() => { isAutoScrollPaused.current = false; }, 3000);
-          }}
-        >
+  ref={scrollRef} 
+  className="h-[500px] md:h-[650px] overflow-y-auto p-10 md:p-20 custom-scrollbar relative touch-pan-y"
+  // מניעת התנגשות במובייל ובדסקטופ
+  onWheel={() => {
+    isAutoScrollPaused.current = true;
+    if (pauseTimer.current) clearTimeout(pauseTimer.current);
+    pauseTimer.current = setTimeout(() => { isAutoScrollPaused.current = false; }, 3000);
+  }}
+  onTouchStart={() => { // חדש! ברגע שהאצבע נוגעת - עוצרים הכל
+    isAutoScrollPaused.current = true;
+    if (pauseTimer.current) clearTimeout(pauseTimer.current);
+  }}
+  onTouchMove={() => { // חדש! תוך כדי תנועה - מוודאים שהגלילה האוטומטית לא מתפרצת
+    isAutoScrollPaused.current = true;
+  }}
+  onTouchEnd={() => { // חדש! כשעוזבים את המסך - מחכים 4 שניות לפני שחוזרים לגלילה אוטומטית
+    if (pauseTimer.current) clearTimeout(pauseTimer.current);
+    pauseTimer.current = setTimeout(() => { isAutoScrollPaused.current = false; }, 4000);
+  }}
+>
           <div className={`script-font text-xl md:text-3xl leading-[2.5] text-gray-100 whitespace-pre-wrap ${isHebrew ? 'text-right' : 'text-left'}`}>
             {displayText}
             {isTyping && <span className="inline-block w-2.5 h-8 bg-[#d4a373] ml-1 animate-pulse align-middle" />}
           </div>
         </div>
+       {/* --- שכבת סטטוס הפקה משודרגת - מותאמת אישית --- */}
+        {!isTyping && displayText.length > 0 && (
+          <>
+            {/* גרדיאנט הגנה: מבטיח קריאות של ה-Overlay מעל טקסט התסריט */}
+            <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#030712] via-[#030712]/90 to-transparent pointer-events-none z-20" />
+
+            <div className={`absolute bottom-5 md:bottom-10 left-0 right-0 px-6 md:px-12 flex justify-between items-end pointer-events-none animate-in fade-in slide-in-from-bottom-4 duration-1000 z-30 ${isHebrew ? 'flex-row' : 'flex-row-reverse'}`}>
+              
+              {/* פינה ימנית (HE) / שמאלית (EN) - סטטוס עם נקודה ירוקה */}
+              <div className={`flex flex-col leading-none ${isHebrew ? 'items-start text-right' : 'items-end text-left'}`}>
+                <div className={`flex items-center gap-1.5 md:gap-2 mb-1 ${isHebrew ? 'flex-row' : 'flex-row-reverse'}`}>
+                  {/* הנקודה הירוקה הפועמת */}
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                  <span className="text-[#d4a373] text-[13px] md:text-[16px] font-black tracking-tight drop-shadow-md">
+                    {isHebrew ? 'ההפקה סיימה' : 'PRODUCTION COMPLETE'}
+                  </span>
+                </div>
+                <span className="text-[#d4a373]/70 text-[10px] md:text-[11px] font-bold uppercase tracking-wider">
+                  {isHebrew ? 'מוכן לצילום!' : 'READY FOR SHOOT!'}
+                </span>
+              </div>
+
+              {/* פינה שמאלית (HE) / ימנית (EN) - מיתוג LIFESCRIPT ואייקון */}
+              <div className={`flex items-center gap-2 md:gap-4 ${isHebrew ? 'flex-row' : 'flex-row-reverse'}`}>
+                <div className={`flex flex-col gap-0.5 ${isHebrew ? 'items-end' : 'items-start'}`}>
+                  <span className="text-[10px] md:text-[12px] font-black text-[#d4a373] tracking-[0.05em] leading-none">
+                    LIFESCRIPT
+                  </span>
+                  <span className="text-[7px] md:text-[8px] font-medium text-[#d4a373]/50 tracking-[0.2em] leading-none uppercase">
+                    PRODUCTION
+                  </span>
+                </div>
+                <div className="relative flex items-center justify-center">
+                  <img 
+                    src="/icon.png" 
+                    alt="App Icon" 
+                    className="w-8 h-8 md:w-11 md:h-11 object-contain brightness-110 drop-shadow-[0_0_15px_rgba(212,163,115,0.3)]"
+                  />
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Generate Poster Button */}
@@ -290,17 +377,30 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
           <motion.div 
             initial={{ opacity: 0, y: 50 }} 
             animate={{ opacity: 1, y: 0 }} 
-            className="relative max-w-2xl mx-auto w-full pb-20 px-4"
+            className="relative max-w-2xl mx-auto w-full pb-2 px-4"
           >
             {/* המכולה של הפוסטר - שומרת על העיצוב המקורי שלך */}
             <div className="relative aspect-[2/3] w-full max-w-[450px] md:max-h-[75vh] mx-auto rounded-[3.5rem] md:rounded-[4.5rem] overflow-hidden bg-black shadow-4xl border border-[#d4a373]/30">
-              <img 
-                src={posterUrl} 
-                className={`w-full h-full object-cover transition-opacity duration-1000 ${posterLoading ? 'opacity-0' : 'opacity-100'}`} 
-                onLoad={() => setPosterLoading(false)} 
-                alt="Movie Poster"
-              />
-              
+            <img 
+  src={posterUrl} 
+  className={`w-full h-full object-cover transition-opacity duration-1000 ${posterLoading ? 'opacity-0' : 'opacity-100'}`} 
+  onLoad={() => {
+    // 1. קודם כל מפעילים את הסאונד (הוא מתחיל לרוץ לכיוון השנייה ה-2)
+    playFlashSound();
+    
+    // 2. מחכים 1.8 שניות (או 2 שניות, תלוי בקובץ) ואז מפעילים את הפלאש והחשיפה
+    setTimeout(() => {
+      setPosterLoading(false); // החשיפה של הפוסטר תקרה בדיוק עם הקליק
+      setTriggerFlash(true);   // הפלאש הלבן יקפוץ
+      
+      // כיבוי הפלאש אחרי שהאנימציה מסתיימת (סביב צליל הטעינה הצורם)
+      setTimeout(() => setTriggerFlash(false), 2500); 
+    }, 1000); // שינוי ל-1800 מילי-שניות (1.8 שניות) כדי להתאים ל"קליק" בסאונד
+  }} 
+  alt="Movie Poster"
+/>
+              {triggerFlash && <div className="flash-overlay" />}
+
               {!posterLoading && (
                 <div className="absolute inset-0 flex flex-col items-center justify-between p-8 md:p-14 text-center z-20 pointer-events-none">
                   <div className="absolute inset-0 bg-gradient-to-t from-black/98 via-transparent to-black/60 -z-10" />
@@ -343,15 +443,18 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
               )}
             </div>
 
-            {/* כפתורי פעולה - ממוקמים מחוץ למסגרת הפוסטר, תחתיו */}
+           {/* כפתורי פעולה מעודנים - תמיד בשורה אחת, עיצוב פרימיום קומפקטי */}
             {!posterLoading && (
               <motion.div 
-                initial={{ opacity: 0, y: 10 }} 
+                initial={{ opacity: 0, y: 15 }} 
                 animate={{ opacity: 1, y: 0 }} 
-                transition={{ delay: 0.5 }}
-                className="flex justify-center gap-4 mt-8"
+                transition={{ delay: 0.8 }}
+                className="flex flex-row justify-center items-center gap-3 mt-8 pb-10 px-4"
               >
-                <button 
+                {/* כפתור שמירה: קטן, אלגנטי ודו-לשוני */}
+                <motion.button 
+                  whileHover={{ scale: 1.03, backgroundColor: "#e5b98f" }}
+                  whileTap={{ scale: 0.97 }}
                   onClick={async () => {
                     try {
                       const response = await fetch(posterUrl);
@@ -361,34 +464,51 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
                       link.href = url;
                       link.download = `${posterTitle || 'movie-poster'}.png`;
                       link.click();
-                    } catch (e) { window.open(posterUrl, '_blank'); }
-                  }}
-                  className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 rounded-full text-white font-bold text-[10px] tracking-widest hover:bg-white/10 transition-all uppercase"
-                >
-                  <Download size={16} className="text-[#d4a373]" />
-                  {isHebrew ? 'הורד פוסטר' : 'Download Poster'}
-                </button>
-
-                <button 
-                  onClick={async () => {
-                    if (navigator.share) {
-                      try {
-                        await navigator.share({
-                          title: posterTitle,
-                          text: isHebrew ? `תראו את הסרט החדש שלי: ${posterTitle}` : `Check out my new movie: ${posterTitle}`,
-                          url: window.location.href,
-                        });
-                      } catch (err) { console.log("Share cancelled"); }
-                    } else {
-                      navigator.clipboard.writeText(window.location.href);
-                      alert(isHebrew ? 'הקישור הועתק!' : 'Link copied!');
+                      window.URL.revokeObjectURL(url);
+                    } catch (e) { 
+                      window.open(posterUrl, '_blank'); 
                     }
                   }}
-                  className="flex items-center gap-2 px-6 py-3 bg-[#d4a373]/10 border border-[#d4a373]/30 rounded-full text-[#d4a373] font-bold text-[10px] tracking-widest hover:bg-[#d4a373]/20 transition-all uppercase"
+                  className="group relative flex items-center gap-2 px-5 py-2.5 bg-[#d4a373] text-black rounded-full font-bold text-[9px] md:text-[10px] tracking-wider transition-all shadow-lg"
                 >
-                  <Film size={16} />
-                  {isHebrew ? 'שתף יצירה' : 'Share Masterpiece'}
-                </button>
+                  <Download size={14} strokeWidth={2.5} />
+                  <span className="uppercase">
+                    {isHebrew ? 'שמור פוסטר' : 'SAVE POSTER'}
+                  </span>
+                </motion.button>
+
+                {/* כפתור שיתוף: זכוכית שקופה, שיתוף קובץ ישיר */}
+                <motion.button 
+                  whileHover={{ scale: 1.03, backgroundColor: "rgba(255,255,255,0.08)" }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={async () => {
+                    if (!posterUrl) return;
+                    try {
+                      const response = await fetch(posterUrl);
+                      const blob = await response.blob();
+                      const file = new File([blob], `${posterTitle || 'movie-poster'}.png`, { type: 'image/png' });
+                      
+                      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                          files: [file],
+                          title: posterTitle,
+                        });
+                      } else {
+                        // גיבוי למקרה של חוסר תמיכה בשיתוף קבצים
+                        await navigator.clipboard.writeText(window.location.href);
+                        alert(isHebrew ? 'הקישור הועתק!' : 'Link copied!');
+                      }
+                    } catch (err) { 
+                      console.log("Share failed", err); 
+                    }
+                  }}
+                  className="group flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 text-white/80 rounded-full font-bold text-[9px] md:text-[10px] tracking-wider transition-all hover:border-[#d4a373]/30"
+                >
+                  <Film size={14} className="text-[#d4a373] group-hover:rotate-12 transition-transform" />
+                  <span className="uppercase">
+                    {isHebrew ? 'שתף פוסטר' : 'SHARE POSTER'}
+                  </span>
+                </motion.button>
               </motion.div>
             )}
           </motion.div>

@@ -95,6 +95,24 @@ function ScriptForm({ onGenerateScript, loading, lang, isTyping }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (isGlobalLocked || !journalEntry.trim() || !selectedGenre) return;
+
+    // --- שדרוג: פתיחת ערוץ הסאונד ברגע הלחיצה ---
+    // זה מבטיח שהדפדפן יאשר את האודיו של ההקלדה שיתחיל עוד כמה שניות
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const audioCtx = new AudioCtx();
+      
+      // אם הקונטקסט מושהה (Suspended), אנחנו מעירים אותו מיד בלחיצה
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      
+      // אנחנו לא חייבים לשמור את ה-audioCtx כאן, 
+      // עצם היצירה וה-resume שלו בתוך אירוע לחיצה (Submit) משחררת את הנעילה עבור כל האפליקציה.
+    } catch (err) {
+      console.log("Audio unlock failed", err);
+    }
+
     onGenerateScript(journalEntry, selectedGenre);
   };
 
