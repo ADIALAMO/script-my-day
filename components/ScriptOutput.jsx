@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Download, Check, Film, Volume2, VolumeX, Loader2, FastForward } from 'lucide-react';
+import html2canvas from 'html2canvas';
 
 // --- לוגיקה עוטפת: ניקוי כותרות ותרגום ז'אנרים ---
 // הוספת פונקציית העזר לזיהוי שפה
@@ -47,6 +48,7 @@ const [triggerFlash, setTriggerFlash] = useState(false);
 
   // --- Refs ---
   const scrollRef = useRef(null);
+  const posterRef = useRef(null);
   const isAutoScrollPaused = useRef(false);
   const pauseTimer = useRef(null);
   const timerRef = useRef(null);
@@ -211,7 +213,44 @@ const [triggerFlash, setTriggerFlash] = useState(false);
     const directUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1536&seed=${seed}&nologo=true`;
     setPosterUrl(`/api/proxy-image?url=${encodeURIComponent(directUrl)}`);
   };
+const handleCapturePoster = async (action) => {
+    if (!posterRef.current) return;
+    
+    try {
+      // יצירת קנבס מהאלמנט כולל כל השכבות והטקסטים
+      const canvas = await html2canvas(posterRef.current, {
+        useCORS: true,      // קריטי כדי לאפשר צילום של תמונה משרת חיצוני (Pollinations)
+        scale: 2,           // איכות HD (רזולוציה כפולה)
+        backgroundColor: null,
+        logging: false,
+      });
+      
+      const imageBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 1.0));
+      const file = new File([imageBlob], `${posterTitle || 'movie-poster'}.png`, { type: 'image/png' });
 
+      if (action === 'download') {
+        const url = URL.createObjectURL(imageBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${posterTitle || 'movie-poster'}.png`;
+        link.click();
+        URL.revokeObjectURL(url);
+      } else if (action === 'share') {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: posterTitle });
+        } else {
+          // Fallback למחשב או דפדפן ישן - פשוט מוריד את התמונה המעוצבת
+          const url = URL.createObjectURL(imageBlob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `${posterTitle || 'movie-poster'}.png`;
+          link.click();
+        }
+      }
+    } catch (err) {
+      console.error("Capture failed:", err);
+    }
+  };
   // תיקון: זיהוי שפה לפי התוכן במקום לפי ה-Prop
   const isHebrew = isTextHebrew(cleanScript);
   const posterTitle = getCinematicTitle(cleanScript);
@@ -380,8 +419,7 @@ const [triggerFlash, setTriggerFlash] = useState(false);
             className="relative max-w-2xl mx-auto w-full pb-2 px-4"
           >
             {/* המכולה של הפוסטר - שומרת על העיצוב המקורי שלך */}
-            <div className="relative aspect-[2/3] w-full max-w-[450px] md:max-h-[75vh] mx-auto rounded-[3.5rem] md:rounded-[4.5rem] overflow-hidden bg-black shadow-4xl border border-[#d4a373]/30">
-            <img 
+       <div ref={posterRef} className="relative aspect-[2/3] w-full max-w-[450px] md:max-h-[75vh] mx-auto rounded-[3.5rem] md:rounded-[4.5rem] overflow-hidden bg-black shadow-4xl border border-[#d4a373]/30">            <img 
   src={posterUrl} 
   className={`w-full h-full object-cover transition-opacity duration-1000 ${posterLoading ? 'opacity-0' : 'opacity-100'}`} 
   onLoad={() => {
@@ -444,6 +482,7 @@ const [triggerFlash, setTriggerFlash] = useState(false);
             </div>
 
            {/* כפתורי פעולה מעודנים - תמיד בשורה אחת, עיצוב פרימיום קומפקטי */}
+            {/* כפתורי פעולה - שילוב מנצח של עיצוב, לוגיקה וגיבויים */}
             {!posterLoading && (
               <motion.div 
                 initial={{ opacity: 0, y: 15 }} 
@@ -451,24 +490,11 @@ const [triggerFlash, setTriggerFlash] = useState(false);
                 transition={{ delay: 0.8 }}
                 className="flex flex-row justify-center items-center gap-3 mt-8 pb-10 px-4"
               >
-                {/* כפתור שמירה: קטן, אלגנטי ודו-לשוני */}
+                {/* כפתור שמירה: מייצר קובץ PNG מהקומפוזיציה המלאה */}
                 <motion.button 
                   whileHover={{ scale: 1.03, backgroundColor: "#e5b98f" }}
                   whileTap={{ scale: 0.97 }}
-                  onClick={async () => {
-                    try {
-                      const response = await fetch(posterUrl);
-                      const blob = await response.blob();
-                      const url = window.URL.createObjectURL(blob);
-                      const link = document.createElement('a');
-                      link.href = url;
-                      link.download = `${posterTitle || 'movie-poster'}.png`;
-                      link.click();
-                      window.URL.revokeObjectURL(url);
-                    } catch (e) { 
-                      window.open(posterUrl, '_blank'); 
-                    }
-                  }}
+                  onClick={() => handleCapturePoster('download')}
                   className="group relative flex items-center gap-2 px-5 py-2.5 bg-[#d4a373] text-black rounded-full font-bold text-[9px] md:text-[10px] tracking-wider transition-all shadow-lg"
                 >
                   <Download size={14} strokeWidth={2.5} />
@@ -477,31 +503,11 @@ const [triggerFlash, setTriggerFlash] = useState(false);
                   </span>
                 </motion.button>
 
-                {/* כפתור שיתוף: זכוכית שקופה, שיתוף קובץ ישיר */}
+                {/* כפתור שיתוף: שיתוף קובץ ישיר עם Fallback חכם */}
                 <motion.button 
                   whileHover={{ scale: 1.03, backgroundColor: "rgba(255,255,255,0.08)" }}
                   whileTap={{ scale: 0.97 }}
-                  onClick={async () => {
-                    if (!posterUrl) return;
-                    try {
-                      const response = await fetch(posterUrl);
-                      const blob = await response.blob();
-                      const file = new File([blob], `${posterTitle || 'movie-poster'}.png`, { type: 'image/png' });
-                      
-                      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        await navigator.share({
-                          files: [file],
-                          title: posterTitle,
-                        });
-                      } else {
-                        // גיבוי למקרה של חוסר תמיכה בשיתוף קבצים
-                        await navigator.clipboard.writeText(window.location.href);
-                        alert(isHebrew ? 'הקישור הועתק!' : 'Link copied!');
-                      }
-                    } catch (err) { 
-                      console.log("Share failed", err); 
-                    }
-                  }}
+                  onClick={() => handleCapturePoster('share')}
                   className="group flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 text-white/80 rounded-full font-bold text-[9px] md:text-[10px] tracking-wider transition-all hover:border-[#d4a373]/30"
                 >
                   <Film size={14} className="text-[#d4a373] group-hover:rotate-12 transition-transform" />
