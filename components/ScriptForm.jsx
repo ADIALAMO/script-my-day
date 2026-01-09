@@ -144,6 +144,9 @@ function ScriptForm({ onGenerateScript, loading, lang, isTyping }) {
     value={journalEntry}
     onChange={(e) => setJournalEntry(e.target.value)}
     disabled={isGlobalLocked}
+    spellCheck="false"
+  autoCorrect="off"
+  autoCapitalize="none"
     className="w-full px-6 py-8 md:px-10 md:py-10 text-lg md:text-xl text-white bg-black/40 border border-white/10 rounded-[2rem] md:rounded-[3rem] focus:border-[#d4a373]/50 focus:bg-black/60 outline-none transition-all duration-500 min-h-[220px] md:min-h-[280px] shadow-[inset_0_2px_40px_rgba(0,0,0,0.7)] leading-relaxed resize-none backdrop-blur-sm placeholder-gray-700"
     placeholder={lang === 'he' ? 'איך עבר היום? ספר לי במילים שלך...' : 'How was your day? Tell me in your own words...'}
     style={{ fontFamily: "'Courier Prime', 'Courier New', monospace" }}

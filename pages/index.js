@@ -29,6 +29,20 @@ function HomePage() {
     }
   }, []);
 
+useEffect(() => {
+    if (script && !loading) {
+      // המתנה קלה לסיום האנימציה של ה-AnimatePresence במובייל
+      const timer = setTimeout(() => {
+        window.scrollTo({
+          top: document.documentElement.scrollHeight,
+          behavior: 'smooth'
+        });
+      }, 500); // חצי שנייה של המתנה לאנימציה
+      
+      return () => clearTimeout(timer);
+    }
+  }, [script, loading]);
+  
   const toggleLanguage = () => setLang(prev => prev === 'he' ? 'en' : 'he');
 
   const saveAdminKey = () => {

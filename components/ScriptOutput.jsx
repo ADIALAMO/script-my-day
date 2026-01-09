@@ -554,11 +554,11 @@ const handleCapturePoster = async (action) => {
                   onClick={() => handleCapturePoster('download')}
                   className="group relative flex items-center gap-2 px-5 py-2.5 bg-[#d4a373] text-black rounded-full font-bold text-[9px] md:text-[10px] tracking-wider transition-all shadow-lg"
                 >
-                  <Download size={14} strokeWidth={2.5} />
-                  <span className="uppercase">
-                    {isHebrew ? 'שמור פוסטר' : 'SAVE POSTER'}
-                  </span>
-                </motion.button>
+                  <Download size={10} strokeWidth={2.5} />
+  <span className="uppercase">
+    {isHebrew ? 'שמור פוסטר' : 'SAVE POSTER'}
+  </span>
+</motion.button>
 
                 {/* כפתור שיתוף: שיתוף קובץ ישיר עם Fallback חכם */}
                 <motion.button 
@@ -567,11 +567,11 @@ const handleCapturePoster = async (action) => {
                   onClick={() => handleCapturePoster('share')}
                   className="group flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 text-white/80 rounded-full font-bold text-[9px] md:text-[10px] tracking-wider transition-all hover:border-[#d4a373]/30"
                 >
-                  <Film size={14} className="text-[#d4a373] group-hover:rotate-12 transition-transform" />
-                  <span className="uppercase">
-                    {isHebrew ? 'שתף פוסטר' : 'SHARE POSTER'}
-                  </span>
-                </motion.button>
+                  <Film size={10} className="text-[#d4a373]" /> {/* האייקון הוקטן ל-10 */}
+  <span className="uppercase">
+    {isHebrew ? 'שתף פוסטר' : 'SHARE POSTER'}
+  </span>
+</motion.button>
               </motion.div>
             )}
           </motion.div>
