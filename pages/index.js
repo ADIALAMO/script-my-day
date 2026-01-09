@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Film, Copyright, AlertCircle, Key } from 'lucide-react';
-import Navbar from '../components/Navbar';
+import { Film, Copyright, AlertCircle, Key, X, Download, Share2, Camera } from 'lucide-react';import Navbar from '../components/Navbar';
 import ScriptForm from '../components/ScriptForm';
 import ScriptOutput from '../components/ScriptOutput';
 
@@ -34,12 +33,28 @@ function HomePage() {
 
   const saveAdminKey = () => {
     const cleanKey = tempAdminKey.trim();
-    localStorage.setItem('lifescript_admin_key', cleanKey);
-    setTempAdminKey(cleanKey);
-    setShowAdminPanel(false);
-    alert(lang === 'he' ? 'גישת מנהל הופעלה!' : 'Admin access activated!');
-  };
+    
+    if (cleanKey !== "") {
+      // שמירת המפתח ב-LocalStorage
+      localStorage.setItem('lifescript_admin_key', cleanKey);
+      setTempAdminKey(cleanKey);
+      setShowAdminPanel(false);
+      
+      // ניקוי שגיאות קודמות כדי להתחיל "דף חלק" עם המפתח החדש
+      setError('');
 
+      // הודעת עדכון קצרה ודינמית לפי שפה
+      const updateMsg = lang === 'he' 
+        ? 'המפתח עודכן. הוא ייבדק בעת יצירת התסריט.' 
+        : 'Key updated. It will be verified during generation.';
+      
+      console.log(updateMsg);
+      // אופציונלי: אפשר להשאיר alert קטן או להוריד אותו לגמרי כדי שיהיה יותר חלק
+      // alert(updateMsg); 
+    } else {
+      setShowAdminPanel(false);
+    }
+  };
   const handleGenerateScript = async (journalEntry, genre) => {
     setLoading(true);
     setError('');
@@ -71,7 +86,14 @@ function HomePage() {
       
       setScript(data.script);
     } catch (err) {
-      setError(err.message);
+      // זיהוי שגיאת אימות (401) מה-API בוורסל
+      if (err.message.includes('401') || err.message.toLowerCase().includes('unauthorized')) {
+        setError(lang === 'he' 
+          ? 'גישת מנהל נכשלה: הסיסמה שגויה או פגה.' 
+          : 'Admin access failed: Incorrect or expired password.');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -138,23 +160,74 @@ function HomePage() {
         </motion.header>
 
         {/* פאנל ניהול סודי */}
-        <AnimatePresence>
-          {showAdminPanel && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-12">
-              <div className="bg-[#d4a373]/10 border border-[#d4a373]/20 p-8 rounded-3xl flex flex-col md:flex-row gap-6 items-center">
-                <Key className="text-[#d4a373]" size={32} />
-                <input 
-                  type="password"
-                  value={tempAdminKey}
-                  onChange={(e) => setTempAdminKey(e.target.value)}
-                  placeholder="Admin Secret..."
-                  className="bg-black/40 border border-white/10 p-5 rounded-2xl flex-grow text-2xl text-white outline-none focus:border-[#d4a373]/50 w-full"
-                />
-                <button onClick={saveAdminKey} className="bg-[#d4a373] text-black px-10 py-5 rounded-2xl font-black text-xl hover:bg-[#fefae0] transition-colors w-full md:w-auto">SAVE</button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+       <AnimatePresence>
+  {showAdminPanel && (
+    <motion.div 
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-xl px-6"
+      onClick={() => setShowAdminPanel(false)}
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        onClick={(e) => e.stopPropagation()} 
+        className="bg-[#0f1117] border border-[#d4a373]/30 p-8 md:p-12 rounded-[2.5rem] shadow-2xl w-full max-w-lg relative text-center"
+      >
+        {/* כפתור סגירה */}
+        <button 
+          onClick={() => setShowAdminPanel(false)} 
+          className="absolute top-6 right-6 text-white/20 hover:text-[#d4a373] transition-colors p-2"
+        >
+          <X size={24} />
+        </button>
+
+        <Key className="text-[#d4a373] mx-auto mb-4" size={48} />
+        
+        {/* כותרת דינמית */}
+        <h2 className="text-3xl font-black text-white uppercase tracking-tighter">
+          {lang === 'he' ? 'גישת מנהל' : 'ADMIN ACCESS'}
+        </h2>
+        
+        {/* תיאור משני דינמי */}
+        <p className="text-[#d4a373]/40 text-xs tracking-widest mt-2 uppercase">
+          {lang === 'he' ? 'מורשים בלבד' : 'AUTHORIZED PERSONNEL ONLY'}
+        </p>
+        
+        <div className="mt-10 space-y-6">
+          {/* שדה הזנה עם Placeholder דינמי */}
+          <input 
+            type="password"
+            value={tempAdminKey}
+            autoFocus
+            onChange={(e) => setTempAdminKey(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && saveAdminKey()}
+            placeholder={lang === 'he' ? 'הזן קוד סודי...' : 'ENTER SECRET KEY...'}
+            className="w-full bg-black/50 border border-white/10 p-6 rounded-2xl text-2xl text-white outline-none focus:border-[#d4a373] text-center tracking-[0.4em]"
+          />
+          
+          {/* כפתור אישור דינמי */}
+          <button 
+            onClick={saveAdminKey} 
+            className="w-full bg-[#d4a373] text-black py-6 rounded-2xl font-black text-xl hover:bg-white transition-all active:scale-95 shadow-xl shadow-[#d4a373]/20 uppercase"
+          >
+            {lang === 'he' ? 'אישור כניסה' : 'AUTHORIZE'}
+          </button>
+          
+          {/* כפתור ביטול דינמי */}
+          <button 
+            onClick={() => setShowAdminPanel(false)} 
+            className="text-white/30 hover:text-white text-sm uppercase tracking-widest block mx-auto transition-colors"
+          >
+            {lang === 'he' ? 'ביטול' : 'CANCEL'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
 
         {/* טופס יצירת התסריט */}
         <motion.section 

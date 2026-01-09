@@ -11,11 +11,20 @@ const getCinematicTitle = (text) => {
   if (!text) return "";
   let lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   let titleCandidate = lines[0] || "";
-  // ניקוי שאריות Markdown וסמלים
-  if (titleCandidate.toLowerCase().includes("screenplay") || titleCandidate.includes("תסריט")) {
+
+  // שיפרנו את הבדיקה כך שתזהה גם "סצנה", "Script" וכו', ותעבור לשורה הבאה אם צריך
+  if (titleCandidate.match(/^(תסריט|script|screenplay|scene|סצנה|כותרת)[:\s-]*$/i) || 
+      titleCandidate.toLowerCase().includes("screenplay") || 
+      titleCandidate.includes("תסריט")) {
      titleCandidate = lines[1] || titleCandidate;
   }
-  return titleCandidate.replace(/[*#_:]/g, '').replace(/\[.*?\]/g, '').trim();
+
+  // ניקוי עמוק יותר: מסיר כוכביות (Markdown), סוגריים וסימני פיסוק בקצוות שנשארים לפעמים
+  return titleCandidate
+    .replace(/[*#_:]/g, '')           // הוספנו את המנקה המקורי שלך
+    .replace(/\[.*?\]/g, '')         // ניקוי סוגריים מרובעים
+    .replace(/^[.\s:-]+|[.\s:-]+$/g, '') // חדש: מנקה נקודות או מקפים מיותרים שנשארים בהתחלה/סוף
+    .trim();
 };
 
 const translateGenre = (genre) => {
@@ -201,16 +210,23 @@ const [triggerFlash, setTriggerFlash] = useState(false);
     return () => clearTimeout(timerRef.current);
   }, [cleanScript]);
   // --- יצירת פוסטר ---
-  const generatePoster = () => {
+ const generatePoster = () => {
     setPosterLoading(true);
     setShowPoster(true);
     const genreTag = translateGenre(genre);
     const seed = Math.floor(Math.random() * 999999);
     
     const cleanVisual = visualPrompt.replace(/[^\w\s\u0590-\u05FF,]/gi, '').slice(0, 300);
-    const prompt = `Official movie key visual, ${genreTag} style, ${cleanVisual}. High budget, ultra-realistic, 8k, cinematic composition, centered subject. NEGATIVE PROMPT: text, letters, typography, credits, poster borders, watermark, chinese characters, kanji, blur, distortion.`;
     
-    const directUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1536&seed=${seed}&nologo=true`;
+    // ה-Prompt המרכזי שמתמקד רק במה שכן רוצים
+    const prompt = `Official movie key visual, ${genreTag} style, ${cleanVisual}. High budget, ultra-realistic, 8k, cinematic composition, centered subject.`;
+    
+    // ה-Negative Prompt המחוזק - רשימת ה"אסור" שלנו
+    const negative = `text, letters, alphabet, typography, credits, watermark, chinese characters, kanji, japanese, russian, cyrillic, script, signature, logos, symbols, blur, distortion, low quality`;
+    
+    // בניית ה-URL בצורה מקצועית עם פרמטר negative נפרד
+    const directUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1536&seed=${seed}&nologo=true&negative=${encodeURIComponent(negative)}`;
+    
     setPosterUrl(`/api/proxy-image?url=${encodeURIComponent(directUrl)}`);
   };
 const handleCapturePoster = async (action) => {
@@ -219,8 +235,8 @@ const handleCapturePoster = async (action) => {
     try {
       // יצירת קנבס מהאלמנט כולל כל השכבות והטקסטים
       const canvas = await html2canvas(posterRef.current, {
-        useCORS: true,      // קריטי כדי לאפשר צילום של תמונה משרת חיצוני (Pollinations)
-        scale: 2,           // איכות HD (רזולוציה כפולה)
+        useCORS: true,      // קריטי כדי לאפשר צילום של תמונה משרת חיצוני
+        scale: 2,           // איכות HD
         backgroundColor: null,
         logging: false,
       });
@@ -237,18 +253,33 @@ const handleCapturePoster = async (action) => {
         URL.revokeObjectURL(url);
       } else if (action === 'share') {
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: posterTitle });
+          // --- כאן התיקון לכירורגי למניעת ה-AbortError ---
+          try {
+            await navigator.share({ files: [file], title: posterTitle });
+          } catch (shareErr) {
+            // אם המשתמש ביטל את השיתוף (AbortError), אנחנו פשוט יוצאים בשקט
+            if (shareErr.name === 'AbortError') {
+              console.log('Share cancelled by user');
+              return; 
+            }
+            // אם זו שגיאה אחרת, נזרוק אותה ל-catch החיצוני
+            throw shareErr;
+          }
         } else {
-          // Fallback למחשב או דפדפן ישן - פשוט מוריד את התמונה המעוצבת
+          // Fallback למחשב או דפדפן ישן
           const url = URL.createObjectURL(imageBlob);
           const link = document.createElement('a');
           link.href = url;
           link.download = `${posterTitle || 'movie-poster'}.png`;
           link.click();
+          URL.revokeObjectURL(url);
         }
       }
     } catch (err) {
-      console.error("Capture failed:", err);
+      // כאן אנחנו מוודאים שהקוד לא יקרוס בשגיאות ביטול
+      if (err.name !== 'AbortError') {
+        console.error("Capture failed:", err);
+      }
     }
   };
   // תיקון: זיהוי שפה לפי התוכן במקום לפי ה-Prop
@@ -328,21 +359,47 @@ const handleCapturePoster = async (action) => {
   ref={scrollRef} 
   className="h-[500px] md:h-[650px] overflow-y-auto p-10 md:p-20 custom-scrollbar relative touch-pan-y"
   // מניעת התנגשות במובייל ובדסקטופ
-  onWheel={() => {
+  onWheel={(e) => {
+    // עצירה מיידית בכל גלגול
     isAutoScrollPaused.current = true;
     if (pauseTimer.current) clearTimeout(pauseTimer.current);
-    pauseTimer.current = setTimeout(() => { isAutoScrollPaused.current = false; }, 3000);
+    
+    // אם המשתמש גולל למטה והגיע לאזור הכתיבה - מחזירים מיידית
+    const s = scrollRef.current;
+    if (s && e.deltaY > 0) {
+      const isAtBottom = s.scrollHeight - s.scrollTop <= s.clientHeight + 100;
+      if (isAtBottom) isAutoScrollPaused.current = false;
+      return;
+    }
+    
+    // טיימר חזרה (רק אם הוא קרוב לתחתית)
+    pauseTimer.current = setTimeout(() => {
+      const s = scrollRef.current;
+      if (s && s.scrollHeight - s.scrollTop <= s.clientHeight + 150) {
+        isAutoScrollPaused.current = false;
+      }
+    }, 4000); 
   }}
-  onTouchStart={() => { // חדש! ברגע שהאצבע נוגעת - עוצרים הכל
+  onTouchStart={() => {
     isAutoScrollPaused.current = true;
     if (pauseTimer.current) clearTimeout(pauseTimer.current);
   }}
-  onTouchMove={() => { // חדש! תוך כדי תנועה - מוודאים שהגלילה האוטומטית לא מתפרצת
+  onTouchMove={() => {
     isAutoScrollPaused.current = true;
   }}
-  onTouchEnd={() => { // חדש! כשעוזבים את המסך - מחכים 4 שניות לפני שחוזרים לגלילה אוטומטית
+  onTouchEnd={() => {
     if (pauseTimer.current) clearTimeout(pauseTimer.current);
-    pauseTimer.current = setTimeout(() => { isAutoScrollPaused.current = false; }, 4000);
+    // הטיימר החכם של 4 שניות
+    pauseTimer.current = setTimeout(() => {
+      const s = scrollRef.current;
+      if (s) {
+        // בודק אם המשתמש קרוב לאזור ההקלדה (עד 150 פיקסלים מהסוף)
+        const isNearBottom = s.scrollHeight - s.scrollTop <= s.clientHeight + 150;
+        if (isNearBottom) {
+          isAutoScrollPaused.current = false;
+        }
+      }
+    }, 4000); 
   }}
 >
           <div className={`script-font text-xl md:text-3xl leading-[2.5] text-gray-100 whitespace-pre-wrap ${isHebrew ? 'text-right' : 'text-left'}`}>
