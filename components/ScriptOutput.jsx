@@ -197,8 +197,9 @@ const [triggerFlash, setTriggerFlash] = useState(false);
         playSound();
       }
       
-      if (scrollRef.current && !isAutoScrollPaused.current) {
-        scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'auto' });
+     if (i > 15 && scrollRef.current && !isAutoScrollPaused.current) {
+        const container = scrollRef.current;
+        container.scrollTop = container.scrollHeight;
       }
       
       i++;
@@ -302,8 +303,7 @@ const handleCapturePoster = async (action) => {
   };
 
   return (
-    <div className="space-y-6 w-full max-w-[100vw]">
-      
+<div className="space-y-6 w-full max-w-[100vw]" style={{ contain: 'paint layout' }}>      
       {/* Toolbar */}
       <div className="flex justify-between items-center px-6">
         <div className="flex items-center gap-2">
@@ -358,6 +358,8 @@ const handleCapturePoster = async (action) => {
         <div 
   ref={scrollRef} 
   className="h-[500px] md:h-[650px] overflow-y-auto p-10 md:p-20 custom-scrollbar relative touch-pan-y"
+  // התיקון כאן: מונע מהדפדפן לקפוץ לסוף הדף כשהתוכן גדל בפתאומיות
+    style={{ overflowAnchor: 'none' }}
   // מניעת התנגשות במובייל ובדסקטופ
   onWheel={(e) => {
     // עצירה מיידית בכל גלגול
@@ -402,7 +404,7 @@ const handleCapturePoster = async (action) => {
     }, 4000); 
   }}
 >
-          <div className={`script-font text-xl md:text-3xl leading-[2.5] text-gray-100 whitespace-pre-wrap ${isHebrew ? 'text-right' : 'text-left'}`}>
+          <div className={`script-font text-xl md:text-3xl leading-[2.5] text-gray-100 whitespace-pre-wrap pb-40 ${isHebrew ? 'text-right' : 'text-left'}`}>
             {displayText}
             {isTyping && <span className="inline-block w-2.5 h-8 bg-[#d4a373] ml-1 animate-pulse align-middle" />}
           </div>
