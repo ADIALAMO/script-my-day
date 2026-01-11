@@ -4,6 +4,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Film, Copyright, AlertCircle, Key, X, Download, Share2, Camera } from 'lucide-react';import Navbar from '../components/Navbar';
 import ScriptForm from '../components/ScriptForm';
 import ScriptOutput from '../components/ScriptOutput';
+import { detectSuggestedGenre } from '../utils/input-processor';
+
+const genreIcons = {
+  sciFi: '🚀',
+  horror: '👻',
+  comedy: '😂',
+  romance: '❤️',
+  action: '🔥',
+  drama: '🎭'
+};
 
 function HomePage() {
   const [script, setScript] = useState('');
@@ -238,30 +248,47 @@ useEffect(() => {
             {lang === 'he' ? 'ביטול' : 'CANCEL'}
           </button>
         </div>
-      </motion.div>
+     </motion.div>
     </motion.div>
   )}
 </AnimatePresence>
 
-        {/* טופס יצירת התסריט */}
-        <motion.section 
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className={`glass-panel rounded-[3rem] overflow-hidden shadow-2xl ${(loading || isTyping) ? 'ai-loading-active' : ''}`}
-        >
-          <div className="bg-[#030712]/60 backdrop-blur-3xl p-8 md:p-16">
-            <ScriptForm onGenerateScript={handleGenerateScript} loading={loading} lang={lang} isTyping={isTyping} />
+{/* --- התחלת הטמעה: מחליף את ה-motion.section הקיים --- */}
+<motion.section 
+  initial={{ opacity: 0, scale: 0.98 }}
+  animate={{ opacity: 1, scale: 1 }}
+  className={`glass-panel rounded-[3rem] overflow-hidden shadow-2xl relative ${(loading || isTyping) ? 'ai-loading-active' : ''}`}
+>
+  <div className="bg-[#030712]/60 backdrop-blur-3xl p-8 md:p-16">
+    <ScriptForm 
+      onGenerateScript={handleGenerateScript} 
+      loading={loading} 
+      lang={lang} 
+      isTyping={isTyping}
+      selectedGenre={selectedGenre} // הוספנו את זה כדי שהטופס ידע מה האייקון הנוכחי
+      genreIcons={genreIcons}
+      onInputChange={(text) => {
+        const suggested = detectSuggestedGenre(text);
+        if (suggested !== selectedGenre) setSelectedGenre(suggested);
+      }}
+    />
 
-            <AnimatePresence>
-              {error && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mt-10 p-6 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center gap-4 text-red-400 text-xl md:text-2xl font-bold text-center">
-                  <AlertCircle size={28} />
-                  <span>{error}</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </motion.section>
+    {/* שמירה על מנגנון השגיאות המקורי שלך */}
+    <AnimatePresence>
+      {error && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          exit={{ opacity: 0, y: -10 }} 
+          className="mt-10 p-6 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center gap-4 text-red-400 text-xl md:text-2xl font-bold text-center"
+        >
+          <AlertCircle size={28} />
+          <span>{error}</span>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </div>
+</motion.section>
 
         {/* תצוגת התסריט והפוסטר */}
         <AnimatePresence mode="wait">

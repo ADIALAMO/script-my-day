@@ -50,10 +50,11 @@ const genres = [
   { label: { he: 'רומנטיקה', en: 'Romance' }, value: 'romance', component: RomanceScene, activeClass: 'bg-rose-500/20 border-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.3)]', textClass: 'text-rose-400', glowColor: '#f43f5e' },
 ];
 
-function ScriptForm({ onGenerateScript, loading, lang, isTyping }) {
+function ScriptForm({ onGenerateScript, loading, lang, isTyping, onInputChange, selectedGenre, genreIcons }) {
   const [journalEntry, setJournalEntry] = useState('');
-  const [selectedGenre, setSelectedGenre] = useState(null); 
-  const [isCopied, setIsCopied] = useState(false);
+const [manualGenre, setManualGenre] = useState(null);
+// המערכת תעדיף בחירה ידנית, ואם אין - תציג את המלצת ה-AI
+const activeGenre = manualGenre || selectedGenre;  const [isCopied, setIsCopied] = useState(false);
   const [isMusicMuted, setIsMusicMuted] = useState(true);
   const bgMusicRef = useRef(null);
 
@@ -141,32 +142,55 @@ function ScriptForm({ onGenerateScript, loading, lang, isTyping }) {
         
         <div className="relative">
   <textarea
-    value={journalEntry}
-    onChange={(e) => setJournalEntry(e.target.value)}
-    disabled={isGlobalLocked}
-    spellCheck="false"
+  value={journalEntry}
+  onChange={(e) => {
+    const value = e.target.value;
+    setJournalEntry(value); // עדכון מקומי
+    if (onInputChange) onInputChange(value); // דיווח לדף הבית לזיהוי ז'אנר
+  }}
+  disabled={isGlobalLocked}
+  spellCheck="false"
   autoCorrect="off"
   autoCapitalize="none"
-    className="w-full px-6 py-8 md:px-10 md:py-10 text-lg md:text-xl text-white bg-black/40 border border-white/10 rounded-[2rem] md:rounded-[3rem] focus:border-[#d4a373]/50 focus:bg-black/60 outline-none transition-all duration-500 min-h-[220px] md:min-h-[280px] shadow-[inset_0_2px_40px_rgba(0,0,0,0.7)] leading-relaxed resize-none backdrop-blur-sm placeholder-gray-700"
-    placeholder={lang === 'he' ? 'איך עבר היום? ספר לי במילים שלך...' : 'How was your day? Tell me in your own words...'}
-    style={{ fontFamily: "'Courier Prime', 'Courier New', monospace" }}
-  />
+  className="w-full px-6 py-8 md:px-10 md:py-10 text-lg md:text-xl text-white bg-black/40 border border-white/10 rounded-[2rem] md:rounded-[3rem] focus:border-[#d4a373]/50 focus:bg-black/60 outline-none transition-all duration-500 min-h-[220px] md:min-h-[280px] shadow-[inset_0_2px_40px_rgba(0,0,0,0.7)] leading-relaxed resize-none backdrop-blur-sm placeholder-gray-700"
+  placeholder={lang === 'he' ? 'איך עבר היום? ספר לי במילים שלך...' : 'How was your day? Tell me in your own words...'}
+  style={{ fontFamily: "'Courier Prime', 'Courier New', monospace" }}
+/>
   {/* עיטור אופטי של "מיקוד" בפינות - מוחזר למקור המדויק */}
   <div className="absolute top-6 left-6 w-3 h-3 border-t border-l border-[#d4a373]/30 rounded-tl-sm pointer-events-none" />
   <div className="absolute bottom-6 right-6 w-3 h-3 border-b border-r border-[#d4a373]/30 rounded-br-sm pointer-events-none" />
 </div>
       </div>
 
-      {/* אזור בחירת ז'אנר */}
+     {/* אזור בחירת ז'אנר */}
       <div>
         <div className="flex justify-between items-center mb-6 md:mb-8 px-2">
-          <label className="text-[#d4a373] text-[10px] md:text-xs font-black uppercase tracking-[0.3em] italic">
-            {lang === 'he' ? 'בחר סגנון קולנועי' : 'Select Cinematic Style'}
-          </label>
+          <div className="flex items-center gap-3">
+            <label className="text-[#d4a373] text-[10px] md:text-xs font-black uppercase tracking-[0.3em] italic">
+              {lang === 'he' ? 'בחר סגנון קולנועי' : 'Select Cinematic Style'}
+            </label>
+
+            <AnimatePresence>
+              {selectedGenre && (
+                <motion.div 
+                  initial={{ opacity: 0, x: -10 }} 
+                  animate={{ opacity: 1, x: 0 }} 
+                  exit={{ opacity: 0, x: -10 }}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#d4a373]/10 border border-[#d4a373]/20 backdrop-blur-sm"
+                >
+                  <span className="text-base leading-none">{genreIcons[selectedGenre]}</span>
+                  <span className="text-[8px] md:text-[9px] font-bold text-[#d4a373] uppercase tracking-wider">
+                    {lang === 'he' ? "זיהינו ז'אנר מתאים" : "Suggested Style"}
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           <button 
             type="button" 
             onClick={() => setIsMusicMuted(!isMusicMuted)} 
-            className={`p-2.5 rounded-xl border transition-all duration-300 ${isMusicMuted ? 'border-white/10 bg-white/5 text-gray-500' : 'border-[#d4a373]/50 bg-[#d4a373]/10 text-[#d4a373] shadow-[0_0_15px_rgba(212,163,115,0.2)]'}`}
+            className={`p-2.5 rounded-xl border transition-all duration-300 ${isMusicMuted ? 'border-white/10 bg-white/5 text-gray-500' : 'border-[#d4a373]/50 bg-[#d4a373]/10 text-[#d4a373]'}`}
           >
             {isMusicMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
           </button>
@@ -176,12 +200,12 @@ function ScriptForm({ onGenerateScript, loading, lang, isTyping }) {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
           {genres.map((genre) => {
             const Visual = genre.component;
-            const isSelected = selectedGenre === genre.value;
+            const isSelected = activeGenre === genre.value;
             return (
               <motion.button
                 key={genre.value}
                 type="button"
-                onClick={() => setSelectedGenre(genre.value)}
+                onClick={() => setManualGenre(genre.value)}
                 whileHover={!isGlobalLocked ? { y: -4, scale: 1.02 } : {}}
                 whileTap={!isGlobalLocked ? { scale: 0.96 } : {}}
                 disabled={isGlobalLocked}
