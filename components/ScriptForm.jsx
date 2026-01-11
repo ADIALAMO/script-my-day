@@ -54,7 +54,8 @@ function ScriptForm({ onGenerateScript, loading, lang, isTyping, onInputChange, 
   const [journalEntry, setJournalEntry] = useState('');
 const [manualGenre, setManualGenre] = useState(null);
 // המערכת תעדיף בחירה ידנית, ואם אין - תציג את המלצת ה-AI
-const activeGenre = manualGenre || selectedGenre;  const [isCopied, setIsCopied] = useState(false);
+  const activeGenre = manualGenre || selectedGenre; 
+  const [isCopied, setIsCopied] = useState(false);
   const [isMusicMuted, setIsMusicMuted] = useState(true);
   const bgMusicRef = useRef(null);
 
@@ -67,8 +68,8 @@ const activeGenre = manualGenre || selectedGenre;  const [isCopied, setIsCopied]
       bgMusicRef.current = null;
     }
     
-    if (selectedGenre) {
-      const audioPath = `/audio/${selectedGenre}_bg.m4a`;
+    if (activeGenre) {
+      const audioPath = `/audio/${activeGenre}_bg.m4a`;
       bgMusicRef.current = new Audio(audioPath);
       bgMusicRef.current.loop = true;
       bgMusicRef.current.volume = 0.25; // ווליום טיפה יותר נעים
@@ -81,7 +82,7 @@ const activeGenre = manualGenre || selectedGenre;  const [isCopied, setIsCopied]
     return () => {
       if (bgMusicRef.current) bgMusicRef.current.pause();
     };
-  }, [selectedGenre, isMusicMuted]);
+  }, [activeGenre, isMusicMuted]);
 
   const handleDownloadJournal = () => {
     const blob = new Blob([journalEntry], { type: 'text/plain' });
