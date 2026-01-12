@@ -58,6 +58,38 @@ const [manualGenre, setManualGenre] = useState(null);
   const [isCopied, setIsCopied] = useState(false);
   const [isMusicMuted, setIsMusicMuted] = useState(true);
   const bgMusicRef = useRef(null);
+// --- הוספה/עדכון של לוגיקת הודעות טעינה (תסריט בלבד) ---
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+  
+  const loadingMessages = lang === 'he' ? [
+    "סורק את זכרונות היום שלך...",
+    "מנתח את ה-DNA של הסיפור...",
+    "בונה מתח דרמטי בסצנות...",
+    "מלטש את הדיאלוגים...",
+    "מעבה את הדמויות...",
+    "פורש את קווי העלילה...",
+    "מדפיס עותקים לחדר החזרות..."
+  ] : [
+    "Scanning your memories...",
+    "Analyzing story DNA...",
+    "Building dramatic tension...",
+    "Polishing the dialogue...",
+    "Developing characters...",
+    "Plotting the twists...",
+    "Printing scripts for rehearsal..."
+  ];
+
+  useEffect(() => {
+    let interval;
+    if (loading) {
+      interval = setInterval(() => {
+        setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length);
+      }, 2800);
+    } else {
+      setLoadingMessageIndex(0);
+    }
+    return () => clearInterval(interval);
+  }, [loading, loadingMessages.length]);
 
   const isGlobalLocked = loading || isTyping;
 
@@ -141,6 +173,31 @@ const [manualGenre, setManualGenre] = useState(null);
 </AnimatePresence>
         </div>
         
+   {/* אזור הדוגמאות להשראה - מותאם שפה */}
+<div className="flex flex-wrap gap-2 mb-6 justify-start px-2">
+  {(lang === 'he' ? [
+    { label: "❤️ דייט מהסרטים", text: "זה התחיל במבט מקרי בבית הקפה, הרגשתי שהלב שלי פועם חזק. היא חייכה אליי ופתאום כל העולם מסביב נעלם." },
+    { label: "👽 פלישה מהחלל", text: "השמיים הפכו סגולים וחללית ענקית הופיעה מעל העיר. הרובוטים התחילו לרדת והטכנולוגיה שלהם הייתה מעבר לכל דמיון." },
+    { label: "😱 לילה בבית נטוש", text: "הדלת נפתחה בחריקה והיה חושך מוחלט. פתאום שמעתי צעקה מלמעלה וראיתי צל זז במסדרון. הרגשתי פחד משתק." }
+  ] : [
+    { label: "❤️ Movie Date", text: "It started with a chance glance in the coffee shop, I felt my heart beating fast. She smiled at me and suddenly the whole world vanished." },
+    { label: "👽 Alien Invasion", text: "The sky turned purple and a massive spaceship appeared over the city. Robots began to descend and their technology was beyond imagination." },
+    { label: "😱 Night in Abandoned House", text: "The door creaked open into total darkness. Suddenly I heard a scream from upstairs and saw a shadow move. I felt a paralyzing fear." }
+  ]).map((example, index) => (
+    <button
+      key={index}
+      type="button"
+      onClick={() => {
+        setJournalEntry(example.text);
+        if (onInputChange) onInputChange(example.text);
+      }}
+      className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-[#d4a373]/20 border border-white/10 text-[10px] md:text-[11px] text-white/50 hover:text-[#d4a373] transition-all duration-300 backdrop-blur-sm cursor-pointer whitespace-nowrap"
+    >
+      {example.label}
+    </button>
+  ))}
+</div>
+
         <div className="relative">
   <textarea
   value={journalEntry}
@@ -252,42 +309,59 @@ const [manualGenre, setManualGenre] = useState(null);
           />
         )}
         
-        <span className="relative z-20 flex items-center justify-center gap-4 italic">
-          {loading ? (
-            <div className="flex items-center gap-4">
-              {/* הספינר המיוחד שלך - 8 קווים מסתובבים */}
-              <div className="relative w-8 h-8 flex items-center justify-center mr-2">
-                {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => (
-                  <motion.div
-                    key={i}
-                    style={{ rotate: deg, position: 'absolute' }}
-                    className="inset-0 flex items-start justify-center"
-                  >
-                    <motion.div 
-                      animate={{ 
-                        height: ["10%", "40%", "10%"],
-                        opacity: [0.3, 1, 0.3]
-                      }}
-                      transition={{ 
-                        repeat: Infinity, 
-                        duration: 1, 
-                        delay: i * 0.125,
-                        ease: "easeInOut"
-                      }}
-                      className="w-[2.5px] bg-black rounded-full"
-                    />
-                  </motion.div>
-                ))}
-              </div>
-              <span className="animate-pulse">{lang === 'he' ? 'מפיק יצירת מופת...' : 'PRODUCING MASTERPIECE...'}</span>
-            </div>
-          ) : (
-            <>
-              {lang === 'he' ? 'צור תסריט' : 'GENERATE SCRIPT'} 
-              <Sparkles size={22} className="group-hover:rotate-12 transition-transform duration-300" />
-            </>
-          )}
-        </span>
+      <span className="relative z-20 flex items-center w-full h-full px-6 md:px-10 italic">
+  {loading ? (
+    <div className={`flex items-center gap-4 w-full ${lang === 'he' ? 'flex-row-reverse' : 'flex-row'}`}>
+      {/* הספינר המיוחד שלך */}
+      <div className="relative w-8 h-8 flex-shrink-0 flex items-center justify-center">
+        {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => (
+          <motion.div
+            key={i}
+            style={{ rotate: deg, position: 'absolute' }}
+            className="inset-0 flex items-start justify-center"
+          >
+            <motion.div 
+              animate={{ 
+                height: ["10%", "40%", "10%"],
+                opacity: [0.3, 1, 0.3]
+              }}
+              transition={{ 
+                repeat: Infinity, 
+                duration: 1, 
+                delay: i * 0.125,
+                ease: "easeInOut"
+              }}
+              className="w-[2.5px] bg-black rounded-full"
+            />
+          </motion.div>
+        ))}
+      </div>
+
+      {/* אזור הטקסט עם תיקון החיתוך */}
+      <div className={`relative h-7 flex-grow overflow-hidden flex items-center ${lang === 'he' ? 'text-right' : 'text-left'}`}>
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={loadingMessageIndex}
+            initial={{ x: lang === 'he' ? 20 : -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: lang === 'he' ? -20 : 20, opacity: 0 }}
+            transition={{ duration: 0.4 }} // אנימציה מעט איטית יותר וחלקה
+            className={`absolute whitespace-nowrap font-bold tracking-tight ${
+              lang === 'he' ? 'right-0 pr-1' : 'left-0 pl-1'
+            }`}
+          >
+            {loadingMessages[loadingMessageIndex]}
+          </motion.span>
+        </AnimatePresence>
+      </div>
+    </div>
+  ) : (
+    <div className="flex items-center justify-center w-full gap-4">
+      {lang === 'he' ? 'צור תסריט' : 'GENERATE SCRIPT'} 
+      <Sparkles size={22} className="group-hover:rotate-12 transition-transform duration-300" />
+    </div>
+  )}
+</span>
       </motion.button>
     </form>
   );

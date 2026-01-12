@@ -53,7 +53,8 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
   const [showPoster, setShowPoster] = useState(false);
   const [posterUrl, setPosterUrl] = useState('');
   const [posterLoading, setPosterLoading] = useState(false);
-const [triggerFlash, setTriggerFlash] = useState(false);
+  const [triggerFlash, setTriggerFlash] = useState(false);
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
 
   // --- Refs ---
   const scrollRef = useRef(null);
@@ -66,11 +67,45 @@ const [triggerFlash, setTriggerFlash] = useState(false);
   const flashBuffer = useRef(null);
   const isMutedRef = useRef(isMuted);
 
+  // --- לוגיקת הודעות טעינה לפוסטר ---
+  // חשוב: זיהוי השפה מתבצע כאן בתוך הקומפוננט
+  const isHebrew = isTextHebrew(cleanScript);
+  const posterTitle = getCinematicTitle(cleanScript);
+  const posterLoadingMessages = isHebrew ? [
+    "מנתח את האסתטיקה של התסריט...",
+    "מלהק כוכבים לפוסטר הרשמי...",
+    "מעצב את התאורה בסט הצילומים...",
+    "בונה את הקומפוזיציה הויזואלית...",
+    "מלטש את הצבעים והפילטרים...",
+    "מרנדר את הפוסטר ב-4K...",
+    "תולה את הפוסטר בבכורה העולמית..."
+  ] : [
+    "Analyzing script aesthetics...",
+    "Casting stars for the poster...",
+    "Setting the cinematic lights...",
+    "Building visual composition...",
+    "Color grading and filtering...",
+    "Rendering poster in 4K...",
+    "Hanging the poster for the premiere..."
+  ];
+
   // סנכרון Ref להשתקה
   useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
 
-  // --- מנוע סאונד ---
- // --- מנוע סאונד קולנועי משודרג ---
+  // טיימר הודעות הטעינה של הפוסטר
+  useEffect(() => {
+    let interval;
+    if (posterLoading) {
+      interval = setInterval(() => {
+        setLoadingMessageIndex((prev) => (prev + 1) % posterLoadingMessages.length);
+      }, 2800);
+    } else {
+      setLoadingMessageIndex(0);
+    }
+    return () => clearInterval(interval);
+  }, [posterLoading, posterLoadingMessages.length]);
+
+  // --- מנוע סאונד קולנועי משודרג ---
   useEffect(() => {
     const initAudio = async () => {
       try {
@@ -283,11 +318,6 @@ const handleCapturePoster = async (action) => {
       }
     }
   };
-  // תיקון: זיהוי שפה לפי התוכן במקום לפי ה-Prop
-  const isHebrew = isTextHebrew(cleanScript);
-  const posterTitle = getCinematicTitle(cleanScript);
-
-  // --- הגדרת הקרדיטים המדויקים לפי השפה ---
   const credits = isHebrew ? {
     comingSoon: 'בקרוב בקולנוע',
     line1: 'בימוי: עדי אלמו • הפקה: LIFESCRIPT STUDIO',
@@ -478,24 +508,21 @@ const handleCapturePoster = async (action) => {
             className="relative max-w-2xl mx-auto w-full pb-2 px-4"
           >
             {/* המכולה של הפוסטר - שומרת על העיצוב המקורי שלך */}
-       <div ref={posterRef} className="relative aspect-[2/3] w-full max-w-[450px] md:max-h-[75vh] mx-auto rounded-[3.5rem] md:rounded-[4.5rem] overflow-hidden bg-black shadow-4xl border border-[#d4a373]/30">            <img 
-  src={posterUrl} 
-  className={`w-full h-full object-cover transition-opacity duration-1000 ${posterLoading ? 'opacity-0' : 'opacity-100'}`} 
-  onLoad={() => {
-    // 1. קודם כל מפעילים את הסאונד (הוא מתחיל לרוץ לכיוון השנייה ה-2)
-    playFlashSound();
-    
-    // 2. מחכים 1.8 שניות (או 2 שניות, תלוי בקובץ) ואז מפעילים את הפלאש והחשיפה
-    setTimeout(() => {
-      setPosterLoading(false); // החשיפה של הפוסטר תקרה בדיוק עם הקליק
-      setTriggerFlash(true);   // הפלאש הלבן יקפוץ
-      
-      // כיבוי הפלאש אחרי שהאנימציה מסתיימת (סביב צליל הטעינה הצורם)
-      setTimeout(() => setTriggerFlash(false), 2500); 
-    }, 1000); // שינוי ל-1800 מילי-שניות (1.8 שניות) כדי להתאים ל"קליק" בסאונד
-  }} 
-  alt="Movie Poster"
-/>
+            <div ref={posterRef} className="relative aspect-[2/3] w-full max-w-[450px] md:max-h-[75vh] mx-auto rounded-[3.5rem] md:rounded-[4.5rem] overflow-hidden bg-black shadow-4xl border border-[#d4a373]/30">
+              <img 
+                src={posterUrl} 
+                className={`w-full h-full object-cover transition-opacity duration-1000 ${posterLoading ? 'opacity-0' : 'opacity-100'}`} 
+                onLoad={() => {
+                  playFlashSound();
+                  setTimeout(() => {
+                    setPosterLoading(false); 
+                    setTriggerFlash(true);   
+                    setTimeout(() => setTriggerFlash(false), 2500); 
+                  }, 1000);
+                }} 
+                alt="Movie Poster"
+              />
+
               {triggerFlash && <div className="flash-overlay" />}
 
               {!posterLoading && (
@@ -520,9 +547,9 @@ const handleCapturePoster = async (action) => {
                 </div>
               )}
 
-              {/* Loader המקורי והיפה שלך - ללא שינוי */}
+              {/* Loader המעודכן עם הודעות משתנות */}
               {posterLoading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#030712] z-50">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#030712] z-50 px-6">
                   <div className="relative w-24 h-24">
                     <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 4, ease: "linear" }} className="absolute inset-0 border-[3px] border-dashed border-[#d4a373]/30 rounded-full" />
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -533,15 +560,26 @@ const handleCapturePoster = async (action) => {
                       ))}
                     </div>
                   </div>
-                  <motion.p animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1.5 }} className="mt-10 text-[#d4a373] text-[10px] font-black uppercase tracking-[0.5em] pl-[0.5em]">
-                    {isHebrew ? 'מפתח פוסטר קולנועי...' : 'DEVELOPING CINEMATIC POSTER...'}
-                  </motion.p>
+
+                  <div className="mt-10 relative h-6 w-full flex justify-center items-center overflow-hidden">
+                    <AnimatePresence mode="wait">
+                      <motion.p
+                        key={loadingMessageIndex}
+                        initial={{ y: 15, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: -15, opacity: 0 }}
+                        transition={{ duration: 0.4 }}
+                        className={`text-[#d4a373] text-[10px] font-black uppercase tracking-[0.4em] whitespace-nowrap ${isHebrew ? 'pr-1' : 'pl-1'}`}
+                      >
+                        {posterLoadingMessages[loadingMessageIndex]}
+                      </motion.p>
+                    </AnimatePresence>
+                  </div>
                 </div>
               )}
             </div>
 
-           {/* כפתורי פעולה מעודנים - תמיד בשורה אחת, עיצוב פרימיום קומפקטי */}
-            {/* כפתורי פעולה - שילוב מנצח של עיצוב, לוגיקה וגיבויים */}
+            {/* כפתורי פעולה - שמירה ושיתוף */}
             {!posterLoading && (
               <motion.div 
                 initial={{ opacity: 0, y: 15 }} 
@@ -549,31 +587,25 @@ const handleCapturePoster = async (action) => {
                 transition={{ delay: 0.8 }}
                 className="flex flex-row justify-center items-center gap-3 mt-8 pb-10 px-4"
               >
-                {/* כפתור שמירה: מייצר קובץ PNG מהקומפוזיציה המלאה */}
                 <motion.button 
                   whileHover={{ scale: 1.03, backgroundColor: "#e5b98f" }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => handleCapturePoster('download')}
-                  className="group relative flex items-center gap-2 px-5 py-2.5 bg-[#d4a373] text-black rounded-full font-bold text-[9px] md:text-[10px] tracking-wider transition-all shadow-lg"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-[#d4a373] text-black rounded-full font-bold text-[10px] tracking-wider transition-all shadow-lg"
                 >
                   <Download size={10} strokeWidth={2.5} />
-  <span className="uppercase">
-    {isHebrew ? 'שמור פוסטר' : 'SAVE POSTER'}
-  </span>
-</motion.button>
+                  <span className="uppercase">{isHebrew ? 'שמור פוסטר' : 'SAVE POSTER'}</span>
+                </motion.button>
 
-                {/* כפתור שיתוף: שיתוף קובץ ישיר עם Fallback חכם */}
                 <motion.button 
                   whileHover={{ scale: 1.03, backgroundColor: "rgba(255,255,255,0.08)" }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => handleCapturePoster('share')}
-                  className="group flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 text-white/80 rounded-full font-bold text-[9px] md:text-[10px] tracking-wider transition-all hover:border-[#d4a373]/30"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 text-white/80 rounded-full font-bold text-[10px] tracking-wider transition-all hover:border-[#d4a373]/30"
                 >
-                  <Film size={10} className="text-[#d4a373]" /> {/* האייקון הוקטן ל-10 */}
-  <span className="uppercase">
-    {isHebrew ? 'שתף פוסטר' : 'SHARE POSTER'}
-  </span>
-</motion.button>
+                  <Film size={10} className="text-[#d4a373]" />
+                  <span className="uppercase">{isHebrew ? 'שתף פוסטר' : 'SHARE POSTER'}</span>
+                </motion.button>
               </motion.div>
             )}
           </motion.div>

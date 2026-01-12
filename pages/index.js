@@ -26,6 +26,7 @@ function HomePage() {
   const [isTyping, setIsTyping] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [tempAdminKey, setTempAdminKey] = useState('');
+  const [modalContent, setModalContent] = useState(null); // 'terms', 'privacy', 'support' או null
 
   useEffect(() => {
     setMounted(true);
@@ -252,7 +253,78 @@ useEffect(() => {
     </motion.div>
   )}
 </AnimatePresence>
+{/* --- Modal משפטי/תמיכה קולנועי --- */}
+<AnimatePresence>
+  {modalContent && (
+    <motion.div 
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-xl px-6"
+      onClick={() => setModalContent(null)}
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-[#0f1117] border border-[#d4a373]/20 p-8 md:p-12 rounded-[2.5rem] max-w-2xl w-full max-h-[85vh] overflow-y-auto relative custom-scrollbar shadow-2xl shadow-[#d4a373]/5"
+      >
+        <button onClick={() => setModalContent(null)} className="absolute top-6 right-6 text-white/20 hover:text-[#d4a373] transition-colors p-2">
+          <X size={24} />
+        </button>
 
+        {modalContent === 'terms' && (
+          <div className={lang === 'he' ? 'text-right' : 'text-left'}>
+            <h2 className="text-[#d4a373] text-2xl font-black mb-6 uppercase tracking-tighter border-b border-[#d4a373]/10 pb-4 italic">
+              {lang === 'he' ? 'תנאי שימוש - חוזה הפקה' : 'TERMS OF SERVICE'}
+            </h2>
+            <div className="space-y-6 text-gray-400 text-sm leading-relaxed">
+              <section>
+                <h3 className="text-white font-bold mb-1">{lang === 'he' ? '1. בעלות על התוכן' : '1. Content Ownership'}</h3>
+                <p>{lang === 'he' ? 'כל זכויות הקניין הרוחני בתסריטים ובפוסטרים שנוצרו שייכות למשתמש באופן מלא. LIFESCRIPT אינה טוענת לבעלות על היצירות שלך.' : 'All intellectual property rights for the generated content belong entirely to the user.'}</p>
+              </section>
+              <section>
+                <h3 className="text-white font-bold mb-1">{lang === 'he' ? '2. שימוש בבינה מלאכותית' : '2. AI Generation'}</h3>
+                <p>{lang === 'he' ? 'השירות משתמש במודלי שפה וגרפיקה מתקדמים. המשתמש מבין כי התוכן עשוי להכיל אי-דיוקים והוא באחריותו הבלעדית.' : 'Users acknowledge that AI content may contain inaccuracies and is their sole responsibility.'}</p>
+              </section>
+            </div>
+          </div>
+        )}
+
+        {modalContent === 'privacy' && (
+          <div className={lang === 'he' ? 'text-right' : 'text-left'}>
+            <h2 className="text-[#d4a373] text-2xl font-black mb-6 uppercase tracking-tighter border-b border-[#d4a373]/10 pb-4 italic">
+              {lang === 'he' ? 'פרטיות - הצהרת חיסוי' : 'PRIVACY POLICY'}
+            </h2>
+            <div className="space-y-6 text-gray-400 text-sm leading-relaxed">
+              <section>
+                <h3 className="text-white font-bold mb-1">{lang === 'he' ? '1. מדיניות אי-שמירה' : '1. Zero Storage'}</h3>
+                <p>{lang === 'he' ? 'אנחנו לא שומרים את התסריטים או הפוסטרים שלך על השרתים שלנו. המידע מעובד ונמחק בסיום הסשן.' : 'We do not store your scripts or posters. Everything is processed and deleted after your session.'}</p>
+              </section>
+              <section>
+                <h3 className="text-white font-bold mb-1">{lang === 'he' ? '2. אבטחה מקומית' : '2. Local Security'}</h3>
+                <p>{lang === 'he' ? 'מפתחות הגישה (Admin Keys) נשמרים בדפדפן שלך בלבד ואינם מועברים לצד שלישי.' : 'Admin keys are stored locally on your device only.'}</p>
+              </section>
+            </div>
+          </div>
+        )}
+
+        {modalContent === 'support' && (
+          <div className="text-center py-4">
+            <Camera className="text-[#d4a373] mx-auto mb-4 opacity-50" size={48} />
+            <h2 className="text-[#d4a373] text-2xl font-black mb-6 uppercase tracking-tighter italic">
+              {lang === 'he' ? 'תמיכה טכנית' : 'TECHNICAL SUPPORT'}
+            </h2>
+            <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5">
+              <p className="text-gray-300 mb-4">{lang === 'he' ? 'זקוק לעזרה בהפקה?' : 'Need assistance?'}</p>
+              <a href="mailto:support@lifescript.studio" className="text-xl md:text-2xl font-bold text-white hover:text-[#d4a373] transition-colors break-words">
+                support@lifescript.studio
+              </a>
+              <p className="text-[10px] text-gray-600 uppercase tracking-[0.3em] mt-8">Response time: 24h</p>
+            </div>
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
 {/* --- התחלת הטמעה: מחליף את ה-motion.section הקיים --- */}
 <motion.section 
   initial={{ opacity: 0, scale: 0.98 }}
@@ -300,16 +372,49 @@ useEffect(() => {
         </AnimatePresence>
       </main>
 
-      <footer className="py-20 text-center border-t border-white/5 bg-black/40 mt-10">
-        <div className="flex flex-col items-center justify-center gap-6">
-          <div className="flex items-center gap-4">
-            {/* אייקון קטן בגרסת ה-Footer */}
-            <img src="/icon.png" className="w-8 h-8 rounded-lg opacity-80 grayscale hover:grayscale-0 transition-all" alt="Studio Icon" />
-            <span className="text-white font-black tracking-[0.4em] md:tracking-[0.6em] text-lg md:text-xl italic uppercase">LIFESCRIPT STUDIO</span>
+      {/* Footer המלוטש - היררכיה הוליוודית קבועה */}
+      <footer className="py-16 text-center border-t border-white/[0.03] bg-black/40 mt-10">
+        <div className="flex flex-col items-center justify-center">
+          
+          {/* מיתוג ראשי - מוגדל מעט כדי לשלוט בהיררכיה */}
+          <div className="flex items-center gap-3 mb-4 opacity-90">
+            <img 
+              src="/icon.png" 
+              className="w-7 h-7 rounded-md opacity-80 grayscale hover:grayscale-0 transition-all duration-700" 
+              alt="Studio Icon" 
+            />
+            <span className="text-white font-black tracking-[0.5em] text-base md:text-lg italic uppercase leading-none">
+              LIFESCRIPT STUDIO
+            </span>
           </div>
-          <p className="text-gray-500 text-xs md:text-sm tracking-[0.2em] uppercase flex items-center gap-2">
-            <Copyright size={14} /> 2025 BY ADIALAMO • ALL RIGHTS RESERVED
+
+          {/* שורת זכויות יוצרים - דקה ואלגנטית */}
+          <p className="text-gray-500 text-[9px] md:text-[10px] tracking-[0.15em] uppercase flex items-center gap-2 mb-6 opacity-40 font-medium">
+            <Copyright size={10} /> 2025 BY ADIALAMO • ALL RIGHTS RESERVED
           </p>
+
+          {/* קישורי משנה - עיצוב 'רפאים' מינימליסטי עם פונקציונליות */}
+          <div className={`flex gap-8 text-[8px] font-medium tracking-normal text-white/10 ${lang === 'he' ? 'flex-row-reverse' : 'flex-row'}`}>
+            <button 
+              onClick={() => setModalContent('terms')}
+              className="hover:text-[#d4a373]/50 transition-all duration-500 border-b border-transparent hover:border-[#d4a373]/20 pb-0.5"
+            >
+              {lang === 'he' ? 'תנאי שימוש' : 'Terms'}
+            </button>
+            <button 
+              onClick={() => setModalContent('privacy')}
+              className="hover:text-[#d4a373]/50 transition-all duration-500 border-b border-transparent hover:border-[#d4a373]/20 pb-0.5"
+            >
+              {lang === 'he' ? 'פרטיות' : 'Privacy'}
+            </button>
+            <button 
+              onClick={() => setModalContent('support')}
+              className="hover:text-[#d4a373]/50 transition-all duration-500 border-b border-transparent hover:border-[#d4a373]/20 pb-0.5"
+            >
+              {lang === 'he' ? 'תמיכה' : 'Support'}
+            </button>
+          </div>
+
         </div>
       </footer>
 
