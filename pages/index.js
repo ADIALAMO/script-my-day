@@ -39,20 +39,6 @@ function HomePage() {
       localStorage.setItem('lifescript_device_id', newId);
     }
   }, []);
-
-useEffect(() => {
-    if (script && !loading) {
-      // המתנה קלה לסיום האנימציה של ה-AnimatePresence במובייל
-      const timer = setTimeout(() => {
-        window.scrollTo({
-          top: document.documentElement.scrollHeight,
-          behavior: 'smooth'
-        });
-      }, 500); // חצי שנייה של המתנה לאנימציה
-      
-      return () => clearTimeout(timer);
-    }
-  }, [script, loading]);
   
   const toggleLanguage = () => setLang(prev => prev === 'he' ? 'en' : 'he');
 
@@ -363,9 +349,15 @@ useEffect(() => {
 </motion.section>
 
         {/* תצוגת התסריט והפוסטר */}
-        <AnimatePresence mode="wait">
+       <AnimatePresence mode="wait">
           {script && !loading && (
-            <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="mt-16 md:mt-24">
+            <motion.div 
+              initial={{ opacity: 0, y: 40 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.8, ease: "easeOut" }} // הוסף את השורה הזו
+              className="mt-16 md:mt-24"
+            >
               <ScriptOutput script={script} lang={lang} genre={selectedGenre} setIsTypingGlobal={setIsTyping} />
             </motion.div>
           )}

@@ -233,9 +233,13 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
       }
       
      if (i > 15 && scrollRef.current && !isAutoScrollPaused.current) {
-        const container = scrollRef.current;
-        container.scrollTop = container.scrollHeight;
-      }
+  const container = scrollRef.current;
+  // במקום container.scrollTop = container.scrollHeight;
+  container.scrollTo({
+    top: container.scrollHeight,
+    behavior: 'smooth'
+  });
+}
       
       i++;
       // מהירות 40ms: מהירה מספיק למקצוענות, איטית מספיק ליציבות סאונד
@@ -318,6 +322,23 @@ const handleCapturePoster = async (action) => {
       }
     }
   };
+  // --- גלילה עדינה וקולנועית לתחילת התסריט ---
+  useEffect(() => {
+    if (isTyping && scrollRef.current) {
+      const timer = setTimeout(() => {
+        // חישוב המיקום המדויק של התסריט ביחס לראש הדף
+        const elementTop = scrollRef.current.getBoundingClientRect().top + window.pageYOffset;
+        const offset = 80; // מרווח נשימה מלמעלה
+
+        window.scrollTo({
+          top: elementTop - offset,
+          behavior: 'smooth'
+        });
+      }, 150); 
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isTyping]);
   const credits = isHebrew ? {
     comingSoon: 'בקרוב בקולנוע',
     line1: 'בימוי: עדי אלמו • הפקה: LIFESCRIPT STUDIO',
@@ -389,8 +410,10 @@ const handleCapturePoster = async (action) => {
   ref={scrollRef} 
   className="h-[500px] md:h-[650px] overflow-y-auto p-10 md:p-20 custom-scrollbar relative touch-pan-y"
   // התיקון כאן: מונע מהדפדפן לקפוץ לסוף הדף כשהתוכן גדל בפתאומיות
-    style={{ overflowAnchor: 'none' }}
-  // מניעת התנגשות במובייל ובדסקטופ
+    style={{ 
+            overflowAnchor: 'none',
+            scrollBehavior: 'smooth' // <--- כאן הוספנו את הגלילה החלקה
+          }}
   onWheel={(e) => {
     // עצירה מיידית בכל גלגול
     isAutoScrollPaused.current = true;

@@ -61,22 +61,22 @@ const [manualGenre, setManualGenre] = useState(null);
 // --- הוספה/עדכון של לוגיקת הודעות טעינה (תסריט בלבד) ---
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   
-  const loadingMessages = lang === 'he' ? [
-    "סורק את זכרונות היום שלך...",
-    "מנתח את ה-DNA של הסיפור...",
-    "בונה מתח דרמטי בסצנות...",
-    "מלטש את הדיאלוגים...",
-    "מעבה את הדמויות...",
-    "פורש את קווי העלילה...",
-    "מדפיס עותקים לחדר החזרות..."
+ const loadingMessages = lang === 'he' ? [
+    "סורק זכרונות...",
+    "מנתח DNA סיפורי...",
+    "בונה מתח דרמטי...",
+    "מלטש דיאלוגים...",
+    "מעבה דמויות...",
+    "פורש קווי עלילה...",
+    "מדפיס עותקים..."
   ] : [
-    "Scanning your memories...",
+    "Scanning memories...",
     "Analyzing story DNA...",
-    "Building dramatic tension...",
-    "Polishing the dialogue...",
+    "Building tension...",
+    "Polishing dialogue...",
     "Developing characters...",
-    "Plotting the twists...",
-    "Printing scripts for rehearsal..."
+    "Plotting twists...",
+    "Printing scripts..."
   ];
 
   useEffect(() => {
@@ -93,7 +93,7 @@ const [manualGenre, setManualGenre] = useState(null);
 
   const isGlobalLocked = loading || isTyping;
 
-  // טיפול במוזיקה - כולל הגנה מפני שגיאות טעינה
+  // טיפול במוזיקה - תיקון פורמט השם למניעת שגיאות 404
   useEffect(() => {
     if (bgMusicRef.current) {
       bgMusicRef.current.pause();
@@ -101,14 +101,23 @@ const [manualGenre, setManualGenre] = useState(null);
     }
     
     if (activeGenre) {
-      const audioPath = `/audio/${activeGenre}_bg.m4a`;
+      // הפיכת השם לפורמט אחיד: הכל קטנות, והחלפת CamelCase למקף
+      // זה הופך sciFi ל-sci-fi באופן אוטומטי
+      const formattedGenre = activeGenre
+        .replace(/([a-z])([A-Z])/g, '$1-$2')
+        .toLowerCase();
+        
+      const audioPath = `/audio/${formattedGenre}_bg.m4a`;
+      
       bgMusicRef.current = new Audio(audioPath);
       bgMusicRef.current.loop = true;
-      bgMusicRef.current.volume = 0.25; // ווליום טיפה יותר נעים
+      bgMusicRef.current.volume = 0.25;
       bgMusicRef.current.muted = isMusicMuted;
 
       if (!isMusicMuted) {
-        bgMusicRef.current.play().catch(err => console.log("Audio play blocked by browser"));
+        bgMusicRef.current.play().catch(err => 
+          console.log("Audio play blocked or file missing at:", audioPath)
+        );
       }
     }
     return () => {
@@ -173,16 +182,18 @@ const [manualGenre, setManualGenre] = useState(null);
 </AnimatePresence>
         </div>
         
-   {/* אזור הדוגמאות להשראה - מותאם שפה */}
-<div className="flex flex-wrap gap-2 mb-6 justify-start px-2">
+ {/* אזור הדוגמאות להשראה - איזון מושלם בין גודל לקומפקטיות */}
+<div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mb-5 px-2">
   {(lang === 'he' ? [
-    { label: "❤️ דייט מהסרטים", text: "זה התחיל במבט מקרי בבית הקפה, הרגשתי שהלב שלי פועם חזק. היא חייכה אליי ופתאום כל העולם מסביב נעלם." },
-    { label: "👽 פלישה מהחלל", text: "השמיים הפכו סגולים וחללית ענקית הופיעה מעל העיר. הרובוטים התחילו לרדת והטכנולוגיה שלהם הייתה מעבר לכל דמיון." },
-    { label: "😱 לילה בבית נטוש", text: "הדלת נפתחה בחריקה והיה חושך מוחלט. פתאום שמעתי צעקה מלמעלה וראיתי צל זז במסדרון. הרגשתי פחד משתק." }
+    { emoji: "🎭", label: "דרמה יומית", text: "היום התחיל בשתיקה כבדה ליד שולחן ארוחת הבוקר. מבט אחד הבהיר שהכל עומד להשתנות." },
+    { emoji: "❤️", label: "דייט מהסרטים", text: "זה התחיל במבט מקרי בבית הקפה, הרגשתי שהלב שלי פועם חזק. היא חייכה אלי ופתאום העולם נעלם." },
+    { emoji: "👽", label: "פלישה מהחלל", text: "השמיים הפכו סגולים וחללית ענקית הופיעה מעל העיר. הרובוטים התחילו לרדת עם טכנולוגיה זרה." },
+    { emoji: "😱", label: "בית נטוש", text: "הדלת נפתחה בחריקה והיה חושך מוחלט. פתאום שמעתי צעקה מלמעלה וראיתי צל זז במסדרון." }
   ] : [
-    { label: "❤️ Movie Date", text: "It started with a chance glance in the coffee shop, I felt my heart beating fast. She smiled at me and suddenly the whole world vanished." },
-    { label: "👽 Alien Invasion", text: "The sky turned purple and a massive spaceship appeared over the city. Robots began to descend and their technology was beyond imagination." },
-    { label: "😱 Night in Abandoned House", text: "The door creaked open into total darkness. Suddenly I heard a scream from upstairs and saw a shadow move. I felt a paralyzing fear." }
+    { emoji: "🎭", label: "Daily Drama", text: "The day began with a heavy silence. One look made it clear everything was about to change." },
+    { emoji: "❤️", label: "Movie Date", text: "It started with a chance glance in the coffee shop, I felt my heart beating fast. She smiled at me." },
+    { emoji: "👽", label: "Alien Invasion", text: "The sky turned purple and a massive spaceship appeared. Robots began to descend with alien tech." },
+    { emoji: "😱", label: "Abandoned House", text: "The door creaked open into total darkness. Suddenly I heard a scream and saw a shadow move." }
   ]).map((example, index) => (
     <button
       key={index}
@@ -191,9 +202,17 @@ const [manualGenre, setManualGenre] = useState(null);
         setJournalEntry(example.text);
         if (onInputChange) onInputChange(example.text);
       }}
-      className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-[#d4a373]/20 border border-white/10 text-[10px] md:text-[11px] text-white/50 hover:text-[#d4a373] transition-all duration-300 backdrop-blur-sm cursor-pointer whitespace-nowrap"
+      className="h-9 px-3 rounded-xl bg-white/[0.04] hover:bg-[#d4a373]/20 border border-white/10 hover:border-[#d4a373]/40 transition-all duration-300 backdrop-blur-md cursor-pointer flex items-center justify-center gap-2 group overflow-hidden"
     >
-      {example.label}
+      {/* אייקון מוגדל מעט */}
+      <span className="text-sm md:text-base group-hover:scale-110 transition-transform duration-300">
+        {example.emoji}
+      </span>
+      
+      {/* טקסט מוגדל וברור יותר */}
+      <span className="text-[10px] md:text-[11px] text-white/50 group-hover:text-white font-bold uppercase tracking-tight whitespace-nowrap">
+        {example.label}
+      </span>
     </button>
   ))}
 </div>
@@ -309,11 +328,10 @@ const [manualGenre, setManualGenre] = useState(null);
           />
         )}
         
-      <span className="relative z-20 flex items-center w-full h-full px-6 md:px-10 italic">
+     <span className="relative z-20 flex items-center w-full h-full px-4 md:px-10 italic">
   {loading ? (
-    <div className={`flex items-center gap-4 w-full ${lang === 'he' ? 'flex-row-reverse' : 'flex-row'}`}>
-      {/* הספינר המיוחד שלך */}
-      <div className="relative w-8 h-8 flex-shrink-0 flex items-center justify-center">
+    <div className={`flex items-center gap-3 w-full ${lang === 'he' ? 'flex-row-reverse' : 'flex-row'}`}>
+      <div className="relative w-6 h-6 flex-shrink-0 flex items-center justify-center">
         {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => (
           <motion.div
             key={i}
@@ -321,42 +339,32 @@ const [manualGenre, setManualGenre] = useState(null);
             className="inset-0 flex items-start justify-center"
           >
             <motion.div 
-              animate={{ 
-                height: ["10%", "40%", "10%"],
-                opacity: [0.3, 1, 0.3]
-              }}
-              transition={{ 
-                repeat: Infinity, 
-                duration: 1, 
-                delay: i * 0.125,
-                ease: "easeInOut"
-              }}
-              className="w-[2.5px] bg-black rounded-full"
+              animate={{ height: ["10%", "40%", "10%"], opacity: [0.3, 1, 0.3] }}
+              transition={{ repeat: Infinity, duration: 1, delay: i * 0.125 }}
+              className="w-[2px] bg-black rounded-full"
             />
           </motion.div>
         ))}
       </div>
 
-      {/* אזור הטקסט עם תיקון החיתוך */}
-      <div className={`relative h-7 flex-grow overflow-hidden flex items-center ${lang === 'he' ? 'text-right' : 'text-left'}`}>
-        <AnimatePresence mode="wait">
-          <motion.span
-            key={loadingMessageIndex}
-            initial={{ x: lang === 'he' ? 20 : -20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: lang === 'he' ? -20 : 20, opacity: 0 }}
-            transition={{ duration: 0.4 }} // אנימציה מעט איטית יותר וחלקה
-            className={`absolute whitespace-nowrap font-bold tracking-tight ${
-              lang === 'he' ? 'right-0 pr-1' : 'left-0 pl-1'
-            }`}
-          >
-            {loadingMessages[loadingMessageIndex]}
-          </motion.span>
-        </AnimatePresence>
-      </div>
+      <div className={`relative h-8 flex-grow overflow-hidden flex items-center ${lang === 'he' ? 'text-right' : 'text-left'}`}>
+  <AnimatePresence mode="wait">
+    <motion.span
+      key={loadingMessageIndex}
+      initial={{ y: 15, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: -15, opacity: 0 }}
+      className={`absolute whitespace-nowrap font-black tracking-tighter text-[14px] md:text-[22px] lg:text-[24px] ${
+        lang === 'he' ? 'right-0 pr-2' : 'left-0 pl-2'
+      }`}
+    >
+      {loadingMessages[loadingMessageIndex]}
+    </motion.span>
+  </AnimatePresence>
+</div>
     </div>
   ) : (
-    <div className="flex items-center justify-center w-full gap-4">
+    <div className="flex items-center justify-center w-full gap-4 text-lg md:text-xl">
       {lang === 'he' ? 'צור תסריט' : 'GENERATE SCRIPT'} 
       <Sparkles size={22} className="group-hover:rotate-12 transition-transform duration-300" />
     </div>
