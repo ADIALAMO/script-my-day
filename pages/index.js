@@ -158,12 +158,23 @@ function HomePage() {
             </div>
           </div>
           
-          <h1 
-            onClick={() => setShowAdminPanel(!showAdminPanel)}
-            className="text-6xl md:text-[9rem] font-black mb-6 bg-gradient-to-b from-[#d4a373] via-[#fefae0] to-[#d4a373] bg-clip-text text-transparent italic tracking-tighter uppercase leading-[0.85] pt-4 cursor-pointer select-none drop-shadow-[0_10px_30px_rgba(212,163,115,0.2)]"
-          >
-            LIFESCRIPT
-          </h1>
+         <h1 
+  onClick={() => setShowAdminPanel(!showAdminPanel)}
+  className="text-6xl md:text-[9rem] font-black mb-6 bg-gradient-to-b from-[#d4a373] via-[#fefae0] to-[#d4a373] bg-clip-text text-transparent italic tracking-tighter uppercase leading-[0.85] cursor-pointer select-none drop-shadow-[0_10px_30px_rgba(212,163,115,0.2)]"
+  style={{ 
+    // הגדלנו את הפאדינג הצדדי כדי לתת מקום ל-T הנטויה
+    paddingLeft: '0.15em',
+    paddingRight: '0.25em', 
+    paddingTop: '0.1em',
+    paddingBottom: '0.1em',
+    // שימוש ב-Margin שלילי כדי לאזן את המרכוז הויזואלי
+    marginLeft: '-0.15em',
+    marginRight: '-0.25em',
+    display: 'inline-block'
+  }}
+>
+  LIFESCRIPT
+</h1>
           
           <p className="text-gray-300 text-2xl md:text-3xl font-light max-w-2xl mx-auto leading-relaxed px-4 opacity-90">
             {lang === 'he' ? 'הפוך את היום שלך לתסריט קולנועי מרתק' : 'Turn your day into a captivating cinematic script'}

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Clapperboard, Mic, Crosshair, Atom, Skull, Gem,
-  Loader2, Sparkles, Copy, Download, Check, Volume2, VolumeX 
+  Loader2, Sparkles, Copy, Download, Check, Volume2, VolumeX,
+  Film // <-- זה האייקון שהיה חסר וגרם לשגיאה
 } from 'lucide-react';
 
 // --- רכיבי אנימציה חיות לז'אנרים (מעודכנים) ---
@@ -307,69 +308,67 @@ const [manualGenre, setManualGenre] = useState(null);
           })}
         </div>
       </div>
-
-      {/* כפתור הפקה מרכזי */}
-      {/* כפתור הפקה מרכזי */}
+{/* כפתור הפקה מרכזי - מעוצב ורספונסיבי */}
       <motion.button
         type="submit"
         disabled={isGlobalLocked || !journalEntry.trim() || !selectedGenre}
-        className={`w-full py-7 md:py-9 rounded-[2rem] md:rounded-[3rem] font-black text-lg md:text-xl uppercase tracking-[0.5em] transition-all duration-700 group relative overflow-hidden ${
+        className={`relative w-full group overflow-hidden rounded-[1.5rem] md:rounded-[2rem] transition-all duration-700 shadow-[0_10px_40px_rgba(212,163,115,0.2)] ${
           loading 
-            ? 'bg-gradient-to-r from-amber-600 via-[#d4a373] to-amber-600 shadow-[0_0_40px_rgba(212,163,115,0.5)] text-black' 
-            : 'bg-[#d4a373] text-black hover:shadow-[0_0_60px_rgba(212,163,115,0.4)] active:scale-[0.98]'
+            ? 'bg-gradient-to-r from-amber-600 via-[#d4a373] to-amber-600 py-6 md:py-8' 
+            : 'bg-[#d4a373] py-5 md:py-7 hover:scale-[1.01] active:scale-[0.98]'
         } ${(!journalEntry.trim() || !selectedGenre) && !loading ? 'opacity-30 grayscale cursor-not-allowed' : 'opacity-100'}`}
       >
-        {/* אפקט הניצוץ הלבן שעובר על הכפתור */}
+        {/* אפקט הברק שרץ על הכפתור כשהוא מוכן */}
         {!loading && !isGlobalLocked && (
           <motion.div 
             animate={{ x: ['-100%', '200%'] }}
-            transition={{ repeat: Infinity, duration: 3, ease: "easeInOut", repeatDelay: 1 }}
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12 z-10"
+            transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[35deg] z-10"
           />
         )}
         
-     <span className="relative z-20 flex items-center w-full h-full px-4 md:px-10 italic">
-  {loading ? (
-    <div className={`flex items-center gap-3 w-full ${lang === 'he' ? 'flex-row-reverse' : 'flex-row'}`}>
-      <div className="relative w-6 h-6 flex-shrink-0 flex items-center justify-center">
-        {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => (
-          <motion.div
-            key={i}
-            style={{ rotate: deg, position: 'absolute' }}
-            className="inset-0 flex items-start justify-center"
-          >
-            <motion.div 
-              animate={{ height: ["10%", "40%", "10%"], opacity: [0.3, 1, 0.3] }}
-              transition={{ repeat: Infinity, duration: 1, delay: i * 0.125 }}
-              className="w-[2px] bg-black rounded-full"
-            />
-          </motion.div>
-        ))}
-      </div>
+        <div className="relative z-20 flex items-center justify-center w-full h-full px-4 md:px-10 italic text-black font-black">
+          {loading ? (
+            <div className={`flex items-center gap-3 w-full max-w-xs ${lang === 'he' ? 'flex-row-reverse' : 'flex-row'}`}>
+              <div className="relative w-5 h-5 flex-shrink-0">
+                {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => (
+                  <motion.div
+                    key={i}
+                    style={{ rotate: deg, position: 'absolute' }}
+                    className="inset-0 flex items-start justify-center"
+                  >
+                    <motion.div 
+                      animate={{ height: ["10%", "40%", "10%"], opacity: [0.3, 1, 0.3] }}
+                      transition={{ repeat: Infinity, duration: 1, delay: i * 0.125 }}
+                      className="w-[2px] bg-black rounded-full"
+                    />
+                  </motion.div>
+                ))}
+              </div>
 
-      <div className={`relative h-8 flex-grow overflow-hidden flex items-center ${lang === 'he' ? 'text-right' : 'text-left'}`}>
-  <AnimatePresence mode="wait">
-    <motion.span
-      key={loadingMessageIndex}
-      initial={{ y: 15, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: -15, opacity: 0 }}
-      className={`absolute whitespace-nowrap font-black tracking-tighter text-[14px] md:text-[22px] lg:text-[24px] ${
-        lang === 'he' ? 'right-0 pr-2' : 'left-0 pl-2'
-      }`}
-    >
-      {loadingMessages[loadingMessageIndex]}
-    </motion.span>
-  </AnimatePresence>
-</div>
-    </div>
-  ) : (
-    <div className="flex items-center justify-center w-full gap-4 text-lg md:text-xl">
-      {lang === 'he' ? 'צור תסריט' : 'GENERATE SCRIPT'} 
-      <Sparkles size={22} className="group-hover:rotate-12 transition-transform duration-300" />
-    </div>
-  )}
-</span>
+              <div className="relative h-6 flex-grow overflow-hidden flex items-center">
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={loadingMessageIndex}
+                    initial={{ y: 15, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -15, opacity: 0 }}
+                    className="absolute whitespace-nowrap text-[13px] md:text-[18px] tracking-tighter"
+                  >
+                    {loadingMessages[loadingMessageIndex]}
+                  </motion.span>
+                </AnimatePresence>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-3">
+              <Film size={20} />
+              <span className="text-[15px] md:text-xl uppercase tracking-tighter whitespace-nowrap">
+                {lang === 'he' ? 'צור תסריט' : 'GENERATE SCRIPT'}
+              </span>
+            </div>
+          )}
+        </div>
       </motion.button>
     </form>
   );

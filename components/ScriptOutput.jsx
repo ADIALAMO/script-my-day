@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Copy, Download, Check, Film, Volume2, VolumeX, Loader2, FastForward } from 'lucide-react';
+import { Copy, Download, Share2, Check, Film, Volume2, VolumeX, Loader2, FastForward } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
 // --- לוגיקה עוטפת: ניקוי כותרות ותרגום ז'אנרים ---
@@ -355,11 +355,16 @@ const handleCapturePoster = async (action) => {
 
   return (
 <div className="space-y-6 w-full max-w-[100vw]" style={{ contain: 'paint layout' }}>      
-      {/* Toolbar */}
-      <div className="flex justify-between items-center px-6">
+      {/* Toolbar - תיקון חיתוך כותרת */}
+      <div className="flex justify-between items-center px-6 h-14">
         <div className="flex items-center gap-2">
           <Film size={18} className="text-[#d4a373]" />
-          <h2 className="text-[#d4a373] font-black uppercase text-[10px] tracking-widest italic">LIFESCRIPT STUDIO</h2>
+          <h2 
+            className="text-[#d4a373] font-black uppercase text-[10px] tracking-widest italic"
+            style={{ padding: '0 5px' }} // זה הפתרון לחיתוך האותיות במובייל
+          >
+            LIFESCRIPT STUDIO
+          </h2>
         </div>
         
         <div className="flex items-center gap-2">
@@ -513,25 +518,52 @@ const handleCapturePoster = async (action) => {
       {/* Generate Poster Button */}
       {!isTyping && !showPoster && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex justify-center py-6">
-          <button 
-            onClick={generatePoster} 
-            className="bg-[#d4a373] text-black px-16 py-6 rounded-full font-black text-xs tracking-[0.4em] shadow-2xl hover:bg-[#e9c46a] hover:scale-105 transition-all uppercase"
-          >
-            {isHebrew ? 'צור פוסטר לסרט' : 'GENERATE POSTER'}
-          </button>
+          <button
+  onClick={generatePoster}
+  disabled={posterLoading}
+  className="relative w-full group overflow-hidden bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black font-black py-4 px-6 rounded-2xl shadow-[0_10px_40px_rgba(212,163,115,0.3)] transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 mt-8"
+>
+  {/* אפקט האור שעובר על הכפתור */}
+  <motion.div 
+    animate={{ x: ['-100%', '100%'] }} 
+    transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
+    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-[35deg] pointer-events-none" 
+  />
+  
+  <div className="flex items-center justify-center gap-3 relative z-10">
+    {posterLoading ? (
+      <>
+        <Loader2 className="w-5 h-5 animate-spin" />
+        <span className="text-sm md:text-lg tracking-tighter uppercase italic">
+          {lang === 'he' ? 'יוצר חזון...' : 'CREATING VISION...'}
+        </span>
+      </>
+    ) : (
+      <>
+        <Film className="w-5 h-5" />
+        <span 
+          className="text-[14px] xs:text-[15px] md:text-xl tracking-tighter uppercase italic whitespace-nowrap"
+          style={{ letterSpacing: '-0.02em' }}
+        >
+          {lang === 'he' ? 'צור פוסטר קולנועי' : 'GENERATE MOVIE POSTER'}
+        </span>
+      </>
+    )}
+  </div>
+</button>
         </motion.div>
       )}
 
-      {/* Poster Display with Correct Localization & Credits */}
+    {/* Poster Display Section */}
       <AnimatePresence>
         {showPoster && (
           <motion.div 
             initial={{ opacity: 0, y: 50 }} 
             animate={{ opacity: 1, y: 0 }} 
-            className="relative max-w-2xl mx-auto w-full pb-2 px-4"
+            className="relative max-w-2xl mx-auto w-full pb-2 px-4 z-10"
           >
-            {/* המכולה של הפוסטר - שומרת על העיצוב המקורי שלך */}
-            <div ref={posterRef} className="relative aspect-[2/3] w-full max-w-[450px] md:max-h-[75vh] mx-auto rounded-[3.5rem] md:rounded-[4.5rem] overflow-hidden bg-black shadow-4xl border border-[#d4a373]/30">
+            {/* מכולת הפוסטר */}
+            <div ref={posterRef} className="relative aspect-[2/3] w-full max-w-[450px] mx-auto rounded-[3.5rem] md:rounded-[4.5rem] overflow-hidden bg-black shadow-4xl border border-[#d4a373]/30">
               <img 
                 src={posterUrl} 
                 className={`w-full h-full object-cover transition-opacity duration-1000 ${posterLoading ? 'opacity-0' : 'opacity-100'}`} 
@@ -542,38 +574,17 @@ const handleCapturePoster = async (action) => {
                     setTriggerFlash(true);   
                     setTimeout(() => setTriggerFlash(false), 2500); 
                   }, 1000);
-                }} 
+                }}
+                onError={() => setPosterLoading(false)}
                 alt="Movie Poster"
               />
 
               {triggerFlash && <div className="flash-overlay" />}
 
-              {!posterLoading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-between p-8 md:p-14 text-center z-20 pointer-events-none">
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/98 via-transparent to-black/60 -z-10" />
-                  <div className="w-full pt-4 md:pt-10">
-                    <h1 className="text-white font-black uppercase tracking-tight text-[2.5rem] md:text-[4.5rem] leading-[0.85] italic drop-shadow-[0_10px_30px_rgba(0,0,0,1)] break-words">
-                      {posterTitle}
-                    </h1>
-                  </div>
-                  <div className="w-full flex flex-col items-center gap-6 pb-4">
-                    <p className="text-[#d4a373] font-black uppercase tracking-[0.4em] text-[14px] md:text-[20px]">
-                      {credits.comingSoon}
-                    </p>
-                    <div className="w-full border-t border-white/20 pt-6 flex flex-col gap-1.5 md:gap-2 font-bold uppercase text-white/90">
-                      <p className="text-[9px] md:text-[13px] tracking-[0.15em]">{credits.line1}</p>
-                      <p className="text-[7px] md:text-[10px] text-white/70 tracking-[0.15em]">{credits.line2}</p>
-                      <p className="text-[7px] md:text-[10px] text-white/50 tracking-[0.15em]">{credits.line3}</p>
-                      <p className="text-white/30 text-[6px] md:text-[8px] tracking-[0.3em] mt-1">{credits.copyright}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Loader המעודכן עם הודעות משתנות */}
+              {/* Loader נקי - ללא כותרת LIFESCRIPT, רק אנימציה וטקסט */}
               {posterLoading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#030712] z-50 px-6">
-                  <div className="relative w-24 h-24">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#030712] z-50 px-6 text-center">
+                  <div className="relative w-20 h-20 mb-10">
                     <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 4, ease: "linear" }} className="absolute inset-0 border-[3px] border-dashed border-[#d4a373]/30 rounded-full" />
                     <div className="absolute inset-0 flex items-center justify-center">
                       {[0, 60, 120, 180, 240, 300].map((deg, i) => (
@@ -584,15 +595,14 @@ const handleCapturePoster = async (action) => {
                     </div>
                   </div>
 
-                  <div className="mt-10 relative h-6 w-full flex justify-center items-center overflow-hidden">
+                  <div className="h-6">
                     <AnimatePresence mode="wait">
                       <motion.p
                         key={loadingMessageIndex}
                         initial={{ y: 15, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: -15, opacity: 0 }}
-                        transition={{ duration: 0.4 }}
-                        className={`text-[#d4a373] text-[10px] font-black uppercase tracking-[0.4em] whitespace-nowrap ${isHebrew ? 'pr-1' : 'pl-1'}`}
+                        className="text-[#d4a373] text-[10px] font-black uppercase tracking-[0.4em] whitespace-nowrap"
                       >
                         {posterLoadingMessages[loadingMessageIndex]}
                       </motion.p>
@@ -600,34 +610,92 @@ const handleCapturePoster = async (action) => {
                   </div>
                 </div>
               )}
+
+             {/* שכבת הטקסט של הפוסטר - התאמה רספונסיבית מקצועית */}
+{!posterLoading && (
+  <div className="absolute inset-0 flex flex-col items-center justify-between p-6 md:p-14 text-center z-20 pointer-events-none">
+    {/* גרדיאנט הגנה על הטקסט */}
+    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-transparent to-black/50 -z-10" />
+    
+    {/* כותרת הסרט - גודל דינמי למניעת חיתוך ודחיסות */}
+    <div className="w-full pt-8 md:pt-10 px-4">
+      <h1 
+  className="text-white font-black uppercase italic drop-shadow-[0_10px_30px_rgba(0,0,0,1)] break-words"
+  style={{ 
+    // צמצום משמעותי של הגודל במובייל (מ-1.5rem ל-1.2rem) וצמצום המקסימום
+    fontSize: 'clamp(1.2rem, 7vw, 3.5rem)', 
+    lineHeight: '1.1', // הגדלנו מעט מ-0.9 כדי שלא יהיה צפוף מדי אם יש שבירת שורה
+    padding: '0 15px',
+    letterSpacing: '-0.02em' // צמצום ריווח אותיות שעוזר למילים ארוכות להיכנס בשורה אחת
+  }}
+>
+  {posterTitle}
+</h1>
+    </div>
+
+    {/* בלוק הקרדיטים התחתון */}
+    <div className="w-full flex flex-col items-center gap-4 md:gap-6 pb-2 md:pb-4">
+      <p className="text-[#d4a373] font-black uppercase tracking-[0.2em] md:tracking-[0.4em] text-[10px] md:text-[20px]">
+        {credits.comingSoon}
+      </p>
+      
+      <div className="w-full border-t border-white/20 pt-4 md:pt-6 flex flex-col gap-1 md:gap-2 font-bold uppercase text-white/90">
+        {/* שורה 1 - גודל מותאם למובייל */}
+        <p className="text-[7px] md:text-[13px] tracking-[0.1em] md:tracking-[0.15em] px-2">
+          {credits.line1}
+        </p>
+        
+        {/* שורות צוות - קטנות וצפופות כמו בפוסטר אמיתי */}
+        <div className="opacity-80 flex flex-col gap-0.5">
+          <p className="text-[6px] md:text-[10px] tracking-[0.1em] md:tracking-[0.15em]">
+            {credits.line2}
+          </p>
+          <p className="text-[6px] md:text-[10px] tracking-[0.1em] md:tracking-[0.15em]">
+            {credits.line3}
+          </p>
+        </div>
+
+        {/* זכויות יוצרים - קטן מאוד ואלגנטי */}
+        <p className="text-white/30 text-[5px] md:text-[8px] tracking-[0.2em] md:tracking-[0.3em] mt-1">
+          {credits.copyright}
+        </p>
+      </div>
+    </div>
+  </div>
+)}
             </div>
 
-            {/* כפתורי פעולה - שמירה ושיתוף */}
+            {/* כפתורי הפעולה היוקרתיים (זה הזהב שביקשת לשמור) */}
             {!posterLoading && (
               <motion.div 
                 initial={{ opacity: 0, y: 15 }} 
                 animate={{ opacity: 1, y: 0 }} 
-                transition={{ delay: 0.8 }}
-                className="flex flex-row justify-center items-center gap-3 mt-8 pb-10 px-4"
+                className="flex flex-row items-center justify-center gap-3 mt-8 pb-10 w-full max-w-[380px] mx-auto px-4"
               >
                 <motion.button 
-                  whileHover={{ scale: 1.03, backgroundColor: "#e5b98f" }}
-                  whileTap={{ scale: 0.97 }}
+                  whileHover={{ scale: 1.02, backgroundColor: "#d4a373", color: "#000" }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => handleCapturePoster('download')}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-[#d4a373] text-black rounded-full font-bold text-[10px] tracking-wider transition-all shadow-lg"
+                  className="relative flex-[2] flex items-center justify-center gap-2 h-11 bg-[#1a1c20] border border-white/20 text-gray-300 rounded-lg transition-all duration-500 overflow-hidden"
                 >
-                  <Download size={10} strokeWidth={2.5} />
-                  <span className="uppercase">{isHebrew ? 'שמור פוסטר' : 'SAVE POSTER'}</span>
+                  {/* אפקט הברק (Shiny Sweep) */}
+                  <motion.div animate={{ left: ['-100%', '200%'] }} transition={{ repeat: Infinity, duration: 3, ease: "linear" }} className="absolute top-0 bottom-0 w-12 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[35deg]" />
+                  <Download size={16} strokeWidth={2.5} />
+                  <span className="font-bold text-[10px] tracking-[0.2em] uppercase">{isHebrew ? 'שמור פוסטר' : 'SAVE POSTER'}</span>
                 </motion.button>
 
                 <motion.button 
-                  whileHover={{ scale: 1.03, backgroundColor: "rgba(255,255,255,0.08)" }}
-                  whileTap={{ scale: 0.97 }}
+                  whileHover={{ scale: 1.05, borderColor: "#d4a373", color: "#d4a373" }}
+                  whileTap={{ scale: 0.9 }}
                   onClick={() => handleCapturePoster('share')}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 text-white/80 rounded-full font-bold text-[10px] tracking-wider transition-all hover:border-[#d4a373]/30"
+                  className="relative w-11 h-11 flex items-center justify-center bg-[#1a1c20] border border-white/10 text-gray-400 rounded-lg transition-all duration-500"
                 >
-                  <Film size={10} className="text-[#d4a373]" />
-                  <span className="uppercase">{isHebrew ? 'שתף פוסטר' : 'SHARE POSTER'}</span>
+                  <div className="relative">
+                    <Share2 size={18} strokeWidth={2} />
+                    <motion.div animate={{ opacity: [0.3, 0.6, 0.3] }} transition={{ duration: 2, repeat: Infinity }} className="absolute inset-0 blur-[4px] text-[#d4a373]">
+                      <Share2 size={18} strokeWidth={2} />
+                    </motion.div>
+                  </div>
                 </motion.button>
               </motion.div>
             )}
