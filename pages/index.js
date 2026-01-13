@@ -141,22 +141,24 @@ function HomePage() {
         >
           {/* האייקון בגודל המקורי והמרשים */}
           <div className="relative inline-block mb-8">
-            <div className="absolute inset-0 bg-[#d4a373] blur-[50px] opacity-20" />
-            
-            <div className="relative w-24 h-24 md:w-32 md:h-32 mx-auto rounded-[2rem] overflow-hidden border-2 border-[#d4a373]/30 shadow-2xl">
-              <img 
-                src="/icon.png" 
-                alt="LifeScript Studio Logo" 
-                className="w-full h-full object-cover"
-              />
-            </div>
-          </div>
+  {/* שכבת ההילה - הורדנו את ה-Blur ל-40px והוספנו z-0 */}
+  <div className="absolute inset-0 bg-[#d4a373] blur-[40px] opacity-20 z-0 pointer-events-none" />
+  
+  {/* האייקון - הוספנו z-10 כדי להפריד אותו מהטשטוש */}
+  <div className="relative z-10 w-24 h-24 md:w-32 md:h-32 mx-auto rounded-[2rem] overflow-hidden border-2 border-[#d4a373]/30 shadow-2xl bg-[#030712]">
+    <img 
+      src="/icon.png" 
+      alt="LifeScript Studio Logo" 
+      className="w-full h-full object-cover"
+    />
+  </div>
+</div>
 
-          <div className="block mb-6">
-            <div className="inline-block px-6 py-2 rounded-full border border-[#d4a373]/30 bg-[#d4a373]/5 text-[#d4a373] text-sm md:text-base font-bold tracking-[0.3em] uppercase">
-              {lang === 'he' ? 'חזון קולנועי' : 'Cinematic Vision'}
-            </div>
-          </div>
+<div className="block mb-6 relative z-10">
+  <div className="inline-block px-6 py-2 rounded-full border border-[#d4a373]/30 bg-[#030712]/80 backdrop-blur-md text-[#d4a373] text-sm md:text-base font-bold tracking-[0.3em] uppercase">
+    {lang === 'he' ? 'חזון קולנועי' : 'Cinematic Vision'}
+  </div>
+</div>
           
          <h1 
   onClick={() => setShowAdminPanel(!showAdminPanel)}
