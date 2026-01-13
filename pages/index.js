@@ -27,6 +27,7 @@ function HomePage() {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [tempAdminKey, setTempAdminKey] = useState('');
   const [modalContent, setModalContent] = useState(null); // 'terms', 'privacy', 'support' או null
+  const [showTips, setShowTips] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -139,13 +140,15 @@ function HomePage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12 md:mb-20 relative"
         >
-          {/* האייקון בגודל המקורי והמרשים */}
-          <div className="relative inline-block mb-8">
-  {/* שכבת ההילה - הורדנו את ה-Blur ל-40px והוספנו z-0 */}
-  <div className="absolute inset-0 bg-[#d4a373] blur-[40px] opacity-20 z-0 pointer-events-none" />
+        <div className="relative inline-block mb-10 group">
+  {/* הילה חיצונית רכה - נותנת את העומק מסביב */}
+  <div className="absolute inset-[-20px] bg-[#d4a373]/10 blur-[40px] rounded-full opacity-50 pointer-events-none" />
   
-  {/* האייקון - הוספנו z-10 כדי להפריד אותו מהטשטוש */}
-  <div className="relative z-10 w-24 h-24 md:w-32 md:h-32 mx-auto rounded-[2rem] overflow-hidden border-2 border-[#d4a373]/30 shadow-2xl bg-[#030712]">
+  {/* הילה פנימית חזקה יותר - נותנת את ה"זוהר" המדויק */}
+  <div className="absolute inset-4 bg-[#d4a373]/20 blur-[20px] rounded-full pointer-events-none" />
+
+  {/* מסגרת האייקון - שקופה למחצה עם Backdrop Blur */}
+  <div className="relative z-10 w-24 h-24 md:w-32 md:h-32 mx-auto rounded-[2.5rem] overflow-hidden border border-[#d4a373]/30 shadow-2xl backdrop-blur-sm bg-black/20 transition-transform duration-700 group-hover:scale-105">
     <img 
       src="/icon.png" 
       alt="LifeScript Studio Logo" 
@@ -154,8 +157,8 @@ function HomePage() {
   </div>
 </div>
 
-<div className="block mb-6 relative z-10">
-  <div className="inline-block px-6 py-2 rounded-full border border-[#d4a373]/30 bg-[#030712]/80 backdrop-blur-md text-[#d4a373] text-sm md:text-base font-bold tracking-[0.3em] uppercase">
+<div className="block mb-6 relative">
+  <div className="inline-block px-8 py-2.5 rounded-full border border-[#d4a373]/20 bg-gradient-to-r from-transparent via-[#d4a373]/5 to-transparent backdrop-blur-xl text-[#d4a373] text-[10px] md:text-xs font-black tracking-[0.4em] uppercase italic">
     {lang === 'he' ? 'חזון קולנועי' : 'Cinematic Vision'}
   </div>
 </div>
@@ -257,17 +260,23 @@ function HomePage() {
   {modalContent && (
     <motion.div 
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-xl px-6"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-xl px-6"
       onClick={() => setModalContent(null)}
     >
       <motion.div 
         initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-[#0f1117] border border-[#d4a373]/20 p-8 md:p-12 rounded-[2.5rem] max-w-2xl w-full max-h-[85vh] overflow-y-auto relative custom-scrollbar shadow-2xl shadow-[#d4a373]/5"
+        className="bg-[#0f1117] border border-[#d4a373]/20 p-8 md:p-12 pt-24 md:pt-32 rounded-[2.5rem] max-w-2xl w-full max-h-[85vh] overflow-y-auto relative custom-scrollbar shadow-2xl"
       >
-        <button onClick={() => setModalContent(null)} className="absolute top-6 right-6 text-white/20 hover:text-[#d4a373] transition-colors p-2">
-          <X size={24} />
+        {/* כפתור סגירה משופר ומונמך כדי שלא יוסתר על ידי הלוגו */}
+        <button 
+          onClick={() => setModalContent(null)} 
+          className="absolute top-8 right-6 md:top-10 md:right-10 text-white/40 hover:text-[#d4a373] transition-all duration-300 p-3 bg-white/5 hover:bg-white/10 rounded-full z-[210] group"
+        >
+          <X size={24} className="group-hover:rotate-90 transition-transform duration-500" />
         </button>
+
+        {/* שאר התוכן של ה-About... */}
 
         {modalContent === 'terms' && (
           <div className={lang === 'he' ? 'text-right' : 'text-left'}>
@@ -320,6 +329,68 @@ function HomePage() {
             </div>
           </div>
         )}
+        {modalContent === 'about' && (
+  <div className={lang === 'he' ? 'text-right' : 'text-left'} dir={lang === 'he' ? 'rtl' : 'ltr'}>
+    <h2 className="text-[#d4a373] text-2xl font-black mb-6 uppercase tracking-tighter border-b border-[#d4a373]/10 pb-4 italic">
+  {lang === 'he' ? 'אודות LIFESCRIPT: היומן הקולנועי הראשון מסוגו' : 'ABOUT LIFESCRIPT: THE FIRST CINEMATIC JOURNAL'}
+</h2>
+    
+    <div className="space-y-8 text-gray-300 text-sm md:text-base leading-relaxed overflow-y-auto max-h-[65vh] pr-2 custom-scrollbar">
+      <section>
+        <h3 className="text-white font-bold mb-2 text-lg">
+          {lang === 'he' ? 'החזון שלנו' : 'Our Vision'}
+        </h3>
+        <p>
+          {lang === 'he' 
+            ? 'כולנו חיים בתוך סיפור, אבל לעיתים קרובות מדי אנחנו שוכחים שאנחנו אלו שמחזיקים בעט. LIFESCRIPT נולדה כדי להעניק לך את הכיסא של הבמאי. זהו לא רק יומן אישי, אלא סטודיו לחיים – מרחב שבו המציאות היומיומית שלך פוגשת את הקסם של הקולנוע.' 
+            : 'We all live in a story, but too often we forget that we hold the pen. LIFESCRIPT was born to give you the director’s chair. It’s not just a personal journal, but a life studio – a space where your daily reality meets the magic of cinema.'}
+        </p>
+      </section>
+
+      <section className="bg-white/5 p-6 rounded-2xl border border-[#d4a373]/10">
+        <h3 className="text-[#d4a373] font-bold mb-3 uppercase tracking-widest text-sm">
+          {lang === 'he' ? "הלב שבפרויקט: תרפיה דרך עדשת הז'אנר" : 'The Heart of the Project: Genre Therapy'}
+        </h3>
+        <p className="mb-4">
+          {lang === 'he' 
+            ? 'לפעמים החיים מאתגרים, מתסכלים או שגרתיים. הלב של LIFESCRIPT הוא היכולת לבצע Reframing (מסגור מחדש) לחוויה האנושית:' 
+            : 'Sometimes life is challenging, frustrating, or just routine. The heart of LIFESCRIPT is the ability to perform "Reframing" on the human experience:'}
+        </p>
+        <ul className="space-y-3 opacity-90">
+          <li>• <strong>{lang === 'he' ? 'משבר הופך לקומדיה:' : 'Crisis to Comedy:'}</strong> {lang === 'he' ? 'להפוך יום עמוס בכעסים ל"קומדיה של טעויות" ותלמד לצחוק על מה שפעם הכעיס.' : 'Turn a day of anger into a "Comedy of Errors" and learn to laugh at what once frustrated you.'}</li>
+          <li>• <strong>{lang === 'he' ? 'קושי הופך לגבורה:' : 'Hardship to Heroism:'}</strong> {lang === 'he' ? 'להפוך התמודדות מורכבת ל"סרט אקשן" שבו אתה הגיבור המנצח כנגד כל הסיכויים.' : 'Turn a complex struggle into an "Action Movie" where you are the hero winning against all odds.'}</li>
+          <li>• <strong>{lang === 'he' ? 'שגרה הופכת לשירה:' : 'Routine to Poetry:'}</strong> {lang === 'he' ? 'להפוך רגעים פשוטים ל"סרט דוקומנטרי" פיוטי או ל"דרמה" מרגשת. השימוש בז\'אנרים מאפשר לקבל נקודת מבט חדשה.' : 'Turn simple moments into a poetic "Documentary" or a moving "Drama". Using different genres allows for a new, empowering perspective.'}</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3 className="text-white font-bold mb-2">
+          {lang === 'he' ? 'מניצוץ אנושי לטכנולוגיה עם נשמה' : 'From Human Spark to Technology with Soul'}
+        </h3>
+        <p>
+          {lang === 'he' 
+            ? 'הפרויקט נולד מתוך מסע אישי של אמן ויוצר. בתהליך העבודה על אחת מיצירותיי, גיליתי את כוחו של ה-AI לא כתחליף ליצירה, אלא כשותף לדיאלוג שמאפשר לזקק רגש גולמי לחזון ויזואלי. LIFESCRIPT היא התוצאה: האינטואיציה של האמן והדיוק של הטכנולוגיה, בשירות הסיפור שלך.' 
+            : 'This project was born from an artist\'s journey. While working on one of my pieces, I discovered the power of AI not as a replacement for creativity, but as a dialogue partner that refines raw emotion into visual vision. LIFESCRIPT is the result: Artist intuition meets technological precision, in service of your story.'}
+        </p>
+      </section>
+
+      <section className="border-t border-white/5 pt-6">
+        <h3 className="text-[#d4a373] font-bold mb-3">
+          {lang === 'he' ? 'איך להפיק את המיטב מהחוויה?' : 'How to Get the Most Out of the Experience?'}
+        </h3>
+        <ul className="space-y-2">
+          <li><strong>1. {lang === 'he' ? 'כתוב בכנות:' : 'Write Honestly:'}</strong> {lang === 'he' ? 'שפוך את מחשבות היום לתוך היומן בלי פילטרים.' : 'Pour your daily thoughts into the journal without filters.'}</li>
+          <li><strong>2. {lang === 'he' ? 'בחר זווית חדשה:' : 'Choose a New Angle:'}</strong> {lang === 'he' ? 'בחר ז\'אנר שיעזור לך לראות את היום שעבר באור אחר.' : 'Pick a genre that helps you see your day in a different light.'}</li>
+          <li><strong>3. {lang === 'he' ? 'שמור את הפוסטר:' : 'Save the Poster:'}</strong> {lang === 'he' ? 'בנה לעצמך ארכיון ויזואלי של מסע החיים שלך – יצירת אמנות אחת בכל יום.' : 'Build a visual archive of your life journey – one piece of art every day.'}</li>
+        </ul>
+      </section>
+
+      <p className="text-center text-[10px] tracking-[0.6em] text-[#d4a373]/40 uppercase py-4">
+        Don't just live your life. Direct it.
+      </p>
+    </div>
+  </div>
+)}
       </motion.div>
     </motion.div>
   )}
@@ -330,8 +401,86 @@ function HomePage() {
   animate={{ opacity: 1, scale: 1 }}
   className={`glass-panel rounded-[3rem] overflow-hidden shadow-2xl relative ${(loading || isTyping) ? 'ai-loading-active' : ''}`}
 >
-  <div className="bg-[#030712]/60 backdrop-blur-3xl p-8 md:p-16">
-    <ScriptForm 
+  {/* כפתור הטיפים - ממוקם מעל המסגרת, צמוד למרכז */}
+<div className="w-full flex justify-center mb-4 relative z-[100]">
+  <div className="flex flex-col items-center">
+    <button 
+      type="button"
+      onClick={() => setShowTips(!showTips)}
+      className="flex flex-col items-center gap-2 group transition-all duration-500"
+    >
+      <div className="w-10 h-10 rounded-full border border-[#d4a373]/30 flex items-center justify-center bg-[#030712] group-hover:bg-[#d4a373]/20 group-hover:border-[#d4a373] shadow-[0_0_20px_rgba(212,163,115,0.15)] transition-all duration-500">
+        <span className="text-sm">💡</span>
+      </div>
+      <span className="text-[9px] font-black tracking-[0.3em] uppercase text-[#d4a373]/60 group-hover:text-[#d4a373] transition-all duration-300">
+        {lang === 'he' ? 'טיפים להפקה' : 'PRODUCTION TIPS'}
+      </span>
+    </button>
+
+    <AnimatePresence>
+      {showTips && (
+        <div key="global-overlay-wrapper">
+          {/* Overlay גלובלי - חוסם את כל המסך לסגירה חלקה */}
+          <div 
+            className="fixed inset-0 w-screen h-screen bg-transparent z-[9998]" 
+            onClick={(e) => {
+              e.preventDefault();
+              setShowTips(false);
+            }}
+          />
+
+          {/* חלונית הטיפים - מופיעה מתחת לכפתור, מעל המסגרת */}
+          <motion.div 
+            initial={{ opacity: 0, y: 10, x: '-50%', scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, x: '-50%', scale: 1 }}
+            exit={{ opacity: 0, y: 10, x: '-50%', scale: 0.95 }}
+            className="absolute top-20 left-1/2 w-80 bg-[#0b0d12]/95 border border-[#d4a373]/30 p-8 rounded-[2rem] shadow-[0_25px_100px_rgba(0,0,0,0.8)] z-[9999] backdrop-blur-3xl"
+            dir={lang === 'he' ? 'rtl' : 'ltr'}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#d4a373] text-[8px] font-black px-3 py-1 rounded-full text-black tracking-widest uppercase">
+              {lang === 'he' ? 'הנחיות בימוי' : 'Director Notes'}
+            </div>
+
+            <h4 className="text-[#d4a373] font-black text-xs mb-6 uppercase tracking-widest italic border-b border-[#d4a373]/10 pb-3 text-center">
+              {lang === 'he' ? 'איך להפיק את המיטב?' : 'HOW TO DIRECT?'}
+            </h4>
+            
+            <ul className="space-y-5">
+              {[
+                { 
+                  id: "01", 
+                  title: lang === 'he' ? 'כתוב בכנות' : 'Write Honestly', 
+                  desc: lang === 'he' ? 'שפוך את מחשבות היום בלי פילטרים.' : 'Pour your thoughts without filters.' 
+                },
+                { 
+                  id: "02", 
+                  title: lang === 'he' ? 'בחר זווית חדשה' : 'Pick a New Angle', 
+                  desc: lang === 'he' ? 'בחר ז\'אנר שיעזור לך לראות את היום באור אחר.' : 'Pick a genre for a new perspective.' 
+                },
+                { 
+                  id: "03", 
+                  title: lang === 'he' ? 'שמור את הפוסטר' : 'Save the Poster', 
+                  desc: lang === 'he' ? 'בנה ארכיון ויזואלי של מסע החיים שלך.' : 'Build a visual archive of your journey.' 
+                }
+              ].map((item) => (
+                <li key={item.id} className="flex items-start gap-3">
+                  <span className="text-[10px] font-black text-[#d4a373]">{item.id}.</span>
+                  <p className="text-[11px] leading-relaxed text-gray-300">
+                    <strong className="text-white block mb-0.5">{item.title}</strong>
+                    {item.desc}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  </div>
+</div>
+     <div className="bg-[#030712]/60 backdrop-blur-3xl p-8 md:p-16 relative">
+ <ScriptForm
       onGenerateScript={handleGenerateScript} 
       loading={loading} 
       lang={lang} 
@@ -377,44 +526,50 @@ function HomePage() {
         </AnimatePresence>
       </main>
 
-      {/* Footer המלוטש - היררכיה הוליוודית קבועה */}
-      <footer className="py-16 text-center border-t border-white/[0.03] bg-black/40 mt-10">
+     {/* Footer המלוטש - היררכיה הוליוודית קבועה */}
+      <footer className="py-12 md:py-16 text-center border-t border-white/[0.03] bg-black/40 mt-10 px-4">
         <div className="flex flex-col items-center justify-center">
           
-          {/* מיתוג ראשי - מוגדל מעט כדי לשלוט בהיררכיה */}
+          {/* מיתוג ראשי */}
           <div className="flex items-center gap-3 mb-4 opacity-90">
             <img 
               src="/icon.png" 
-              className="w-7 h-7 rounded-md opacity-80 grayscale hover:grayscale-0 transition-all duration-700" 
+              className="w-6 h-6 md:w-7 md:h-7 rounded-md opacity-80 grayscale hover:grayscale-0 transition-all duration-700" 
               alt="Studio Icon" 
             />
-            <span className="text-white font-black tracking-[0.5em] text-base md:text-lg italic uppercase leading-none">
+            <span className="text-white font-black tracking-[0.4em] md:tracking-[0.5em] text-sm md:text-lg italic uppercase leading-none">
               LIFESCRIPT STUDIO
             </span>
           </div>
 
-          {/* שורת זכויות יוצרים - דקה ואלגנטית */}
-          <p className="text-gray-500 text-[9px] md:text-[10px] tracking-[0.15em] uppercase flex items-center gap-2 mb-6 opacity-40 font-medium">
-            <Copyright size={10} /> 2025 BY ADIALAMO • ALL RIGHTS RESERVED
+          {/* שורת זכויות יוצרים */}
+          <p className="text-gray-500 text-[8px] md:text-[10px] tracking-[0.15em] uppercase flex items-center gap-2 mb-6 opacity-40 font-medium">
+            <Copyright size={9} /> 2025 BY ADIALAMO • ALL RIGHTS RESERVED
           </p>
 
-          {/* קישורי משנה - עיצוב 'רפאים' מינימליסטי עם פונקציונליות */}
-          <div className={`flex gap-8 text-[8px] font-medium tracking-normal text-white/10 ${lang === 'he' ? 'flex-row-reverse' : 'flex-row'}`}>
+          {/* קישורי משנה - מותאמים לשורה אחת במובייל */}
+          <div className={`flex flex-row justify-center items-center gap-3 md:gap-8 text-[7px] md:text-[9px] font-bold tracking-[0.1em] md:tracking-widest ${lang === 'he' ? 'flex-row-reverse' : 'flex-row'}`}>
+            <button 
+              onClick={() => setModalContent('about')}
+              className="text-[#d4a373] hover:text-white transition-all duration-500 border-b border-[#d4a373]/30 pb-0.5 uppercase whitespace-nowrap"
+            >
+              {lang === 'he' ? 'אודות' : 'About'}
+            </button>
             <button 
               onClick={() => setModalContent('terms')}
-              className="hover:text-[#d4a373]/50 transition-all duration-500 border-b border-transparent hover:border-[#d4a373]/20 pb-0.5"
+              className="text-white/20 hover:text-[#d4a373]/50 transition-all duration-500 border-b border-transparent hover:border-[#d4a373]/20 pb-0.5 uppercase whitespace-nowrap"
             >
               {lang === 'he' ? 'תנאי שימוש' : 'Terms'}
             </button>
             <button 
               onClick={() => setModalContent('privacy')}
-              className="hover:text-[#d4a373]/50 transition-all duration-500 border-b border-transparent hover:border-[#d4a373]/20 pb-0.5"
+              className="text-white/20 hover:text-[#d4a373]/50 transition-all duration-500 border-b border-transparent hover:border-[#d4a373]/20 pb-0.5 uppercase whitespace-nowrap"
             >
               {lang === 'he' ? 'פרטיות' : 'Privacy'}
             </button>
             <button 
               onClick={() => setModalContent('support')}
-              className="hover:text-[#d4a373]/50 transition-all duration-500 border-b border-transparent hover:border-[#d4a373]/20 pb-0.5"
+              className="text-white/20 hover:text-[#d4a373]/50 transition-all duration-500 border-b border-transparent hover:border-[#d4a373]/20 pb-0.5 uppercase whitespace-nowrap"
             >
               {lang === 'he' ? 'תמיכה' : 'Support'}
             </button>

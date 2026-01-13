@@ -655,10 +655,19 @@ const handleCapturePoster = async (action) => {
           </p>
         </div>
 
-        {/* זכויות יוצרים - קטן מאוד ואלגנטי */}
-        <p className="text-white/30 text-[5px] md:text-[8px] tracking-[0.2em] md:tracking-[0.3em] mt-1">
-          {credits.copyright}
-        </p>
+        {/* הקישור האקטיבי והאלגנטי - במקום שורת ה-copyright */}
+        <div className="mt-2 flex justify-center">
+          <a 
+            href="https://my-life-script.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="cursor-pointer no-underline group"
+          >
+            <p className="text-[#d4a373]/50 text-[6px] md:text-[9px] tracking-[0.5em] uppercase font-black group-hover:text-[#d4a373] transition-all duration-300 italic">
+              MY-LIFE-SCRIPT.VERCEL.APP
+            </p>
+          </a>
+        </div>
       </div>
     </div>
   </div>
