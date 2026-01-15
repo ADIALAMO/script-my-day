@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -53,9 +54,7 @@ const genres = [
 
 function ScriptForm({ onGenerateScript, loading, lang, isTyping, onInputChange, selectedGenre, genreIcons }) {
   const [journalEntry, setJournalEntry] = useState('');
-const [manualGenre, setManualGenre] = useState(null);
-// המערכת תעדיף בחירה ידנית, ואם אין - תציג את המלצת ה-AI
-  const activeGenre = manualGenre || selectedGenre; 
+  const [activeGenre, setActiveGenre] = useState('drama');
   const [isCopied, setIsCopied] = useState(false);
   const [isMusicMuted, setIsMusicMuted] = useState(true);
   const bgMusicRef = useRef(null);
@@ -157,7 +156,7 @@ const [manualGenre, setManualGenre] = useState(null);
       console.log("Audio unlock failed", err);
     }
 
-    onGenerateScript(journalEntry, selectedGenre);
+    onGenerateScript(journalEntry, activeGenre);
   };
 
   return (
@@ -247,22 +246,7 @@ const [manualGenre, setManualGenre] = useState(null);
             <label className="text-[#d4a373] text-[10px] md:text-xs font-black uppercase tracking-[0.3em] italic">
               {lang === 'he' ? 'בחר סגנון קולנועי' : 'Select Cinematic Style'}
             </label>
-
-            <AnimatePresence>
-              {selectedGenre && (
-                <motion.div 
-                  initial={{ opacity: 0, x: -10 }} 
-                  animate={{ opacity: 1, x: 0 }} 
-                  exit={{ opacity: 0, x: -10 }}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#d4a373]/10 border border-[#d4a373]/20 backdrop-blur-sm"
-                >
-                  <span className="text-base leading-none">{genreIcons[selectedGenre]}</span>
-                  <span className="text-[8px] md:text-[9px] font-bold text-[#d4a373] uppercase tracking-wider">
-                    {lang === 'he' ? "זיהינו ז'אנר מתאים" : "Suggested Style"}
-                  </span>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* הצעת הז'אנר נמחקה מכאן */}
           </div>
 
           <button 
@@ -283,8 +267,11 @@ const [manualGenre, setManualGenre] = useState(null);
               <motion.button
                 key={genre.value}
                 type="button"
-                onClick={() => setManualGenre(genre.value)}
-                whileHover={!isGlobalLocked ? { y: -4, scale: 1.02 } : {}}
+onClick={() => {
+  setActiveGenre(genre.value);
+  // אנחנו חייבים לעדכן את האבא (Page) שהז'אנר השתנה
+  if (onInputChange) onInputChange(journalEntry, genre.value); 
+}}                whileHover={!isGlobalLocked ? { y: -4, scale: 1.02 } : {}}
                 whileTap={!isGlobalLocked ? { scale: 0.96 } : {}}
                 disabled={isGlobalLocked}
                 className={`relative flex flex-col items-center justify-between h-28 md:h-32 p-4 rounded-2xl border transition-all duration-500 overflow-hidden ${isSelected ? genre.activeClass : 'bg-white/5 border-white/5 hover:border-white/20 hover:bg-white/10'}`}
