@@ -55,6 +55,7 @@ const genres = [
 function ScriptForm({ onGenerateScript, loading, lang, isTyping, onInputChange, selectedGenre, genreIcons }) {
   const [journalEntry, setJournalEntry] = useState('');
   const [activeGenre, setActiveGenre] = useState('drama');
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isMusicMuted, setIsMusicMuted] = useState(true);
   const bgMusicRef = useRef(null);
@@ -182,42 +183,74 @@ function ScriptForm({ onGenerateScript, loading, lang, isTyping, onInputChange, 
 </AnimatePresence>
         </div>
         
- {/* אזור הדוגמאות להשראה - איזון מושלם בין גודל לקומפקטיות */}
-<div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mb-5 px-2">
-  {(lang === 'he' ? [
-    { emoji: "🎭", label: "דרמה יומית", text: "היום התחיל בשתיקה כבדה ליד שולחן ארוחת הבוקר. מבט אחד הבהיר שהכל עומד להשתנות." },
-    { emoji: "❤️", label: "דייט מהסרטים", text: "זה התחיל במבט מקרי בבית הקפה, הרגשתי שהלב שלי פועם חזק. היא חייכה אלי ופתאום העולם נעלם." },
-    { emoji: "👽", label: "פלישה מהחלל", text: "השמיים הפכו סגולים וחללית ענקית הופיעה מעל העיר. הרובוטים התחילו לרדת עם טכנולוגיה זרה." },
-    { emoji: "😱", label: "בית נטוש", text: "הדלת נפתחה בחריקה והיה חושך מוחלט. פתאום שמעתי צעקה מלמעלה וראיתי צל זז במסדרון." }
-  ] : [
-    { emoji: "🎭", label: "Daily Drama", text: "The day began with a heavy silence. One look made it clear everything was about to change." },
-    { emoji: "❤️", label: "Movie Date", text: "It started with a chance glance in the coffee shop, I felt my heart beating fast. She smiled at me." },
-    { emoji: "👽", label: "Alien Invasion", text: "The sky turned purple and a massive spaceship appeared. Robots began to descend with alien tech." },
-    { emoji: "😱", label: "Abandoned House", text: "The door creaked open into total darkness. Suddenly I heard a scream and saw a shadow move." }
-  ]).map((example, index) => (
-    <button
-      key={index}
-      type="button"
-      onClick={() => {
-        setJournalEntry(example.text);
-        if (onInputChange) onInputChange(example.text);
-      }}
-      className="h-9 px-3 rounded-xl bg-white/[0.04] hover:bg-[#d4a373]/20 border border-white/10 hover:border-[#d4a373]/40 transition-all duration-300 backdrop-blur-md cursor-pointer flex items-center justify-center gap-2 group overflow-hidden"
-    >
-      {/* אייקון מוגדל מעט */}
-      <span className="text-sm md:text-base group-hover:scale-110 transition-transform duration-300">
-        {example.emoji}
-      </span>
-      
-      {/* טקסט מוגדל וברור יותר */}
-      <span className="text-[10px] md:text-[11px] text-white/50 group-hover:text-white font-bold uppercase tracking-tight whitespace-nowrap">
-        {example.label}
-      </span>
-    </button>
-  ))}
+{/* מיכל הכפתור והחלונית - שילוב יוקרתי ומינימליסטי */}
+<div className="relative mb-6 px-2 w-fit"> 
+  <motion.button
+    type="button"
+    whileHover={{ scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+    onClick={() => setIsModalOpen(!isModalOpen)}
+    className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:border-[#d4a373]/40 transition-all duration-500 group shadow-lg"
+  >
+    <Sparkles size={14} className="text-[#d4a373] group-hover:rotate-12 transition-transform" />
+    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white/70 group-hover:text-white">
+      {lang === 'he' ? 'הצתת השראה' : 'Spark Inspiration'}
+    </span>
+  </motion.button>
+
+  <AnimatePresence>
+    {isModalOpen && (
+      <>
+        {/* שכבת סגירה שקופה למניעת חסימות */}
+        <div className="fixed inset-0 z-[140] bg-transparent" onClick={() => setIsModalOpen(false)} />
+        
+        <motion.div 
+          initial={{ opacity: 0, x: lang === 'he' ? 10 : -10, scale: 0.95 }} 
+          animate={{ opacity: 1, x: 0, scale: 1 }} 
+          exit={{ opacity: 0, x: lang === 'he' ? 10 : -10, scale: 0.95 }}
+          /* מיקום נמוך יותר בתוך הקלט ודינמי לפי שפה */
+          className={`absolute ${lang === 'he' ? 'right-full mr-1' : 'left-full ml-1'} bottom-[-55px] z-[150] w-[240px] md:w-[280px] bg-[#0a0a0a]/90 backdrop-blur-3xl border border-[#d4a373]/30 p-2 rounded-[1.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.8)]`}
+        >
+          <div className="flex flex-col gap-1">
+            {(lang === 'he' ? [
+              { emoji: "🎭", label: "דרמה", short: "היום שהכל השתנה...", full: "היום התחיל בשתיקה כבדה ליד שולחן ארוחת הבוקר. מבט אחד מקרי הבהיר ששום דבר כבר לא יחזור להיות כפי שהיה פעם, והסודות המודחקים מתחילים לצוף." },
+              { emoji: "❤️", label: "רומנטיקה", short: "מבט מקרי בגשם...", full: "זה התחיל במבט מקרי בבית הקפה השכונתי תחת הגשם השוטף. הרגשתי שהלב שלי פועם בקצב לא מוכר כשהיא חייכה אלי, ופתאום כל רעשי העולם נעלמו והפכו למוזיקה עדינה." },
+              { emoji: "👽", label: "מד״ב", short: "השמיים הפכו סגולים...", full: "השמיים הפכו סגולים זרחניים וחללית ענקית הופיעה מעל קו הרקיע של העיר. הרובוטים החלו לרדת אל הרחובות כשהם נושאים טכנולוגיה זרה שמשנה את חוקי הפיזיקה המוכרים לנו." },
+              { emoji: "😱", label: "אימה", short: "צעקה מהקומה למעלה...", full: "הדלת נפתחה בחריקה צורמת אל תוך חושך מוחלט שבו הריח של העבר עמד באוויר. פתאום נשמעה צעקה חנוקה מהקומה העליונה וצל שחור נע במהירות בקצה המסדרון." }
+            ] : [
+              { emoji: "🎭", label: "Drama", short: "The day it all changed...", full: "The day began with a heavy silence at the breakfast table. One chance look made it clear that nothing would ever be the same again, as suppressed secrets began to surface." },
+              { emoji: "❤️", label: "Romance", short: "A glance in the rain...", full: "It started with a chance glance in a cozy coffee shop during a downpour. I felt my heart beat in an unfamiliar rhythm when she smiled at me, and the world's noise vanished." },
+              { emoji: "👽", label: "Sci-Fi", short: "Purple neon skies...", full: "The sky turned a glowing purple as a massive ship appeared over the skyline. Robots began to descend into the streets, bringing alien technology that defies the laws of physics." },
+              { emoji: "😱", label: "Horror", short: "A scream from above...", full: "The door creaked open into total darkness where the scent of the past hung heavy. Suddenly, a muffled scream echoed from upstairs and a dark shadow darted across the hallway." }
+            ]).map((example, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setJournalEntry(example.full); // כאן מוזרק הטקסט המלא
+                  if (onInputChange) onInputChange(example.full);
+                  setIsModalOpen(false);
+                }}
+                className="flex items-center gap-2.5 w-full p-2 rounded-xl bg-white/[0.02] hover:bg-[#d4a373]/20 border border-transparent hover:border-[#d4a373]/30 transition-all duration-300 group/item text-right"
+              >
+                <span className="text-sm flex-shrink-0 group-hover/item:scale-110 transition-transform">{example.emoji}</span>
+                <div className="flex flex-col items-start overflow-hidden">
+                  <span className="text-[8px] font-black text-[#d4a373] uppercase tracking-tighter">{example.label}</span>
+                  <span className="text-[9px] text-white/50 truncate w-full text-start">{example.short}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+          
+          {/* חץ הצמדה קטן - ממוקם גבוה יותר בחלונית */}
+<div className={`absolute bottom-[68px] ${lang === 'he' ? '-right-1 border-t border-r' : '-left-1 border-l border-b'} w-2.5 h-2.5 bg-[#0a0a0a] border-white/10 rotate-45`} />        </motion.div>
+      </>
+    )}
+  </AnimatePresence>
 </div>
 
-        <div className="relative">
+     <div className="relative">
   <textarea
   value={journalEntry}
   onChange={(e) => {
