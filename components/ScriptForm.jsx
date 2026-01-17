@@ -209,7 +209,7 @@ function ScriptForm({ onGenerateScript, loading, lang, isTyping, onInputChange, 
           animate={{ opacity: 1, x: 0, scale: 1 }} 
           exit={{ opacity: 0, x: lang === 'he' ? 10 : -10, scale: 0.95 }}
           /* מיקום נמוך יותר בתוך הקלט ודינמי לפי שפה */
-          className={`absolute ${lang === 'he' ? 'right-full mr-1' : 'left-full ml-1'} bottom-[-55px] z-[150] w-[240px] md:w-[280px] bg-[#0a0a0a]/90 backdrop-blur-3xl border border-[#d4a373]/30 p-2 rounded-[1.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.8)]`}
+className={`absolute left-0 right-0 mx-auto bottom-[-55px] z-[150] w-[260px] md:w-[280px] bg-[#0a0a0a]/90 backdrop-blur-3xl border border-[#d4a373]/30 p-2 rounded-[1.5rem] shadow-[0_10px_40px_rgba(0,0,0,0.8)]`}
         >
           <div className="flex flex-col gap-1">
             {(lang === 'he' ? [
@@ -242,9 +242,7 @@ function ScriptForm({ onGenerateScript, loading, lang, isTyping, onInputChange, 
               </button>
             ))}
           </div>
-          
-          {/* חץ הצמדה קטן - ממוקם גבוה יותר בחלונית */}
-<div className={`absolute bottom-[68px] ${lang === 'he' ? '-right-1 border-t border-r' : '-left-1 border-l border-b'} w-2.5 h-2.5 bg-[#0a0a0a] border-white/10 rotate-45`} />        </motion.div>
+             </motion.div>
       </>
     )}
   </AnimatePresence>
