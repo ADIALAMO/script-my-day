@@ -165,10 +165,8 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
     source.stop(audioContext.current.currentTime + 0.15);
   };
   const playFlashSound = () => {
-  // 1. בדיקת תקינות ומניעת קריסות
   if (isMutedRef.current || !flashBuffer.current || !audioContext.current) return;
   
-  // 2. "הערה" אקטיבית של ה-AudioContext - קריטי לסנכרון מושלם
   if (audioContext.current.state === 'suspended') {
     audioContext.current.resume();
   }
@@ -177,20 +175,19 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
   source.buffer = flashBuffer.current;
   
   const gainNode = audioContext.current.createGain();
-  
-  // 3. שימוש בשעון המערכת המדויק (Hardware Clock)
   const now = audioContext.current.currentTime;
   
-  gainNode.gain.setValueAtTime(0.6, now); // הגברנו מעט את עוצמת ה"קליק" לנוכחות
-  gainNode.gain.exponentialRampToValueAtTime(0.15, now + 1.2);
+  // הגדרת ווליום: קליק חזק בשיא, ואז דעיכה איטית ששומרת על ה"זנב" של הסאונד
+  gainNode.gain.setValueAtTime(0.8, now); 
+  // דעיכה ל-0.1 (לא לאפס!) לאורך 2.5 שניות כדי שהאפקט ימשיך להישמע
+  gainNode.gain.linearRampToValueAtTime(0.1, now + 2.5); 
   
   source.connect(gainNode);
   gainNode.connect(audioContext.current.destination);
   
-  // 4. הפעלה במילי-שנייה המדויקת של שעון המערכת
-  source.start(now); 
+  // התיקון: מתחילים מהשנייה ה-0.5 (הקליק) ומנגנים עד הסוף (סה"כ נשארות 2.5 שניות)
+  source.start(now, 0.5); 
 };
-  // --- עיבוד טקסט וחילוץ הנחיות ויזואליות ---
  // --- עיבוד טקסט וחילוץ הנחיות ויזואליות (כולל ניקוי תגיות HTML) ---
   useEffect(() => {
     if (!script) return;
@@ -597,25 +594,23 @@ const handleCapturePoster = async (action) => {
                   src={posterUrl} 
                   className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${posterLoading ? 'opacity-0' : 'opacity-100'}`} 
                   onLoad={() => {
-  // 1. קודם כל "מעירים" את מערכת הסאונד
   if (audioContext.current?.state === 'suspended') {
     audioContext.current.resume();
   }
 
-  // 2. מפעילים את הסאונד מיד (הוא יתחיל לעבד את הדיליי שלו)
+  // מפעילים את הסאונד (שכעת מתחיל ישר מהקליק ב-1.5s)
   playFlashSound();
 
-  // 3. יוצרים השהיה קלה מאוד (120ms) לפני הדלקת האור
-  // זה הפיצוי שיוצר את הסנכרון המושלם בין האוזן לעין
+  // השהיה מינימלית ביותר לסנכרון עין-אוזן
   setTimeout(() => {
     window.requestAnimationFrame(() => {
       setTriggerFlash(true);
       setPosterLoading(false);
       
-      // תזמון כיבוי הפלאש (הופך אותו ליותר "חד" ומהיר)
-      setTimeout(() => setTriggerFlash(false), 1000);
+      // פלאש קצר ומהיר (0.5 שניות) לאפקט מקצועי
+      setTimeout(() => setTriggerFlash(false), 500);
     });
-  }, 160); 
+  }, 50); 
 }}
                   onError={() => setPosterLoading(false)}
                   alt="Movie Poster"
