@@ -165,27 +165,31 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
     source.stop(audioContext.current.currentTime + 0.15);
   };
   const playFlashSound = () => {
-    // בודק אם המשתמש במיוט או אם הסאונד לא נטען
-    if (isMutedRef.current || !flashBuffer.current || !audioContext.current) return;
-    
-    // יצירת מקור סאונד חדש
-    const source = audioContext.current.createBufferSource();
-    source.buffer = flashBuffer.current;
-    
-    // ניהול עוצמת קול (Gain)
-    const gainNode = audioContext.current.createGain();
-    
-    // הגדרת תזמון ווליום (כדי שהקליק יהיה חזק והטעינה שקטה יותר)
-    const now = audioContext.current.currentTime;
-    gainNode.gain.setValueAtTime(0.5, now); // עוצמת ה"קליק"
-    gainNode.gain.exponentialRampToValueAtTime(0.15, now + 1.5); // הנמכה עדינה בזמן ה-Charging
-    
-    source.connect(gainNode);
-    gainNode.connect(audioContext.current.destination);
-    
-    // הפעלה
-    source.start(0);
-  };
+  // 1. בדיקת תקינות ומניעת קריסות
+  if (isMutedRef.current || !flashBuffer.current || !audioContext.current) return;
+  
+  // 2. "הערה" אקטיבית של ה-AudioContext - קריטי לסנכרון מושלם
+  if (audioContext.current.state === 'suspended') {
+    audioContext.current.resume();
+  }
+
+  const source = audioContext.current.createBufferSource();
+  source.buffer = flashBuffer.current;
+  
+  const gainNode = audioContext.current.createGain();
+  
+  // 3. שימוש בשעון המערכת המדויק (Hardware Clock)
+  const now = audioContext.current.currentTime;
+  
+  gainNode.gain.setValueAtTime(0.6, now); // הגברנו מעט את עוצמת ה"קליק" לנוכחות
+  gainNode.gain.exponentialRampToValueAtTime(0.15, now + 1.2);
+  
+  source.connect(gainNode);
+  gainNode.connect(audioContext.current.destination);
+  
+  // 4. הפעלה במילי-שנייה המדויקת של שעון המערכת
+  source.start(now); 
+};
   // --- עיבוד טקסט וחילוץ הנחיות ויזואליות ---
  // --- עיבוד טקסט וחילוץ הנחיות ויזואליות (כולל ניקוי תגיות HTML) ---
   useEffect(() => {
@@ -249,8 +253,8 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
     typeChar();
     return () => clearTimeout(timerRef.current);
   }, [cleanScript]);
-  // --- יצירת פוסטר ---
- const generatePoster = () => {
+ // --- יצירת פוסטר (Backend Integration + Fallback) ---
+  const generatePoster = async () => { // שינוי 1: הוספנו async
     setPosterLoading(true);
     setShowPoster(true);
     const genreTag = translateGenre(genre);
@@ -258,16 +262,38 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
     
     const cleanVisual = visualPrompt.replace(/[^\w\s\u0590-\u05FF,]/gi, '').slice(0, 300);
     
-    // ה-Prompt המרכזי שמתמקד רק במה שכן רוצים
-    const prompt = `Official movie key visual, ${genreTag} style, ${cleanVisual}. High budget, ultra-realistic, 8k, cinematic composition, centered subject.`;
+    // הפרומפט המרכזי - הוספנו TEXTLESS חזק בהתחלה ובסוף
+    const prompt = `A textless movie poster style, depicting: ${cleanVisual}. Genre: ${genreTag}. High budget Hollywood production, epic scale, 8k, ultra-detailed, sharp focus, masterpiece composition. (NO TEXT, NO LETTERS, NO WORDS)`;
     
-    // ה-Negative Prompt המחוזק - רשימת ה"אסור" שלנו
-    const negative = `text, letters, alphabet, typography, credits, watermark, chinese characters, kanji, japanese, russian, cyrillic, script, signature, logos, symbols, blur, distortion, low quality`;
-    
-    // בניית ה-URL בצורה מקצועית עם פרמטר negative נפרד
-    const directUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1536&seed=${seed}&nologo=true&negative=${encodeURIComponent(negative)}`;
-    
-    setPosterUrl(`/api/proxy-image?url=${encodeURIComponent(directUrl)}`);
+    // רשימת ה"אסור" - הוספנו דגש על מניעת כותרות
+    const negative = `text, letters, title, words, alphabet, typography, credits, watermark, chinese characters, kanji, japanese, russian, cyrillic, script, signature, logos, symbols, blur, distortion, low quality`;
+      
+    try {
+      const response = await fetch('/api/generate-poster', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt }), 
+      });
+
+      if (!response.ok) throw new Error('Backend failed');
+
+      const blob = await response.blob();
+      const imageUrl = URL.createObjectURL(blob);
+      
+      if (posterUrl && posterUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(posterUrl);
+      }
+      
+      setPosterUrl(imageUrl);
+      // שים לב: הסרנו מכאן את setPosterLoading(false) כדי למנוע את "הדף הריק"
+      console.log("Image data ready, waiting for browser render...");
+
+    } catch (error) {
+      console.warn("Fallback to Pollinations:", error);
+      const directUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1536&seed=${seed}&nologo=true&model=turbo&negative=${encodeURIComponent(negative)}`;    
+      setPosterUrl(directUrl);
+      // גם ב-Fallback, הלואודר יכבה רק ב-onLoad של התמונה
+    }
   };
 const handleCapturePoster = async (action) => {
     if (!posterRef.current) return;
@@ -562,28 +588,56 @@ const handleCapturePoster = async (action) => {
             animate={{ opacity: 1, y: 0 }} 
             className="relative max-w-2xl mx-auto w-full pb-2 px-4 z-10"
           >
-            {/* מכולת הפוסטר */}
-            <div ref={posterRef} className="relative aspect-[2/3] w-full max-w-[450px] mx-auto rounded-[3.5rem] md:rounded-[4.5rem] overflow-hidden bg-black shadow-4xl border border-[#d4a373]/30">
-              <img 
-                src={posterUrl} 
-                className={`w-full h-full object-cover transition-opacity duration-1000 ${posterLoading ? 'opacity-0' : 'opacity-100'}`} 
-                onLoad={() => {
-                  playFlashSound();
-                  setTimeout(() => {
-                    setPosterLoading(false); 
-                    setTriggerFlash(true);   
-                    setTimeout(() => setTriggerFlash(false), 2500); 
-                  }, 1000);
-                }}
-                onError={() => setPosterLoading(false)}
-                alt="Movie Poster"
-              />
+           {/* מכולת הפוסטר */}
+            <div ref={posterRef} className="relative aspect-[2/3] w-full max-w-[450px] mx-auto rounded-[3.5rem] md:rounded-[4.5rem] overflow-hidden bg-[#030712] shadow-4xl border border-[#d4a373]/30">
+              
+              {/* 1. התמונה - במיקום מוחלט */}
+              {posterUrl && (
+                <img 
+                  src={posterUrl} 
+                  className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${posterLoading ? 'opacity-0' : 'opacity-100'}`} 
+                  onLoad={() => {
+  // 1. קודם כל "מעירים" את מערכת הסאונד
+  if (audioContext.current?.state === 'suspended') {
+    audioContext.current.resume();
+  }
 
-              {triggerFlash && <div className="flash-overlay" />}
+  // 2. מפעילים את הסאונד מיד (הוא יתחיל לעבד את הדיליי שלו)
+  playFlashSound();
 
-              {/* Loader נקי - ללא כותרת LIFESCRIPT, רק אנימציה וטקסט */}
+  // 3. יוצרים השהיה קלה מאוד (120ms) לפני הדלקת האור
+  // זה הפיצוי שיוצר את הסנכרון המושלם בין האוזן לעין
+  setTimeout(() => {
+    window.requestAnimationFrame(() => {
+      setTriggerFlash(true);
+      setPosterLoading(false);
+      
+      // תזמון כיבוי הפלאש (הופך אותו ליותר "חד" ומהיר)
+      setTimeout(() => setTriggerFlash(false), 1000);
+    });
+  }, 160); 
+}}
+                  onError={() => setPosterLoading(false)}
+                  alt="Movie Poster"
+                />
+              )}
+
+              {/* 2. הפלאש הלבן - Z-INDEX 100 (מעל הכל) */}
+              {triggerFlash && (
+                <motion.div 
+                  initial={{ opacity: 1 }}
+                  animate={{ opacity: 0 }}
+                  transition={{ duration: 0.8 }}
+                  className="absolute inset-0 bg-white z-[100] pointer-events-none"
+                />
+              )}
+              
+              {/* שמירה על פונקציית ה-flash-overlay המקורית שלך לגיבוי */}
+              {triggerFlash && <div className="flash-overlay" style={{ zIndex: 99 }} />}
+
+              {/* 3. Loader עתידני - Z-INDEX 50 (מסתיר את התמונה עד שהיא מוכנה) */}
               {posterLoading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#030712] z-50 px-6 text-center">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#030712] z-[50] px-6 text-center">
                   <div className="relative w-20 h-20 mb-10">
                     <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 4, ease: "linear" }} className="absolute inset-0 border-[3px] border-dashed border-[#d4a373]/30 rounded-full" />
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -611,10 +665,9 @@ const handleCapturePoster = async (action) => {
                 </div>
               )}
 
-             {/* שכבת הטקסט של הפוסטר - התאמה רספונסיבית מקצועית */}
-{!posterLoading && (
-  <div className="absolute inset-0 flex flex-col items-center justify-between p-6 md:p-14 text-center z-20 pointer-events-none">
-    {/* גרדיאנט הגנה על הטקסט */}
+             {/* 4. שכבת הטקסט (Overlay) - מופיעה רק בסיום הטעינה עם התמונה */}
+{!posterLoading && posterUrl && (
+  <div className="absolute inset-0 flex flex-col items-center justify-between p-6 md:p-14 text-center z-20 pointer-events-none animate-in fade-in duration-1000">    {/* גרדיאנט הגנה על הטקסט */}
     <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-transparent to-black/50 -z-10" />
     
     {/* כותרת הסרט - גודל דינמי למניעת חיתוך ודחיסות */}
