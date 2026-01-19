@@ -299,94 +299,67 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
   };
 
 const handleCapturePoster = async (action) => {
-  if (!posterRef.current) return;
-  
+  if (!posterRef.current || !posterUrl) return;
+
   try {
-    // שלב 1: טעינת תמונה "כירורגית" (Pre-load)
-    // זה פותר את הדף השחור בפעם הראשונה בלי לגרום לשגיאת Security
-    if (posterUrl) {
-        const tempImg = new Image();
-        tempImg.src = posterUrl;
-        try {
-            await tempImg.decode(); // פקודה שמכריחה את ה-GPU לעבד את הפיקסלים
-        } catch (e) {
-            console.warn("Image decode skipped, waiting standard timeout");
-            await new Promise(r => setTimeout(r, 500));
-        }
-    }
-
-    // שלב 2: הגדרת מימדים לפי התוכן המלא
-    const fullWidth = posterRef.current.scrollWidth;
-    const fullHeight = posterRef.current.scrollHeight;
-
-    // שלב 3: הצילום עם חסימת שגיאות אבטחה
-    const dataUrl = await htmlToImage.toPng(posterRef.current, {
-      quality: 1.0,
-      pixelRatio: 3, 
-      width: fullWidth,
-      height: fullHeight,
+    // 1. הגדרות "קלות" למובייל כדי למנוע קריסת זיכרון
+    const options = {
+      quality: 0.9,
+      pixelRatio: 1.5, // איזון מושלם בין חדות לביצועי מובייל
+      skipFonts: true,
+      fontEmbedCSS: '',
       cacheBust: true,
-      
-      // --- חומת האש נגד שגיאות Security ---
-      skipFonts: true,       // מבטל טעינת פונטים חיצוניים (הגורם לשגיאה!)
-      fontEmbedCSS: '',      // מוודא ששום CSS לא מוזרק
-      // ------------------------------------
-
       style: {
         transform: 'scale(1)',
-        transformOrigin: 'top left',
-        width: `${fullWidth}px`,
-        height: `${fullHeight}px`,
-        margin: '0',
-        borderRadius: '0', 
-      },
-      // מסנן גם כפתורים וגם לינקים ל-CSS חיצוני כדי למנוע קריסות
-      filter: (node) => {
-        const tagName = node.tagName ? node.tagName.toUpperCase() : '';
-        return tagName !== 'BUTTON' && tagName !== 'LINK';
+        borderRadius: '0',
       }
-    });
+    };
 
-    const response = await fetch(dataUrl);
-    const blob = await response.blob();
-    const file = new File([blob], `${posterTitle || 'movie-poster'}.png`, { type: 'image/png' });
-
-    // בדיקת שפיות - אם בכל זאת יצא שחור (נדיר מאוד עכשיו)
-    if (blob.size < 50000 && posterUrl) {
-       console.warn("Fallback triggered due to empty capture");
-       const link = document.createElement('a');
-       link.href = posterUrl;
-       link.download = `${posterTitle || 'movie-poster'}-backup.png`;
-       link.click();
-       return;
-    }
-
+    // 2. יצירת ה-DataURL
+    const dataUrl = await htmlToImage.toPng(posterRef.current, options);
+    
+    // 3. טיפול ספציפי למובייל לפי סוג הפעולה
     if (action === 'download') {
+      // ב-Production במובייל, לינק ישיר לפעמים נחסם. נשתמש בטריק ה-Click הישיר:
       const link = document.createElement('a');
       link.href = dataUrl;
-      link.download = `${posterTitle || 'movie-poster'}.png`;
+      link.download = `poster-${Date.now()}.png`;
+      
+      // חייבים להוסיף ל-DOM במובייל כדי שהקליק יירשם
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
+      
     } else if (action === 'share') {
+      // המרה ל-Blob
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const file = new File([blob], 'movie-poster.png', { type: 'image/png' });
+
+      // שיתוף במובייל דורש navigator.canShare
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
-          await navigator.share({ 
-            files: [file], 
-            title: posterTitle,
-            text: 'צפו בפוסטר שיצרתי ב-LifeScript!' 
+          await navigator.share({
+            files: [file],
+            title: posterTitle || 'הפוסטר שלי',
           });
         } catch (shareErr) {
-          if (shareErr.name === 'AbortError' || shareErr.name === 'NotAllowedError') return;
-          throw shareErr;
+          if (shareErr.name === 'AbortError') return;
+          // Fallback אם השיתוף נכשל באמצע
+          window.open(dataUrl, '_blank');
         }
       } else {
+        // אם המכשיר לא תומך בשיתוף קבצים (כמו דפדפנים מסוימים בתוך אפליקציות)
         const link = document.createElement('a');
         link.href = dataUrl;
-        link.download = `${posterTitle || 'movie-poster'}.png`;
+        link.download = 'poster.png';
         link.click();
       }
     }
   } catch (err) {
-    console.error("Capture Final Error:", err);
+    console.error("Mobile Capture Error:", err);
+    // מוצא אחרון למובייל: פתיחת התמונה בטאב חדש שבו המשתמש יכול ללחוץ לחיצה ארוכה ולשמור
+    if (posterUrl) window.open(posterUrl, '_blank');
   }
 };
   // --- גלילה עדינה וקולנועית לתחילת התסריט ---
