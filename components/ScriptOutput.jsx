@@ -360,8 +360,13 @@ const handleCapturePoster = async (action) => {
       const file = new File([blob], 'movie-poster.png', { type: 'image/png' });
 
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: posterTitle || 'הפוסטר שלי' });
-      } else {
+         try {
+          await navigator.share({ files: [file], title: posterTitle || 'הפוסטר שלי' });
+        } catch (shareErr) {
+          if (shareErr.name !== 'AbortError') throw shareErr;
+          // אם זה AbortError - אנחנו פשוט לא עושים כלום, המשתמש סגר את החלונית
+        }
+     } else {
         const link = document.createElement('a');
         link.href = dataUrl;
         link.download = 'poster.png';
