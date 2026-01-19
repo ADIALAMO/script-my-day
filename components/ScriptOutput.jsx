@@ -302,54 +302,66 @@ const handleCapturePoster = async (action) => {
   if (!posterRef.current || !posterUrl) return;
 
   try {
-    // 1. הגדרות "קלות" למובייל כדי למנוע קריסת זיכרון
-    const options = {
-      quality: 0.9,
-      pixelRatio: 1.5, // איזון מושלם בין חדות לביצועי מובייל
+    const img = posterRef.current.querySelector('img');
+    if (img) await img.decode().catch(() => {});
+    
+    await new Promise(r => setTimeout(r, 400));
+
+    // מדידה מדויקת ועיגול מספרים למניעת חיתוך ברמת הפיקסל
+    const rect = posterRef.current.getBoundingClientRect();
+    const width = Math.floor(rect.width);
+    const height = Math.floor(rect.height);
+
+    // הגדרות משותפות לשני הצילומים כדי למנוע שגיאות כפולות
+    const sharedOptions = {
+      width: width,
+      height: height,
+      quality: 0.95,
+      pixelRatio: 2,
       skipFonts: true,
       fontEmbedCSS: '',
-      cacheBust: true,
+      cacheBust: false,
+      // ה-Filter כאן ימנע את הודעות השגיאה בטרמינל
+      filter: (node) => {
+        const tagName = node.tagName ? node.tagName.toUpperCase() : '';
+        if (tagName === 'LINK' || tagName === 'STYLE') {
+          // חוסם גישה למשאבים חיצוניים שגורמים ל-SecurityError
+          if (node.href && !node.href.includes(window.location.hostname)) return false;
+        }
+        return true;
+      },
       style: {
         transform: 'scale(1)',
-        borderRadius: '0',
+        margin: '0',        // מבטל את ה-mx-auto שגורם לחיתוך
+        padding: '0',
+        left: '0',
+        top: '0',
+        borderRadius: '3.5rem', // שומר על היוקרה בתוצאה הסופית
+        overflow: 'visible'
       }
     };
 
-    // 2. יצירת ה-DataURL
-    const dataUrl = await htmlToImage.toPng(posterRef.current, options);
+    // --- צילום 1: חימום (כעת עם ה-Filter כדי למנוע את השגיאה הראשונה) ---
+    await htmlToImage.toPng(posterRef.current, { ...sharedOptions, quality: 0.1 });
     
-    // 3. טיפול ספציפי למובייל לפי סוג הפעולה
+    // --- צילום 2: האמיתי ---
+    const dataUrl = await htmlToImage.toPng(posterRef.current, sharedOptions);
+    
     if (action === 'download') {
-      // ב-Production במובייל, לינק ישיר לפעמים נחסם. נשתמש בטריק ה-Click הישיר:
       const link = document.createElement('a');
       link.href = dataUrl;
       link.download = `poster-${Date.now()}.png`;
-      
-      // חייבים להוסיף ל-DOM במובייל כדי שהקליק יירשם
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
     } else if (action === 'share') {
-      // המרה ל-Blob
       const res = await fetch(dataUrl);
       const blob = await res.blob();
       const file = new File([blob], 'movie-poster.png', { type: 'image/png' });
 
-      // שיתוף במובייל דורש navigator.canShare
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({
-            files: [file],
-            title: posterTitle || 'הפוסטר שלי',
-          });
-        } catch (shareErr) {
-          if (shareErr.name === 'AbortError') return;
-          // Fallback אם השיתוף נכשל באמצע
-          window.open(dataUrl, '_blank');
-        }
+        await navigator.share({ files: [file], title: posterTitle || 'הפוסטר שלי' });
       } else {
-        // אם המכשיר לא תומך בשיתוף קבצים (כמו דפדפנים מסוימים בתוך אפליקציות)
         const link = document.createElement('a');
         link.href = dataUrl;
         link.download = 'poster.png';
@@ -357,8 +369,7 @@ const handleCapturePoster = async (action) => {
       }
     }
   } catch (err) {
-    console.error("Mobile Capture Error:", err);
-    // מוצא אחרון למובייל: פתיחת התמונה בטאב חדש שבו המשתמש יכול ללחוץ לחיצה ארוכה ולשמור
+    console.error("Critical Capture Error:", err);
     if (posterUrl) window.open(posterUrl, '_blank');
   }
 };
@@ -609,6 +620,7 @@ const handleCapturePoster = async (action) => {
               {posterUrl && (
                 <img 
                   src={posterUrl} 
+                  crossOrigin="anonymous"
                   className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${posterLoading ? 'opacity-0' : 'opacity-100'}`} 
                   onLoad={() => {
   if (audioContext.current?.state === 'suspended') {
