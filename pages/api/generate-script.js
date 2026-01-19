@@ -2,6 +2,11 @@ import { generateScript } from '../../lib/story-service.js';
 import Redis from 'ioredis';
 // ייבוא המעבד החדש שיצרנו
 import { sanitize, prepareForAI } from '../../utils/input-processor';
+
+// --- הגדרה קריטית להרצה על Vercel: מאפשר זמן המתנה ל-AI ---
+export const config = {
+  maxDuration: 60, 
+};
 // חיבור ל-Redis - שמירה על הגדרות החיבור המקוריות למניעת קריסות
 const kv = new Redis(process.env.REDIS_URL, {
   connectTimeout: 5000,
@@ -76,8 +81,12 @@ export default async function handler(req, res) {
     }
 
     // 7. החזרת התוצאה לממשק
-    return res.status(200).json({ script: result.output });
-
+return res.status(200).json({ 
+      success: true,
+      script: result.output,
+      model: result.model // מוסיף את שם המודל (Gemini/Cohere/Gemma)
+    });
+    
   } catch (error) {
     console.error("API ERROR:", error);
     return res.status(500).json({ message: 'תקלה פנימית בשרת. אנא נסה שוב מאוחר יותר.' });

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Download, Share2, Check, Film, Volume2, VolumeX, Loader2, FastForward } from 'lucide-react';
 import html2canvas from 'html2canvas';
+import * as htmlToImage from 'html-to-image'; // וודא שזה מופיע בראש הקובץ
 
 // --- לוגיקה עוטפת: ניקוי כותרות ותרגום ז'אנרים ---
 // הוספת פונקציית העזר לזיהוי שפה
@@ -274,77 +275,120 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
 
       if (!response.ok) throw new Error('Backend failed');
 
-      const blob = await response.blob();
-      const imageUrl = URL.createObjectURL(blob);
+      const data = await response.json();
       
-      if (posterUrl && posterUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(posterUrl);
+      if (data.success && data.imageUrl) {
+        // מנקים שאריות של כתובות זמניות אם היו
+        if (posterUrl && posterUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(posterUrl);
+        }
+        
+        // מעדכנים את ה-URL למחרוזת ה-Base64 שקיבלנו מהשרת
+        setPosterUrl(data.imageUrl);
+        console.log(`✅ Poster received via ${data.provider}`);
+      } else {
+        throw new Error("Invalid response format");
       }
-      
-      setPosterUrl(imageUrl);
-      // שים לב: הסרנו מכאן את setPosterLoading(false) כדי למנוע את "הדף הריק"
-      console.log("Image data ready, waiting for browser render...");
 
     } catch (error) {
-      console.warn("Fallback to Pollinations:", error);
-      const directUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1536&seed=${seed}&nologo=true&model=turbo&negative=${encodeURIComponent(negative)}`;    
+      console.warn("Fallback to Pollinations Direct:", error);
+      // בגיבוי אנחנו משתמשים ב-URL ישיר כי אין לנו Base64
+      const directUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${seed}&model=flux&nologo=true`;    
       setPosterUrl(directUrl);
-      // גם ב-Fallback, הלואודר יכבה רק ב-onLoad של התמונה
     }
   };
-const handleCapturePoster = async (action) => {
-    if (!posterRef.current) return;
-    
-    try {
-      // יצירת קנבס מהאלמנט כולל כל השכבות והטקסטים
-      const canvas = await html2canvas(posterRef.current, {
-        useCORS: true,      // קריטי כדי לאפשר צילום של תמונה משרת חיצוני
-        scale: 2,           // איכות HD
-        backgroundColor: null,
-        logging: false,
-      });
-      
-      const imageBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 1.0));
-      const file = new File([imageBlob], `${posterTitle || 'movie-poster'}.png`, { type: 'image/png' });
 
-      if (action === 'download') {
-        const url = URL.createObjectURL(imageBlob);
+const handleCapturePoster = async (action) => {
+  if (!posterRef.current) return;
+  
+  try {
+    // שלב 1: טעינת תמונה "כירורגית" (Pre-load)
+    // זה פותר את הדף השחור בפעם הראשונה בלי לגרום לשגיאת Security
+    if (posterUrl) {
+        const tempImg = new Image();
+        tempImg.src = posterUrl;
+        try {
+            await tempImg.decode(); // פקודה שמכריחה את ה-GPU לעבד את הפיקסלים
+        } catch (e) {
+            console.warn("Image decode skipped, waiting standard timeout");
+            await new Promise(r => setTimeout(r, 500));
+        }
+    }
+
+    // שלב 2: הגדרת מימדים לפי התוכן המלא
+    const fullWidth = posterRef.current.scrollWidth;
+    const fullHeight = posterRef.current.scrollHeight;
+
+    // שלב 3: הצילום עם חסימת שגיאות אבטחה
+    const dataUrl = await htmlToImage.toPng(posterRef.current, {
+      quality: 1.0,
+      pixelRatio: 3, 
+      width: fullWidth,
+      height: fullHeight,
+      cacheBust: true,
+      
+      // --- חומת האש נגד שגיאות Security ---
+      skipFonts: true,       // מבטל טעינת פונטים חיצוניים (הגורם לשגיאה!)
+      fontEmbedCSS: '',      // מוודא ששום CSS לא מוזרק
+      // ------------------------------------
+
+      style: {
+        transform: 'scale(1)',
+        transformOrigin: 'top left',
+        width: `${fullWidth}px`,
+        height: `${fullHeight}px`,
+        margin: '0',
+        borderRadius: '0', 
+      },
+      // מסנן גם כפתורים וגם לינקים ל-CSS חיצוני כדי למנוע קריסות
+      filter: (node) => {
+        const tagName = node.tagName ? node.tagName.toUpperCase() : '';
+        return tagName !== 'BUTTON' && tagName !== 'LINK';
+      }
+    });
+
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+    const file = new File([blob], `${posterTitle || 'movie-poster'}.png`, { type: 'image/png' });
+
+    // בדיקת שפיות - אם בכל זאת יצא שחור (נדיר מאוד עכשיו)
+    if (blob.size < 50000 && posterUrl) {
+       console.warn("Fallback triggered due to empty capture");
+       const link = document.createElement('a');
+       link.href = posterUrl;
+       link.download = `${posterTitle || 'movie-poster'}-backup.png`;
+       link.click();
+       return;
+    }
+
+    if (action === 'download') {
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `${posterTitle || 'movie-poster'}.png`;
+      link.click();
+    } else if (action === 'share') {
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ 
+            files: [file], 
+            title: posterTitle,
+            text: 'צפו בפוסטר שיצרתי ב-LifeScript!' 
+          });
+        } catch (shareErr) {
+          if (shareErr.name === 'AbortError' || shareErr.name === 'NotAllowedError') return;
+          throw shareErr;
+        }
+      } else {
         const link = document.createElement('a');
-        link.href = url;
+        link.href = dataUrl;
         link.download = `${posterTitle || 'movie-poster'}.png`;
         link.click();
-        URL.revokeObjectURL(url);
-      } else if (action === 'share') {
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          // --- כאן התיקון לכירורגי למניעת ה-AbortError ---
-          try {
-            await navigator.share({ files: [file], title: posterTitle });
-          } catch (shareErr) {
-            // אם המשתמש ביטל את השיתוף (AbortError), אנחנו פשוט יוצאים בשקט
-            if (shareErr.name === 'AbortError') {
-              console.log('Share cancelled by user');
-              return; 
-            }
-            // אם זו שגיאה אחרת, נזרוק אותה ל-catch החיצוני
-            throw shareErr;
-          }
-        } else {
-          // Fallback למחשב או דפדפן ישן
-          const url = URL.createObjectURL(imageBlob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `${posterTitle || 'movie-poster'}.png`;
-          link.click();
-          URL.revokeObjectURL(url);
-        }
-      }
-    } catch (err) {
-      // כאן אנחנו מוודאים שהקוד לא יקרוס בשגיאות ביטול
-      if (err.name !== 'AbortError') {
-        console.error("Capture failed:", err);
       }
     }
-  };
+  } catch (err) {
+    console.error("Capture Final Error:", err);
+  }
+};
   // --- גלילה עדינה וקולנועית לתחילת התסריט ---
   useEffect(() => {
     if (isTyping && scrollRef.current) {
@@ -660,58 +704,60 @@ const handleCapturePoster = async (action) => {
                 </div>
               )}
 
-             {/* 4. שכבת הטקסט (Overlay) - מופיעה רק בסיום הטעינה עם התמונה */}
+             {/* 4. שכבת הטקסט (Overlay) - תיקון כירורגי למסך מלא ללא פגיעה בפונקציות */}
 {!posterLoading && posterUrl && (
-  <div className="absolute inset-0 flex flex-col items-center justify-between p-6 md:p-14 text-center z-20 pointer-events-none animate-in fade-in duration-1000">    {/* גרדיאנט הגנה על הטקסט */}
+  <div className="absolute inset-0 flex flex-col items-center justify-between z-20 pointer-events-none animate-in fade-in duration-1000">
+    
+    {/* גרדיאנט הגנה על הטקסט - מותאם לרינדור קנבס נקי */}
     <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-transparent to-black/50 -z-10" />
     
-    {/* כותרת הסרט - גודל דינמי למניעת חיתוך ודחיסות */}
-    <div className="w-full pt-8 md:pt-10 px-4">
+    {/* כותרת הסרט - שימוש ב-pt מבוסס אחוזים למניעת חיתוך במסך מלא */}
+    <div className="w-full pt-[12%] px-6 text-center">
       <h1 
-  className="text-white font-black uppercase italic drop-shadow-[0_10px_30px_rgba(0,0,0,1)] break-words"
-  style={{ 
-    // צמצום משמעותי של הגודל במובייל (מ-1.5rem ל-1.2rem) וצמצום המקסימום
-    fontSize: 'clamp(1.2rem, 7vw, 3.5rem)', 
-    lineHeight: '1.1', // הגדלנו מעט מ-0.9 כדי שלא יהיה צפוף מדי אם יש שבירת שורה
-    padding: '0 15px',
-    letterSpacing: '-0.02em' // צמצום ריווח אותיות שעוזר למילים ארוכות להיכנס בשורה אחת
-  }}
->
-  {posterTitle}
-</h1>
+        className="text-white font-black uppercase italic drop-shadow-[0_10px_30px_rgba(0,0,0,1)] break-words mx-auto"
+        style={{ 
+          fontSize: 'clamp(1.1rem, 6vw, 2.8rem)', 
+          lineHeight: '1.05',
+          letterSpacing: '-0.02em',
+          maxWidth: '90%'
+        }}
+      >
+        {posterTitle}
+      </h1>
+      {/* פס עיצובי יוקרתי - נשמר */}
+      <div className="h-[1px] w-1/4 mx-auto mt-4 bg-gradient-to-r from-transparent via-[#d4a373]/50 to-transparent" />
     </div>
 
-    {/* בלוק הקרדיטים התחתון */}
-    <div className="w-full flex flex-col items-center gap-4 md:gap-6 pb-2 md:pb-4">
-      <p className="text-[#d4a373] font-black uppercase tracking-[0.2em] md:tracking-[0.4em] text-[10px] md:text-[20px]">
+    {/* בלוק הקרדיטים התחתון - ממוקם ב-pb אחוזים כדי להישאר מעל הקצה בכל רזולוציה */}
+    <div className="w-full flex flex-col items-center gap-2 md:gap-4 pb-[8%] px-6 text-center">
+      
+      <p className="text-[#d4a373] font-black uppercase tracking-[0.3em] text-[9px] md:text-[16px] drop-shadow-md">
         {credits.comingSoon}
       </p>
       
-      <div className="w-full border-t border-white/20 pt-4 md:pt-6 flex flex-col gap-1 md:gap-2 font-bold uppercase text-white/90">
-        {/* שורה 1 - גודל מותאם למובייל */}
-        <p className="text-[7px] md:text-[13px] tracking-[0.1em] md:tracking-[0.15em] px-2">
+      <div className="w-full border-t border-white/20 pt-3 md:pt-5 flex flex-col gap-1 font-bold uppercase text-white/90">
+        <p className="text-[7px] md:text-[11px] tracking-[0.1em] opacity-95">
           {credits.line1}
         </p>
         
-        {/* שורות צוות - קטנות וצפופות כמו בפוסטר אמיתי */}
-        <div className="opacity-80 flex flex-col gap-0.5">
-          <p className="text-[6px] md:text-[10px] tracking-[0.1em] md:tracking-[0.15em]">
+        <div className="opacity-70 flex flex-col gap-0.5">
+          <p className="text-[6px] md:text-[9px] tracking-[0.1em]">
             {credits.line2}
           </p>
-          <p className="text-[6px] md:text-[10px] tracking-[0.1em] md:tracking-[0.15em]">
+          <p className="text-[6px] md:text-[9px] tracking-[0.1em]">
             {credits.line3}
           </p>
         </div>
 
-        {/* הקישור האקטיבי והאלגנטי - במקום שורת ה-copyright */}
-        <div className="mt-2 flex justify-center">
+        {/* לינק אקטיבי - שמרנו על ה-pointer-events-auto כדי שיהיה לחיץ */}
+        <div className="mt-2 flex justify-center pointer-events-auto">
           <a 
             href="https://my-life-script.vercel.app/"
             target="_blank"
             rel="noopener noreferrer"
             className="cursor-pointer no-underline group"
           >
-            <p className="text-[#d4a373]/50 text-[6px] md:text-[9px] tracking-[0.5em] uppercase font-black group-hover:text-[#d4a373] transition-all duration-300 italic">
+            <p className="text-[#d4a373]/40 text-[5px] md:text-[8px] tracking-[0.4em] font-black group-hover:text-[#d4a373] transition-all duration-300 italic">
               MY-LIFE-SCRIPT.VERCEL.APP
             </p>
           </a>

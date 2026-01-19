@@ -68,6 +68,9 @@ function HomePage() {
     }
   };
   const handleGenerateScript = async (journalEntry, genre) => {
+    // 1. מניעת רענון ובדיקת תקינות בסיסית
+    if (!journalEntry || journalEntry.trim().length < 5) return;
+    
     setLoading(true);
     setError('');
     setScript('');
@@ -77,7 +80,6 @@ function HomePage() {
       const savedAdminKey = localStorage.getItem('lifescript_admin_key') || '';
       const deviceId = localStorage.getItem('lifescript_device_id') || 'unknown';
       
-      // שליחת הבקשה ל-API עם כל המזהים הנדרשים
       const response = await fetch('/api/generate-script', {
         method: 'POST',
         headers: { 
@@ -94,17 +96,36 @@ function HomePage() {
       });
       
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Error');
+
+      // 2. טיפול בשגיאות שרת מבלי להפיל את האפליקציה
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Production Error');
+      }
       
-      setScript(data.script);
+      // 3. חילוץ התסריט - תמיכה בכל הפורמטים האפשריים (script או output)
+      const finalScript = data.script || data.output;
+      
+      if (finalScript) {
+        setScript(finalScript);
+        console.log("✅ Script received successfully!");
+      } else {
+        throw new Error('התקבלה תשובה ריקה מהשרת');
+      }
+
     } catch (err) {
-      // זיהוי שגיאת אימות (401) מה-API בוורסל
+      console.error("Frontend Generation Error:", err);
+      
+      // זיהוי שגיאות נפוצות והצגתן למשתמש במקום רענון
       if (err.message.includes('401') || err.message.toLowerCase().includes('unauthorized')) {
         setError(lang === 'he' 
           ? 'גישת מנהל נכשלה: הסיסמה שגויה או פגה.' 
           : 'Admin access failed: Incorrect or expired password.');
+      } else if (err.message.includes('429')) {
+        setError(lang === 'he' 
+          ? 'המכסה היומית הסתיימה או שיש עומס. נסה שוב בעוד רגע.' 
+          : 'Daily limit reached or system busy. Try again in a moment.');
       } else {
-        setError(err.message);
+        setError(err.message || 'תקלה בתקשורת עם השרת');
       }
     } finally {
       setLoading(false);
