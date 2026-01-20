@@ -154,55 +154,49 @@ function HomePage() {
 
       <Navbar lang={lang} onLanguageToggle={toggleLanguage} />
 
-      <main className="container mx-auto py-12 md:py-24 px-6 max-w-5xl flex-grow relative z-10">
+      <main className="container mx-auto pt-4 md:pt-8 pb-12 px-6 max-w-5xl flex-grow relative z-10">
         
       <motion.header 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12 md:mb-20 relative"
+          className="text-center mb-6 md:mb-8 relative"
         >
-        <div className="relative inline-block mb-10 group">
-  {/* הילה חיצונית רכה - נותנת את העומק מסביב */}
-  <div className="absolute inset-[-20px] bg-[#d4a373]/10 blur-[40px] rounded-full opacity-50 pointer-events-none" />
-  
-  {/* הילה פנימית חזקה יותר - נותנת את ה"זוהר" המדויק */}
-  <div className="absolute inset-4 bg-[#d4a373]/20 blur-[20px] rounded-full pointer-events-none" />
+        <div className="relative inline-block mb-4 group">
+          {/* הילה חיצונית ופנימית - צומצמו מעט כדי לחסוך מקום אנכי */}
+          <div className="absolute inset-[-15px] bg-[#d4a373]/10 blur-[30px] rounded-full opacity-50 pointer-events-none" />
+          <div className="absolute inset-4 bg-[#d4a373]/20 blur-[20px] rounded-full pointer-events-none" />
 
-  {/* מסגרת האייקון - שקופה למחצה עם Backdrop Blur */}
-  <div className="relative z-10 w-24 h-24 md:w-32 md:h-32 mx-auto rounded-[2.5rem] overflow-hidden border border-[#d4a373]/30 shadow-2xl backdrop-blur-sm bg-black/20 transition-transform duration-700 group-hover:scale-105">
-    <img 
-      src="/icon.png" 
-      alt="LifeScript Studio Logo" 
-      className="w-full h-full object-cover"
-    />
-  </div>
-</div>
+          {/* גודל האייקון נשאר מרשים אך מותאם */}
+          <div className="relative z-10 w-20 h-20 md:w-28 md:h-28 mx-auto rounded-[2rem] overflow-hidden border border-[#d4a373]/30 shadow-2xl backdrop-blur-sm bg-black/20 transition-transform duration-700 group-hover:scale-105">
+            <img 
+              src="/icon.png" 
+              alt="LifeScript Studio Logo" 
+              className="w-full h-full object-cover"
+            />
+          </div>
+        </div>
 
-<div className="block mb-6 relative">
-  <div className="inline-block px-8 py-2.5 rounded-full border border-[#d4a373]/20 bg-gradient-to-r from-transparent via-[#d4a373]/5 to-transparent backdrop-blur-xl text-[#d4a373] text-[10px] md:text-xs font-black tracking-[0.4em] uppercase italic">
-    {lang === 'he' ? 'חזון קולנועי' : 'Cinematic Vision'}
-  </div>
-</div>
+        <div className="block mb-4 relative">
+          <div className="inline-block px-6 py-1.5 rounded-full border border-[#d4a373]/20 bg-gradient-to-r from-transparent via-[#d4a373]/5 to-transparent backdrop-blur-xl text-[#d4a373] text-[9px] md:text-[10px] font-black tracking-[0.4em] uppercase italic">
+            {lang === 'he' ? 'חזון קולנועי' : 'Cinematic Vision'}
+          </div>
+        </div>
           
          <h1 
-  onClick={() => setShowAdminPanel(!showAdminPanel)}
-  className="text-6xl md:text-[9rem] font-black mb-6 bg-gradient-to-b from-[#d4a373] via-[#fefae0] to-[#d4a373] bg-clip-text text-transparent italic tracking-tighter uppercase leading-[0.85] cursor-pointer select-none drop-shadow-[0_10px_30px_rgba(212,163,115,0.2)]"
-  style={{ 
-    // הגדלנו את הפאדינג הצדדי כדי לתת מקום ל-T הנטויה
-    paddingLeft: '0.15em',
-    paddingRight: '0.25em', 
-    paddingTop: '0.1em',
-    paddingBottom: '0.1em',
-    // שימוש ב-Margin שלילי כדי לאזן את המרכוז הויזואלי
-    marginLeft: '-0.15em',
-    marginRight: '-0.25em',
-    display: 'inline-block'
-  }}
->
-  LIFESCRIPT
-</h1>
+          onClick={() => setShowAdminPanel(!showAdminPanel)}
+          className="text-5xl md:text-[7.5rem] font-black mb-3 bg-gradient-to-b from-[#d4a373] via-[#fefae0] to-[#d4a373] bg-clip-text text-transparent italic tracking-tighter uppercase leading-[0.8] cursor-pointer select-none drop-shadow-[0_10px_30px_rgba(212,163,115,0.2)]"
+          style={{ 
+            paddingLeft: '0.15em',
+            paddingRight: '0.25em', 
+            paddingTop: '0.05em',
+            paddingBottom: '0.05em',
+            display: 'inline-block'
+          }}
+        >
+          LIFESCRIPT
+        </h1>
           
-          <p className="text-gray-300 text-2xl md:text-3xl font-light max-w-2xl mx-auto leading-relaxed px-4 opacity-90">
+          <p className="text-gray-400 text-lg md:text-xl font-light max-w-xl mx-auto leading-tight px-4 opacity-80">
             {lang === 'he' ? 'הפוך את היום שלך לתסריט קולנועי מרתק' : 'Turn your day into a captivating cinematic script'}
           </p>
         </motion.header>
@@ -423,7 +417,7 @@ function HomePage() {
   className={`glass-panel rounded-[3rem] overflow-hidden shadow-2xl relative ${(loading || isTyping) ? 'ai-loading-active' : ''}`}
 >
   {/* כפתור הטיפים - ממוקם מעל המסגרת, צמוד למרכז */}
-<div className="w-full flex justify-center mb-4 relative z-[100]">
+<div className="w-full flex justify-center mb-2 mt-4 relative z-[100]">
   <div className="flex flex-col items-center">
     <button 
       type="button"
