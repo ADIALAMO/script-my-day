@@ -8,8 +8,8 @@ res.setHeader('Access-Control-Allow-Origin', '*');
     return res.status(200).end();
   }
   const { prompt } = req.body;
-  const HF_TOKEN = process.env.HF_TOKEN?.trim();
-
+const cleanPrompt = `A high-end cinematic photography shot for a movie scene, ${prompt}. Masterpiece, 8k, highly detailed. Pure artistic visual without any text, no words, no titles, no credits, no letters, no typography. Background is a clean cinematic environment.`;  const HF_TOKEN = process.env.HF_TOKEN?.trim();
+  
   if (!HF_TOKEN) {
     return res.status(500).json({ error: "Missing HF Token" });
   }
@@ -34,7 +34,7 @@ res.setHeader('Access-Control-Allow-Origin', '*');
             "Content-Type": "application/json",
           },
           method: "POST",
-          body: JSON.stringify({ inputs: prompt }),
+          body: JSON.stringify({ inputs: cleanPrompt }),
         }
       );
 
@@ -63,28 +63,28 @@ res.setHeader('Access-Control-Allow-Origin', '*');
     }
   }
 
-  // --- שלב 2: גיבוי ב-Pollinations ---
+  // --- שלב 2: גיבוי מהיר ב-Pollinations (Turbo - ניסיון בודד) ---
   try {
-    console.log("🛡️ BACKUP: Switching to Pollinations Turbo/Flux...");
-    const encodedPrompt = encodeURIComponent(prompt);
-    const pollUrl = `https://pollinations.ai/p/${encodedPrompt}?width=1024&height=1024&seed=${Math.floor(Math.random() * 9999)}&model=flux&nologo=true`;
+    console.log("🛡️ BACKUP: Pollinations Turbo Mode (Single Attempt)...");
+    const encodedPrompt = encodeURIComponent(cleanPrompt);
+    const pollUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=turbo&nologo=true&seed=${Math.floor(Math.random() * 9999)}`;
     
+    // המתנה יחידה של 10 שניות
+    console.log("⏳ Waiting 10s for turbo backup...");
+    await new Promise(r => setTimeout(r, 10000));
+
     const pollResponse = await fetch(pollUrl);
-    
     if (pollResponse.ok) {
       const arrayBuffer = await pollResponse.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      
-      // הפיכה ל-Base64 גם בגיבוי
-      const base64Image = buffer.toString('base64');
-      const dataUrl = `data:image/png;base64,${base64Image}`;
-      
-      console.log("💎 SUCCESS: Poster generated via Pollinations and converted to Base64.");
-      return res.status(200).json({ success: true, imageUrl: dataUrl, provider: 'Pollinations' });
+      // בדיקה מינימלית לוודא שזו לא תמונה שבורה
+      if (arrayBuffer.byteLength > 15000) { 
+        const dataUrl = `data:image/png;base64,${Buffer.from(arrayBuffer).toString('base64')}`;
+        console.log("💎 SUCCESS: Backup Generated via Turbo.");
+        return res.status(200).json({ success: true, imageUrl: dataUrl, provider: 'Pollinations' });
+      }
     }
-  } catch (fallbackError) {
-    console.error("❌ Fatal: All poster servers failed.", fallbackError.message);
+  } catch (err) {
+    console.error("❌ Fatal failure in backup engine:", err.message);
   }
-
-  return res.status(500).json({ error: "Failed to generate poster after 15s." });
+  return res.status(500).json({ error: "Failed to generate poster after all attempts." });
 }
