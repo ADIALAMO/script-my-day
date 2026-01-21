@@ -10,94 +10,74 @@ export default async function handler(req, res) {
   const seed = Math.floor(Math.random() * 999999);
 
   const agentPrompt = prompt.replace(/\[image:\s*/i, '').replace(/\]$/, '').trim();
-  
-  // שימוש במונחים ויזואליים טהורים ללא המילה 'Poster' שמושכת טקסט
-// הנדסת פרומפט טכנית - שימוש במילות מפתח שמייצבות את המודל
+  // הנחיות ספציפיות למניעת עיוותים ב-Pollinations
+  const backUpRefinement = ", (deformed iris, deformed pupils, semi-realistic, cgi, 3d, render, sketch, cartoon, drawing, anime, mutated hands and fingers:1.4), (deformed, distorted, disfigured:1.3), poorly drawn, bad anatomy, wrong anatomy, extra limb, missing limb, floating limbs, disconnected limbs, mutation, mutated, ugly, disgusting, amputation";
+  // פרומפט מלוטש - עבר לסוכן, אך נשמר כאן כבסיס ויזואלי חזק
   const finalPrompt = `A high-end cinematic RAW 35mm film still of: ${agentPrompt}. Shot on IMAX, perfect facial symmetry, realistic skin textures, sharp focus, 8k, masterpiece. (Strictly NO text, NO distortion, NO blurry faces, NO extra fingers, NO titles).`;
 
-  async function tryOpenRouterImage(modelId) {
-    console.log(`💎 Attempting Optimized Klein: ${modelId}...`);
-    
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://lifescript.app", 
-        "X-Title": "LifeScript Studio"
-      },
-      body: JSON.stringify({
-        "model": modelId,
-        "messages": [
-          {
-            "role": "system",
-            "content": "You are a world-class cinematographer. Generate a raw visual frame. Focus on perfect facial symmetry and sharp focus. Strictly NO text or graphic overlays."
-          },
-          {
-            "role": "user",
-            "content": finalPrompt
-          }
-        ],
-        "modalities": ["image", "text"],
-        "seed": seed,
-        // --- אופטימיזציה טכנית ל-Klein ---
-        "extra_body": {
-          "aspect_ratio": "2:3", // פורמט פוסטר קלאסי שמונע עיוותי גוף
-          "width": 1024,
-          "height": 1536,
-          "safety_filter": "soft" // פחות אגרסיבי כדי לא לטשטש פנים
-        }
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(`Status ${response.status}: ${errorData.slice(0, 100)}`);
-    }
-
-    const data = await response.json();
-    const message = data.choices?.[0]?.message;
-    if (message?.images?.[0]?.image_url?.url) return message.images[0].image_url.url;
-    return null;
+  // פונקציית עזר להורדת תמונה והפיכתה ל-Base64 (חיוני ל-Pollinations)
+  async function getBase64Image(url) {
+    const resp = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    if (!resp.ok) throw new Error("Failed to fetch image");
+    const buffer = Buffer.from(await resp.arrayBuffer());
+    return `data:image/png;base64,${buffer.toString('base64')}`;
   }
+  // --- שלב 1: OpenRouter Flux 2 Klein (עדיפות ראשונה - מנוקה משגיאות) ---
 
-  // --- שלב 1: Flux 2 Klein (המודל החדש והמהיר מהדוקומנטציה) ---
-  try {
-    const url = await tryOpenRouterImage("black-forest-labs/flux.2-klein-4b");
-    if (url) {
-      console.log("✅ SUCCESS: Flux 2 Klein generated poster.");
-      return res.status(200).json({ success: true, imageUrl: url, provider: 'Flux-2-Klein' });
-    }
-  } catch (e) { 
-    console.warn("⚠️ Flux 2 Klein failed:", e.message); 
-  }
-
-  // --- שלב 2: Google Imagen 3 (גיבוי דרך ה-API החדש) ---
-  try {
-    const url = await tryOpenRouterImage("google/imagen-3");
-    if (url) {
-      console.log("✅ SUCCESS: Imagen 3 generated poster.");
-      return res.status(200).json({ success: true, imageUrl: url, provider: 'Imagen-3' });
-    }
-  } catch (e) { 
-    console.warn("⚠️ Imagen 3 failed:", e.message); 
-  }
-
-  // --- שלב 3: Pollinations (הגיבוי החינמי שתמיד עובד) ---
-  try {
-    console.log("🆘 Final Fallback: Pollinations...");
-    const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=1024&height=1024&model=flux&nologo=true&seed=${seed}`;
-    const pollRes = await fetch(pollUrl);
-    if (pollRes.ok) {
-      const buffer = Buffer.from(await pollRes.arrayBuffer());
-      return res.status(200).json({ 
-        success: true, 
-        imageUrl: `data:image/png;base64,${buffer.toString('base64')}`, 
-        provider: 'Pollinations-Fallback' 
+  if (OPENROUTER_API_KEY) {
+    try {
+      console.log("🎬 Stage 1: OpenRouter Flux 2 Klein...");
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://lifescript.app", 
+          "X-Title": "LifeScript Studio"
+        },
+        body: JSON.stringify({
+          "model": "black-forest-labs/flux.2-klein-4b",
+          "messages": [{ "role": "user", "content": finalPrompt }],
+          "modalities": ["image", "text"],
+          "seed": seed
+          // הסרנו את ה-extra_body שגרם לשגיאות 400
+        }),
+        signal: AbortSignal.timeout(15000)
       });
+
+      if (response.ok) {
+        const data = await response.json();
+        const url = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+        if (url) {
+          console.log("✅ SUCCESS: OpenRouter Klein generated poster.");
+          return res.status(200).json({ success: true, imageUrl: url, provider: 'OpenRouter-Klein' });
+        }
+      }
+      } catch (e) {
+      console.error("❌ Stage 1 Failed:", e.message);
     }
-  } catch (e) { 
-    console.error("❌ All engines failed:", e.message); 
+  }
+    // --- שלב 2: Pollinations Turbo (מהירות שיא) ---
+
+  try {
+    console.log("🚀 Stage 2: Pollinations Turbo...");
+    const turboPrompt = finalPrompt + backUpRefinement;
+    const turboUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=1024&height=1024&model=turbo&nologo=true&seed=${seed}`;
+    const imageUrl = await getBase64Image(turboUrl);
+    return res.status(200).json({ success: true, imageUrl, provider: 'Pollinations-Turbo' });
+  } catch (e) {
+    console.warn("⚠️ Stage 2 Failed, trying Pollinations Flux...");
+  }
+
+  // --- שלב 2: Pollinations Flux (איכות גבוהה בחינם) ---
+  try {
+    console.log("🛡️ Stage 3: Pollinations Flux...");
+    const fluxPrompt = finalPrompt + backUpRefinement;
+    const fluxUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=1024&height=1024&model=flux&nologo=true&seed=${seed}`;
+    const imageUrl = await getBase64Image(fluxUrl);
+    return res.status(200).json({ success: true, imageUrl, provider: 'Pollinations-Flux' });
+  } catch (e) {
+    console.warn("⚠️ Stage 3 Failed, trying OpenRouter Klein...");
   }
 
   return res.status(500).json({ error: "Failed to generate image" });
