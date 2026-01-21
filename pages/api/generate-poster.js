@@ -1,90 +1,104 @@
 export default async function handler(req, res) {
-res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-  // טיפול בבקשת "בדיקה" (Preflight) של הדפדפן
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
   const { prompt } = req.body;
-const cleanPrompt = `A high-end cinematic photography shot for a movie scene, ${prompt}. Masterpiece, 8k, highly detailed. Pure artistic visual without any text, no words, no titles, no credits, no letters, no typography. Background is a clean cinematic environment.`;  const HF_TOKEN = process.env.HF_TOKEN?.trim();
+  const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+  const seed = Math.floor(Math.random() * 999999);
+
+  const agentPrompt = prompt.replace(/\[image:\s*/i, '').replace(/\]$/, '').trim();
   
-  if (!HF_TOKEN) {
-    return res.status(500).json({ error: "Missing HF Token" });
-  }
+  // שימוש במונחים ויזואליים טהורים ללא המילה 'Poster' שמושכת טקסט
+// הנדסת פרומפט טכנית - שימוש במילות מפתח שמייצבות את המודל
+  const finalPrompt = `A high-end cinematic RAW 35mm film still of: ${agentPrompt}. Shot on IMAX, perfect facial symmetry, realistic skin textures, sharp focus, 8k, masterpiece. (Strictly NO text, NO distortion, NO blurry faces, NO extra fingers, NO titles).`;
 
-  // הגדרת סבלנות של 15 שניות מול השרת הראשי
-  const totalPatienceMs = 15000; 
-  const startTime = Date.now();
-
-  console.log("🎨 Poster Engine: Starting Production (15s patience protocol)...");
-
-  // --- שלב 1: ניסיונות מול Hugging Face ---
-  while (Date.now() - startTime < totalPatienceMs) {
-    try {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      console.log(`📡 Attempting HF... (${elapsed}s elapsed)`);
-
-      const response = await fetch(
-        "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell",
-        {
-          headers: {
-            Authorization: `Bearer ${HF_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-          method: "POST",
-          body: JSON.stringify({ inputs: cleanPrompt }),
-        }
-      );
-
-      // --- עדכון עבור Hugging Face ---
-      if (response.ok) {
-        const arrayBuffer = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        
-        // הפיכה ל-Base64
-        const base64Image = buffer.toString('base64');
-        const dataUrl = `data:image/png;base64,${base64Image}`;
-        
-        console.log(`✅ SUCCESS: Poster generated via HF and converted to Base64.`);
-        return res.status(200).json({ success: true, imageUrl: dataUrl, provider: 'HF' });
-      }
-
-      if (response.status === 503 || response.status === 429) {
-        console.warn(`⚠️ HF Busy (Status ${response.status}). Retrying...`);
-        await new Promise(r => setTimeout(r, 2000));
-        continue;
-      }
-      break;
-    } catch (error) {
-      console.error("❌ HF Network Error:", error.message);
-      break;
-    }
-  }
-
-  // --- שלב 2: גיבוי מהיר ב-Pollinations (Turbo - ניסיון בודד) ---
-  try {
-    console.log("🛡️ BACKUP: Pollinations Turbo Mode (Single Attempt)...");
-    const encodedPrompt = encodeURIComponent(cleanPrompt);
-    const pollUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=turbo&nologo=true&seed=${Math.floor(Math.random() * 9999)}`;
+  async function tryOpenRouterImage(modelId) {
+    console.log(`💎 Attempting Optimized Klein: ${modelId}...`);
     
-    // המתנה יחידה של 10 שניות
-    console.log("⏳ Waiting 10s for turbo backup...");
-    await new Promise(r => setTimeout(r, 10000));
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://lifescript.app", 
+        "X-Title": "LifeScript Studio"
+      },
+      body: JSON.stringify({
+        "model": modelId,
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a world-class cinematographer. Generate a raw visual frame. Focus on perfect facial symmetry and sharp focus. Strictly NO text or graphic overlays."
+          },
+          {
+            "role": "user",
+            "content": finalPrompt
+          }
+        ],
+        "modalities": ["image", "text"],
+        "seed": seed,
+        // --- אופטימיזציה טכנית ל-Klein ---
+        "extra_body": {
+          "aspect_ratio": "2:3", // פורמט פוסטר קלאסי שמונע עיוותי גוף
+          "width": 1024,
+          "height": 1536,
+          "safety_filter": "soft" // פחות אגרסיבי כדי לא לטשטש פנים
+        }
+      })
+    });
 
-    const pollResponse = await fetch(pollUrl);
-    if (pollResponse.ok) {
-      const arrayBuffer = await pollResponse.arrayBuffer();
-      // בדיקה מינימלית לוודא שזו לא תמונה שבורה
-      if (arrayBuffer.byteLength > 15000) { 
-        const dataUrl = `data:image/png;base64,${Buffer.from(arrayBuffer).toString('base64')}`;
-        console.log("💎 SUCCESS: Backup Generated via Turbo.");
-        return res.status(200).json({ success: true, imageUrl: dataUrl, provider: 'Pollinations' });
-      }
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`Status ${response.status}: ${errorData.slice(0, 100)}`);
     }
-  } catch (err) {
-    console.error("❌ Fatal failure in backup engine:", err.message);
+
+    const data = await response.json();
+    const message = data.choices?.[0]?.message;
+    if (message?.images?.[0]?.image_url?.url) return message.images[0].image_url.url;
+    return null;
   }
-  return res.status(500).json({ error: "Failed to generate poster after all attempts." });
+
+  // --- שלב 1: Flux 2 Klein (המודל החדש והמהיר מהדוקומנטציה) ---
+  try {
+    const url = await tryOpenRouterImage("black-forest-labs/flux.2-klein-4b");
+    if (url) {
+      console.log("✅ SUCCESS: Flux 2 Klein generated poster.");
+      return res.status(200).json({ success: true, imageUrl: url, provider: 'Flux-2-Klein' });
+    }
+  } catch (e) { 
+    console.warn("⚠️ Flux 2 Klein failed:", e.message); 
+  }
+
+  // --- שלב 2: Google Imagen 3 (גיבוי דרך ה-API החדש) ---
+  try {
+    const url = await tryOpenRouterImage("google/imagen-3");
+    if (url) {
+      console.log("✅ SUCCESS: Imagen 3 generated poster.");
+      return res.status(200).json({ success: true, imageUrl: url, provider: 'Imagen-3' });
+    }
+  } catch (e) { 
+    console.warn("⚠️ Imagen 3 failed:", e.message); 
+  }
+
+  // --- שלב 3: Pollinations (הגיבוי החינמי שתמיד עובד) ---
+  try {
+    console.log("🆘 Final Fallback: Pollinations...");
+    const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=1024&height=1024&model=flux&nologo=true&seed=${seed}`;
+    const pollRes = await fetch(pollUrl);
+    if (pollRes.ok) {
+      const buffer = Buffer.from(await pollRes.arrayBuffer());
+      return res.status(200).json({ 
+        success: true, 
+        imageUrl: `data:image/png;base64,${buffer.toString('base64')}`, 
+        provider: 'Pollinations-Fallback' 
+      });
+    }
+  } catch (e) { 
+    console.error("❌ All engines failed:", e.message); 
+  }
+
+  return res.status(500).json({ error: "Failed to generate image" });
 }
