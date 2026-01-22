@@ -28,6 +28,7 @@ function HomePage() {
   const [modalContent, setModalContent] = useState(null); // 'terms', 'privacy', 'support' או null
   const [showTips, setShowTips] = useState(false);
   const [showGallery, setShowGallery] = useState(true); // State חדש
+  const [selectedPoster, setSelectedPoster] = useState(null);
 
   useEffect(() => {
     setMounted(true);
@@ -543,30 +544,58 @@ function HomePage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-6 md:gap-8 px-4">
-  {SHOWCASE_POSTERS.map((poster, index) => (
-    <motion.div 
-      key={poster.id}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }} // אפקט כניסה מדורג ויוקרתי
-      className="group relative aspect-[2/3] overflow-hidden rounded-[2rem] border border-white/10 shadow-2xl transition-all duration-500 hover:border-[#d4a373]/50"
-    >
-      <img 
-        src={poster.src} 
-        alt={lang === 'he' ? poster.titleHe : poster.titleEn} 
-        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 grayscale-[0.2] group-hover:grayscale-0"
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-6">
-        <span className="text-[#d4a373] text-[10px] font-black tracking-widest uppercase italic mb-1">
-          {lang === 'he' ? 'ז\'אנר:' : 'GENRE:'}
-        </span>
-        <span className="text-white text-xs font-bold tracking-wider">
-          {lang === 'he' ? poster.titleHe : poster.titleEn}
-        </span>
+        {SHOWCASE_POSTERS.map((poster, index) => {
+          const isSelected = selectedPoster === poster.id;
+          
+          return (
+            <motion.div 
+              key={poster.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              onClick={() => setSelectedPoster(isSelected ? null : poster.id)}
+              className={`group relative aspect-[2/3] overflow-hidden rounded-[2rem] border transition-all duration-500 cursor-pointer
+                ${isSelected ? 'border-[#d4a373] shadow-[0_0_30px_rgba(212,163,115,0.2)]' : 'border-white/10 shadow-2xl hover:border-white/30'}`}
+            >
+              {/* תמונת הפוסטר - נחלשת כשנבחר */}
+              {/* תמונת הפוסטר - עדכון רמת הבהירות והטשטוש */}
+<img 
+  src={poster.src} 
+  alt={lang === 'he' ? poster.titleHe : poster.titleEn} 
+  className={`w-full h-full object-cover transition-all duration-1000 
+    ${isSelected ? 'scale-105 blur-[1px] brightness-[0.7]' : 'grayscale-[0.2] group-hover:grayscale-0'}`}
+/>
+
+{/* שכבת הטקסט - שימוש ב-Gradient חכם שמשאיר את החלק העליון חשוף */}
+<div className={`absolute inset-0 bg-gradient-to-t from-black/95 via-black/70 to-black/20 transition-all duration-500 flex flex-col justify-end p-6 text-right
+  ${isSelected ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 md:group-hover:opacity-100 md:group-hover:translate-y-0'}`}>
+  
+  {/* הסינופסיס - הוספת צל לטקסט לשיפור הקריאות על רקע בהיר יותר */}
+  <p className="text-white text-[10px] md:text-[12px] leading-relaxed mb-6 font-mono italic border-r-2 border-[#d4a373] pr-3 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+    {lang === 'he' ? poster.excerptHe : poster.excerptEn}
+  </p>
+
+  {/* שאר האלמנטים... */}
+  <span className="text-[#d4a373] text-[9px] font-black tracking-[0.3em] uppercase italic mb-1 block">
+    {lang === 'he' ? "ז'אנר:" : 'GENRE:'}
+  </span>
+  <span className="text-white text-xs font-bold tracking-widest uppercase mb-2">
+    {lang === 'he' ? poster.titleHe : poster.titleEn}
+  </span>
+
+                <div className={`h-[1.5px] bg-[#d4a373] transition-all duration-700 ${isSelected ? 'w-16' : 'w-0 group-hover:w-10'}`} />
+                
+                {/* חיווי סגירה במצב פתוח */}
+                {isSelected && (
+                  <div className="absolute top-6 left-6 text-[#d4a373] opacity-40 text-[8px] uppercase tracking-[0.2em]">
+                    {lang === 'he' ? '[ הקלק לסגירה ]' : '[ CLICK TO CLOSE ]'}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
-    </motion.div>
-  ))}
-</div>
     </motion.section>
   )}
 </AnimatePresence>
