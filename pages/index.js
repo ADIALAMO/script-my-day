@@ -5,7 +5,7 @@ import { Film, Copyright, AlertCircle, Key, X, Download, Share2, Camera } from '
 import ScriptForm from '../components/ScriptForm';
 import ScriptOutput from '../components/ScriptOutput';
 import { detectSuggestedGenre } from '../utils/input-processor';
-
+import { SHOWCASE_POSTERS } from './constants/showcase';
 const genreIcons = {
   sciFi: '🚀',
   horror: '👻',
@@ -28,6 +28,7 @@ function HomePage() {
   const [tempAdminKey, setTempAdminKey] = useState('');
   const [modalContent, setModalContent] = useState(null); // 'terms', 'privacy', 'support' או null
   const [showTips, setShowTips] = useState(false);
+  const [showGallery, setShowGallery] = useState(true); // State חדש
 
   useEffect(() => {
     setMounted(true);
@@ -71,6 +72,7 @@ function HomePage() {
     // 1. מניעת רענון ובדיקת תקינות בסיסית
     if (!journalEntry || journalEntry.trim().length < 5) return;
     
+    setShowGallery(false);
     setLoading(true);
     setError('');
     setScript('');
@@ -524,6 +526,51 @@ function HomePage() {
     </AnimatePresence>
   </div>
 </motion.section>
+{/* --- גלריית השראות קולנועית --- */}
+<AnimatePresence>
+  {showGallery && !script && (
+    <motion.section
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20, scale: 0.95 }}
+      transition={{ duration: 0.8, ease: "easeInOut" }}
+      className="mt-16 mb-10"
+    >
+      <div className="text-center mb-10">
+        <h3 className="text-[#d4a373] text-[10px] font-black tracking-[0.5em] uppercase mb-2 opacity-60">
+          {lang === 'he' ? 'גלריית הפקות' : 'PRODUCTION SAMPLES'}
+        </h3>
+        <div className="h-[1px] w-20 bg-[#d4a373]/30 mx-auto" />
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-6 md:gap-8 px-4">
+  {SHOWCASE_POSTERS.map((poster, index) => (
+    <motion.div 
+      key={poster.id}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1 }} // אפקט כניסה מדורג ויוקרתי
+      className="group relative aspect-[2/3] overflow-hidden rounded-[2rem] border border-white/10 shadow-2xl transition-all duration-500 hover:border-[#d4a373]/50"
+    >
+      <img 
+        src={poster.src} 
+        alt={lang === 'he' ? poster.titleHe : poster.titleEn} 
+        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 grayscale-[0.2] group-hover:grayscale-0"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-6">
+        <span className="text-[#d4a373] text-[10px] font-black tracking-widest uppercase italic mb-1">
+          {lang === 'he' ? 'ז\'אנר:' : 'GENRE:'}
+        </span>
+        <span className="text-white text-xs font-bold tracking-wider">
+          {lang === 'he' ? poster.titleHe : poster.titleEn}
+        </span>
+      </div>
+    </motion.div>
+  ))}
+</div>
+    </motion.section>
+  )}
+</AnimatePresence>
 
         {/* תצוגת התסריט והפוסטר */}
        <AnimatePresence mode="wait">
