@@ -5,8 +5,7 @@ import { Film, Copyright, AlertCircle, Key, X, Download, Share2, Camera } from '
 import ScriptForm from '../components/ScriptForm';
 import ScriptOutput from '../components/ScriptOutput';
 import { detectSuggestedGenre } from '../utils/input-processor';
-import { SHOWCASE_POSTERS } from './constants/showcase';
-const genreIcons = {
+import { SHOWCASE_POSTERS } from '../constants/showcase';const genreIcons = {
   sciFi: '🚀',
   horror: '👻',
   comedy: '😂',
