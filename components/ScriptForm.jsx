@@ -57,7 +57,7 @@ function ScriptForm({ onGenerateScript, loading, lang, isTyping, onInputChange, 
   const [activeGenre, setActiveGenre] = useState('drama');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
-  const [isMusicMuted, setIsMusicMuted] = useState(true);
+  const [isMusicMuted, setIsMusicMuted] = useState(false);
   const bgMusicRef = useRef(null);
 // --- הוספה/עדכון של לוגיקת הודעות טעינה (תסריט בלבד) ---
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
@@ -112,7 +112,7 @@ function ScriptForm({ onGenerateScript, loading, lang, isTyping, onInputChange, 
       
       bgMusicRef.current = new Audio(audioPath);
       bgMusicRef.current.loop = true;
-      bgMusicRef.current.volume = 0.25;
+      bgMusicRef.current.volume = 0.2;
       bgMusicRef.current.muted = isMusicMuted;
 
       if (!isMusicMuted) {

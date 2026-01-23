@@ -66,7 +66,7 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
   const audioContext = useRef(null);
   const audioBuffer = useRef(null);
   const flashBuffer = useRef(null);
-  const isMutedRef = useRef(isMuted);
+  const isMutedRef = useRef(false);
 
   // --- לוגיקת הודעות טעינה לפוסטר ---
   // חשוב: זיהוי השפה מתבצע כאן בתוך הקומפוננט
@@ -152,18 +152,18 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
     const gainNode = audioContext.current.createGain();
     
     // הגברת עוצמה: העלינו מ-0.12 ל-0.35 (כמעט פי 3)
-    const volume = 0.35; 
+    const volume = 0.9; 
     gainNode.gain.setValueAtTime(volume, audioContext.current.currentTime);
     
     // דעיכה עדינה מאוד רק בסוף כדי למנוע קליקים, אבל לשמור על עוצמה
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.current.currentTime + 0.12);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.current.currentTime + 0.2);
     
-    source.playbackRate.value = 0.92 + Math.random() * 0.15;
+    source.playbackRate.value = 0.85 + Math.random() * 0.15;
     
     source.connect(gainNode);
     gainNode.connect(audioContext.current.destination);
     source.start(0);
-    source.stop(audioContext.current.currentTime + 0.15);
+    source.stop(audioContext.current.currentTime + 0.3);
   };
   const playFlashSound = () => {
   if (isMutedRef.current || !flashBuffer.current || !audioContext.current) return;
@@ -179,7 +179,7 @@ function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
   const now = audioContext.current.currentTime;
   
   // הגדרת ווליום: קליק חזק בשיא, ואז דעיכה איטית ששומרת על ה"זנב" של הסאונד
-  gainNode.gain.setValueAtTime(0.8, now); 
+  gainNode.gain.setValueAtTime(1.0, now); 
   // דעיכה ל-0.1 (לא לאפס!) לאורך 2.5 שניות כדי שהאפקט ימשיך להישמע
   gainNode.gain.linearRampToValueAtTime(0.1, now + 2.5); 
   
