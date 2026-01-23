@@ -94,7 +94,7 @@ function ScriptForm({ onGenerateScript, loading, lang, isTyping, onInputChange, 
 
   const isGlobalLocked = loading || isTyping;
 
-  // טיפול במוזיקה - תיקון פורמט השם למניעת שגיאות 404
+  // 1. טעינה והפעלה של המוזיקה (רץ רק כשהז'אנר משתנה)
   useEffect(() => {
     if (bgMusicRef.current) {
       bgMusicRef.current.pause();
@@ -102,8 +102,6 @@ function ScriptForm({ onGenerateScript, loading, lang, isTyping, onInputChange, 
     }
     
     if (activeGenre) {
-      // הפיכת השם לפורמט אחיד: הכל קטנות, והחלפת CamelCase למקף
-      // זה הופך sciFi ל-sci-fi באופן אוטומטי
       const formattedGenre = activeGenre
         .replace(/([a-z])([A-Z])/g, '$1-$2')
         .toLowerCase();
@@ -112,7 +110,8 @@ function ScriptForm({ onGenerateScript, loading, lang, isTyping, onInputChange, 
       
       bgMusicRef.current = new Audio(audioPath);
       bgMusicRef.current.loop = true;
-      bgMusicRef.current.volume = 0.2;
+      // ווליום התחלתי - בודק אם יש הקלדה כבר בטעינה
+      bgMusicRef.current.volume = isTyping ? 0.05 : 0.2;
       bgMusicRef.current.muted = isMusicMuted;
 
       if (!isMusicMuted) {
@@ -125,6 +124,17 @@ function ScriptForm({ onGenerateScript, loading, lang, isTyping, onInputChange, 
       if (bgMusicRef.current) bgMusicRef.current.pause();
     };
   }, [activeGenre, isMusicMuted]);
+
+  // 2. אפקט Ducking - הנמכת ווליום בזמן הקלדה (רץ בכל שינוי של isTyping)
+  useEffect(() => {
+    if (bgMusicRef.current && !isMusicMuted) {
+      // הנמכה ל-0.05 בזמן הקלדה, חזרה ל-0.2 בסיום
+      const targetVolume = isTyping ? 0.15 : 0.2;
+      
+      // שינוי הדרגתי ונעים של הווליום
+      bgMusicRef.current.volume = targetVolume;
+    }
+  }, [isTyping, isMusicMuted]);
 
   const handleDownloadJournal = () => {
     const blob = new Blob([journalEntry], { type: 'text/plain' });

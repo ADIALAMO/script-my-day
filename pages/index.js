@@ -496,19 +496,20 @@ function HomePage() {
     </AnimatePresence>
   </div>
 </div>
-     <div className="bg-[#030712]/60 backdrop-blur-3xl p-8 md:p-16 relative">
- <ScriptForm
-      onGenerateScript={handleGenerateScript} 
-      loading={loading} 
-      lang={lang} 
-      isTyping={isTyping}
-      selectedGenre={selectedGenre} // הוספנו את זה כדי שהטופס ידע מה האייקון הנוכחי
-      genreIcons={genreIcons}
-      onInputChange={(text) => {
-        const suggested = detectSuggestedGenre(text);
-        if (suggested !== selectedGenre) setSelectedGenre(suggested);
-      }}
-    />
+ <div className="bg-[#030712]/60 backdrop-blur-3xl p-8 md:p-16 relative">
+  <ScriptForm
+    onGenerateScript={handleGenerateScript} 
+    loading={loading} 
+    lang={lang} 
+    isTyping={isTyping} // מעביר את מצב ההקלדה להנמכת הווליום
+    selectedGenre={selectedGenre} 
+    genreIcons={genreIcons}
+    onInputChange={(text) => {
+      // שומר על לוגיקת זיהוי הז'אנר האוטומטית
+      const suggested = detectSuggestedGenre(text);
+      if (suggested !== selectedGenre) setSelectedGenre(suggested);
+    }}
+  />
 
     {/* שמירה על מנגנון השגיאות המקורי שלך */}
     <AnimatePresence>
