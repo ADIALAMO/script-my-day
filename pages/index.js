@@ -296,56 +296,264 @@ function HomePage() {
         {/* שאר התוכן של ה-About... */}
 
         {modalContent === 'terms' && (
-          <div className={lang === 'he' ? 'text-right' : 'text-left'}>
-            <h2 className="text-[#d4a373] text-2xl font-black mb-6 uppercase tracking-tighter border-b border-[#d4a373]/10 pb-4 italic">
-              {lang === 'he' ? 'תנאי שימוש - חוזה הפקה' : 'TERMS OF SERVICE'}
-            </h2>
-            <div className="space-y-6 text-gray-400 text-sm leading-relaxed">
-              <section>
-                <h3 className="text-white font-bold mb-1">{lang === 'he' ? '1. בעלות על התוכן' : '1. Content Ownership'}</h3>
-                <p>{lang === 'he' ? 'כל זכויות הקניין הרוחני בתסריטים ובפוסטרים שנוצרו שייכות למשתמש באופן מלא. LIFESCRIPT אינה טוענת לבעלות על היצירות שלך.' : 'All intellectual property rights for the generated content belong entirely to the user.'}</p>
-              </section>
-              <section>
-                <h3 className="text-white font-bold mb-1">{lang === 'he' ? '2. שימוש בבינה מלאכותית' : '2. AI Generation'}</h3>
-                <p>{lang === 'he' ? 'השירות משתמש במודלי שפה וגרפיקה מתקדמים. המשתמש מבין כי התוכן עשוי להכיל אי-דיוקים והוא באחריותו הבלעדית.' : 'Users acknowledge that AI content may contain inaccuracies and is their sole responsibility.'}</p>
-              </section>
-            </div>
-          </div>
-        )}
+  <div className={lang === 'he' ? 'text-right' : 'text-left'} dir={lang === 'he' ? 'rtl' : 'ltr'}>
+    <h2 className="text-[#d4a373] text-2xl font-black mb-6 uppercase tracking-tighter border-b border-[#d4a373]/10 pb-4 italic">
+      {lang === 'he' ? 'תנאי שימוש - חוזה הפקה' : 'TERMS OF SERVICE - PRODUCTION CONTRACT'}
+    </h2>
+    
+    <div className="space-y-6 text-gray-300 text-sm md:text-base leading-relaxed overflow-y-auto max-h-[65vh] pr-2 custom-scrollbar">
+      
+      {/* 1. בעלות וקניין רוחני */}
+      <section>
+        <h3 className="text-white font-bold mb-2">
+          {lang === 'he' ? '1. בעלות על התוכן והיצירה' : '1. Ownership & Intellectual Property'}
+        </h3>
+        <p className="opacity-80">
+          {lang === 'he' 
+            ? 'כל זכויות הקניין הרוחני בתסריטים ובפוסטרים שנוצרו באמצעות LIFESCRIPT שייכות לך, המשתמש, באופן מלא ובלעדי. אתה חופשי לשתף, להפיץ ולהשתמש ביצירה לכל מטרה אישית.' 
+            : 'All intellectual property rights in the scripts and posters created through LIFESCRIPT belong entirely and exclusively to you, the user. You are free to share, distribute, and use the work for any personal purpose.'}
+        </p>
+      </section>
 
-        {modalContent === 'privacy' && (
-          <div className={lang === 'he' ? 'text-right' : 'text-left'}>
-            <h2 className="text-[#d4a373] text-2xl font-black mb-6 uppercase tracking-tighter border-b border-[#d4a373]/10 pb-4 italic">
-              {lang === 'he' ? 'פרטיות - הצהרת חיסוי' : 'PRIVACY POLICY'}
-            </h2>
-            <div className="space-y-6 text-gray-400 text-sm leading-relaxed">
-              <section>
-                <h3 className="text-white font-bold mb-1">{lang === 'he' ? '1. מדיניות אי-שמירה' : '1. Zero Storage'}</h3>
-                <p>{lang === 'he' ? 'אנחנו לא שומרים את התסריטים או הפוסטרים שלך על השרתים שלנו. המידע מעובד ונמחק בסיום הסשן.' : 'We do not store your scripts or posters. Everything is processed and deleted after your session.'}</p>
-              </section>
-              <section>
-                <h3 className="text-white font-bold mb-1">{lang === 'he' ? '2. אבטחה מקומית' : '2. Local Security'}</h3>
-                <p>{lang === 'he' ? 'מפתחות הגישה (Admin Keys) נשמרים בדפדפן שלך בלבד ואינם מועברים לצד שלישי.' : 'Admin keys are stored locally on your device only.'}</p>
-              </section>
-            </div>
-          </div>
-        )}
+      {/* 2. שימוש בבינה מלאכותית ואחריות לתוכן */}
+      <section>
+        <h3 className="text-white font-bold mb-2">
+          {lang === 'he' ? '2. טכנולוגיית AI ואחריות על התוכן' : '2. AI Technology & Content Responsibility'}
+        </h3>
+        <p className="opacity-80">
+          {lang === 'he' 
+            ? 'השירות מבוסס על מודלי בינה מלאכותית מתקדמים. המשתמש מבין כי התוכן עשוי להכיל אי-דיוקים עובדתיים, הטיות או טעויות גנרטיביות. האחריות על השימוש בתוכן והפצתו חלה על המשתמש בלבד.' 
+            : 'The service is based on advanced AI models. The user understands that content may contain factual inaccuracies, biases, or generative errors. Responsibility for using and distributing the content lies solely with the user.'}
+        </p>
+      </section>
+
+      {/* 3. הגבלות שימוש וקוד אתי */}
+      <section>
+        <h3 className="text-white font-bold mb-2">
+          {lang === 'he' ? '3. הגבלות שימוש וקוד אתי' : '3. Usage Restrictions & Ethics'}
+        </h3>
+        <p className="opacity-80">
+          {lang === 'he' 
+            ? 'חל איסור מוחלט להשתמש במערכת ליצירת תוכן פוגעני, אלים, מסית, פורנוגרפי או כזה המפר זכויות של צדדים שלישיים. המערכת שומרת לעצמה את הזכות לחסום גישה למשתמשים שיעשו שימוש לרעה בטכנולוגיה.' 
+            : 'It is strictly forbidden to use the system to create offensive, violent, inciting, pornographic content, or content that violates the rights of third parties. The system reserves the right to block access to users who misuse the technology.'}
+        </p>
+      </section>
+
+      {/* 4. הגבלת אחריות טכנית */}
+      <section>
+        <h3 className="text-white font-bold mb-2">
+          {lang === 'he' ? '4. הגבלת אחריות (Disclaimer)' : '4. Disclaimer of Warranties'}
+        </h3>
+        <p className="opacity-80">
+          {lang === 'he' 
+            ? 'השירות ניתן כפי שהוא ("AS IS"). LIFESCRIPT אינה מתחייבת לזמינות רציפה של השרתים או לכך שהתוצאה תתאים לציפיות המשתמש ב-100%. לא נהיה אחראים לכל נזק ישיר או עקיף הנובע מהשימוש באפליקציה.' 
+            : 'The service is provided "AS IS". LIFESCRIPT does not guarantee continuous server availability or that the results will meet user expectations 100%. We will not be liable for any direct or indirect damage resulting from the use of the application.'}
+        </p>
+      </section>
+
+      {/* 5. שינויים בשירות */}
+      <section>
+        <h3 className="text-white font-bold mb-2">
+          {lang === 'he' ? '5. עדכונים ושינויים' : '5. Updates & Changes'}
+        </h3>
+        <p className="opacity-80">
+          {lang === 'he' 
+            ? 'אנו שומרים לעצמנו את הזכות לעדכן את תנאי השימוש או לשנות את מאפייני השירות מעת לעת, ללא הודעה מוקדמת, בכדי להמשיך ולשפר את חווית ההפקה.' 
+            : 'We reserve the right to update these terms or change service features from time to time, without prior notice, to continue improving the production experience.'}
+        </p>
+      </section>
+
+      {/* 6. שימוש הוגן */}
+      <section>
+        <h3 className="text-white font-bold mb-2">
+          {lang === 'he' ? '6. מדיניות שימוש הוגן' : '6. Fair Use Policy'}
+        </h3>
+        <p className="opacity-80">
+          {lang === 'he' 
+            ? 'אנו מפעילים מדיניות שימוש הוגן בכדי למנוע עומס על המערכת. חל איסור על שימוש בבוטים או באמצעים אוטומטיים. אנו שומרים לעצמנו את הזכות להגביל את מכסת היצירה היומית לכל משתמש.' 
+            : 'We operate a fair use policy to prevent system overload. The use of bots or automated tools is strictly prohibited. We reserve the right to limit the daily generation quota per user.'}
+        </p>
+      </section>
+
+      {/* 7. מגבלת גיל */}
+      <section>
+        <h3 className="text-white font-bold mb-2">
+          {lang === 'he' ? '7. הגבלת גיל' : '7. Age Restriction'}
+        </h3>
+        <p className="opacity-80">
+          {lang === 'he' 
+            ? 'השימוש ב-LIFESCRIPT מיועד למשתמשים מעל גיל 13. בשימושך בשירות אתה מצהיר כי אתה עומד בתנאי הגיל הנדרשים.' 
+            : 'Use of LIFESCRIPT is intended for users over the age of 13. By using the service, you represent that you meet the age requirements.'}
+        </p>
+      </section>
+
+      {/* 8. שירותי צד ג' */}
+      <section>
+        <h3 className="text-white font-bold mb-2">
+          {lang === 'he' ? '8. שירותי צד שלישי' : '8. Third-Party Services'}
+        </h3>
+        <p className="opacity-80">
+          {lang === 'he' 
+            ? 'השירות משתלב עם ספקי בינה מלאכותית חיצוניים (כגון OpenRouter, Cohere ו-Pollinations). LIFESCRIPT אינה אחראית לשינויים במדיניות או בזמינות של שירותים אלו.' 
+            : 'The service integrates with third-party AI providers (e.g., OpenRouter, Cohere, and Pollinations). LIFESCRIPT is not responsible for changes in the policies or availability of these services.'}
+        </p>
+      </section>
+
+      <div className="pt-6 text-center border-t border-white/5 opacity-50 text-[10px] tracking-widest uppercase">
+        {lang === 'he' ? 'עודכן לאחרונה: ינואר 2026' : 'Last Updated: January 2026'}
+      </div>
+
+    </div>
+  </div>
+)}
+
+       {modalContent === 'privacy' && (
+  <div className={lang === 'he' ? 'text-right' : 'text-left'} dir={lang === 'he' ? 'rtl' : 'ltr'}>
+    <h2 className="text-[#d4a373] text-2xl font-black mb-6 uppercase tracking-tighter border-b border-[#d4a373]/10 pb-4 italic">
+      {lang === 'he' ? 'פרטיות וביטחון מידע' : 'PRIVACY & DATA SECURITY'}
+    </h2>
+    
+    <div className="space-y-6 text-gray-300 text-sm md:text-base leading-relaxed overflow-y-auto max-h-[65vh] pr-2 custom-scrollbar">
+      
+      {/* 1. מדיניות אי-אחסון */}
+      <section>
+        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#d4a373]"></span>
+          {lang === 'he' ? '1. מדיניות "אפס אחסון" (Zero Storage)' : '1. Zero Storage Policy'}
+        </h3>
+        <p className="opacity-80">
+          {lang === 'he' 
+            ? 'התוכן האישי שלך הוא רכושך בלבד. הטקסטים שאתה מזין והתסריטים שנוצרים מעובדים בזמן אמת ונמחקים לצמיתות מהשרתים שלנו מיד עם סיום הסשן. אנחנו לא שומרים היסטוריית כתיבה מטעמי פרטיות.' 
+            : 'Your personal content is yours alone. The texts you enter and the generated scripts are processed in real-time and permanently deleted from our servers immediately after the session ends. We do not store writing history for privacy reasons.'}
+        </p>
+      </section>
+
+      {/* 2. קניין רוחני - חשוב מאוד ליוצרים */}
+      <section>
+        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#d4a373]"></span>
+          {lang === 'he' ? '2. זכויות יוצרים וקניין רוחני' : '2. Intellectual Property'}
+        </h3>
+        <p className="opacity-80">
+          {lang === 'he' 
+            ? 'כל זכויות הקניין הרוחני על התסריטים שנוצרים באמצעות המערכת שייכות לך באופן מלא. LIFESCRIPT אינה טוענת לבעלות על הסיפורים, הדמויות או התכנים המופקים עבורך.' 
+            : 'All intellectual property rights for the scripts generated through the system belong entirely to you. LIFESCRIPT claims no ownership over the stories, characters, or content produced for you.'}
+        </p>
+      </section>
+
+      {/* 3. עיבוד AI - הניסוח המוגן שדיברנו עליו */}
+      <section>
+        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#d4a373]"></span>
+          {lang === 'he' ? '3. עיבוד נתונים ע"י ספקי AI' : '3. AI Data Processing'}
+        </h3>
+        <p className="opacity-80">
+          {lang === 'he' 
+            ? 'המידע מועבר לספקי עיבוד מובילים (כגון Cohere ו-OpenRouter) בערוץ מוצפן. אנו בוחרים ספקים המחויבים חוזית לכך שהמידע המועבר אליהם אינו משמש לאימון מודלים ציבוריים ואינו נשמר לשימוש עתידי.' 
+            : 'Data is transmitted to leading processors (e.g., Cohere and OpenRouter) via encrypted channels. We select providers who are contractually committed to ensuring that the data transmitted to them is not used for training public models and is not stored for future use.'}
+        </p>
+      </section>
+
+      {/* 4. עוגיות ואבטחה מקומית */}
+      <section>
+        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#d4a373]"></span>
+          {lang === 'he' ? '4. שימוש בטכנולוגיית אחסון מקומי' : '4. Local Storage Technology'}
+        </h3>
+        <p className="opacity-80">
+          {lang === 'he' 
+            ? 'המערכת משתמשת ב-LocalStorage כדי לשמור את מפתחות הגישה והגדרות השפה שלך על המכשיר האישי שלך בלבד. מידע זה אינו מועבר לצד שלישי ואינו משמש למעקב פרסומי.' 
+            : 'The system uses LocalStorage to save your access keys and language settings on your personal device only. This information is not shared with third parties and is not used for advertising tracking.'}
+        </p>
+      </section>
+
+      {/* הצהרה מסכמת */}
+      <div className="bg-white/5 p-4 rounded-xl border border-white/5 mt-8 text-center italic text-[11px] md:text-xs text-[#d4a373]/80">
+        {lang === 'he' 
+          ? '"הפרטיות שלך היא התסריט הכי חשוב שאנחנו מגנים עליו."' 
+          : '"Your privacy is the most important script we protect."'}
+      </div>
+
+    </div>
+  </div>
+)}
 
         {modalContent === 'support' && (
-          <div className="text-center py-4">
-            <Camera className="text-[#d4a373] mx-auto mb-4 opacity-50" size={48} />
-            <h2 className="text-[#d4a373] text-2xl font-black mb-6 uppercase tracking-tighter italic">
-              {lang === 'he' ? 'תמיכה טכנית' : 'TECHNICAL SUPPORT'}
-            </h2>
-            <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5">
-              <p className="text-gray-300 mb-4">{lang === 'he' ? 'זקוק לעזרה בהפקה?' : 'Need assistance?'}</p>
-              <a href="mailto:support@lifescript.studio" className="text-xl md:text-2xl font-bold text-white hover:text-[#d4a373] transition-colors break-words">
-                support@lifescript.studio
-              </a>
-              <p className="text-[10px] text-gray-600 uppercase tracking-[0.3em] mt-8">Response time: 24h</p>
-            </div>
-          </div>
-        )}
+  <div className={lang === 'he' ? 'text-right' : 'text-left'} dir={lang === 'he' ? 'rtl' : 'ltr'}>
+    <h2 className="text-[#d4a373] text-2xl font-black mb-6 uppercase tracking-tighter border-b border-[#d4a373]/10 pb-4 italic">
+      {lang === 'he' ? 'מוקד תמיכה ופתרון תקלות' : 'PRODUCTION SUPPORT & FAQ'}
+    </h2>
+
+    <div className="space-y-6 overflow-y-auto max-h-[65vh] pr-2 custom-scrollbar">
+      
+      {/* בעיה 1 - אורך טקסט */}
+      <section className="bg-white/5 p-5 rounded-2xl border border-white/5 hover:border-[#d4a373]/20 transition-colors">
+        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
+          <span className="text-[#d4a373]">01.</span>
+          {lang === 'he' ? 'הכפתור "צור תסריט" לא מגיב?' : 'Generate button not responding?'}
+        </h3>
+        <p className="text-gray-400 text-xs md:text-sm leading-relaxed">
+          {lang === 'he' 
+            ? 'הבינה המלאכותית זקוקה למינימום של 5 מילים כדי להתחיל לביים. הרחב מעט את התיאור ביומן והכפתור יפתח מיידית.' 
+            : 'The AI needs at least 5 words to start directing. Expand your journal entry slightly and the button will activate.'}
+        </p>
+      </section>
+
+      {/* בעיה 2 - פוסטר */}
+      <section className="bg-white/5 p-5 rounded-2xl border border-white/5 hover:border-[#d4a373]/20 transition-colors">
+        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
+          <span className="text-[#d4a373]">02.</span>
+          {lang === 'he' ? 'הפוסטר לא נטען או נראה ריק?' : 'Poster not loading or looks empty?'}
+        </h3>
+        <p className="text-gray-400 text-xs md:text-sm leading-relaxed">
+          {lang === 'he' 
+            ? 'רינדור גרפי הוא תהליך מורכב. אם הפוסטר לא הופיע תוך 10 שניות, לחץ שוב על כפתור היצירה. אין צורך לרענן את הדף.' 
+            : 'Graphic rendering is a complex process. If the poster doesn\'t appear within 10 seconds, click Generate again. No need to refresh.'}
+        </p>
+      </section>
+
+      {/* בעיה 3 - סאונד */}
+      <section className="bg-white/5 p-5 rounded-2xl border border-white/5 hover:border-[#d4a373]/20 transition-colors">
+        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
+          <span className="text-[#d4a373]">03.</span>
+          {lang === 'he' ? 'בעיות סאונד ומוזיקה?' : 'Sound or music issues?'}
+        </h3>
+        <p className="text-gray-400 text-xs md:text-sm leading-relaxed">
+          {lang === 'he' 
+            ? 'ודא שהמכשיר אינו על מצב שקט (Silent). בדפדפני מובייל, לעיתים יש ללחוץ על כפתור הרמקול בטופס כדי לאפשר למוזיקה להתחיל.' 
+            : 'Ensure your device isn\'t on Silent mode. On mobile browsers, you might need to tap the speaker icon to enable audio.'}
+        </p>
+      </section>
+
+      {/* בעיה 4 - הקפאה */}
+      <section className="bg-white/5 p-5 rounded-2xl border border-white/5 hover:border-[#d4a373]/20 transition-colors">
+        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
+          <span className="text-[#d4a373]">04.</span>
+          {lang === 'he' ? 'ההקלדה נעצרה באמצע?' : 'Typing stopped mid-way?'}
+        </h3>
+        <p className="text-gray-400 text-xs md:text-sm leading-relaxed">
+          {lang === 'he' 
+            ? 'במידה והתסריט הפסיק להיכתב, העתק את הטקסט שכתבת, רענן את הדף (Refresh) ונסה שוב. זה פותר 100% מתקלות התקשורת.' 
+            : 'If the script stops writing, copy your text, refresh the page, and try again. This resolves 100% of connection issues.'}
+        </p>
+      </section>
+
+      {/* הודעת סיום אסטרטגית */}
+      <div className="pt-6 text-center border-t border-white/5">
+        <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-4">
+          {lang === 'he' 
+            ? 'אנחנו כרגע בשלב הרצה אקסקלוסיבית (Beta)' 
+            : 'Currently in exclusive Beta phase'}
+        </p>
+        <div className="inline-block px-6 py-2 rounded-full bg-[#d4a373]/10 border border-[#d4a373]/20 text-[#d4a373] text-[11px] font-bold">
+          {lang === 'he' ? 'המשך הפקה נעימה!' : 'Keep Directing!'}
+        </div>
+      </div>
+
+    </div>
+  </div>
+)}
+
         {modalContent === 'about' && (
   <div className={lang === 'he' ? 'text-right' : 'text-left'} dir={lang === 'he' ? 'rtl' : 'ltr'}>
     <h2 className="text-[#d4a373] text-2xl font-black mb-6 uppercase tracking-tighter border-b border-[#d4a373]/10 pb-4 italic">
