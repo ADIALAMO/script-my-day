@@ -282,7 +282,7 @@ function HomePage() {
   {modalContent && (
     <motion.div 
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-xl px-6"
+      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/95 backdrop-blur-xl px-6"
       onClick={() => setModalContent(null)}
     >
       <motion.div 
@@ -290,15 +290,17 @@ function HomePage() {
         onClick={(e) => e.stopPropagation()}
         className="bg-[#0f1117] border border-[#d4a373]/20 p-8 md:p-12 pt-24 md:pt-32 rounded-[2.5rem] max-w-2xl w-full max-h-[85vh] overflow-y-auto relative custom-scrollbar shadow-2xl"
       >
-        {/* כפתור סגירה משופר ומונמך כדי שלא יוסתר על ידי הלוגו */}
+        {/* כפתור סגירה מתוקן - הוספתי e.stopPropagation ו-Z-index גבוה */}
         <button 
-          onClick={() => setModalContent(null)} 
-          className="absolute top-8 right-6 md:top-10 md:right-10 text-white/40 hover:text-[#d4a373] transition-all duration-300 p-3 bg-white/5 hover:bg-white/10 rounded-full z-[210] group"
+          onClick={(e) => {
+            e.stopPropagation(); // עוצר את האירוע מלחלחל לרקע
+            setModalContent(null);
+          }} 
+          className="absolute top-8 right-6 md:top-10 md:right-10 text-white/40 hover:text-[#d4a373] transition-all duration-300 p-3 bg-white/5 hover:bg-white/10 rounded-full z-[2100] group"
         >
           <X size={24} className="group-hover:rotate-90 transition-transform duration-500" />
         </button>
 
-        {/* שאר התוכן של ה-About... */}
 
         {modalContent === 'terms' && (
   <div className={lang === 'he' ? 'text-right' : 'text-left'} dir={lang === 'he' ? 'rtl' : 'ltr'}>
@@ -837,11 +839,15 @@ function HomePage() {
       >
         {/* כפתור סגירה (X) בלבד - אלמנט הניווט היחיד */}
         <button 
-          onClick={() => setSelectedPoster(null)}
-          className="absolute top-5 right-6 text-white/20 hover:text-[#d4a373] transition-all duration-300 z-20 p-2 bg-white/5 rounded-full"
-        >
-          <X size={20} />
-        </button>
+  onClick={(e) => {
+    e.stopPropagation(); // מונע מהלחיצה לעבור לרקע
+    setSelectedPoster(null);
+  }}
+  className="absolute top-5 right-6 z-[1100] p-3 bg-white/10 hover:bg-[#d4a373] text-white hover:text-black rounded-full transition-all duration-300 shadow-xl"
+  aria-label="Close"
+>
+  <X size={24} />
+</button>
 
         {/* תמונה מוקטנת למעלה עם גרדיאנט עמוק */}
         <div className="w-full h-40 relative">
