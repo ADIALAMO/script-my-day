@@ -755,41 +755,42 @@ function HomePage() {
               <div className="max-h-[500px] overflow-y-auto overflow-x-hidden px-2 custom-gallery-scroll pb-6">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-6 md:gap-8">
                   {SHOWCASE_POSTERS.map((poster, index) => {
-                    const isSelected = selectedPoster === poster.id;
-                    return (
-                      <motion.div 
-                        key={poster.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        onClick={() => setSelectedPoster(isSelected ? null : poster.id)}
-                        className={`group relative aspect-[2/3] overflow-hidden rounded-[2rem] border transition-all duration-500 cursor-pointer
-                          ${isSelected ? 'border-[#d4a373] shadow-[0_0_30px_rgba(212,163,115,0.2)]' : 'border-white/10 shadow-2xl hover:border-white/30'}`}
-                      >
-                        <img 
-                          src={poster.src} 
-                          alt={lang === 'he' ? poster.titleHe : poster.titleEn} 
-                          className={`w-full h-full object-cover transition-all duration-1000 
-                            ${isSelected ? 'scale-105 blur-[1px] brightness-[0.4]' : 'grayscale-[0.2] group-hover:grayscale-0'}`}
-                        />
-                        <div className={`absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent transition-all duration-500 flex flex-col justify-end p-4 md:p-6 text-right
-                          ${isSelected ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 md:group-hover:opacity-100 md:group-hover:translate-y-0'}`}>
-                          <p className="text-gray-200 text-[8px] md:text-[11px] leading-relaxed mb-3 md:mb-6 font-mono italic border-r-2 border-[#d4a373] pr-2 md:pr-3 overflow-hidden">
-                            {lang === 'he' ? poster.excerptHe : poster.excerptEn}
-                          </p>
-                          <div className="flex flex-col mb-1 md:mb-2">
-                            <span className="text-[#d4a373] text-[7px] md:text-[9px] font-black tracking-[0.2em] md:tracking-[0.3em] uppercase italic block">
-                              {lang === 'he' ? "ז'אנר:" : 'GENRE:'}
-                            </span>
-                            <span className="text-white text-[10px] md:text-xs font-bold tracking-widest uppercase">
-                              {lang === 'he' ? poster.titleHe : poster.titleEn}
-                            </span>
-                          </div>
-                          <div className={`h-[1px] md:h-[1.5px] bg-[#d4a373] transition-all duration-700 ${isSelected ? 'w-12 md:w-16' : 'w-0 group-hover:w-10'}`} />
-                        </div>
-                      </motion.div>
-                    );
-                  })}
+  // בדיקה אם הפוסטר הנוכחי נבחר (עבור אפקטים ויזואליים בגלריה)
+  const isSelected = selectedPoster && selectedPoster.id === poster.id;
+  return (
+    <motion.div 
+      key={poster.id}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1 }}
+      // עדכון: לחיצה פותחת את המודל המוגדל עם האובייקט המלא
+      onClick={() => setSelectedPoster(poster)}
+      className={`group relative aspect-[2/3] overflow-hidden rounded-[2rem] border transition-all duration-500 cursor-pointer
+        ${isSelected ? 'border-[#d4a373] shadow-[0_0_30px_rgba(212,163,115,0.2)]' : 'border-white/10 shadow-2xl hover:border-white/30'}`}
+    >
+      <img 
+        src={poster.src} 
+        alt={lang === 'he' ? poster.titleHe : poster.titleEn} 
+        className={`w-full h-full object-cover transition-all duration-1000 
+          ${isSelected ? 'scale-105 blur-[1px] brightness-[0.4]' : 'grayscale-[0.2] group-hover:grayscale-0'}`}
+      />
+      <div className={`absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent transition-all duration-500 flex flex-col justify-end p-4 md:p-6 text-right
+        ${isSelected ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 md:group-hover:opacity-100 md:group-hover:translate-y-0'}`}>
+        
+        {/* כותרת ז'אנר בתוך הגלריה */}
+        <div className="flex flex-col mb-1 md:mb-2">
+          <span className="text-[#d4a373] text-[7px] md:text-[9px] font-black tracking-[0.2em] md:tracking-[0.3em] uppercase italic block">
+            {lang === 'he' ? "ז'אנר:" : 'GENRE:'}
+          </span>
+          <span className="text-white text-[10px] md:text-xs font-bold tracking-widest uppercase">
+            {lang === 'he' ? poster.titleHe : poster.titleEn}
+          </span>
+        </div>
+        <div className={`h-[1px] md:h-[1.5px] bg-[#d4a373] transition-all duration-700 ${isSelected ? 'w-12 md:w-16' : 'w-0 group-hover:w-10'}`} />
+      </div>
+    </motion.div>
+  );
+})}
                 </div>
               </div>
             </motion.section>
@@ -816,6 +817,65 @@ function HomePage() {
 />            </motion.div>
           )}
         </AnimatePresence>
+       {/* --- מודל הרחבה קטן ויוקרתי (Expanded Panel) --- */}
+<AnimatePresence>
+  {selectedPoster && (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={() => setSelectedPoster(null)}
+      className="fixed inset-0 z-[1000] bg-black/40 backdrop-blur-sm flex items-end md:items-center justify-center p-6 pb-24 md:pb-10"
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 40 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 40 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-[#0f1117]/95 border border-[#d4a373]/30 rounded-[2.5rem] shadow-[0_25px_100px_rgba(0,0,0,0.9)] w-full max-w-md overflow-hidden flex flex-col relative"
+        style={{ maxHeight: '70vh' }} 
+      >
+        {/* כפתור סגירה (X) בלבד - אלמנט הניווט היחיד */}
+        <button 
+          onClick={() => setSelectedPoster(null)}
+          className="absolute top-5 right-6 text-white/20 hover:text-[#d4a373] transition-all duration-300 z-20 p-2 bg-white/5 rounded-full"
+        >
+          <X size={20} />
+        </button>
+
+        {/* תמונה מוקטנת למעלה עם גרדיאנט עמוק */}
+        <div className="w-full h-40 relative">
+          <img 
+            src={selectedPoster.src} 
+            className="w-full h-full object-cover opacity-50" 
+            alt={selectedPoster.titleEn} 
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0f1117] via-[#0f1117]/50 to-transparent" />
+        </div>
+
+        {/* תוכן הטקסט - מקסימום מקום לקריאה */}
+        <div className="p-8 pt-0 pb-10 flex flex-col flex-grow overflow-hidden">
+          <div className="mb-6">
+            <span className="text-[#d4a373] text-[9px] font-black tracking-[0.3em] uppercase italic border-b border-[#d4a373]/20 pb-1">
+              {lang === 'he' ? selectedPoster.titleHe : selectedPoster.titleEn}
+            </span>
+          </div>
+
+          {/* אזור הטקסט עם גלילה פנימית חלקה */}
+          <div className="overflow-y-auto pr-3 custom-scrollbar flex-grow text-right">
+            <p className="text-white/90 text-[1.1rem] md:text-xl leading-relaxed font-light italic" 
+               style={{ 
+                 fontFamily: "'Courier Prime', 'Courier New', monospace",
+                 direction: lang === 'he' ? 'rtl' : 'ltr'
+               }}>
+              {lang === 'he' ? selectedPoster.excerptHe : selectedPoster.excerptEn}
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
       </main>
       
       {/* Footer המלוטש --- */}

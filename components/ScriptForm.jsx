@@ -60,8 +60,9 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, onInputChange, producer
   const [isMusicMuted, setIsMusicMuted] = useState(false);
   const bgMusicRef = useRef(null);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
-  
+  const getWordCount = (text) => text.trim() ? text.trim().split(/\s+/).length : 0;
   const loadingMessages = lang === 'he' ? [
+    
     "סורק זכרונות...",
     "מנתח DNA סיפורי...",
     "בונה מתח דרמטי...",
@@ -241,13 +242,26 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, onInputChange, producer
           </AnimatePresence>
         </div>
 
-        {/* תיבת הטקסט */}
+       {/* תיבת הטקסט */}
         <div className="relative">
           <textarea
             value={journalEntry}
             onChange={(e) => {
               const value = e.target.value;
-              setJournalEntry(value);
+              const wordsArray = value.trim() ? value.trim().split(/\s+/) : [];
+              const wordCount = wordsArray.length;
+              
+              if (wordCount <= 500) {
+                // אם זה מתחת ל-500, פשוט תעדכן
+                setJournalEntry(value);
+              } else {
+                // אם המשתמש מדביק טקסט ארוך מדי - אנחנו חותכים אותו ל-500 המילים הראשונות
+                const truncatedText = wordsArray.slice(0, 500).join(' ');
+                setJournalEntry(truncatedText);
+                
+                // אופציונלי: אפשר להוסיף כאן התראה קטנה שהטקסט נחתך
+                console.warn("Text truncated to 500 words limit");
+              }
             }}
             disabled={isGlobalLocked}
             spellCheck="false"
@@ -257,6 +271,24 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, onInputChange, producer
             placeholder={lang === 'he' ? 'איך עבר היום? ספר לי במילים שלך...' : 'How was your day? Tell me in your own words...'}
             style={{ fontFamily: "'Courier Prime', 'Courier New', monospace" }}
           />
+
+          {/* מונה מילים קולנועי - מיקום אבסולוטי ביחס לתיבה */}
+          <div className="absolute -bottom-10 right-2 flex items-center gap-3">
+            <div className="flex flex-col items-end">
+              <span className={`text-[9px] font-black tracking-[0.2em] uppercase transition-colors duration-300 ${
+                (journalEntry.trim() ? journalEntry.trim().split(/\s+/).length : 0) >= 480 ? 'text-red-500' : 'text-[#d4a373]/50'
+              }`}>
+                {lang === 'he' ? 'מונה מילים' : 'WORD COUNT'}
+              </span>
+              <div className="flex items-baseline gap-1 font-mono">
+                <span className="text-sm font-bold text-white">
+                  {journalEntry.trim() ? journalEntry.trim().split(/\s+/).length : 0}
+                </span>
+                <span className="text-[10px] text-white/20">/ 500</span>
+              </div>
+            </div>
+          </div>
+
           <div className="absolute top-6 left-6 w-3 h-3 border-t border-l border-[#d4a373]/30 rounded-tl-sm pointer-events-none" />
           <div className="absolute bottom-6 right-6 w-3 h-3 border-b border-r border-[#d4a373]/30 rounded-br-sm pointer-events-none" />
         </div>
@@ -316,25 +348,39 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, onInputChange, producer
         </div>
       </div>
       
-      {/* שדה במאי הסרט */}
-      <div className="mb-6 relative group">
-        <div className="absolute -right-8 top-10 text-[#d4a373] opacity-20 group-hover:opacity-100 transition-opacity">
+     {/* שדה במאי הסרט - מוגבל למראה מקצועי */}
+      <div className="mb-6 relative group max-w-[320px]">
+        <div className="absolute -right-8 top-10 text-[#d4a373] opacity-20 group-hover:opacity-100 transition-opacity hidden md:block">
           <Camera size={20} />
         </div>
-        <label className="block text-[#d4a373] text-[10px] uppercase tracking-[0.4em] mb-2 font-black italic">
-{lang === 'he' ? 'קרדיט ליוצר/ת:' : 'CREATOR CREDIT:'}        </label>
-        <input 
-  type="text"
-  value={producerName}
-  onChange={(e) => {
-    const newName = e.target.value;
-    setProducerName(newName); // מעדכן את ה-State ב-HomePage
-    // שמירה בזיכרון - כדאי לעשות את זה כאן כדי שזה יהיה "סופי"
-    localStorage.setItem('lifescript_producer_name', newName);
-  }}
-  placeholder={lang === 'he' ? 'הזן שם לקרדיטים...' : 'Enter name for credits...'}
-  className="w-full bg-black/40 border-b border-[#d4a373]/30 p-3 text-white focus:border-[#d4a373] outline-none transition-all italic tracking-widest text-sm md:text-base placeholder:opacity-30"
-/>
+        <label className="block text-[#d4a373] text-[10px] uppercase tracking-[0.4em] mb-3 font-black italic">
+          {lang === 'he' ? 'קרדיט ליוצר/ת:' : 'CREATOR CREDIT:'}
+        </label>
+        <div className="relative">
+          <input 
+            type="text"
+            value={producerName}
+            onChange={(e) => {
+              const val = e.target.value.slice(0, 22); // הגבלה כירורגית ל-22 תווים
+              setProducerName(val);
+              localStorage.setItem('lifescript_producer_name', val);
+            }}
+            placeholder={lang === 'he' ? 'הזן שם לקרדיטים...' : 'Enter name for credits...'}
+            className="w-full bg-black/40 border-b border-[#d4a373]/30 p-3 text-white focus:border-[#d4a373] outline-none transition-all italic tracking-widest text-sm md:text-base placeholder:opacity-20"
+            maxLength={22}
+          />
+          
+          {/* מונה תווים עדין שמופיע רק כשמתקרבים לקצה */}
+          {producerName.length > 15 && (
+            <motion.span 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }}
+              className="absolute -bottom-5 right-0 text-[8px] text-[#d4a373]/40 tracking-widest uppercase"
+            >
+              {22 - producerName.length} {lang === 'he' ? 'נותרו' : 'left'}
+            </motion.span>
+          )}
+        </div>
       </div>
 
       {/* כפתור הפקה מרכזי */}
