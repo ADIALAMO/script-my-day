@@ -43,7 +43,9 @@ const translateGenre = (genre) => {
   return map[normalized] || genre || 'Cinematic';
 };
 
-function ScriptOutput({ script, lang, setIsTypingGlobal, genre }) {
+function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName }) {
+  // הגדרת השם הסופי - אם אין שם, נשתמש בברירת מחדל
+const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST');  // --- יתר המשתנים שלך (כמו posterUrl, posterLoading וכו') צריכים להישאר כאן ---  
   // --- States ---
   const [cleanScript, setCleanScript] = useState('');
   const [visualPrompt, setVisualPrompt] = useState('');
@@ -395,15 +397,22 @@ const handleCapturePoster = async (action) => {
       return () => clearTimeout(timer);
     }
   }, [isTyping]);
-  const credits = isHebrew ? {
+  // --- הגדרות הקרדיטים עם השם הדינמי ---
+// בדיקה ישירה של השפה והזרקת הקרדיטים המלאים
+  // לוגיקה כירורגית: אם המשתמש הזין שם, הוא הופך לבמאי והשם המקורי נמחק
+  const credits = (lang === 'he') ? {
     comingSoon: 'בקרוב בקולנוע',
-    line1: 'בימוי: עדי אלמו • הפקה: LIFESCRIPT STUDIO',
+    line1: producerName && producerName.trim() !== "" 
+      ? `בימוי: ${producerName} • הפקה: סטודיו LIFESCRIPT` 
+      : `בימוי: עדי אלמו • הפקה: סטודיו LIFESCRIPT`,
     line2: 'צילום: מעבדת AI • עיצוב אמנותי: הוליווד דיגיטלית • ליהוק: וירטואלי',
     line3: 'מוזיקה: THE MASTER • עריכה: סוכן 2005 • אפקטים: מנוע קולנועי',
     copyright: '© 2025 LIFESCRIPT STUDIO • כל הזכויות שמורות'
   } : {
     comingSoon: 'COMING SOON',
-    line1: 'DIRECTED BY ADI ALAMO • PRODUCED BY LIFESCRIPT STUDIO',
+    line1: producerName && producerName.trim() !== "" 
+      ? `DIRECTED BY ${producerName.toUpperCase()} • PRODUCTION: LIFESCRIPT STUDIO` 
+      : `DIRECTED BY ADI ALAMO • PRODUCTION: LIFESCRIPT STUDIO`,
     line2: 'CINEMATOGRAPHY: AI LAB • ART DIRECTION: DIGITAL HOLLYWOOD • CASTING: VIRTUAL',
     line3: 'MUSIC: THE MASTER • EDITING: AGENT 2005 • VFX: CINEMATIC ENGINE',
     copyright: '© 2025 LIFESCRIPT STUDIO • ALL RIGHTS RESERVED'
@@ -726,7 +735,8 @@ const handleCapturePoster = async (action) => {
       </p>
       
       <div className="w-full border-t border-white/20 pt-3 md:pt-5 flex flex-col gap-1 font-bold uppercase text-white/90">
-        <p className="text-[7px] md:text-[11px] tracking-[0.1em] opacity-95">
+        {/* תיקון כירורגי: שימוש בבלוק הקרדיטים המובנה הכולל את השם והסטודיו */}
+        <p className="text-[7px] md:text-[11px] tracking-[0.1em] opacity-95 italic">
           {credits.line1}
         </p>
         

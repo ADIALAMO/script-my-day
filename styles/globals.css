@@ -169,3 +169,21 @@ body {
   /* שינינו ל-2.5 שניות כדי ללוות את רוב אורך הסאונד */
   animation: camera-flash 2.5s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+/* עיצוב פס גלילה דק וזהוב לגלריה */
+.custom-gallery-scroll::-webkit-scrollbar {
+  width: 4px; /* דק מאוד שלא יפריע לעין */
+}
+
+.custom-gallery-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-gallery-scroll::-webkit-scrollbar-thumb {
+  background: #d4a373; /* צבע הזהב של המותג */
+  border-radius: 20px;
+}
+
+.custom-gallery-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #d4a373 transparent;
+}

@@ -27,7 +27,7 @@ function MyApp({ Component, pageProps }) {
     name="viewport" 
     content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" 
   />
-  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="theme-color" content="#030712" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
@@ -58,7 +58,7 @@ function MyApp({ Component, pageProps }) {
 </Head>
       
       {/* המבנה הראשי של האתר עם צבעי המותג והגדרות הבחירה */}
-      <main className="min-h-screen bg-[#0a0a0a] selection:bg-[#d4a373]/30">
+      <main className="min-h-screen bg-[#030712] selection:bg-[#d4a373]/30">
         <Component {...pageProps} />
       </main>
     </>

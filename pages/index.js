@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Film, Copyright, AlertCircle, Key, X, Download, Share2, Camera } from 'lucide-react';import Navbar from '../components/Navbar';
 import ScriptForm from '../components/ScriptForm';
 import ScriptOutput from '../components/ScriptOutput';
-import { detectSuggestedGenre } from '../utils/input-processor';
 import { SHOWCASE_POSTERS } from '../constants/showcase';const genreIcons = {
   sciFi: '🚀',
   horror: '👻',
@@ -29,9 +28,14 @@ function HomePage() {
   const [showTips, setShowTips] = useState(false);
   const [showGallery, setShowGallery] = useState(true); // State חדש
   const [selectedPoster, setSelectedPoster] = useState(null);
-
+  const [producerName, setProducerName] = useState('');  
+  
   useEffect(() => {
     setMounted(true);
+    // טעינת שם המפיק מהזיכרון המקומי
+  const savedName = localStorage.getItem('lifescript_producer_name');
+  if (savedName) setProducerName(savedName);
+
     const savedKey = localStorage.getItem('lifescript_admin_key');
     if (savedKey) setTempAdminKey(savedKey);
 
@@ -92,7 +96,8 @@ function HomePage() {
         body: JSON.stringify({ 
           journalEntry, 
           genre,
-          deviceId,
+          producerName: producerName || (lang === 'he' ? 'אורח' : 'Guest'), // שם ברירת מחדל אם ריק
+          deviceId: localStorage.getItem('lifescript_device_id'), // המזהה למכסה היומית
           adminKeyBody: savedAdminKey 
         }),
       });
@@ -706,18 +711,12 @@ function HomePage() {
 </div>
  <div className="bg-[#030712]/60 backdrop-blur-3xl p-8 md:p-16 relative">
   <ScriptForm
-    onGenerateScript={handleGenerateScript} 
-    loading={loading} 
-    lang={lang} 
-    isTyping={isTyping} // מעביר את מצב ההקלדה להנמכת הווליום
-    selectedGenre={selectedGenre} 
-    genreIcons={genreIcons}
-    onInputChange={(text) => {
-      // שומר על לוגיקת זיהוי הז'אנר האוטומטית
-      const suggested = detectSuggestedGenre(text);
-      if (suggested !== selectedGenre) setSelectedGenre(suggested);
-    }}
-  />
+  onSubmit={handleGenerateScript} 
+  loading={loading} 
+  lang={lang} 
+  producerName={producerName}
+  setProducerName={setProducerName}
+/>
 
     {/* שמירה על מנגנון השגיאות המקורי שלך */}
     <AnimatePresence>
@@ -736,98 +735,90 @@ function HomePage() {
   </div>
 </motion.section>
 {/* --- גלריית השראות קולנועית --- */}
-<AnimatePresence>
-  {showGallery && !script && (
-    <motion.section
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20, scale: 0.95 }}
-      transition={{ duration: 0.8, ease: "easeInOut" }}
-      className="mt-16 mb-10"
-    >
-      <div className="text-center mb-10">
-        <h3 className="text-[#d4a373] text-[10px] font-black tracking-[0.5em] uppercase mb-2 opacity-60">
-          {lang === 'he' ? 'גלריית הפקות' : 'PRODUCTION SAMPLES'}
-        </h3>
-        <div className="h-[1px] w-20 bg-[#d4a373]/30 mx-auto" />
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-6 md:gap-8 px-4">
-        {SHOWCASE_POSTERS.map((poster, index) => {
-          const isSelected = selectedPoster === poster.id;
-          
-          return (
-            <motion.div 
-              key={poster.id}
+        <AnimatePresence>
+          {showGallery && !script && (
+            <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              onClick={() => setSelectedPoster(isSelected ? null : poster.id)}
-              className={`group relative aspect-[2/3] overflow-hidden rounded-[2rem] border transition-all duration-500 cursor-pointer
-                ${isSelected ? 'border-[#d4a373] shadow-[0_0_30px_rgba(212,163,115,0.2)]' : 'border-white/10 shadow-2xl hover:border-white/30'}`}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={{ duration: 0.8, ease: "easeInOut" }}
+              className="mt-16 mb-10"
             >
-              {/* תמונת הפוסטר - נחלשת כשנבחר */}
-              {/* תמונת הפוסטר - עדכון רמת הבהירות והטשטוש */}
-<img 
-  src={poster.src} 
-  alt={lang === 'he' ? poster.titleHe : poster.titleEn} 
-  className={`w-full h-full object-cover transition-all duration-1000 
-    ${isSelected ? 'scale-105 blur-[1px] brightness-[0.4]' : 'grayscale-[0.2] group-hover:grayscale-0'}`}
-/>
+              <div className="text-center mb-10">
+                <h3 className="text-[#d4a373] text-[10px] font-black tracking-[0.5em] uppercase mb-2 opacity-60">
+                  {lang === 'he' ? 'גלריית הפקות' : 'PRODUCTION SAMPLES'}
+                </h3>
+                <div className="h-[1px] w-20 bg-[#d4a373]/30 mx-auto" />
+              </div>
 
-{/* שכבת הטקסט - מותאמת למובייל */}
-<div className={`absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent transition-all duration-500 flex flex-col justify-end p-4 md:p-6 text-right
-  ${isSelected ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 md:group-hover:opacity-100 md:group-hover:translate-y-0'}`}>
-  
-  {/* הסינופסיס - שימוש ב-line-clamp כדי למנוע חריגה ופונט קטן יותר */}
-  <p className="text-gray-200 text-[8px] md:text-[11px] leading-relaxed mb-3 md:mb-6 font-mono italic border-r-2 border-[#d4a373] pr-2 md:pr-3 overflow-hidden">
-    {lang === 'he' ? poster.excerptHe : poster.excerptEn}
-  </p>
-
-  <div className="flex flex-col mb-1 md:mb-2">
-    <span className="text-[#d4a373] text-[7px] md:text-[9px] font-black tracking-[0.2em] md:tracking-[0.3em] uppercase italic block">
-      {lang === 'he' ? "ז'אנר:" : 'GENRE:'}
-    </span>
-    
-    <span className="text-white text-[10px] md:text-xs font-bold tracking-widest uppercase">
-      {lang === 'he' ? poster.titleHe : poster.titleEn}
-    </span>
-  </div>
-
-  <div className={`h-[1px] md:h-[1.5px] bg-[#d4a373] transition-all duration-700 ${isSelected ? 'w-12 md:w-16' : 'w-0 group-hover:w-10'}`} />
-  
-  {/* כפתור סגירה קטן יותר למובייל */}
-  {isSelected && (
-    <div className="absolute top-3 left-3 md:top-6 md:left-6 text-[#d4a373] opacity-50 text-[7px] md:text-[8px] uppercase tracking-[0.1em]">
-      {lang === 'he' ? '[ סגור ]' : '[ CLOSE ]'}
-    </div>
-  )}
-</div>
-            </motion.div>
-          );
-        })}
-      </div>
-    </motion.section>
-  )}
-</AnimatePresence>
+              {/* התיקון כאן: הגבלת גובה וגלילה פנימית */}
+              <div className="max-h-[500px] overflow-y-auto overflow-x-hidden px-2 custom-gallery-scroll pb-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6 md:gap-8">
+                  {SHOWCASE_POSTERS.map((poster, index) => {
+                    const isSelected = selectedPoster === poster.id;
+                    return (
+                      <motion.div 
+                        key={poster.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        onClick={() => setSelectedPoster(isSelected ? null : poster.id)}
+                        className={`group relative aspect-[2/3] overflow-hidden rounded-[2rem] border transition-all duration-500 cursor-pointer
+                          ${isSelected ? 'border-[#d4a373] shadow-[0_0_30px_rgba(212,163,115,0.2)]' : 'border-white/10 shadow-2xl hover:border-white/30'}`}
+                      >
+                        <img 
+                          src={poster.src} 
+                          alt={lang === 'he' ? poster.titleHe : poster.titleEn} 
+                          className={`w-full h-full object-cover transition-all duration-1000 
+                            ${isSelected ? 'scale-105 blur-[1px] brightness-[0.4]' : 'grayscale-[0.2] group-hover:grayscale-0'}`}
+                        />
+                        <div className={`absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent transition-all duration-500 flex flex-col justify-end p-4 md:p-6 text-right
+                          ${isSelected ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 md:group-hover:opacity-100 md:group-hover:translate-y-0'}`}>
+                          <p className="text-gray-200 text-[8px] md:text-[11px] leading-relaxed mb-3 md:mb-6 font-mono italic border-r-2 border-[#d4a373] pr-2 md:pr-3 overflow-hidden">
+                            {lang === 'he' ? poster.excerptHe : poster.excerptEn}
+                          </p>
+                          <div className="flex flex-col mb-1 md:mb-2">
+                            <span className="text-[#d4a373] text-[7px] md:text-[9px] font-black tracking-[0.2em] md:tracking-[0.3em] uppercase italic block">
+                              {lang === 'he' ? "ז'אנר:" : 'GENRE:'}
+                            </span>
+                            <span className="text-white text-[10px] md:text-xs font-bold tracking-widest uppercase">
+                              {lang === 'he' ? poster.titleHe : poster.titleEn}
+                            </span>
+                          </div>
+                          <div className={`h-[1px] md:h-[1.5px] bg-[#d4a373] transition-all duration-700 ${isSelected ? 'w-12 md:w-16' : 'w-0 group-hover:w-10'}`} />
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.section>
+          )}
+        </AnimatePresence>
 
         {/* תצוגת התסריט והפוסטר */}
-       <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait">
           {script && !loading && (
             <motion.div 
               initial={{ opacity: 0, y: 40 }} 
               animate={{ opacity: 1, y: 0 }} 
               exit={{ opacity: 0, y: 20 }}
-              transition={{ duration: 0.8, ease: "easeOut" }} // הוסף את השורה הזו
+              transition={{ duration: 0.8, ease: "easeOut" }}
               className="mt-16 md:mt-24"
             >
-              <ScriptOutput script={script} lang={lang} genre={selectedGenre} setIsTypingGlobal={setIsTyping} />
-            </motion.div>
+
+<ScriptOutput 
+  script={script} 
+  lang={lang} 
+  genre={selectedGenre} 
+  setIsTypingGlobal={setIsTyping} 
+  producerName={producerName} // וודא שהשורה הזו קיימת בדיוק כך
+/>            </motion.div>
           )}
         </AnimatePresence>
       </main>
-
-     {/* Footer המלוטש - היררכיה הוליוודית קבועה */}
+      
+      {/* Footer המלוטש --- */}
       <footer className="py-12 md:py-16 text-center border-t border-white/[0.03] bg-black/40 mt-10 px-4">
         <div className="flex flex-col items-center justify-center">
           
