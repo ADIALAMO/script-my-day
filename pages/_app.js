@@ -1,4 +1,5 @@
 // pages/_app.js
+import { SpeedInsights } from '@vercel/speed-insights/react'; // ייבוא הרכיב החדש
 import '../styles/globals.css';
 import Head from 'next/head';
 import { useEffect } from 'react';
@@ -60,6 +61,7 @@ function MyApp({ Component, pageProps }) {
       {/* המבנה הראשי של האתר עם צבעי המותג והגדרות הבחירה */}
       <main className="min-h-screen bg-[#030712] selection:bg-[#d4a373]/30">
         <Component {...pageProps} />
+      <SpeedInsights />
       </main>
     </>
   );

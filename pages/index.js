@@ -882,15 +882,16 @@ function HomePage() {
           </div>
 
           {/* אזור הטקסט עם גלילה פנימית חלקה */}
-          <div className="overflow-y-auto pr-3 custom-scrollbar flex-grow text-right">
-            <p className="text-white/90 text-[1.1rem] md:text-xl leading-relaxed font-light italic" 
-               style={{ 
-                 fontFamily: "'Courier Prime', 'Courier New', monospace",
-                 direction: lang === 'he' ? 'rtl' : 'ltr'
-               }}>
-              {lang === 'he' ? selectedPoster.excerptHe : selectedPoster.excerptEn}
-            </p>
-          </div>
+<div className="overflow-y-auto pr-3 custom-scrollbar flex-grow text-right">
+  <p className="text-white/90 text-[1.1rem] md:text-xl leading-relaxed font-light whitespace-pre-line" 
+     style={{ 
+       fontFamily: "'Courier Prime', 'Courier New', monospace",
+       direction: lang === 'he' ? 'rtl' : 'ltr',
+       // whitespace-pre-line הוא המפתח כאן להפרדת השורות
+     }}>
+    {lang === 'he' ? selectedPoster.excerptHe : selectedPoster.excerptEn}
+  </p>
+</div>
         </div>
       </motion.div>
     </motion.div>
