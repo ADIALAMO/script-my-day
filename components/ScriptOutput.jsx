@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Download, Share2, Check, Film, Volume2, VolumeX, Loader2, FastForward } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import * as htmlToImage from 'html-to-image'; // וודא שזה מופיע בראש הקובץ
+import { track } from '@vercel/analytics';
 
 // --- לוגיקה עוטפת: ניקוי כותרות ותרגום ז'אנרים ---
 // הוספת פונקציית העזר לזיהוי שפה
@@ -302,6 +303,12 @@ const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST')
 
 const handleCapturePoster = async (action) => {
   if (!posterRef.current || !posterUrl) return;
+  
+  track(action === 'download' ? 'Poster Downloaded' : 'Poster Shared', {
+    genre: genre,
+    language: lang,
+    title: posterTitle
+  });
 
   try {
     const img = posterRef.current.querySelector('img');
@@ -435,8 +442,14 @@ const handleCapturePoster = async (action) => {
         <div className="flex items-center gap-2">
           {isTyping && (
             <button 
-              onClick={() => { clearTimeout(timerRef.current); setDisplayText(cleanScript); setIsTyping(false); setIsTypingGlobal?.(false); }} 
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#d4a373]/20 border border-[#d4a373]/40 rounded-full text-[10px] text-[#d4a373] font-bold hover:bg-[#d4a373]/30 transition-all"
+// תחת ה-onClick של כפתור ה-SKIP:
+onClick={() => {
+  track('Typing Skipped');
+  clearTimeout(timerRef.current); 
+  setDisplayText(cleanScript); 
+  setIsTyping(false); 
+  setIsTypingGlobal?.(false); 
+}}              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#d4a373]/20 border border-[#d4a373]/40 rounded-full text-[10px] text-[#d4a373] font-bold hover:bg-[#d4a373]/30 transition-all"
             >
               <FastForward size={12} /> {isHebrew ? 'דלג' : 'SKIP'}
             </button>
