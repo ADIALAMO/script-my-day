@@ -1,3 +1,11 @@
+:root {
+  --sat: env(safe-area-inset-top);
+}
+
+button {
+  touch-action: manipulation; /* מסיר את השיהוי של ה-300ms בלחיצה */
+  -webkit-tap-highlight-color: transparent; /* מסיר את הריבוע הכחול המכוער בלחיצה באייפון */
+}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

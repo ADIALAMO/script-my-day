@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Film, Copyright, AlertCircle, Key, X, Download, Share2, Camera } from 'lucide-react';import Navbar from '../components/Navbar';
+import { Film, Copyright, AlertCircle, Key, X, Download, Share2, Camera } from 'lucide-react';
+import Navbar from '../components/Navbar';
 import ScriptForm from '../components/ScriptForm';
 import ScriptOutput from '../components/ScriptOutput';
+import { Analytics } from '@vercel/analytics/react';
+import { track } from '@vercel/analytics';
 import { SHOWCASE_POSTERS } from '../constants/showcase';const genreIcons = {
   sciFi: '🚀',
   horror: '👻',
@@ -114,6 +117,7 @@ function HomePage() {
       
       if (finalScript) {
         setScript(finalScript);
+        track('ScriptGenerated', { genre: selectedGenre });
         console.log("✅ Script received successfully!");
       } else {
         throw new Error('התקבלה תשובה ריקה מהשרת');
@@ -290,16 +294,21 @@ function HomePage() {
         onClick={(e) => e.stopPropagation()}
         className="bg-[#0f1117] border border-[#d4a373]/20 p-8 md:p-12 pt-24 md:pt-32 rounded-[2.5rem] max-w-2xl w-full max-h-[85vh] overflow-y-auto relative custom-scrollbar shadow-2xl"
       >
-        {/* כפתור סגירה מתוקן - הוספתי e.stopPropagation ו-Z-index גבוה */}
         <button 
-          onClick={(e) => {
-            e.stopPropagation(); // עוצר את האירוע מלחלחל לרקע
-            setModalContent(null);
-          }} 
-          className="absolute top-8 right-6 md:top-10 md:right-10 text-white/40 hover:text-[#d4a373] transition-all duration-300 p-3 bg-white/5 hover:bg-white/10 rounded-full z-[2100] group"
-        >
-          <X size={24} className="group-hover:rotate-90 transition-transform duration-500" />
-        </button>
+  onClick={(e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setModalContent(null);
+  }} 
+  /* הוספת הדינמיקה של ה-Safe Area */
+  className="absolute right-6 md:right-10 text-white/40 hover:text-[#d4a373] transition-all duration-300 p-4 bg-white/5 hover:bg-white/10 rounded-full z-[2500] group"
+  style={{ 
+    top: 'calc(var(--sat, 0px) + 20px)', // מחשב את המרחק מהשעון של האייפון
+    touchAction: 'manipulation'
+  }}
+>
+  <X size={24} className="group-hover:rotate-90 transition-transform duration-500" />
+</button>
 
 
         {modalContent === 'terms' && (
@@ -840,13 +849,18 @@ function HomePage() {
         {/* כפתור סגירה (X) בלבד - אלמנט הניווט היחיד */}
         <button 
   onClick={(e) => {
-    e.stopPropagation(); // מונע מהלחיצה לעבור לרקע
+    e.preventDefault();
+    e.stopPropagation();
     setSelectedPoster(null);
   }}
-  className="absolute top-5 right-6 z-[1100] p-3 bg-white/10 hover:bg-[#d4a373] text-white hover:text-black rounded-full transition-all duration-300 shadow-xl"
-  aria-label="Close"
+  /* הגדלנו את ה-Z-index והוספנו p-4 לשטח מגע גדול יותר */
+  className="absolute right-6 text-white/40 hover:text-[#d4a373] transition-all duration-300 z-[9999] p-4 bg-black/20 backdrop-blur-md rounded-full group"
+  style={{ 
+    top: 'calc(var(--sat, 0px) + 16px)', // דוחף את הכפתור מתחת לשעון/אי הדינמי
+    touchAction: 'manipulation'
+  }}
 >
-  <X size={24} />
+  <X size={24} className="group-hover:rotate-90 transition-transform duration-500" />
 </button>
 
         {/* תמונה מוקטנת למעלה עם גרדיאנט עמוק */}
@@ -952,7 +966,8 @@ function HomePage() {
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(212, 163, 115, 0.2); border-radius: 10px; }
       `}</style>
-    </div>
+   <Analytics />
+   </div>
   );
 }
 
