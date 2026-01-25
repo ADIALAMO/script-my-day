@@ -117,8 +117,11 @@ function HomePage() {
       
       if (finalScript) {
         setScript(finalScript);
-        track('ScriptGenerated', { genre: selectedGenre });
-        console.log("✅ Script received successfully!");
+track('Script Created', { 
+          genre: selectedGenre,
+          language: lang,
+          producer: producerName || 'Guest'
+        });        console.log("✅ Script received successfully!");
       } else {
         throw new Error('התקבלה תשובה ריקה מהשרת');
       }
