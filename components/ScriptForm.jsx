@@ -112,7 +112,11 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, isTypingGlobal, onInput
       audio.src = `/audio/${fileName}`;
       audio.load();
       audio.loop = true;
-      if (!isMusicMuted) {
+      if (isMusicMuted) {
+        audio.volume = 0;
+      } else {
+        audio.volume = (isTyping || isTypingGlobal) ? 0.3 : 0.5;
+        // מנגן רק אם המשתמש לא השתיק
         audio.play().catch(err => console.log("Audio Playback Blocked", err));
       }
     }
@@ -126,7 +130,7 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, isTypingGlobal, onInput
 
     if (isMusicMuted) {
       audio.volume = 0;
-      return;
+      return; 
     }
 
     // ה-Ducking יופעל אם אתה מקליד יומן OR אם הסוכן כותב תסריט
@@ -135,11 +139,12 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, isTypingGlobal, onInput
     const targetVolume = shouldDuck ? 0.3 : 0.5;
 
     audio.volume = targetVolume;
+    if (audio.paused) {
+      audio.play().catch(err => console.log("Audio play resumed", err));
+    }
     
-    // זה יעזור לך לראות בקונסול אם זה עובד
-    console.log(`🎵 Audio Ducking: ${shouldDuck ? 'ON (0.3)' : 'OFF (0.5)'}`);
-  }, [isTyping, isTypingGlobal, isMusicMuted]); // הוספנו את isTypingGlobal למעקב
-
+    console.log(`🎵 Audio Update: Ducking=${shouldDuck ? 'ON' : 'OFF'}, Vol=${targetVolume}`);
+  }, [isTyping, isTypingGlobal, isMusicMuted]);
   
   const handleDownloadJournal = () => {
     const blob = new Blob([journalEntry], { type: 'text/plain' });
@@ -196,10 +201,13 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, isTypingGlobal, onInput
         <div className="relative mb-6 px-2 w-fit"> 
           <motion.button
             type="button"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setIsModalOpen(!isModalOpen)}
-            className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:border-[#d4a373]/40 transition-all duration-500 group shadow-lg"
+           disabled={isLocked}
+            onClick={() => !isLocked && setIsModalOpen(!isModalOpen)}
+            whileHover={!isLocked ? { scale: 1.02 } : {}}
+            whileTap={!isLocked ? { scale: 0.98 } : {}}
+            className={`flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:border-[#d4a373]/40 transition-all duration-500 group shadow-lg ${
+              isLocked ? 'opacity-40 cursor-not-allowed' : ''
+            }`}
           >
             <Sparkles size={14} className="text-[#d4a373] group-hover:rotate-12 transition-transform" />
             <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white/70 group-hover:text-white">
@@ -339,7 +347,10 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, isTypingGlobal, onInput
                 whileHover={!isGlobalLocked ? { y: -4, scale: 1.02 } : {}}
                 whileTap={!isGlobalLocked ? { scale: 0.96 } : {}}
                 disabled={isGlobalLocked}
-                className={`relative flex flex-col items-center justify-between h-28 md:h-32 p-4 rounded-2xl border transition-all duration-500 overflow-hidden ${isSelected ? genre.activeClass : 'bg-white/5 border-white/5 hover:border-white/20 hover:bg-white/10'}`}
+// להוסיף את ה-Template Literal בסוף ה-className:
+className={`relative flex flex-col items-center justify-between h-28 md:h-32 p-4 rounded-2xl border transition-all duration-500 overflow-hidden ${
+  isSelected ? genre.activeClass : 'bg-white/5 border-white/5 hover:border-white/20 hover:bg-white/10'
+} ${isLocked ? 'opacity-40 grayscale-[0.8] cursor-not-allowed pointer-events-none' : ''}`}
               >
                 <div className={`mt-2 transition-all duration-500 ${isSelected ? `${genre.textClass} scale-110 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]` : 'text-gray-500 grayscale opacity-70'}`}>
                   <Visual isSelected={isSelected} />
@@ -405,8 +416,8 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, isTypingGlobal, onInput
             : 'bg-[#d4a373] py-5 md:py-7 hover:scale-[1.01] active:scale-[0.98]'
         } ${(!journalEntry.trim() || !activeGenre) && !loading ? 'opacity-30 grayscale cursor-not-allowed' : 'opacity-100'}`}
       >
-        {!loading && !isGlobalLocked && (
-          <motion.div 
+{!loading && !isLocked && journalEntry.trim() && activeGenre && (
+            <motion.div 
             animate={{ x: ['-100%', '200%'] }}
             transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
             className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[35deg] z-10"
@@ -414,7 +425,7 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, isTypingGlobal, onInput
         )}
         
         <div className="relative z-20 flex items-center justify-center w-full h-full px-4 md:px-10 italic text-black font-black">
-           {isLocked ? (
+           {loading ? (
               <div className={`flex items-center gap-3 w-full max-w-xs ${lang === 'he' ? 'flex-row-reverse' : 'flex-row'}`}>
               <div className="relative w-5 h-5 flex-shrink-0">
                 {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => (
