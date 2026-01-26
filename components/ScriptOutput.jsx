@@ -214,7 +214,6 @@ const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST')
     setShowPoster(false);
   }, [script]);
 
-  // --- מנוע הקלדה רספונסיבי ---
   // --- מנוע הקלדה הוליוודי רספונסיבי ---
   useEffect(() => {
     if (!cleanScript) return;
@@ -231,7 +230,6 @@ const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST')
       
       setDisplayText(cleanScript.substring(0, i + 1));
       
-      // התיקון הקריטי: מנגנים סאונד רק כל תו שני (i % 2 === 0)
       // זה מונע מהגלים להתנגש וליצור רעש דיגיטלי, ונשמע כמו קצב הקלדה טבעי
       if (cleanScript[i] && !/\s/.test(cleanScript[i]) && i % 2 === 0) {
         playSound();

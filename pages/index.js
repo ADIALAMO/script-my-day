@@ -22,7 +22,8 @@ function HomePage() {
   const [error, setError] = useState('');
   const [lang, setLang] = useState('he');
   const [mounted, setMounted] = useState(false);
-  
+  const [isTypingGlobal, setIsTypingGlobal] = useState(false);
+
   const [selectedGenre, setSelectedGenre] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
@@ -32,21 +33,51 @@ function HomePage() {
   const [showGallery, setShowGallery] = useState(true); // State חדש
   const [selectedPoster, setSelectedPoster] = useState(null);
   const [producerName, setProducerName] = useState('');  
-  
+
   useEffect(() => {
     setMounted(true);
-    // טעינת שם המפיק מהזיכרון המקומי
-  const savedName = localStorage.getItem('lifescript_producer_name');
-  if (savedName) setProducerName(savedName);
+
+    const unlockAudio = () => {
+  let dramaAudio = document.getElementById('main-bg-music');
+  
+  if (!dramaAudio) {
+    dramaAudio = new Audio('/audio/drama_bg.m4a');
+    dramaAudio.id = 'main-bg-music';
+    document.body.appendChild(dramaAudio); // הזרקה פיזית ל-DOM
+  }
+  
+  dramaAudio.loop = true;
+  dramaAudio.volume = 0.4;
+  
+  dramaAudio.play()
+    .then(() => {
+      console.log("Audio System Online");
+      window.mainAudio = dramaAudio; // הופכים אותו לנגיש גלובלית
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    })
+    .catch(e => console.log("Waiting for user gesture..."));
+};
+
+    window.addEventListener('click', unlockAudio);
+    window.addEventListener('touchstart', unlockAudio);
+
+    // ... שאר הקוד של ה-LocalStorage נשאר בדיוק אותו דבר ...
+    const savedName = localStorage.getItem('lifescript_producer_name');
+    if (savedName) setProducerName(savedName);
 
     const savedKey = localStorage.getItem('lifescript_admin_key');
     if (savedKey) setTempAdminKey(savedKey);
 
-    // יצירת/שליפת מזהה מכשיר קבוע - חיוני לעקיפת בעיות IP משתנה
     if (!localStorage.getItem('lifescript_device_id')) {
       const newId = 'ds_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
       localStorage.setItem('lifescript_device_id', newId);
     }
+
+    return () => {
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
   }, []);
   
   const toggleLanguage = () => setLang(prev => prev === 'he' ? 'en' : 'he');
@@ -284,6 +315,7 @@ track('Script Created', {
     </motion.div>
   )}
 </AnimatePresence>
+
 {/* --- Modal משפטי/תמיכה קולנועי --- */}
 <AnimatePresence>
   {modalContent && (
@@ -297,28 +329,17 @@ track('Script Created', {
         onClick={(e) => e.stopPropagation()}
         className="bg-[#0f1117] border border-[#d4a373]/20 p-8 md:p-12 pt-24 md:pt-32 rounded-[2.5rem] max-w-2xl w-full max-h-[85vh] overflow-y-auto relative custom-scrollbar shadow-2xl"
       >
-        <button 
-  onClick={(e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setModalContent(null);
-  }} 
-  /* הוספת הדינמיקה של ה-Safe Area */
-  className="absolute right-6 md:right-10 text-white/40 hover:text-[#d4a373] transition-all duration-300 p-4 bg-white/5 hover:bg-white/10 rounded-full z-[2500] group"
-  style={{ 
-    top: 'calc(var(--sat, 0px) + 20px)', // מחשב את המרחק מהשעון של האייפון
-    touchAction: 'manipulation'
-  }}
->
-  <X size={24} className="group-hover:rotate-90 transition-transform duration-500" />
-</button>
-
+       
 
         {modalContent === 'terms' && (
   <div className={lang === 'he' ? 'text-right' : 'text-left'} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-    <h2 className="text-[#d4a373] text-2xl font-black mb-6 uppercase tracking-tighter border-b border-[#d4a373]/10 pb-4 italic">
-      {lang === 'he' ? 'תנאי שימוש - חוזה הפקה' : 'TERMS OF SERVICE - PRODUCTION CONTRACT'}
-    </h2>
+    <div className="flex items-center justify-between border-b border-[#d4a373]/10 pb-4 mb-6">
+  <h2 className="text-[#d4a373] text-2xl font-black uppercase tracking-tighter italic">
+{lang === 'he' ? 'תנאי שימוש - חוזה הפקה' : 'TERMS OF SERVICE - PRODUCTION CONTRACT'}  </h2>
+  <button onClick={() => setModalContent(null)} className="text-white/20 hover:text-[#d4a373] transition-colors p-2">
+    <X size={28} />
+  </button>
+</div>
     
     <div className="space-y-6 text-gray-300 text-sm md:text-base leading-relaxed overflow-y-auto max-h-[65vh] pr-2 custom-scrollbar">
       
@@ -428,9 +449,13 @@ track('Script Created', {
 
        {modalContent === 'privacy' && (
   <div className={lang === 'he' ? 'text-right' : 'text-left'} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-    <h2 className="text-[#d4a373] text-2xl font-black mb-6 uppercase tracking-tighter border-b border-[#d4a373]/10 pb-4 italic">
-      {lang === 'he' ? 'פרטיות וביטחון מידע' : 'PRIVACY & DATA SECURITY'}
-    </h2>
+    <div className="flex items-center justify-between border-b border-[#d4a373]/10 pb-4 mb-6">
+  <h2 className="text-[#d4a373] text-2xl font-black uppercase tracking-tighter italic">
+{lang === 'he' ? 'פרטיות וביטחון מידע' : 'PRIVACY & DATA SECURITY'}  </h2>
+  <button onClick={() => setModalContent(null)} className="text-white/20 hover:text-[#d4a373] transition-colors p-2">
+    <X size={28} />
+  </button>
+</div>
     
     <div className="space-y-6 text-gray-300 text-sm md:text-base leading-relaxed overflow-y-auto max-h-[65vh] pr-2 custom-scrollbar">
       
@@ -499,9 +524,13 @@ track('Script Created', {
 
         {modalContent === 'support' && (
   <div className={lang === 'he' ? 'text-right' : 'text-left'} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-    <h2 className="text-[#d4a373] text-2xl font-black mb-6 uppercase tracking-tighter border-b border-[#d4a373]/10 pb-4 italic">
-      {lang === 'he' ? 'מוקד תמיכה ופתרון תקלות' : 'PRODUCTION SUPPORT & FAQ'}
-    </h2>
+    <div className="flex items-center justify-between border-b border-[#d4a373]/10 pb-4 mb-6">
+  <h2 className="text-[#d4a373] text-2xl font-black uppercase tracking-tighter italic">
+{lang === 'he' ? 'מוקד תמיכה ופתרון תקלות' : 'PRODUCTION SUPPORT & FAQ'}  </h2>
+  <button onClick={() => setModalContent(null)} className="text-white/20 hover:text-[#d4a373] transition-colors p-2">
+    <X size={28} />
+  </button>
+</div>
 
     <div className="space-y-6 overflow-y-auto max-h-[65vh] pr-2 custom-scrollbar">
       
@@ -575,10 +604,14 @@ track('Script Created', {
 
         {modalContent === 'about' && (
   <div className={lang === 'he' ? 'text-right' : 'text-left'} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-    <h2 className="text-[#d4a373] text-2xl font-black mb-6 uppercase tracking-tighter border-b border-[#d4a373]/10 pb-4 italic">
-  {lang === 'he' ? 'אודות LIFESCRIPT: היומן הקולנועי הראשון מסוגו' : 'ABOUT LIFESCRIPT: THE FIRST CINEMATIC JOURNAL'}
+<div className="flex items-center justify-between border-b border-[#d4a373]/10 pb-4 mb-6">
+  <h2 className="text-[#d4a373] text-2xl font-black uppercase tracking-tighter italic">
+      {lang === 'he' ? 'אודות LIFESCRIPT: היומן הקולנועי הראשון מסוגו' : 'ABOUT LIFESCRIPT: THE FIRST CINEMATIC JOURNAL'}
 </h2>
-    
+  <button onClick={() => setModalContent(null)} className="text-white/20 hover:text-[#d4a373] transition-colors p-2">
+    <X size={28} />
+  </button>
+</div>    
     <div className="space-y-8 text-gray-300 text-sm md:text-base leading-relaxed overflow-y-auto max-h-[65vh] pr-2 custom-scrollbar">
       <section>
         <h3 className="text-white font-bold mb-2 text-lg">
@@ -726,10 +759,12 @@ track('Script Created', {
  <div className="bg-[#030712]/60 backdrop-blur-3xl p-8 md:p-16 relative">
   <ScriptForm
   onSubmit={handleGenerateScript} 
-  loading={loading} 
+  loading={loading || isTypingGlobal}
   lang={lang} 
+  isTypingGlobal={isTypingGlobal}
   producerName={producerName}
   setProducerName={setProducerName}
+  onInputChange={setIsTyping}
 />
 
     {/* שמירה על מנגנון השגיאות המקורי שלך */}
@@ -826,9 +861,10 @@ track('Script Created', {
   script={script} 
   lang={lang} 
   genre={selectedGenre} 
-  setIsTypingGlobal={setIsTyping} 
-  producerName={producerName} // וודא שהשורה הזו קיימת בדיוק כך
-/>            </motion.div>
+  setIsTypingGlobal={setIsTypingGlobal} // <--- שינינו מ-setIsTyping ל-setIsTypingGlobal
+  producerName={producerName}
+/>
+         </motion.div>
           )}
         </AnimatePresence>
        {/* --- מודל הרחבה קטן ויוקרתי (Expanded Panel) --- */}

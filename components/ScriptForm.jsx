@@ -52,7 +52,7 @@ const genres = [
 ];
 
 // --- הקומפוננטה הראשית (אחת ויחידה!) ---
-const ScriptForm = ({ onSubmit, loading, lang, isTyping, onInputChange, producerName, setProducerName }) => {
+const ScriptForm = ({ onSubmit, loading, lang, isTyping, isTypingGlobal, onInputChange, producerName, setProducerName }) => {
   const [journalEntry, setJournalEntry] = useState('');
   const [activeGenre, setActiveGenre] = useState('drama');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -61,7 +61,9 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, onInputChange, producer
   const bgMusicRef = useRef(null);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const getWordCount = (text) => text.trim() ? text.trim().split(/\s+/).length : 0;
+  const isLocked = loading || isTypingGlobal;
   const loadingMessages = lang === 'he' ? [
+    
     
     "סורק זכרונות...",
     "מנתח DNA סיפורי...",
@@ -94,41 +96,51 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, onInputChange, producer
 
   const isGlobalLocked = loading || isTyping;
 
-  // מוזיקה
-  useEffect(() => {
-    if (bgMusicRef.current) {
-      bgMusicRef.current.pause();
-      bgMusicRef.current = null;
-    }
-    
-    if (activeGenre) {
-      const formattedGenre = activeGenre.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
-      const audioPath = `/audio/${formattedGenre}_bg.m4a`;
-      
-      bgMusicRef.current = new Audio(audioPath);
-      bgMusicRef.current.loop = true;
-      bgMusicRef.current.volume = isTyping ? 0.05 : 0.2;
-      bgMusicRef.current.muted = isMusicMuted;
+  // +++ הטמעה חדשה +++
 
+  // 1. פונקציית החלפת סאונד - חייבת לקרות בלחיצה (User Gesture)
+  const handleGenreChange = (genreValue) => {
+    setActiveGenre(genreValue);
+    const audio = document.getElementById('main-bg-music');
+    if (!audio) return;
+
+    const formattedGenre = genreValue.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+    const fileName = `${formattedGenre}_bg.m4a`;
+    
+    if (!audio.src.endsWith(fileName)) {
+      audio.pause();
+      audio.src = `/audio/${fileName}`;
+      audio.load();
+      audio.loop = true;
       if (!isMusicMuted) {
-        bgMusicRef.current.play().catch(err => 
-          console.log("Audio play blocked or file missing at:", audioPath)
-        );
+        audio.play().catch(err => console.log("Audio Playback Blocked", err));
       }
     }
-    return () => {
-      if (bgMusicRef.current) bgMusicRef.current.pause();
-    };
-  }, [activeGenre, isMusicMuted]);
+    if (onInputChange) onInputChange(journalEntry, genreValue);
+  };
 
-  // Ducking effect
+  // ניהול Ducking - מגיב להקלדת משתמש (isTyping) ולהקלדת סוכן (isTypingGlobal)
   useEffect(() => {
-    if (bgMusicRef.current && !isMusicMuted) {
-      const targetVolume = isTyping ? 0.15 : 0.2;
-      bgMusicRef.current.volume = targetVolume;
-    }
-  }, [isTyping, isMusicMuted]);
+    const audio = document.getElementById('main-bg-music');
+    if (!audio) return;
 
+    if (isMusicMuted) {
+      audio.volume = 0;
+      return;
+    }
+
+    // ה-Ducking יופעל אם אתה מקליד יומן OR אם הסוכן כותב תסריט
+    const shouldDuck = isTyping || isTypingGlobal; 
+
+    const targetVolume = shouldDuck ? 0.3 : 0.5;
+
+    audio.volume = targetVolume;
+    
+    // זה יעזור לך לראות בקונסול אם זה עובד
+    console.log(`🎵 Audio Ducking: ${shouldDuck ? 'ON (0.3)' : 'OFF (0.5)'}`);
+  }, [isTyping, isTypingGlobal, isMusicMuted]); // הוספנו את isTypingGlobal למעקב
+
+  
   const handleDownloadJournal = () => {
     const blob = new Blob([journalEntry], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -263,12 +275,14 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, onInputChange, producer
                 console.warn("Text truncated to 500 words limit");
               }
             }}
-            disabled={isGlobalLocked}
+            disabled={isLocked}
             spellCheck="false"
             autoCorrect="off"
             autoCapitalize="none"
-            className="w-full px-6 py-8 md:px-10 md:py-10 text-lg md:text-xl text-white bg-black/40 border border-white/10 rounded-[2rem] md:rounded-[3rem] focus:border-[#d4a373]/50 focus:bg-black/60 outline-none transition-all duration-500 min-h-[220px] md:min-h-[280px] shadow-[inset_0_2px_40px_rgba(0,0,0,0.7)] leading-relaxed resize-none backdrop-blur-sm placeholder-gray-700"
-            placeholder={lang === 'he' ? 'איך עבר היום? ספר לי במילים שלך...' : 'How was your day? Tell me in your own words...'}
+            className={`w-full px-6 py-8 md:px-10 md:py-10 text-lg md:text-xl text-white bg-black/40 border border-white/10 rounded-[2rem] md:rounded-[3rem] focus:border-[#d4a373]/50 focus:bg-black/60 outline-none transition-all duration-500 min-h-[220px] md:min-h-[280px] shadow-[inset_0_2px_40px_rgba(0,0,0,0.7)] leading-relaxed resize-none backdrop-blur-sm placeholder-gray-700 ${
+              isLocked ? 'opacity-50 cursor-not-allowed grayscale-[0.5] border-white/5' : ''
+             }`}
+              placeholder={lang === 'he' ? 'איך עבר היום? ספר לי במילים שלך...' : 'How was your day? Tell me in your own words...'}
             style={{ fontFamily: "'Courier Prime', 'Courier New', monospace" }}
           />
 
@@ -320,10 +334,8 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, onInputChange, producer
               <motion.button
                 key={genre.value}
                 type="button"
-                onClick={() => {
-                  setActiveGenre(genre.value);
-                  if (onInputChange) onInputChange(journalEntry, genre.value); 
-                }}                
+                onClick={() => handleGenreChange(genre.value)}
+
                 whileHover={!isGlobalLocked ? { y: -4, scale: 1.02 } : {}}
                 whileTap={!isGlobalLocked ? { scale: 0.96 } : {}}
                 disabled={isGlobalLocked}
@@ -386,7 +398,7 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, onInputChange, producer
       {/* כפתור הפקה מרכזי */}
       <motion.button
         type="submit"
-        disabled={isGlobalLocked || !journalEntry.trim() || !activeGenre}
+        disabled={isLocked || !journalEntry.trim() || !activeGenre}
         className={`relative w-full group overflow-hidden rounded-[1.5rem] md:rounded-[2rem] transition-all duration-700 shadow-[0_10px_40px_rgba(212,163,115,0.2)] ${
           loading 
             ? 'bg-gradient-to-r from-amber-600 via-[#d4a373] to-amber-600 py-6 md:py-8' 
@@ -402,8 +414,8 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, onInputChange, producer
         )}
         
         <div className="relative z-20 flex items-center justify-center w-full h-full px-4 md:px-10 italic text-black font-black">
-          {loading ? (
-            <div className={`flex items-center gap-3 w-full max-w-xs ${lang === 'he' ? 'flex-row-reverse' : 'flex-row'}`}>
+           {isLocked ? (
+              <div className={`flex items-center gap-3 w-full max-w-xs ${lang === 'he' ? 'flex-row-reverse' : 'flex-row'}`}>
               <div className="relative w-5 h-5 flex-shrink-0">
                 {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => (
                   <motion.div
