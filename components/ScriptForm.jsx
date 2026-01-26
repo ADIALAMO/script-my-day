@@ -327,8 +327,37 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, isTypingGlobal, onInput
 
           <button 
             type="button" 
-            onClick={() => setIsMusicMuted(!isMusicMuted)} 
-            className={`p-2.5 rounded-xl border transition-all duration-300 ${isMusicMuted ? 'border-white/10 bg-white/5 text-gray-500' : 'border-[#d4a373]/50 bg-[#d4a373]/10 text-[#d4a373]'}`}
+            onClick={() => {
+              if (isLocked) return;
+              
+              const newMutedState = !isMusicMuted;
+              setIsMusicMuted(newMutedState);
+
+              // ניסיון גישה בשתי דרכים כדי להבטיח עבודה במובייל
+              const audio = document.getElementById('main-bg-music') || window.mainAudio;
+              
+              if (audio) {
+                // במובייל: שינוי ווליום חייב לקרות בתוך ה-Click
+                audio.volume = newMutedState ? 0 : (isTyping || isTypingGlobal ? 0.3 : 0.5);
+                audio.muted = newMutedState; // תוספת אבטחה למובייל
+
+                // אם המשתמש מבטל השתקה - "להעיר" את האודיו
+                if (!newMutedState) {
+                  const playPromise = audio.play();
+                  if (playPromise !== undefined) {
+                    playPromise.catch(() => {
+                      // אם נחסם, ננסה שוב עם ווליום נמוך
+                      audio.volume = 0.3;
+                      audio.play();
+                    });
+                  }
+                }
+              }
+            }} 
+            disabled={isLocked}
+            className={`p-2.5 rounded-xl border transition-all duration-300 ${
+              isMusicMuted ? 'border-white/10 bg-white/5 text-gray-500' : 'border-[#d4a373]/50 bg-[#d4a373]/10 text-[#d4a373]'
+            } ${isLocked ? 'opacity-30 cursor-not-allowed' : ''}`}
           >
             {isMusicMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
           </button>
