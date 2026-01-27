@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Film, Copyright, AlertCircle, Key, X, Download, Share2, Camera } from 'lucide-react';
 import Navbar from '../components/Navbar';
+import LaunchTicket from '../components/LaunchTicket';
 import ScriptForm from '../components/ScriptForm';
 import ScriptOutput from '../components/ScriptOutput';
 import { Analytics } from '@vercel/analytics/react';
@@ -959,33 +960,33 @@ track('Script Created', {
             <Copyright size={9} /> 2025 BY ADIALAMO • ALL RIGHTS RESERVED
           </p>
 
-          {/* קישורי משנה - מותאמים לשורה אחת במובייל */}
-          <div className={`flex flex-row justify-center items-center gap-3 md:gap-8 text-[7px] md:text-[9px] font-bold tracking-[0.1em] md:tracking-widest ${lang === 'he' ? 'flex-row-reverse' : 'flex-row'}`}>
-            <button 
-              onClick={() => setModalContent('about')}
-              className="text-[#d4a373] hover:text-white transition-all duration-500 border-b border-[#d4a373]/30 pb-0.5 uppercase whitespace-nowrap"
-            >
-              {lang === 'he' ? 'אודות' : 'About'}
-            </button>
-            <button 
-              onClick={() => setModalContent('terms')}
-              className="text-white/20 hover:text-[#d4a373]/50 transition-all duration-500 border-b border-transparent hover:border-[#d4a373]/20 pb-0.5 uppercase whitespace-nowrap"
-            >
-              {lang === 'he' ? 'תנאי שימוש' : 'Terms'}
-            </button>
-            <button 
-              onClick={() => setModalContent('privacy')}
-              className="text-white/20 hover:text-[#d4a373]/50 transition-all duration-500 border-b border-transparent hover:border-[#d4a373]/20 pb-0.5 uppercase whitespace-nowrap"
-            >
-              {lang === 'he' ? 'פרטיות' : 'Privacy'}
-            </button>
-            <button 
-              onClick={() => setModalContent('support')}
-              className="text-white/20 hover:text-[#d4a373]/50 transition-all duration-500 border-b border-transparent hover:border-[#d4a373]/20 pb-0.5 uppercase whitespace-nowrap"
-            >
-              {lang === 'he' ? 'תמיכה' : 'Support'}
-            </button>
-          </div>
+          {/* קישורי משנה - מתוקן למניעת חיתוך במובייל */}
+<div className={`flex flex-wrap justify-center items-center gap-x-4 gap-y-3 md:gap-8 text-[9px] md:text-[10px] font-bold tracking-widest px-6 w-full max-w-full ${lang === 'he' ? 'flex-row-reverse' : 'flex-row'}`}>
+  <button 
+    onClick={() => setModalContent('about')}
+    className="text-[#d4a373] hover:text-white transition-all duration-500 border-b border-[#d4a373]/30 pb-0.5 uppercase whitespace-nowrap"
+  >
+    {lang === 'he' ? 'אודות' : 'About'}
+  </button>
+  <button 
+    onClick={() => setModalContent('terms')}
+    className="text-white/20 hover:text-[#d4a373]/50 transition-all duration-500 border-b border-transparent hover:border-[#d4a373]/20 pb-0.5 uppercase whitespace-nowrap"
+  >
+    {lang === 'he' ? 'תנאי שימוש' : 'Terms'}
+  </button>
+  <button 
+    onClick={() => setModalContent('privacy')}
+    className="text-white/20 hover:text-[#d4a373]/50 transition-all duration-500 border-b border-transparent hover:border-[#d4a373]/20 pb-0.5 uppercase whitespace-nowrap"
+  >
+    {lang === 'he' ? 'פרטיות' : 'Privacy'}
+  </button>
+  <button 
+    onClick={() => setModalContent('support')}
+    className="text-white/20 hover:text-[#d4a373]/50 transition-all duration-500 border-b border-transparent hover:border-[#d4a373]/20 pb-0.5 uppercase whitespace-nowrap"
+  >
+    {lang === 'he' ? 'תמיכה' : 'Support'}
+  </button>
+</div>
 
         </div>
       </footer>

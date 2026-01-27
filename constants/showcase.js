@@ -102,5 +102,41 @@ Steam rises from futuristic pipes. Humans and cyborgs huddle in the dark. "We ar
 רובוט עם עשר זרועות מנסה להקציף חלב בזמן שהוא רוקד. "זה לא סתם קפוצ'ינו," צועק בעל הבית בזמן שהמכונה משפריצה קצף, "זאת אומנות מתוכנתת!"`,
     excerptEn: `INT. FUTURISTIC COFFEE SHOP - DAY
 A ten-armed robot tries to froth milk while dancing. "It's not just a cappuccino," the owner yells as the machine sprays foam, "it's programmed art!"`
+  },
+  { 
+    id: 11, 
+    src: '/gallery/sample-11.png', 
+    titleHe: 'אקשן עתידני', 
+    titleEn: 'Futuristic Action',
+    excerptHe: `חוץ. עיר הקצה - לילה
+השמיים בוערים בסגול עמוק. מעל קו הרקיע, חללית קרב מתפרקת לכדור אש עצום. קיי ולין עומדים חבוקים על הגג, האור מהפיצוץ משתקף בעיניהם. 
+"זה לא הסוף שהבטיחו לנו," קיי צועק מעל שאגת המנועים. לין מהדקת את אחיזתה: "זה לא סוף, זאת שקיעה חדשה."`,
+    excerptEn: `EXT. EDGE CITY - NIGHT
+The sky burns in deep purple. Above the skyline, a high-tech starship disintegrates into a massive fireball. Kai and Lynn stand embraced on the roof, the blast reflecting in their eyes. 
+"This isn't the end they promised us," Kai yells over the engine roar. Lynn tightens her grip: "It's not an end, it's a new dawn."`
+  },
+  { 
+    id: 12, 
+    src: '/gallery/sample-12.png', 
+    titleHe: 'דרמה רומנטית', 
+    titleEn: 'Romantic Drama',
+    excerptHe: `פנים. דיינר "פינת הרחוב" - יום (גשום)
+אדים עולים משתי כוסות קפה. בחוץ, הגשם שוטף את החלונות. יונתן מביט במאיה, היד שלו מכסה את שלה על השולחן. 
+"את יודעת מה אומרים על סוכר בגשם?" הוא שואל בחיוך עצוב. מאיה מביטה עמוק לתוך עיניו: "שהוא נעלם מהר מדי, אבל משאיר את הכל מתוק."`,
+    excerptEn: `INT. "STREET CORNER" DINER - DAY (RAINY)
+Steam rises from two coffee mugs. Outside, rain streaks the windows. Jonathan looks at Maya, his hand covering hers on the table. 
+"You know what they say about sugar in the rain?" he asks with a sad smile. Maya looks deep into his eyes: "That it vanishes too fast, but leaves everything sweet."`
+  },
+  { 
+    id: 13, 
+    src: '/gallery/sample-13.png', 
+    titleHe: 'אימה ומיסתורין', 
+    titleEn: 'Horror & Mystery',
+    excerptHe: `חוץ. אחוזת בלקווד - לילה
+הבניין הישן ניצב כצללית מאיימת. בכל חלון מרצד אור חיוור, ודמויות חסרות פנים בוהות החוצה. אריאל מחבק את דנה בחוזקה, הוא עומד מעליה בזמן שהיא יושבת על גרם המדרגות המתפורר. 
+"אל תסתכלי לחלונות," הוא לוחש בקול סדוק, "הם לא מחכים לנו. הם מחכים למה שנשאר מאיתנו."`,
+    excerptEn: `EXT. BLACKWOOD MANOR - NIGHT
+The old building stands as a menacing silhouette. A pale light flickers in every window, and faceless figures stare out. Ariel hugs Dana tightly, standing over her as she sits on the crumbling staircase. 
+"Don't look at the windows," he whispers in a cracked voice, "they aren't waiting for us. They're waiting for what’s left of us."`
   }
 ];

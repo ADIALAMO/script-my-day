@@ -13,7 +13,7 @@ const kv = new Redis(process.env.REDIS_URL, {
   maxRetriesPerRequest: 1,
 });
 
-const DAILY_LIMIT = 2;
+const DAILY_LIMIT = 4;
 
 export default async function handler(req, res) {
   // 1. אבטחת מתודה
