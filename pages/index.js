@@ -960,29 +960,38 @@ track('Script Created', {
             <Copyright size={9} /> 2025 BY ADIALAMO • ALL RIGHTS RESERVED
           </p>
 
-          {/* קישורי משנה - מתוקן למניעת חיתוך במובייל */}
-<div className={`flex flex-wrap justify-center items-center gap-x-4 gap-y-3 md:gap-8 text-[9px] md:text-[10px] font-bold tracking-widest px-6 w-full max-w-full ${lang === 'he' ? 'flex-row-reverse' : 'flex-row'}`}>
+        {/* קישורי משנה - גרסה דחוסה מקסימלית (Micro-Typography) */}
+<div className={`flex flex-row justify-center items-center gap-0 w-full px-0.5 ${lang === 'he' ? 'flex-row-reverse' : 'flex-row'}`}>
   <button 
     onClick={() => setModalContent('about')}
-    className="text-[#d4a373] hover:text-white transition-all duration-500 border-b border-[#d4a373]/30 pb-0.5 uppercase whitespace-nowrap"
+    className="text-[#d4a373] hover:text-white transition-all duration-300 text-[6px] md:text-[9px] font-normal uppercase tracking-tighter whitespace-nowrap px-1"
   >
     {lang === 'he' ? 'אודות' : 'About'}
   </button>
+  
+  <span className="text-white/5 text-[5px] select-none opacity-50">|</span>
+
   <button 
     onClick={() => setModalContent('terms')}
-    className="text-white/20 hover:text-[#d4a373]/50 transition-all duration-500 border-b border-transparent hover:border-[#d4a373]/20 pb-0.5 uppercase whitespace-nowrap"
+    className="text-white/20 hover:text-[#d4a373]/50 transition-all duration-300 text-[6px] md:text-[9px] font-normal uppercase tracking-tighter whitespace-nowrap px-1"
   >
-    {lang === 'he' ? 'תנאי שימוש' : 'Terms'}
+    {lang === 'he' ? 'תנאים' : 'Terms'}
   </button>
+
+  <span className="text-white/5 text-[5px] select-none opacity-50">|</span>
+
   <button 
     onClick={() => setModalContent('privacy')}
-    className="text-white/20 hover:text-[#d4a373]/50 transition-all duration-500 border-b border-transparent hover:border-[#d4a373]/20 pb-0.5 uppercase whitespace-nowrap"
+    className="text-white/20 hover:text-[#d4a373]/50 transition-all duration-300 text-[6px] md:text-[9px] font-normal uppercase tracking-tighter whitespace-nowrap px-1"
   >
     {lang === 'he' ? 'פרטיות' : 'Privacy'}
   </button>
+
+  <span className="text-white/5 text-[5px] select-none opacity-50">|</span>
+
   <button 
     onClick={() => setModalContent('support')}
-    className="text-white/20 hover:text-[#d4a373]/50 transition-all duration-500 border-b border-transparent hover:border-[#d4a373]/20 pb-0.5 uppercase whitespace-nowrap"
+    className="text-white/20 hover:text-[#d4a373]/50 transition-all duration-300 text-[6px] md:text-[9px] font-normal uppercase tracking-tighter whitespace-nowrap px-1"
   >
     {lang === 'he' ? 'תמיכה' : 'Support'}
   </button>
