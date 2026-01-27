@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Film, Copyright, AlertCircle, Key, X, Download, Share2, Camera } from 'lucide-react';
+import { Film, Copyright, AlertCircle, Key, X, Download, Share2, Camera, MessageSquare, Send, Check } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import LaunchTicket from '../components/LaunchTicket';
 import ScriptForm from '../components/ScriptForm';
@@ -34,6 +34,45 @@ function HomePage() {
   const [showGallery, setShowGallery] = useState(true); // State חדש
   const [selectedPoster, setSelectedPoster] = useState(null);
   const [producerName, setProducerName] = useState('');  
+// --- Director's Log Logic ---
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackStatus, setFeedbackStatus] = useState('idle'); // 'idle', 'sending', 'success'
+const handleSendFeedback = async () => {
+    if (!feedbackText.trim()) return;
+    setFeedbackStatus('sending');
+    
+    try {
+      // פנייה ל-API שיצרנו ב-pages/api/feedback.js
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          text: feedbackText,
+          lang: lang,
+          producerName: producerName || (lang === 'he' ? 'אורח' : 'Guest')
+        }),
+      });
+
+      if (response.ok) {
+        setFeedbackStatus('success');
+        
+        // סגירה אוטומטית של התיבה אחרי הצלחה
+        setTimeout(() => {
+          setShowFeedback(false);
+          setFeedbackStatus('idle');
+          setFeedbackText('');
+        }, 2500);
+      } else {
+        throw new Error('Server responded with error');
+      }
+    } catch (err) {
+      console.error("Feedback error:", err);
+      // במקרה של תקלה, נחזיר למצב רגיל כדי שיוכל לנסות שוב
+      setFeedbackStatus('idle');
+      alert(lang === 'he' ? 'תקלה בתקשורת עם השרת. נסה שוב.' : 'Communication error. Please try again.');
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -937,6 +976,104 @@ track('Script Created', {
     </motion.div>
   )}
 </AnimatePresence>
+{/* --- Director's Log (Feedback Section) --- */}
+<div className="mt-20 mb-4 w-full max-w-xl mx-auto px-6 relative z-50">
+  <AnimatePresence mode='wait'>
+    {!showFeedback ? (
+      <motion.button
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        onClick={() => setShowFeedback(true)}
+        className="w-full group relative overflow-hidden rounded-2xl bg-[#0f1117]/80 backdrop-blur-md border border-[#d4a373]/10 hover:border-[#d4a373]/40 transition-all duration-500 py-6 px-4 text-center cursor-pointer shadow-lg"
+      >
+        {/* אפקט ברק עדין ברקע */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#d4a373]/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+        
+        <div className="flex flex-col items-center justify-center gap-2">
+          <div className="p-2 rounded-full bg-[#d4a373]/10 text-[#d4a373] group-hover:scale-110 transition-transform duration-300">
+            <MessageSquare size={20} />
+          </div>
+          <span className="text-[#d4a373] font-black tracking-[0.2em] text-xs uppercase">
+            {lang === 'he' ? 'יומן הבמאי' : "DIRECTOR'S LOG"}
+          </span>
+          <p className="text-gray-500 text-[10px] font-light tracking-wide">
+            {lang === 'he' ? 'יש לך הערות על ההפקה? שתף אותנו' : 'Notes on the production? Share with us'}
+          </p>
+        </div>
+      </motion.button>
+    ) : (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        className="relative bg-[#0b0d12] border border-[#d4a373]/30 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden"
+      >
+        {/* פס זהב עליון */}
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#d4a373] to-transparent opacity-50" />
+        
+        {feedbackStatus === 'success' ? (
+           <div className="py-10 flex flex-col items-center justify-center text-center animate-in fade-in zoom-in duration-500">
+             <div className="w-14 h-14 rounded-full bg-[#d4a373]/10 border border-[#d4a373]/20 flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(212,163,115,0.2)]">
+               <Check className="text-[#d4a373]" size={24} />
+             </div>
+             <h3 className="text-white font-black tracking-[0.2em] uppercase text-sm mb-1">
+               {lang === 'he' ? 'הפידבק התקבל' : "IT'S A WRAP!"}
+             </h3>
+             <p className="text-[#d4a373]/60 text-[10px] tracking-wider">
+               {lang === 'he' ? 'תודה שעזרת לנו לביים טוב יותר.' : 'Thanks for helping us direct.'}
+             </p>
+           </div>
+        ) : (
+          <div className="p-5">
+            <div className="flex justify-between items-center mb-4 border-b border-white/5 pb-3">
+              <span className="text-[#d4a373] text-[10px] font-black tracking-[0.2em] uppercase">
+                 {lang === 'he' ? 'הערות הפקה' : 'PRODUCTION NOTES'}
+              </span>
+              <button 
+                onClick={() => setShowFeedback(false)}
+                className="text-white/20 hover:text-white transition-colors p-1"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            
+            <textarea
+              autoFocus
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+              placeholder={lang === 'he' 
+                ? 'ספר לנו על החוויה... (באגים, רעיונות, או סתם מחשבות)' 
+                : 'Tell us about the experience... (bugs, ideas, thoughts)'}
+              className="w-full bg-[#030712] text-gray-300 text-sm p-4 rounded-xl border border-white/10 focus:border-[#d4a373]/40 outline-none resize-none h-32 custom-scrollbar placeholder:text-gray-700 placeholder:text-xs leading-relaxed transition-all"
+              style={{ fontSize: '14px' }}
+            />
+            
+            <div className="flex justify-between items-center mt-4">
+               <span className="text-[9px] text-gray-600 uppercase tracking-widest">
+                 {lang === 'he' ? 'נשלח ישירות לצוות הפיתוח' : 'Sent directly to dev team'}
+               </span>
+              <button
+                onClick={handleSendFeedback}
+                disabled={!feedbackText.trim() || feedbackStatus === 'sending'}
+                className="flex items-center gap-2 bg-[#d4a373] text-black px-5 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest hover:bg-[#fefae0] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(212,163,115,0.2)]"
+              >
+                {feedbackStatus === 'sending' ? (
+                   <span className="animate-pulse">...</span>
+                ) : (
+                   <>
+                     <span>{lang === 'he' ? 'שלח' : 'SEND'}</span>
+                     <Send size={10} />
+                   </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+      </motion.div>
+    )}
+  </AnimatePresence>
+</div>
       </main>
       
       {/* Footer המלוטש --- */}
