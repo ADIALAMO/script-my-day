@@ -30,7 +30,7 @@ function MyApp({ Component, pageProps }) {
   />
   <meta name="theme-color" content="#030712" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
   {/* הגדרות שיתוף גלובליות (Facebook, Instagram, WhatsApp) */}
   <meta property="og:title" content="LIFESCRIPT | Turn Your Life Into A Movie" />
