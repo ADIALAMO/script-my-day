@@ -977,8 +977,8 @@ track('Script Created', {
   )}
 </AnimatePresence>
 {/* --- Director's Log (Feedback Section) --- */}
-<div className="mt-20 mb-4 w-full max-w-xl mx-auto px-6 relative z-50">
-  <AnimatePresence mode='wait'>
+<div className="mt-2 mb-0 w-full max-w-xl mx-auto px-6 relative z-50">
+      <AnimatePresence mode='wait'>
     {!showFeedback ? (
       <motion.button
         initial={{ opacity: 0, y: 20 }}
@@ -1073,16 +1073,33 @@ track('Script Created', {
       </motion.div>
     )}
   </AnimatePresence>
+  {/* --- Product Hunt Badge Section --- */}
+<div className="flex justify-center mt-1 mb-0 opacity-40 hover:opacity-100 transition-all duration-500 scale-[0.6] origin-top">
+      <a 
+    href="https://www.producthunt.com/products/lifescript-studio?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-lifescript-studio" 
+    target="_blank" 
+    rel="noopener noreferrer"
+  >
+    <img 
+      src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1068591&theme=dark&t=1769554303537" 
+      alt="LifeScript Studio - Product Hunt" 
+      style={{ width: '250px', height: '54px' }}
+      width="250" 
+      height="54" 
+    />
+  </a>
+</div>
+
 </div>
       </main>
       
       {/* Footer המלוטש --- */}
-      <footer className="py-12 md:py-16 text-center border-t border-white/[0.03] bg-black/40 mt-10 px-4">
+<footer className="py-4 md:py-6 text-center border-t border-white/[0.02] bg-black/40 mt-0 px-4">
         <div className="flex flex-col items-center justify-center">
           
           {/* מיתוג ראשי */}
-          <div className="flex items-center gap-3 mb-4 opacity-90">
-            <img 
+<div className="flex items-center gap-3 mb-1 opacity-90">
+              <img 
               src="/icon.png" 
               className="w-6 h-6 md:w-7 md:h-7 rounded-md opacity-80 grayscale hover:grayscale-0 transition-all duration-700" 
               alt="Studio Icon" 
