@@ -37,47 +37,106 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           "model": "black-forest-labs/flux.2-klein-4b",
           "messages": [{ "role": "user", "content": finalPrompt }],
-          "modalities": ["image", "text"],
           "seed": seed
-          // הסרנו את ה-extra_body שגרם לשגיאות 400
         }),
-        signal: AbortSignal.timeout(15000)
+        signal: AbortSignal.timeout(25000) // הגדלנו מעט ליתר ביטחון
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        const url = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-        if (url) {
-          console.log("✅ SUCCESS: OpenRouter Klein generated poster.");
-          return res.status(200).json({ success: true, imageUrl: url, provider: 'OpenRouter-Klein' });
-        }
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API Status ${response.status}: ${errorText}`);
       }
-      } catch (e) {
+
+      const data = await response.json();
+      
+      // חילוץ חכם: בודק מערך images חיצוני, או אובייקט images פנימי, או תוכן הודעה
+      const rawImage = data.images?.[0] || 
+                       data.choices?.[0]?.message?.images?.[0]?.image_url?.url || 
+                       data.choices?.[0]?.message?.content;
+
+      if (rawImage) {
+        console.log("✅ SUCCESS: OpenRouter generated image data.");
+        const imageUrl = await getBase64Image(rawImage);
+        return res.status(200).json({ success: true, imageUrl, provider: 'OpenRouter-Klein' });
+      } else {
+        throw new Error("No image data found in OpenRouter response");
+      }
+
+    } catch (e) {
       console.error("❌ Stage 1 Failed:", e.message);
     }
   }
-    // --- שלב 2: Pollinations Turbo (מהירות שיא) ---
-
+  // --- שלב 2: ByteDance Seedream 4.5 (גיבוי איכותי) ---
   try {
-    console.log("🚀 Stage 2: Pollinations Turbo...");
+    console.log("🎨 Stage 2: Seedream 4.5 (OpenRouter)...");
+    const seedreamResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://lifescript.app", 
+        "X-Title": "LifeScript Studio"
+      },
+      body: JSON.stringify({
+        // ניסיון עם ה-ID המלא והנורמלי של OpenRouter
+        "model": "bytedance-seed/seedream-4.5", 
+        "messages": [{ "role": "user", "content": finalPrompt }],
+        "modalities": ["image"], // Seedream מעדיף לעיתים רק image
+        "seed": seed
+      }),
+      signal: AbortSignal.timeout(25000)
+    });
+
+    if (seedreamResponse.ok) {
+      const sData = await seedreamResponse.json();
+      // בדיקה רחבה יותר של נתיבי התמונה ב-JSON
+      const sRaw = sData.images?.[0] || 
+                   sData.choices?.[0]?.message?.images?.[0]?.image_url?.url ||
+                   sData.choices?.[0]?.message?.content;
+
+      if (sRaw && (sRaw.startsWith('http') || sRaw.startsWith('data:image'))) {
+        console.log("✅ SUCCESS: Seedream 4.5 generated poster.");
+        const imageUrl = await getBase64Image(sRaw);
+        return res.status(200).json({ success: true, imageUrl, provider: 'Seedream-4.5' });
+      }
+    }
+    
+    // אם הגענו לכאן, סימן שקיבלנו 404 או תשובה ריקה
+    throw new Error(`Model unavailable (Status ${seedreamResponse.status})`);
+    
+  } catch (e) {
+    console.warn("⚠️ Stage 2 Failed (Seedream):", e.message);
+    // הקוד ימשיך אוטומטית ל-Stage 3 (Pollinations Flux)
+  }
+
+ // --- שלב 3: Pollinations Turbo (גיבוי מהירות - עכשיו לפני Flux) ---
+  try {
+    console.log("🚀 Stage 3: Pollinations Turbo...");
     const turboPrompt = finalPrompt + backUpRefinement;
     const turboUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(turboPrompt)}?width=1024&height=1024&model=turbo&nologo=true&seed=${seed}`;
+    
     const imageUrl = await getBase64Image(turboUrl);
+    console.log("✅ SUCCESS: Stage 3 (Turbo) saved the day.");
     return res.status(200).json({ success: true, imageUrl, provider: 'Pollinations-Turbo' });
   } catch (e) {
-    console.warn("⚠️ Stage 2 Failed, trying Pollinations Flux...");
+    console.warn("⚠️ Stage 3 (Turbo) Failed, trying final backup...");
   }
 
-  // --- שלב 2: Pollinations Flux (איכות גבוהה בחינם) ---
+  // --- שלב 4: Pollinations Flux (גיבוי איכות אחרון) ---
   try {
-    console.log("🛡️ Stage 3: Pollinations Flux...");
+    console.log("🛡️ Stage 4: Pollinations Flux (Final Safety Net)...");
     const fluxPrompt = finalPrompt + backUpRefinement;
     const fluxUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fluxPrompt)}?width=1024&height=1024&model=flux&nologo=true&seed=${seed}`;
+    
     const imageUrl = await getBase64Image(fluxUrl);
+    console.log("✅ SUCCESS: Stage 4 (Flux) generated successfully.");
     return res.status(200).json({ success: true, imageUrl, provider: 'Pollinations-Flux' });
   } catch (e) {
-    console.warn("⚠️ Stage 3 Failed.");
+    console.error("❌ ALL STAGES FAILED.");
   }
 
-  return res.status(500).json({ error: "Failed to generate image" });
+  return res.status(500).json({ 
+    error: "Failed to generate image",
+    details: "All 4 generation stages exhausted."
+  });
 }
