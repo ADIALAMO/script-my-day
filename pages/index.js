@@ -21,7 +21,7 @@ function HomePage() {
   const [script, setScript] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [lang, setLang] = useState('he');
+  const [lang, setLang] = useState('en');
   const [mounted, setMounted] = useState(false);
   const [isTypingGlobal, setIsTypingGlobal] = useState(false);
 
