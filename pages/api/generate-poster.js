@@ -1,14 +1,65 @@
+
+import Redis from 'ioredis';
+
+// יצירת חיבור ל-Redis באמצעות המשתנה שיש לך ב-.env
+const redis = new Redis(process.env.REDIS_URL, {
+  maxRetriesPerRequest: 1, 
+  connectTimeout: 1000,    
+  lazyConnect: true,       
+  retryStrategy: () => null 
+});
+
+// תופס שגיאות כדי שלא יקפיצו את ה-Error Overlay האדום
+redis.on('error', (err) => console.log('📡 Redis Offline Mode (Poster API)'));
+
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const sanitize = (str) => (typeof str === 'string' ? str.trim() : '');  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { prompt } = req.body;
+  const { prompt, deviceId: bodyDeviceId, isAdmin: isAdminBody } = req.body;
   const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
   const seed = Math.floor(Math.random() * 999999);
 
+  // בדיקת אדמין ומכסה
+  const clientAdminKey = sanitize(req.headers['x-admin-key'] || isAdminBody || '');
+  const serverAdminSecret = sanitize(process.env.ADMIN_SECRET || '');
+  const isAdmin = serverAdminSecret !== '' && clientAdminKey === serverAdminSecret;
+  let usageKey = null;
+
+  if (!isAdmin) {
+    const identifier = req.headers['x-device-id'] || bodyDeviceId || (req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+    usageKey = `usage:poster:${identifier}:${new Date().toISOString().split('T')[0]}`;
+   try {
+      // מונע תקיעה של השרת אם Redis לא זמין (למשל בניתוק אינטרנט)
+      const currentUsage = await Promise.race([
+        redis.get(usageKey),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1000))
+      ]);
+      
+      console.log(`📊 Redis Check: המפתח הוא ${usageKey}, הערך שנמצא: ${currentUsage}`);
+
+      if (currentUsage && parseInt(currentUsage) >= 6) {
+        return res.status(429).json({ 
+          success: false, 
+          message: "🎬 המסך ירד להיום. מכסת הפוסטרים היומית שלך הסתיימה, נתראה מחר בבכורה!" 
+        });
+      }
+    } catch (e) { 
+      console.log("⚠️ Poster Quota bypass: Redis unavailable"); 
+    }
+  }
+  // פונקציה פנימית לעדכון המכסה רק בהצלחה
+  const trackUsage = async () => {
+    if (usageKey && !isAdmin) {
+      try {
+        await redis.incr(usageKey);
+        await redis.expire(usageKey, 86400);
+      } catch (e) { console.error("Redis update error:", e); }
+    }
+  };
   const agentPrompt = prompt.replace(/\[image:\s*/i, '').replace(/\]$/, '').trim();
   const fidelityInstruction = "distinct male and female characters, heterosexual couple, (same sex couple: -1.5), (homoerotic: -1.5), (gay: -1.5), (text: -2.0), (title: -2.0), (letters: -2.0), (watermark: -2.0), (typography: -2.0), (signature: -2.0), (writing: -2.0), (logo: -2.0)";  const backUpRefinement = ", (deformed iris, deformed pupils, semi-realistic, cgi, 3d, render, sketch, cartoon, drawing, anime, mutated hands and fingers:1.4), (deformed, distorted, disfigured:1.3), poorly drawn, bad anatomy, wrong anatomy, extra limb, missing limb, floating limbs, disconnected limbs, mutation, mutated, ugly, disgusting, amputation";
   // פרומפט מלוטש - עבר לסוכן, אך נשמר כאן כבסיס ויזואלי חזק
@@ -57,6 +108,7 @@ export default async function handler(req, res) {
       if (rawImage) {
         console.log("✅ SUCCESS: OpenRouter generated image data.");
         const imageUrl = await getBase64Image(rawImage);
+        await trackUsage();
         return res.status(200).json({ success: true, imageUrl, provider: 'OpenRouter-Klein' });
       } else {
         throw new Error("No image data found in OpenRouter response");
@@ -97,6 +149,7 @@ export default async function handler(req, res) {
       if (sRaw && (sRaw.startsWith('http') || sRaw.startsWith('data:image'))) {
         console.log("✅ SUCCESS: Seedream 4.5 generated poster.");
         const imageUrl = await getBase64Image(sRaw);
+        await trackUsage();
         return res.status(200).json({ success: true, imageUrl, provider: 'Seedream-4.5' });
       }
     }
@@ -117,6 +170,7 @@ export default async function handler(req, res) {
     
     const imageUrl = await getBase64Image(turboUrl);
     console.log("✅ SUCCESS: Stage 3 (Turbo) saved the day.");
+    await trackUsage();
     return res.status(200).json({ success: true, imageUrl, provider: 'Pollinations-Turbo' });
   } catch (e) {
     console.warn("⚠️ Stage 3 (Turbo) Failed, trying final backup...");
@@ -130,6 +184,7 @@ export default async function handler(req, res) {
     
     const imageUrl = await getBase64Image(fluxUrl);
     console.log("✅ SUCCESS: Stage 4 (Flux) generated successfully.");
+    await trackUsage();
     return res.status(200).json({ success: true, imageUrl, provider: 'Pollinations-Flux' });
   } catch (e) {
     console.error("❌ ALL STAGES FAILED.");

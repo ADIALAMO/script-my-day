@@ -7,13 +7,17 @@ import { sanitize, prepareForAI } from '../../utils/input-processor';
 export const config = {
   maxDuration: 60, 
 };
-// חיבור ל-Redis - שמירה על הגדרות החיבור המקוריות למניעת קריסות
+
+// חיבור ל-Redis באמצעות ה-URL מה-env (בדיוק כמו בפוסטר)
 const kv = new Redis(process.env.REDIS_URL, {
-  connectTimeout: 5000,
-  maxRetriesPerRequest: 1,
+  maxRetriesPerRequest: 1, 
+  connectTimeout: 1000,    
+  lazyConnect: true,       
+  retryStrategy: () => null 
 });
 
-const DAILY_LIMIT = 4;
+kv.on('error', (err) => console.log('📡 Redis Offline Mode (Local/Network)'));
+const DAILY_LIMIT = 8;
 
 export default async function handler(req, res) {
   // 1. אבטחת מתודה
@@ -30,7 +34,6 @@ export default async function handler(req, res) {
     const serverAdminSecret = sanitize(process.env.ADMIN_SECRET || '');
     const isAdmin = serverAdminSecret !== '' && clientAdminKey === serverAdminSecret;
 
-    // הגדרת משתנה המפתח מחוץ לבלוק כדי שיהיה נגיש בסוף הפונקציה
     let usageKey = null;
 
     // 3. מנגנון Blocking פונקציונלי (Redis)
@@ -41,27 +44,33 @@ export default async function handler(req, res) {
                          req.socket.remoteAddress;
                        
       const today = new Date().toISOString().split('T')[0];
-      usageKey = `usage:${identifier}:${today}`;
+      // שימוש במפתח ייעודי לתסריטים כדי להפריד מהפוסטרים
+      usageKey = `usage:script:${identifier}:${today}`;
 
-      try {
-        const currentUsageRaw = await kv.get(usageKey);
-        const currentUsage = currentUsageRaw ? parseInt(currentUsageRaw) : 0;
+     try {
+        // שימוש ב-Race כדי לא להיתקע אם ה-DNS של Redis לא מגיב
+        const currentUsage = await Promise.race([
+          kv.get(usageKey),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1000))
+        ]);
 
-        if (currentUsage >= DAILY_LIMIT) {
+        console.log(`📊 Redis Script Check: ${usageKey}, הערך: ${currentUsage}`);
+
+        if (currentUsage && parseInt(currentUsage) >= DAILY_LIMIT) {
           return res.status(429).json({ 
-            message: "🎬 המסך ירד להיום. המכסה היומית הסתיימה. נתראה בפרימיירה של מחר." 
+            success: false,
+            message: "🎬 המסך ירד להיום. מכסת התסריטים הסתיימה. נתראה בפרימיירה של מחר." 
           });
         }
-        
-        // ה-INCR הוסר מכאן כדי להבטיח שהמשתמש לא "ישלם" על כשלונות AI
-      } catch (redisError) {
-        console.error("Redis unreachable:", redisError.message);
+      } catch (e) {
+        // במקרה של שגיאת רשת/Redis - אנחנו מדלגים על החסימה ולא מפילים את השרת
+        console.log("⚠️ Redis connection failed - skipping quota check");
       }
+      // הסרנו את ה-disconnect כדי לשמור על חיבור יציב בזמן שה-AI רץ
     }
 
     // 4. עיבוד וניקוי תוכן
     const cleanGenre = sanitize(genre) || 'drama';
-    
     if (!journalEntry || journalEntry.trim().length < 5) {
       return res.status(400).json({ message: 'היומן קצר מדי או חסר.' });
     }
@@ -69,18 +78,23 @@ export default async function handler(req, res) {
     // 5. הגנה על הפרומפט (Prompt Shield)
     const safeJournalEntry = prepareForAI(journalEntry);
 
-    // 6. הפעלת מנוע התסריטים המשודרג
+    // 6. הפעלת מנוע התסריטים המשודרג (השלב האיטי)
     const result = await generateScript(safeJournalEntry, cleanGenre);
     
     if (!result.success) {
       return res.status(500).json({ message: result.error || 'נכשלה יצירת התסריט.' });
     }
 
-    // --- הוספה כירורגית: רישום המכסה רק לאחר הצלחה מוכחת ---
+    // --- רישום המכסה רק לאחר הצלחה מוכחת ---
     if (!isAdmin && usageKey) {
-      await kv.incr(usageKey)
-        .then(v => v === 1 && kv.expire(usageKey, 86400))
-        .catch(err => console.error("Quota update failed post-generation:", err.message));
+      try {
+        // המזהה כבר מחובר, פשוט מעדכנים
+        const newVal = await kv.incr(usageKey);
+        await kv.expire(usageKey, 86400);
+        console.log(`✅ Script Quota updated. Current usage: ${newVal}`);
+      } catch (err) {
+        console.error("Quota update failed:", err.message);
+      }
     }
 
     // 7. החזרת התוצאה לממשק
@@ -92,6 +106,7 @@ export default async function handler(req, res) {
     
   } catch (error) {
     console.error("API ERROR:", error);
+    try { await kv.disconnect(); } catch(e) {}
     return res.status(500).json({ message: 'תקלה פנימית בשרת. אנא נסה שוב מאוחר יותר.' });
   }
 }

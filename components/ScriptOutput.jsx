@@ -59,6 +59,7 @@ const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST')
   const [posterLoading, setPosterLoading] = useState(false);
   const [triggerFlash, setTriggerFlash] = useState(false);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+  const [posterError, setPosterError] = useState('');
 
   // --- Refs ---
   const scrollRef = useRef(null);
@@ -253,20 +254,18 @@ const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST')
     return () => clearTimeout(timerRef.current);
   }, [cleanScript]);
  // --- יצירת פוסטר (Backend Integration + Fallback) ---
-  const generatePoster = async () => { // שינוי 1: הוספנו async
+  const generatePoster = async () => { 
     setPosterLoading(true);
+    setPosterError(''); // איפוס שגיאה לפני ניסיון חדש
     setShowPoster(true);
+    
     const genreTag = translateGenre(genre);
     const seed = Math.floor(Math.random() * 999999);
     
     const cleanVisual = visualPrompt.replace(/[^\w\s\u0590-\u05FF,]/gi, '').slice(0, 300);
     
-    // הפרומפט המרכזי - הוספנו TEXTLESS חזק בהתחלה ובסוף
     const prompt = `A textless movie poster style, depicting: ${cleanVisual}. Genre: ${genreTag}. High budget Hollywood production, epic scale, 8k, ultra-detailed, sharp focus, masterpiece composition. (NO TEXT, NO LETTERS, NO WORDS)`;
     
-    // רשימת ה"אסור" - הוספנו דגש על מניעת כותרות
-    const negative = `text, letters, title, words, alphabet, typography, credits, watermark, chinese characters, kanji, japanese, russian, cyrillic, script, signature, logos, symbols, blur, distortion, low quality`;
-      
     try {
       const response = await fetch('/api/generate-poster', {
         method: 'POST',
@@ -274,18 +273,28 @@ const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST')
         body: JSON.stringify({ prompt: prompt }), 
       });
 
-      if (!response.ok) throw new Error('Backend failed');
+      // קריאת ה-JSON בכל מקרה כדי לבדוק הודעות שגיאה
+      const data = await response.json().catch(() => ({ success: false }));
 
-      const data = await response.json();
-      
-      if (data.success && data.imageUrl) {
-        // מנקים שאריות של כתובות זמניות אם היו
+      // טיפול במכסה (429)
+      if (response.status === 429) {
+        setPosterError(data.message || (isHebrew ? 'המכסה הסתיימה' : 'Quota exceeded'));
+        setPosterLoading(false);
+        setPosterUrl(''); 
+        return;
+      }
+
+      // אם השרת החזיר שגיאה (כמו בניסוי שלך - 500)
+      if (!response.ok || data.success === false) {
+        throw new Error(data.message || 'Backend failed');
+      }
+
+      if (data.imageUrl) {
         if (posterUrl && posterUrl.startsWith('blob:')) {
           URL.revokeObjectURL(posterUrl);
         }
-        
-        // מעדכנים את ה-URL למחרוזת ה-Base64 שקיבלנו מהשרת
         setPosterUrl(data.imageUrl);
+        setPosterError(''); 
         console.log(`✅ Poster received via ${data.provider}`);
       } else {
         throw new Error("Invalid response format");
@@ -293,9 +302,19 @@ const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST')
 
     } catch (error) {
       console.warn("Fallback to Pollinations Direct:", error);
-      // בגיבוי אנחנו משתמשים ב-URL ישיר כי אין לנו Base64
-      const directUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${seed}&model=flux&nologo=true`;    
-      setPosterUrl(directUrl);
+      
+      // אם גם השרת נכשל וגם אנחנו במצב לא מקוון/שגיאה קריטית
+      const directUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${seed}&model=flux&nologo=true`;
+      
+      // הזרקה בטוחה: אם אין שום סיכוי לתמונה, נציג שגיאה. אחרת - ננסה את הגיבוי.
+      if (navigator.onLine) {
+        setPosterUrl(directUrl);
+        // ה-setPosterLoading(false) יקרה ב-onLoad של ה-img
+      } else {
+        setPosterError(isHebrew ? 'אין חיבור לאינטרנט' : 'No internet connection');
+        setPosterLoading(false);
+        setPosterUrl('');
+      }
     }
   };
 
@@ -405,23 +424,21 @@ const handleCapturePoster = async (action) => {
   // --- הגדרות הקרדיטים עם השם הדינמי ---
 // בדיקה ישירה של השפה והזרקת הקרדיטים המלאים
   // לוגיקה כירורגית: אם המשתמש הזין שם, הוא הופך לבמאי והשם המקורי נמחק
-  const credits = (lang === 'he') ? {
+  const credits = isHebrew ? {
     comingSoon: 'בקרוב בקולנוע',
     line1: producerName && producerName.trim() !== "" 
       ? `בימוי: ${producerName} • הפקה: סטודיו LIFESCRIPT` 
       : `בימוי: עדי אלמו • הפקה: סטודיו LIFESCRIPT`,
     line2: 'צילום: מעבדת AI • עיצוב אמנותי: הוליווד דיגיטלית • ליהוק: וירטואלי',
     line3: 'מוזיקה: THE MASTER • עריכה: סוכן 2005 • אפקטים: מנוע קולנועי',
-    copyright: '© 2025 LIFESCRIPT STUDIO • כל הזכויות שמורות'
-  } : {
+    copyright: `© ${new Date().getFullYear()} LIFESCRIPT STUDIO • כל הזכויות שמורות`  } : {
     comingSoon: 'COMING SOON',
     line1: producerName && producerName.trim() !== "" 
       ? `DIRECTED BY ${producerName.toUpperCase()} • PRODUCTION: LIFESCRIPT STUDIO` 
       : `DIRECTED BY ADI ALAMO • PRODUCTION: LIFESCRIPT STUDIO`,
     line2: 'CINEMATOGRAPHY: AI LAB • ART DIRECTION: DIGITAL HOLLYWOOD • CASTING: VIRTUAL',
     line3: 'MUSIC: THE MASTER • EDITING: AGENT 2005 • VFX: CINEMATIC ENGINE',
-    copyright: '© 2025 LIFESCRIPT STUDIO • ALL RIGHTS RESERVED'
-  };
+    copyright: `© ${new Date().getFullYear()} LIFESCRIPT STUDIO • ALL RIGHTS RESERVED`  };
 
   return (
 <div className="space-y-6 w-full max-w-[100vw]" style={{ contain: 'paint layout' }}>      
@@ -684,38 +701,58 @@ onClick={() => {
               {/* שמירה על פונקציית ה-flash-overlay המקורית שלך לגיבוי */}
               {triggerFlash && <div className="flash-overlay" style={{ zIndex: 99 }} />}
 
-              {/* 3. Loader עתידני - Z-INDEX 50 (מסתיר את התמונה עד שהיא מוכנה) */}
-              {posterLoading && (
+              {/* 3. שכבת סטטוס (Loader או שגיאה) - הזרקה כירורגית כאן */}
+              {(posterLoading || posterError) && !posterUrl && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#030712] z-[50] px-6 text-center">
-                  <div className="relative w-20 h-20 mb-10">
-                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 4, ease: "linear" }} className="absolute inset-0 border-[3px] border-dashed border-[#d4a373]/30 rounded-full" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      {[0, 60, 120, 180, 240, 300].map((deg, i) => (
-                        <motion.div key={i} style={{ rotate: deg, position: 'absolute' }} className="w-full h-full flex items-start justify-center p-1">
-                          <motion.div animate={{ opacity: [0.2, 1, 0.2], height: ["10%", "30%", "10%"] }} transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.2 }} className="w-[3px] bg-[#d4a373] rounded-full" />
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="h-6">
-                    <AnimatePresence mode="wait">
-                      <motion.p
-                        key={loadingMessageIndex}
-                        initial={{ y: 15, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: -15, opacity: 0 }}
-                        className="text-[#d4a373] text-[10px] font-black uppercase tracking-[0.4em] whitespace-nowrap"
+                  {!posterError ? (
+                    /* מצב טעינה רגיל */
+                    <>
+                      <div className="relative w-20 h-20 mb-10">
+                        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 4, ease: "linear" }} className="absolute inset-0 border-[3px] border-dashed border-[#d4a373]/30 rounded-full" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          {[0, 60, 120, 180, 240, 300].map((deg, i) => (
+                            <motion.div key={i} style={{ rotate: deg, position: 'absolute' }} className="w-full h-full flex items-start justify-center p-1">
+                              <motion.div animate={{ opacity: [0.2, 1, 0.2], height: ["10%", "30%", "10%"] }} transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.2 }} className="w-[3px] bg-[#d4a373] rounded-full" />
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="h-6">
+                        <AnimatePresence mode="wait">
+                          <motion.p key={loadingMessageIndex} initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -15, opacity: 0 }} className="text-[#d4a373] text-[10px] font-black uppercase tracking-[0.4em] whitespace-nowrap">
+                            {posterLoadingMessages[loadingMessageIndex]}
+                          </motion.p>
+                        </AnimatePresence>
+                      </div>
+                    </>
+                  ) : (
+                    /* מצב שגיאה / מכסה הסתיימה */
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center">
+                      <div className="w-16 h-16 mb-6 flex items-center justify-center rounded-full bg-[#d4a373]/5 border border-[#d4a373]/20">
+                        <VolumeX className="w-8 h-8 text-[#d4a373]/40" />
+                      </div>
+                      <h3 className="text-[#d4a373] font-black text-[12px] mb-3 uppercase tracking-[0.2em] italic">
+                        {isHebrew ? 'ההקרנה הופסקה' : 'SCREENING PAUSED'}
+                      </h3>
+                      <p className="text-white/50 text-[11px] mb-8 leading-relaxed max-w-[240px] font-medium italic">
+                        {posterError}
+                      </p>
+                      <button 
+                        onClick={generatePoster}
+                        className="group relative px-8 py-3 overflow-hidden rounded-full transition-all duration-300 active:scale-95"
                       >
-                        {posterLoadingMessages[loadingMessageIndex]}
-                      </motion.p>
-                    </AnimatePresence>
-                  </div>
+                        <div className="absolute inset-0 bg-[#d4a373]/10 border border-[#d4a373]/30 rounded-full group-hover:bg-[#d4a373] transition-colors duration-300" />
+                        <span className="relative text-[#d4a373] group-hover:text-black font-black text-[10px] uppercase tracking-widest transition-colors duration-300">
+                          {isHebrew ? 'נסה שוב' : 'RETRY'}
+                        </span>
+                      </button>
+                    </motion.div>
+                  )}
                 </div>
               )}
 
-             {/* 4. שכבת הטקסט (Overlay) - תיקון כירורגי למסך מלא ללא פגיעה בפונקציות */}
-{!posterLoading && posterUrl && (
+             {/* 4. שכבת הטקסט (Overlay) - נשארת בדיוק כפי שהייתה */}
+{!posterLoading && posterUrl && !posterError && (
   <div className="absolute inset-0 flex flex-col items-center justify-between z-20 pointer-events-none animate-in fade-in duration-1000">
     
     {/* גרדיאנט הגנה על הטקסט - מותאם לרינדור קנבס נקי */}

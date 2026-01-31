@@ -160,7 +160,7 @@ const handleSendFeedback = async () => {
       const savedAdminKey = localStorage.getItem('lifescript_admin_key') || '';
       const deviceId = localStorage.getItem('lifescript_device_id') || 'unknown';
       
-      const response = await fetch('/api/generate-script', {
+     const response = await fetch('/api/generate-script', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -170,15 +170,30 @@ const handleSendFeedback = async () => {
         body: JSON.stringify({ 
           journalEntry, 
           genre,
-          producerName: producerName || (lang === 'he' ? 'אורח' : 'Guest'), // שם ברירת מחדל אם ריק
-          deviceId: localStorage.getItem('lifescript_device_id'), // המזהה למכסה היומית
+          producerName: producerName || (lang === 'he' ? 'אורח' : 'Guest'),
+          deviceId: deviceId,
           adminKeyBody: savedAdminKey 
         }),
       });
       
-      const data = await response.json();
+      // חילוץ נתונים בטוח למניעת קריסת Next.js במצב Offline
+      // חילוץ נתונים בטוח למניעת קריסת Next.js במצב Offline
+      let data = {};
+      try {
+        data = await response.json();
+      } catch (e) {
+        // אם השרת נפל לגמרי או שאין אינטרנט, response.json() יכשל
+        if (!response.ok) throw new Error(lang === 'he' ? 'שרת ההפקה לא זמין כרגע' : 'Production server offline');
+      }
 
-      // 2. טיפול בשגיאות שרת מבלי להפיל את האפליקציה
+      // טיפול במכסה (429) - הגנה כפולה
+      if (response.status === 429) {
+        setError(data?.message || (lang === 'he' ? 'המכסה היומית הסתיימה' : 'Daily quota reached'));
+        setLoading(false);
+        return;
+      }
+
+      // 2. טיפול בשגיאות שרת אחרות
       if (!response.ok) {
         throw new Error(data.message || data.error || 'Production Error');
       }
@@ -200,9 +215,11 @@ track('Script Created', {
     } catch (err) {
       console.error("Frontend Generation Error:", err);
       
-      // זיהוי שגיאות נפוצות והצגתן למשתמש במקום רענון
-      if (err.message.includes('401') || err.message.toLowerCase().includes('unauthorized')) {
-        setError(lang === 'he' 
+      // זיהוי כירורגי של ניתוק אינטרנט או שגיאת שרת חמורה
+      if (err.message.includes('fetch failed') || !navigator.onLine) {
+        setError(lang === 'he' ? 'אין חיבור אינטרנט פעיל - ההפקה הופסקה' : 'No internet connection - Production halted');
+      } else if (err.message.includes('401') || err.message.toLowerCase().includes('unauthorized')) {
+            setError(lang === 'he' 
           ? 'גישת מנהל נכשלה: הסיסמה שגויה או פגה.' 
           : 'Admin access failed: Incorrect or expired password.');
       } else if (err.message.includes('429')) {
@@ -216,6 +233,32 @@ track('Script Created', {
       setLoading(false);
     }
   };
+// --- כאן בדיוק להדביק את הקוד החדש של הפוסטר ---
+  const handleGeneratePoster = async (scriptText) => {
+  setLoading(true);
+  setError('');
+  // חשוב: אל תפתח כאן את ה-SelectedPoster עדיין!
+  
+  try {
+    const response = await fetch('/api/generate-poster', { /* ... הגדרות ה-fetch שלך ... */ });
+    const data = await response.json();
+
+    if (data.success && data.imageUrl) {
+      // רק כאן, כשיש הצלחה, אנחנו מציגים את הפוסטר
+      setSelectedPoster({ src: data.imageUrl, id: 'generated' });
+    } else {
+      // אם ה-API החזיר false (כמו בניסוי שלך), אנחנו זורקים שגיאה
+      throw new Error(data.message || 'הפקת הפוסטר נכשלה');
+    }
+  } catch (err) {
+    console.error("Poster Error Caught:", err);
+    setError(err.message); 
+    // וודא שזה נשאר null כדי שהמסך השחור לא יופיע
+    setSelectedPoster(null); 
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (!mounted) return null;
 
@@ -525,7 +568,7 @@ track('Script Created', {
         </p>
       </section>
 
-      {/* 3. עיבוד AI - הניסוח המוגן שדיברנו עליו */}
+      {/* 3. עיבוד AI - הניסוח המעודכן והמגן */}
       <section>
         <h3 className="text-white font-bold mb-2 flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-[#d4a373]"></span>
@@ -533,8 +576,8 @@ track('Script Created', {
         </h3>
         <p className="opacity-80">
           {lang === 'he' 
-            ? 'המידע מועבר לספקי עיבוד מובילים (כגון Cohere ו-OpenRouter) בערוץ מוצפן. אנו בוחרים ספקים המחויבים חוזית לכך שהמידע המועבר אליהם אינו משמש לאימון מודלים ציבוריים ואינו נשמר לשימוש עתידי.' 
-            : 'Data is transmitted to leading processors (e.g., Cohere and OpenRouter) via encrypted channels. We select providers who are contractually committed to ensuring that the data transmitted to them is not used for training public models and is not stored for future use.'}
+            ? 'המידע מועבר לספקי עיבוד מובילים (כגון Google, DeepSeek ו-OpenRouter) בערוץ מוצפן לצורך יצירת התוכן בלבד. אנו עושים מאמץ לבחור ספקים ומסלולי שירות המבטיחים את פרטיות המידע. עם זאת, המשתמש מודע לכך שחלק מהשירותים הניתנים במסלולי חינם עשויים להשתמש במידע אנונימי לשיפור טכנולוגי של הספק. בכל מקרה, אנו לא שומרים את המידע לשימושנו העתידי.' 
+            : 'Data is transmitted to leading processors (e.g., Google, DeepSeek, and OpenRouter) via encrypted channels solely for content generation. We strive to select providers and service tiers that prioritize data privacy. However, the user acknowledges that some services provided under free tiers may use anonymized data for the provider\'s technological improvement. In any case, we do not store the data for our own future use.'}
         </p>
       </section>
 
@@ -901,10 +944,13 @@ track('Script Created', {
   script={script} 
   lang={lang} 
   genre={selectedGenre} 
-  setIsTypingGlobal={setIsTypingGlobal} // <--- שינינו מ-setIsTyping ל-setIsTypingGlobal
+  setIsTypingGlobal={setIsTypingGlobal}
   producerName={producerName}
-/>
-         </motion.div>
+  posterUrl={selectedPoster?.src} // <--- הוסף את זה
+  onGeneratePoster={() => handleGeneratePoster(script)} // <--- הוסף את זה
+  loading={loading} // <--- הוסף את זה
+  error={error} // <--- הוסף את זה
+/>     </motion.div>
           )}
         </AnimatePresence>
        {/* --- מודל הרחבה קטן ויוקרתי (Expanded Panel) --- */}
@@ -1169,6 +1215,7 @@ track('Script Created', {
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(212, 163, 115, 0.2); border-radius: 10px; }
+      
       `}</style>
    <Analytics />
    </div>
