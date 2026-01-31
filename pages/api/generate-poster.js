@@ -41,7 +41,7 @@ export default async function handler(req, res) {
       
       console.log(`📊 Redis Check: המפתח הוא ${usageKey}, הערך שנמצא: ${currentUsage}`);
 
-      if (currentUsage && parseInt(currentUsage) >= 6) {
+      if (currentUsage && parseInt(currentUsage) >= 2) {
         return res.status(429).json({ 
           success: false, 
           message: "🎬 המסך ירד להיום. מכסת הפוסטרים היומית שלך הסתיימה, נתראה מחר בבכורה!" 

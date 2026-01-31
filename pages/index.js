@@ -187,11 +187,17 @@ const handleSendFeedback = async () => {
       }
 
       // טיפול במכסה (429) - הגנה כפולה
-      if (response.status === 429) {
-        setError(data?.message || (lang === 'he' ? 'המכסה היומית הסתיימה' : 'Daily quota reached'));
-        setLoading(false);
-        return;
-      }
+     if (response.status === 429) {
+  const quotaMsg = lang === 'he' 
+    ? "🎬 הצילומים להיום הסתיימו. המכסה היומית נוצלה - נתראה מחר בבכורה!" 
+    : "🎬 Production wrapped for today. Daily quota reached - see you at tomorrow's premiere!";
+  
+  // אנחנו נותנים עדיפות ל-quotaMsg שלנו כדי להבטיח שליטה בשפה ובנרטיב
+  setError(quotaMsg); 
+  
+  setLoading(false);
+  return;
+}
 
       // 2. טיפול בשגיאות שרת אחרות
       if (!response.ok) {

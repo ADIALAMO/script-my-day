@@ -278,11 +278,16 @@ const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST')
 
       // טיפול במכסה (429)
       if (response.status === 429) {
-        setPosterError(data.message || (isHebrew ? 'המכסה הסתיימה' : 'Quota exceeded'));
-        setPosterLoading(false);
-        setPosterUrl(''); 
-        return;
-      }
+  const quotaMsg = lang === 'he' 
+    ? "🎬 הצילומים להיום הסתיימו. המכסה היומית נוצלה - נתראה מחר בבכורה!" 
+    : "🎬 Production wrapped for today. Daily quota reached - see you at tomorrow's premiere!";
+  
+  // אנחנו נותנים עדיפות ל-quotaMsg שלנו כדי להבטיח שליטה בשפה ובנרטיב
+  setError(quotaMsg); 
+  
+  setLoading(false);
+  return;
+}
 
       // אם השרת החזיר שגיאה (כמו בניסוי שלך - 500)
       if (!response.ok || data.success === false) {

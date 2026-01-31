@@ -17,7 +17,7 @@ const kv = new Redis(process.env.REDIS_URL, {
 });
 
 kv.on('error', (err) => console.log('📡 Redis Offline Mode (Local/Network)'));
-const DAILY_LIMIT = 8;
+const DAILY_LIMIT = 2;
 
 export default async function handler(req, res) {
   // 1. אבטחת מתודה

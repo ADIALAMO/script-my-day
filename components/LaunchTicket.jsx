@@ -13,13 +13,13 @@ export default function LaunchTicket({ lang = 'he' }) {
   }, []);
 
   const content = {
-    badge: isHe ? "הטבת השקה" : "Launch Special",
-    title: isHe ? "פרמיירת ההשקה" : "Launch Premiere",
+    badge: isHe ? "סטטוס הפקה" : "Production Status",
+    title: isHe ? "עדכון מהסט" : "Production Update",
     desc: isHe 
-      ? "ברוכים הבאים לשורה הראשונה. שדרגנו לכם את הגישה ל-24 השעות הקרובות."
-      : "Welcome to the front row. Upgraded access for the next 24 hours.",
-    benefit: isHe ? "✨ 4 יצירות יומיות פעילות" : "✨ 4 Daily Creations Active",
-    button: isHe ? "מתחילים ליצור" : "Start Creating"
+      ? "בונוס ההשקה הסתיים, אך אנחנו כבר בחדר העריכה עובדים על הפתעות חדשות."
+      : "The launch bonus has ended, but we're already in the editing room working on new surprises.",
+    benefit: isHe ? "🎬 נצלו את המכסה היומית בתבונה" : "🎬 Use your daily quota wisely",
+    button: isHe ? "חזרה לצילומים" : "Back to Set"
   };
 
   // הכפתור שנשאר בתוך ה-Navbar
@@ -36,9 +36,9 @@ export default function LaunchTicket({ lang = 'he' }) {
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75"></span>
         <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
       </span>
-      <Ticket size={14} className="text-amber-500" />
+      <Star size={14} className="text-amber-500" fill="currentColor" />
       <span className="text-[9px] md:text-[10px] font-black tracking-[0.1em] text-amber-500 uppercase italic whitespace-nowrap">
-        {content.badge}
+                {content.badge}
       </span>
     </button>
   );
