@@ -278,6 +278,10 @@ const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST')
 
       // טיפול במכסה (429)
       if (response.status === 429) {
+        // הזרקה כירורגית: מעקב מכסת פוסטרים
+        if (typeof window !== 'undefined' && window.gtag) {
+          window.gtag('event', 'poster_error', { error_type: 'quota_reached', genre });
+        }
   const quotaMsg = lang === 'he' 
     ? "🎬 הצילומים להיום הסתיימו. המכסה היומית נוצלה - נתראה מחר בבכורה!" 
     : "🎬 Production wrapped for today. Daily quota reached - see you at tomorrow's premiere!";
@@ -300,6 +304,10 @@ const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST')
         }
         setPosterUrl(data.imageUrl);
         setPosterError(''); 
+        // הזרקה כירורגית: מעקב הצלחה
+        if (typeof window !== 'undefined' && window.gtag) {
+          window.gtag('event', 'poster_success', { genre: genre });
+        }
         console.log(`✅ Poster received via ${data.provider}`);
       } else {
         throw new Error("Invalid response format");
@@ -307,7 +315,14 @@ const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST')
 
     } catch (error) {
       console.warn("Fallback to Pollinations Direct:", error);
-      
+      // הזרקה כירורגית: מעקב שגיאת פוסטר (API או קריסה)
+      if (typeof window !== 'undefined' && window.gtag) {
+        window.gtag('event', 'poster_error', {
+          error_type: 'generation_failed',
+          error_message: error.message,
+          genre: genre
+        });
+      }
       // אם גם השרת נכשל וגם אנחנו במצב לא מקוון/שגיאה קריטית
       const directUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${seed}&model=flux&nologo=true`;
       
@@ -678,6 +693,12 @@ onClick={() => {
                   crossOrigin="anonymous"
                   className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${posterLoading ? 'opacity-0' : 'opacity-100'}`} 
                   onLoad={() => {
+                    // הזרקה: מדידת הצלחת רינדור ויזואלי
+  if (typeof window !== 'undefined' && window.gtag) {
+    window.gtag('event', 'poster_rendered_visually', {
+      genre: genre
+    });
+  }
   if (audioContext.current?.state === 'suspended') {
     audioContext.current.resume();
   }
@@ -751,8 +772,13 @@ onClick={() => {
                         {posterError}
                       </p>
                       <button 
-                        onClick={generatePoster}
-                        className="group relative px-8 py-3 overflow-hidden rounded-full transition-all duration-300 active:scale-95"
+                        onClick={() => {
+                         if (typeof window !== 'undefined' && window.gtag) {
+                           window.gtag('event', 'poster_retry_click', { genre: genre });
+                         }
+                         generatePoster();
+                         }}
+                          className="group relative px-8 py-3 overflow-hidden rounded-full transition-all duration-300 active:scale-95"
                       >
                         <div className="absolute inset-0 bg-[#d4a373]/10 border border-[#d4a373]/30 rounded-full group-hover:bg-[#d4a373] transition-colors duration-300" />
                         <span className="relative text-[#d4a373] group-hover:text-black font-black text-[10px] uppercase tracking-widest transition-colors duration-300">

@@ -23,33 +23,24 @@ export default async function handler(req, res) {
   const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
   const seed = Math.floor(Math.random() * 999999);
 
-  // בדיקת אדמין ומכסה
+  // בדיקת אדמין (נשמרת למעקב בלבד)
   const clientAdminKey = sanitize(req.headers['x-admin-key'] || isAdminBody || '');
-  const serverAdminSecret = sanitize(process.env.ADMIN_SECRET || '');
+  const serverAdminSecret = sanitize(process.env.ADMIN_SECRET_KEY || process.env.ADMIN_SECRET || '');
   const isAdmin = serverAdminSecret !== '' && clientAdminKey === serverAdminSecret;
-  let usageKey = null;
 
-  if (!isAdmin) {
-    const identifier = req.headers['x-device-id'] || bodyDeviceId || (req.headers['x-forwarded-for'] || '').split(',')[0].trim();
-    usageKey = `usage:poster:${identifier}:${new Date().toISOString().split('T')[0]}`;
-   try {
-      // מונע תקיעה של השרת אם Redis לא זמין (למשל בניתוק אינטרנט)
-      const currentUsage = await Promise.race([
-        redis.get(usageKey),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1000))
-      ]);
-      
-      console.log(`📊 Redis Check: המפתח הוא ${usageKey}, הערך שנמצא: ${currentUsage}`);
-
-      if (currentUsage && parseInt(currentUsage) >= 2) {
-        return res.status(429).json({ 
-          success: false, 
-          message: "🎬 המסך ירד להיום. מכסת הפוסטרים היומית שלך הסתיימה, נתראה מחר בבכורה!" 
-        });
-      }
-    } catch (e) { 
-      console.log("⚠️ Poster Quota bypass: Redis unavailable"); 
-    }
+  // הגדרת מפתח לרישום בלבד (ללא חסימה)
+  const identifier = req.headers['x-device-id'] || bodyDeviceId || (req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  const usageKey = `usage:poster:${identifier}:${new Date().toISOString().split('T')[0]}`;
+  
+  // הזרקה כירורגית: רישום בטרמינל בלבד ללא חסימת משתמש
+  try {
+    const currentUsage = await Promise.race([
+      redis.get(usageKey),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 500))
+    ]);
+    console.log(`📊 Poster Stats: המפתח ${usageKey}, שימושים עד כה: ${currentUsage || 0}`);
+  } catch (e) {
+    console.log("⚠️ Redis logging skipped");
   }
   // פונקציה פנימית לעדכון המכסה רק בהצלחה
   const trackUsage = async () => {

@@ -188,6 +188,10 @@ const handleSendFeedback = async () => {
 
       // טיפול במכסה (429) - הגנה כפולה
      if (response.status === 429) {
+      // הזרקה כירורגית: מעקב מכסה
+        if (typeof window !== 'undefined' && window.gtag) {
+          window.gtag('event', 'script_error', { error_type: 'quota_reached', genre });
+        }
   const quotaMsg = lang === 'he' 
     ? "🎬 הצילומים להיום הסתיימו. המכסה היומית נוצלה - נתראה מחר בבכורה!" 
     : "🎬 Production wrapped for today. Daily quota reached - see you at tomorrow's premiere!";
@@ -201,6 +205,14 @@ const handleSendFeedback = async () => {
 
       // 2. טיפול בשגיאות שרת אחרות
       if (!response.ok) {
+        // הזרקה כירורגית: מעקב שגיאת שרת
+        if (typeof window !== 'undefined' && window.gtag) {
+          window.gtag('event', 'script_error', { 
+            error_type: 'server_error', 
+            status: response.status,
+            genre 
+          });
+        }
         throw new Error(data.message || data.error || 'Production Error');
       }
       
@@ -228,7 +240,14 @@ track('Script Created', {
 
     } catch (err) {
       console.error("Frontend Generation Error:", err);
-      
+      // הזרקה כירורגית: מעקב קריסת תהליך או ניתוק
+      if (typeof window !== 'undefined' && window.gtag) {
+        window.gtag('event', 'script_error', { 
+          error_type: 'frontend_exception', 
+          error_message: err.message,
+          genre 
+        });
+      }
       // זיהוי כירורגי של ניתוק אינטרנט או שגיאת שרת חמורה
       if (err.message.includes('fetch failed') || !navigator.onLine) {
         setError(lang === 'he' ? 'אין חיבור אינטרנט פעיל - ההפקה הופסקה' : 'No internet connection - Production halted');
