@@ -331,6 +331,14 @@ const handleCapturePoster = async (action) => {
     language: lang,
     title: posterTitle
   });
+  // הוספה לגוגל: אירוע אחד שמרכז את היציאה החוצה
+  if (typeof window !== 'undefined' && window.gtag) {
+    window.gtag('event', 'content_export', {
+      method: action, // 'download' או 'share'
+      genre: genre,
+      title: posterTitle
+    });
+  }
 
   try {
     const img = posterRef.current.querySelector('img');
@@ -831,8 +839,16 @@ onClick={() => {
                 <motion.button 
                   whileHover={{ scale: 1.02, backgroundColor: "#d4a373", color: "#000" }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => handleCapturePoster('download')}
-                  className="relative flex-[2] flex items-center justify-center gap-2 h-11 bg-[#1a1c20] border border-white/20 text-gray-300 rounded-lg transition-all duration-500 overflow-hidden"
+onClick={() => {
+    handleCapturePoster('download');
+    // הוספה: מדידת הורדה בפועל
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('event', 'poster_download_click', {
+        title: posterTitle,
+        genre: genre
+      });
+    }
+  }}                  className="relative flex-[2] flex items-center justify-center gap-2 h-11 bg-[#1a1c20] border border-white/20 text-gray-300 rounded-lg transition-all duration-500 overflow-hidden"
                 >
                   {/* אפקט הברק (Shiny Sweep) */}
                   <motion.div animate={{ left: ['-100%', '200%'] }} transition={{ repeat: Infinity, duration: 3, ease: "linear" }} className="absolute top-0 bottom-0 w-12 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[35deg]" />
@@ -843,8 +859,16 @@ onClick={() => {
                 <motion.button 
                   whileHover={{ scale: 1.05, borderColor: "#d4a373", color: "#d4a373" }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => handleCapturePoster('share')}
-                  className="relative w-11 h-11 flex items-center justify-center bg-[#1a1c20] border border-white/10 text-gray-400 rounded-lg transition-all duration-500"
+onClick={() => {
+    handleCapturePoster('share');
+    // הוספה: מדידת לחיצה על שיתוף
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('event', 'poster_share_click', {
+        title: posterTitle,
+        genre: genre
+      });
+    }
+  }}                  className="relative w-11 h-11 flex items-center justify-center bg-[#1a1c20] border border-white/10 text-gray-400 rounded-lg transition-all duration-500"
                 >
                   <div className="relative">
                     <Share2 size={18} strokeWidth={2} />

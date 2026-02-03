@@ -2,6 +2,7 @@
 import { SpeedInsights } from '@vercel/speed-insights/react'; // ייבוא הרכיב החדש
 import '../styles/globals.css';
 import Head from 'next/head';
+import Script from 'next/script';
 import { useEffect } from 'react';
 
 function MyApp({ Component, pageProps }) {
@@ -57,7 +58,19 @@ function MyApp({ Component, pageProps }) {
   <link rel="shortcut icon" href="/favicon.ico" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 </Head>
-      
+      {/* --- 2. הזרקה כירורגית של גוגל אנליטיקס (מחוץ ל-Head) --- */}
+      <Script
+        src="https://www.googletagmanager.com/gtag/js?id=G-YL145XYBD3"
+        strategy="afterInteractive"
+      />
+      <Script id="google-analytics" strategy="afterInteractive">
+        {`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-YL145XYBD3');
+        `}
+      </Script>
       {/* המבנה הראשי של האתר עם צבעי המותג והגדרות הבחירה */}
       <main className="min-h-screen bg-[#030712] selection:bg-[#d4a373]/30">
         <Component {...pageProps} />

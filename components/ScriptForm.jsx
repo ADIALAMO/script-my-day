@@ -159,6 +159,13 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, isTypingGlobal, onInput
   const handleSubmit = (e) => {
     e.preventDefault();
     if (isGlobalLocked || !journalEntry.trim() || !activeGenre) return;
+// --- הוספה כירורגית: מעקב ז'אנר לפני השליחה ---
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('event', 'generate_script_start', {
+        genre: activeGenre,
+        word_count: journalEntry.trim().split(/\s+/).length
+      });
+    }
 
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;

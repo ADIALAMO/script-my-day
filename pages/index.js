@@ -213,7 +213,15 @@ track('Script Created', {
           genre: selectedGenre,
           language: lang,
           producer: producerName || 'Guest'
-        });        console.log("✅ Script received successfully!");
+        });     
+        // הוספה כירורגית: אישור הצלחה לגוגל
+  if (typeof window !== 'undefined' && window.gtag) {
+    window.gtag('event', 'script_generation_success', {
+      genre: selectedGenre,
+      language: lang
+    });
+  }  
+         console.log("✅ Script received successfully!");
       } else {
         throw new Error('התקבלה תשובה ריקה מהשרת');
       }
