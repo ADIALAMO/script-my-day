@@ -5,6 +5,17 @@ import {
   Sparkles, Copy, Download, Check, Volume2, Camera, VolumeX,
   Film 
 } from 'lucide-react';
+// --- נתונים סטטיים (מחוץ לקומפוננטה) ---
+const LOADING_MESSAGES = {
+  he: [
+    "סורק זכרונות...", "מנתח DNA סיפורי...", "בונה מתח דרמטי...",
+    "מלטש דיאלוגים...", "מעבה דמויות...", "פורש קווי עלילה...", "מדפיס עותקים..."
+  ],
+  en: [
+    "Scanning memories...", "Analyzing story DNA...", "Building tension...",
+    "Polishing dialogue...", "Developing characters...", "Plotting twists...", "Printing scripts..."
+  ]
+};
 
 // --- רכיבי אנימציה (מוגדרים מחוץ לקומפוננטה כדי למנוע יצירה מחדש בכל רינדור) ---
 const DramaScene = ({ isSelected }) => (
@@ -52,54 +63,40 @@ const genres = [
 ];
 
 // --- הקומפוננטה הראשית (אחת ויחידה!) ---
-const ScriptForm = ({ onSubmit, loading, lang, isTyping, isTypingGlobal, onInputChange, producerName, setProducerName }) => {
+const ScriptForm = ({ onSubmit, loading, lang, isTyping, isTypingGlobal, producerName, setProducerName }) => {
   const [journalEntry, setJournalEntry] = useState('');
   const [activeGenre, setActiveGenre] = useState('drama');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isMusicMuted, setIsMusicMuted] = useState(false);
-  const bgMusicRef = useRef(null);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const getWordCount = (text) => text.trim() ? text.trim().split(/\s+/).length : 0;
-  const isLocked = loading || isTypingGlobal;
-  const loadingMessages = lang === 'he' ? [
-    
-    
-    "סורק זכרונות...",
-    "מנתח DNA סיפורי...",
-    "בונה מתח דרמטי...",
-    "מלטש דיאלוגים...",
-    "מעבה דמויות...",
-    "פורש קווי עלילה...",
-    "מדפיס עותקים..."
-  ] : [
-    "Scanning memories...",
-    "Analyzing story DNA...",
-    "Building tension...",
-    "Polishing dialogue...",
-    "Developing characters...",
-    "Plotting twists...",
-    "Printing scripts..."
-  ];
+  // --- בתוך ScriptForm ---
 
-  useEffect(() => {
-    let interval;
-    if (loading) {
-      interval = setInterval(() => {
-        setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length);
-      }, 2800);
-    } else {
-      setLoadingMessageIndex(0);
-    }
-    return () => clearInterval(interval);
-  }, [loading, loadingMessages.length]);
+// 1. חישוב מונה מילים חכם (לא מכביד על המעבד)
+const currentWordCount = React.useMemo(() => {
+  return journalEntry.trim() ? journalEntry.trim().split(/\s+/).length : 0;
+}, [journalEntry]);
 
-  const isGlobalLocked = loading || isTyping;
+// 2. קיצור המנעול - משפיע רק על הדיסייבל, לא חונק את הפונקציות
+const isLocked = loading; 
 
-  // +++ הטמעה חדשה +++
+// 3. שימוש במערך החיצוני בתוך ה-Effect
+useEffect(() => {
+  let interval;
+  const messages = LOADING_MESSAGES[lang] || LOADING_MESSAGES.en;
+  if (loading) {
+    interval = setInterval(() => {
+      setLoadingMessageIndex((prev) => (prev + 1) % messages.length);
+    }, 2800);
+  } else {
+    setLoadingMessageIndex(0);
+  }
+  return () => clearInterval(interval);
+}, [loading, lang]);
 
   // 1. פונקציית החלפת סאונד - חייבת לקרות בלחיצה (User Gesture)
-  const handleGenreChange = (genreValue) => {
+  const handleGenreChange = React.useCallback((genreValue) => {
     setActiveGenre(genreValue);
     const audio = document.getElementById('main-bg-music');
     if (!audio) return;
@@ -112,39 +109,11 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, isTypingGlobal, onInput
       audio.src = `/audio/${fileName}`;
       audio.load();
       audio.loop = true;
-      if (isMusicMuted) {
-        audio.volume = 0;
-      } else {
-        audio.volume = (isTyping || isTypingGlobal) ? 0.3 : 0.5;
-        // מנגן רק אם המשתמש לא השתיק
-        audio.play().catch(err => console.log("Audio Playback Blocked", err));
-      }
-    }
-    if (onInputChange) onInputChange(journalEntry, genreValue);
-  };
-
-  // ניהול Ducking - מגיב להקלדת משתמש (isTyping) ולהקלדת סוכן (isTypingGlobal)
-  useEffect(() => {
-    const audio = document.getElementById('main-bg-music');
-    if (!audio) return;
-
-    if (isMusicMuted) {
-      audio.volume = 0;
-      return; 
-    }
-
-    // ה-Ducking יופעל אם אתה מקליד יומן OR אם הסוכן כותב תסריט
-    const shouldDuck = isTyping || isTypingGlobal; 
-
-    const targetVolume = shouldDuck ? 0.3 : 0.5;
-
-    audio.volume = targetVolume;
-    if (audio.paused) {
-      audio.play().catch(err => console.log("Audio play resumed", err));
-    }
-    
-    console.log(`🎵 Audio Update: Ducking=${shouldDuck ? 'ON' : 'OFF'}, Vol=${targetVolume}`);
-  }, [isTyping, isTypingGlobal, isMusicMuted]);
+      audio.volume = isMusicMuted ? 0 : 0.5;
+    audio.play().catch(err => console.log("Audio Playback Blocked", err));
+  }
+}, [isMusicMuted]);
+ 
   
   const handleDownloadJournal = () => {
     const blob = new Blob([journalEntry], { type: 'text/plain' });
@@ -158,12 +127,12 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, isTypingGlobal, onInput
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (isGlobalLocked || !journalEntry.trim() || !activeGenre) return;
+    if (isLocked || !journalEntry.trim() || !activeGenre) return;
 // --- הוספה כירורגית: מעקב ז'אנר לפני השליחה ---
     if (typeof window !== 'undefined' && window.gtag) {
       window.gtag('event', 'generate_script_start', {
         genre: activeGenre,
-        word_count: journalEntry.trim().split(/\s+/).length
+        word_count: currentWordCount
       });
     }
 
@@ -250,7 +219,6 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, isTypingGlobal, onInput
                         onClick={(e) => {
                           e.stopPropagation();
                           setJournalEntry(example.full);
-                          if (onInputChange) onInputChange(example.full);
                           setIsModalOpen(false);
                         }}
                         className="flex items-center gap-2.5 w-full p-2 rounded-xl bg-white/[0.02] hover:bg-[#d4a373]/20 border border-transparent hover:border-[#d4a373]/30 transition-all duration-300 group/item text-right"
@@ -305,13 +273,13 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, isTypingGlobal, onInput
           <div className="absolute -bottom-10 right-2 flex items-center gap-3">
             <div className="flex flex-col items-end">
               <span className={`text-[9px] font-black tracking-[0.2em] uppercase transition-colors duration-300 ${
-                (journalEntry.trim() ? journalEntry.trim().split(/\s+/).length : 0) >= 480 ? 'text-red-500' : 'text-[#d4a373]/50'
+               currentWordCount >= 480 ? 'text-red-500' : 'text-[#d4a373]/50'
               }`}>
                 {lang === 'he' ? 'מונה מילים' : 'WORD COUNT'}
               </span>
               <div className="flex items-baseline gap-1 font-mono">
                 <span className="text-sm font-bold text-white">
-                  {journalEntry.trim() ? journalEntry.trim().split(/\s+/).length : 0}
+                    {currentWordCount}
                 </span>
                 <span className="text-[10px] text-white/20">/ 500</span>
               </div>
@@ -345,7 +313,7 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, isTypingGlobal, onInput
               
               if (audio) {
                 // במובייל: שינוי ווליום חייב לקרות בתוך ה-Click
-                audio.volume = newMutedState ? 0 : (isTyping || isTypingGlobal ? 0.3 : 0.5);
+                audio.volume = newMutedState ? 0 : 0.5;
                 audio.muted = newMutedState; // תוספת אבטחה למובייל
 
                 // אם המשתמש מבטל השתקה - "להעיר" את האודיו
@@ -380,9 +348,9 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, isTypingGlobal, onInput
                 type="button"
                 onClick={() => handleGenreChange(genre.value)}
 
-                whileHover={!isGlobalLocked ? { y: -4, scale: 1.02 } : {}}
-                whileTap={!isGlobalLocked ? { scale: 0.96 } : {}}
-                disabled={isGlobalLocked}
+                whileHover={!isLocked ? { y: -4, scale: 1.02 } : {}}
+                whileTap={!isLocked ? { scale: 0.96 } : {}}
+                disabled={isLocked}
 // להוסיף את ה-Template Literal בסוף ה-className:
 className={`relative flex flex-col items-center justify-between h-28 md:h-32 p-4 rounded-2xl border transition-all duration-500 overflow-hidden ${
   isSelected ? genre.activeClass : 'bg-white/5 border-white/5 hover:border-white/20 hover:bg-white/10'
@@ -445,7 +413,7 @@ className={`relative flex flex-col items-center justify-between h-28 md:h-32 p-4
       {/* כפתור הפקה מרכזי */}
       <motion.button
         type="submit"
-        disabled={isLocked || !journalEntry.trim() || !activeGenre}
+        disabled={loading || currentWordCount === 0 || !activeGenre}
         className={`relative w-full group overflow-hidden rounded-[1.5rem] md:rounded-[2rem] transition-all duration-700 shadow-[0_10px_40px_rgba(212,163,115,0.2)] ${
           loading 
             ? 'bg-gradient-to-r from-amber-600 via-[#d4a373] to-amber-600 py-6 md:py-8' 
@@ -488,8 +456,8 @@ className={`relative flex flex-col items-center justify-between h-28 md:h-32 p-4
                     exit={{ y: -15, opacity: 0 }}
                     className="absolute whitespace-nowrap text-[13px] md:text-[18px] tracking-tighter"
                   >
-                    {loadingMessages[loadingMessageIndex]}
-                  </motion.span>
+        {/* גישה ישירה למערך החיצוני */}
+{(LOADING_MESSAGES[lang] || LOADING_MESSAGES.en)[loadingMessageIndex]}                        </motion.span>
                 </AnimatePresence>
               </div>
             </div>
