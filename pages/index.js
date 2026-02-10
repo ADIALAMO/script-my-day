@@ -491,7 +491,7 @@ const response = await fetch('/api/generate-poster', {
         {/* כפתור סגירה */}
         <button 
           onClick={() => setShowAdminPanel(false)} 
-          className="absolute top-6 right-6 text-white/20 hover:text-[#d4a373] transition-colors p-2"
+          className="close-button absolute top-6 right-6 text-white/20 hover:text-[#d4a373] transition-colors p-2"
         >
           <X size={24} />
         </button>
@@ -559,7 +559,7 @@ const response = await fetch('/api/generate-poster', {
             <h2 className="text-[#d4a373] text-2xl font-black uppercase tracking-tighter italic">
               {MODAL_DATA[modalContent][lang].title}
             </h2>
-            <button onClick={() => setModalContent(null)} className="text-white/20 hover:text-[#d4a373] transition-colors p-2">
+            <button onClick={() => setModalContent(null)} className="close-button text-white/20 hover:text-[#d4a373] transition-colors p-2">
               <X size={28} />
             </button>
           </div>
@@ -836,13 +836,13 @@ const response = await fetch('/api/generate-poster', {
     setSelectedPoster(null);
   }}
   /* הגדלנו את ה-Z-index והוספנו p-4 לשטח מגע גדול יותר */
-  className="absolute right-6 text-white/40 hover:text-[#d4a373] transition-all duration-300 z-[9999] p-4 bg-black/20 backdrop-blur-md rounded-full group"
+  className="close-button absolute right-6 text-white/40 hover:text-[#d4a373] transition-all duration-300 z-[9999] p-4 bg-black/20 backdrop-blur-md rounded-full group"
   style={{ 
     top: 'calc(var(--sat, 0px) + 16px)', // דוחף את הכפתור מתחת לשעון/אי הדינמי
     touchAction: 'manipulation'
   }}
 >
-  <X size={24} className="group-hover:rotate-90 transition-transform duration-500" />
+  <X size={24} className="close-button group-hover:rotate-90 transition-transform duration-500" />
 </button>
 
         {/* תמונה מוקטנת למעלה עם גרדיאנט עמוק */}
@@ -935,7 +935,7 @@ const response = await fetch('/api/generate-poster', {
               </span>
               <button 
                 onClick={() => setShowFeedback(false)}
-                className="text-white/20 hover:text-white transition-colors p-1"
+                className="close-button text-white/20 hover:text-white transition-colors p-1"
               >
                 <X size={14} />
               </button>

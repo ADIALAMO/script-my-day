@@ -195,3 +195,36 @@ body {
   scrollbar-width: thin;
   scrollbar-color: #d4a373 transparent;
 }
+/* --- תיקון כירורגי לאזור לחיצה (Close Button) במובייל --- */
+
+/* הגדרת בסיס לכפתור הסגירה */
+.close-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation; /* מסיר השהיית לחיצה במובייל */
+  z-index: 160; /* מבטיח שהוא מעל הכל */
+}
+
+/* הרחבת שטח פגיעה במובייל בלבד */
+@media (max-width: 768px) {
+  .close-button::after {
+    content: '';
+    position: absolute;
+    /* הסטת נקודת המרכז למטה: מתחיל 10 פיקסלים מעל ונמשך עמוק למטה */
+    top: -10px; 
+    left: 50%;
+    transform: translateX(-50%);
+    width: 65px;  /* רוחב לחיצה נדיב */
+    height: 90px; /* גובה לחיצה נדיב שמושך את ה"מגנט" למטה */
+    background: transparent;
+    z-index: 10;
+  }
+}
+
+/* במידה וה-X שלך הוא בתוך אלמנט שמקבל קלאס של Lucide או SVG */
+.close-button svg {
+  pointer-events: none; /* גורם ללחיצה "לעבור דרך" האייקון לאזור הלחיצה המורחב */
+}
