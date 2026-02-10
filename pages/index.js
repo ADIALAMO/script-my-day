@@ -17,6 +17,107 @@ import { SHOWCASE_POSTERS } from '../constants/showcase';const genreIcons = {
   drama: '🎭'
 };
 
+const MODAL_DATA = {
+  terms: {
+    he: {
+      title: 'תנאי שימוש - חוזה הפקה',
+      sections: [
+        { h: '1. בעלות על התוכן והיצירה', p: 'כל זכויות הקניין הרוחני בתסריטים ובפוסטרים שנוצרו באמצעות LIFESCRIPT שייכות לך, המשתמש, באופן מלא ובלעדי. אתה חופשי לשתף, להפיץ ולהשתמש ביצירה לכל מטרה אישית.' },
+        { h: '2. טכנולוגיית AI ואחריות לתוכן', p: 'השירות מבוסס על מודלי בינה מלאכותית מתקדמים. המשתמש מבין כי התוכן עשוי להכיל אי-דיוקים עובדתיים, הטיות או טעויות גנרטיביות. האחריות על השימוש בתוכן והפצתו חלה על המשתמש בלבד.' },
+        { h: '3. הגבלות שימוש וקוד אתי', p: 'חל איסור מוחלט להשתמש במערכת ליצירת תוכן פוגעני, אלים, מסית, פורנוגרפי או כזה המפר זכויות של צדדים שלישיים. המערכת שומרת לעצמה את הזכות לחסום גישה למשתמשים שיעשו שימוש לרעה בטכנולוגיה.' },
+        { h: '4. הגבלת אחריות (Disclaimer)', p: 'השירות ניתן כפי שהוא ("AS IS"). LIFESCRIPT אינה מתחייבת לזמינות רציפה של השרתים או לכך שהתוצאה תתאים לציפיות המשתמש ב-100%. לא נהיה אחראים לכל נזק ישיר או עקיף הנובע מהשימוש באפליקציה.' },
+        { h: '5. עדכונים ושינויים', p: 'אנו שומרים לעצמנו את הזכות לעדכן את תנאי השימוש או לשנות את מאפייני השירות מעת לעת, ללא הודעה מוקדמת, בכדי להמשיך ולשפר את חווית ההפקה.' },
+        { h: '6. מדיניות שימוש הוגן', p: 'אנו מפעילים מדיניות שימוש הוגן בכדי למנוע עומס על המערכת. חל איסור על שימוש בבוטים או באמצעים אוטומטיים. אנו שומרים לעצמנו את הזכות להגביל את מכסת היצירה היומית לכל משתמש.' },
+        { h: '7. הגבלת גיל', p: 'השימוש ב-LIFESCRIPT מיועד למשתמשים מעל גיל 13. בשימושך בשירות אתה מצהיר כי אתה עומד בתנאי הגיל הנדרשים.' },
+        { h: '8. שירותי צד שלישי', p: 'השירות משתלב עם ספקי בינה מלאכותית חיצוניים (כגון OpenRouter, Cohere ו-Pollinations). LIFESCRIPT אינה אחראית לשינויים במדיניות או בזמינות של שירותים אלו.' }
+      ]
+    },
+    en: {
+      title: 'TERMS OF SERVICE - PRODUCTION CONTRACT',
+      sections: [
+        { h: '1. Ownership & Intellectual Property', p: 'All intellectual property rights in the scripts and posters created through LIFESCRIPT belong entirely and exclusively to you, the user.' },
+        { h: '2. AI Technology & Content Responsibility', p: 'The service is based on advanced AI models. The user understands that content may contain factual inaccuracies or biases.' },
+        { h: '3. Usage Restrictions & Ethics', p: 'It is strictly forbidden to use the system to create offensive, violent, or pornographic content.' },
+        { h: '4. Disclaimer of Warranties', p: 'The service is provided "AS IS". LIFESCRIPT does not guarantee continuous server availability.' },
+        { h: '5. Updates & Changes', p: 'We reserve the right to update these terms or change service features from time to time.' },
+        { h: '6. Fair Use Policy', p: 'We operate a fair use policy to prevent system overload. Use of bots is prohibited.' },
+        { h: '7. Age Restriction', p: 'Use of LIFESCRIPT is intended for users over the age of 13.' },
+        { h: '8. Third-Party Services', p: 'The service integrates with third-party AI providers. LIFESCRIPT is not responsible for their availability.' }
+      ]
+    }
+},
+privacy: {
+    he: {
+      title: 'פרטיות וביטחון מידע',
+      summary: '"הפרטיות שלך היא התסריט הכי חשוב שאנחנו מגנים עליו."',
+      sections: [
+        { h: '1. מדיניות "אפס אחסון" (Zero Storage)', p: 'התוכן האישי שלך הוא רכושך בלבד. הטקסטים שאתה מזין והתסריטים שנוצרים מעובדים בזמן אמת ונמחקים לצמיתות מהשרתים שלנו מיד עם סיום הסשן. אנחנו לא שומרים היסטוריית כתיבה מטעמי פרטיות.' },
+        { h: '2. זכויות יוצרים וקניין רוחני', p: 'כל זכויות הקניין רוחני על התסריטים שנוצרים באמצעות המערכת שייכות לך באופן מלא. LIFESCRIPT אינה טוענת לבעלות על הסיפורים, הדמויות או התכנים המופקים עבורך.' },
+        { h: '3. עיבוד נתונים ע"י ספקי AI', p: 'המידע מועבר לספקי עיבוד מובילים (כגון Google, DeepSeek ו-OpenRouter) בערוץ מוצפן לצורך יצירת התוכן בלבד. אנו עושים מאמץ לבחור ספקים ומסלולי שירות המבטיחים את פרטיות המידע. עם זאת, המשתמש מודע לכך שחלק מהשירותים הניתנים במסלולי חינם עשויים להשתמש במידע אנונימי לשיפור טכנולוגי של הספק.' },
+        { h: '4. שימוש בטכנולוגיית אחסון מקומי', p: 'המערכת משתמשת ב-LocalStorage כדי לשמור את מפתחות הגישה והגדרות השפה שלך על המכשיר האישי שלך בלבד. מידע זה אינו מועבר לצד שלישי ואינו משמש למעקב פרסומי.' }
+      ]
+    },
+    en: {
+      title: 'PRIVACY & DATA SECURITY',
+      summary: '"Your privacy is the most important script we protect."',
+      sections: [
+        { h: '1. Zero Storage Policy', p: 'Your personal content is yours alone. Data is processed in real-time and permanently deleted immediately after the session ends.' },
+        { h: '2. Intellectual Property', p: 'All intellectual property rights for the scripts generated through the system belong entirely to you.' },
+        { h: '3. AI Data Processing', p: 'Data is transmitted to leading processors via encrypted channels solely for content generation. We strive to select providers that prioritize data privacy.' },
+        { h: '4. Local Storage Technology', p: 'The system uses LocalStorage to save your access keys and language settings on your personal device only.' }
+      ]
+    }
+  },
+  support: {
+    he: {
+      title: 'מוקד תמיכה ופתרון תקלות',
+      type: 'faq',
+      footerLabel: 'אנחנו כרגע בשלב הרצה אקסקלוסיבית (Beta)',
+      footerButton: 'המשך הפקה נעימה!',
+      sections: [
+        { h: 'הכפתור "צור תסריט" לא מגיב?', p: 'הבינה המלאכותית זקוקה למינימום של 5 מילים כדי להתחיל לביים. הרחב מעט את התיאור ביומן והכפתור יפתח מיידית.' },
+        { h: 'הפוסטר לא נטען או נראה ריק?', p: 'רינדור גרפי הוא תהליך מורכב. אם הפוסטר לא הופיע תוך 10 שניות, לחץ שוב על כפתור היצירה. אין צורך לרענן את הדף.' },
+        { h: 'בעיות סאונד ומוזיקה?', p: 'ודא שהמכשיר אינו על מצב שקט (Silent). בדפדפני מובייל, לעיתים יש ללחוץ על כפתור הרמקול בטופס כדי לאפשר למוזיקה להתחיל.' },
+        { h: 'ההקלדה נעצרה באמצע?', p: 'במידה והתסריט הפסיק להיכתב, העתק את הטקסט שכתבת, רענן את הדף (Refresh) ונסה שוב. זה פותר 100% מתקלות התקשורת.' }
+      ]
+    },
+    en: {
+      title: 'PRODUCTION SUPPORT & FAQ',
+      type: 'faq',
+      footerLabel: 'Currently in exclusive Beta phase',
+      footerButton: 'Keep Directing!',
+      sections: [
+        { h: 'Generate button not responding?', p: 'The AI needs at least 5 words to start directing. Expand your journal entry slightly and the button will activate.' },
+        { h: 'Poster not loading or looks empty?', p: 'Graphic rendering is a complex process. If the poster doesn\'t appear within 10 seconds, click Generate again. No need to refresh.' },
+        { h: 'Sound or music issues?', p: 'Ensure your device isn\'t on Silent mode. On mobile browsers, you might need to tap the speaker icon to enable audio.' },
+        { h: 'Typing stopped mid-way?', p: 'If the script stops writing, copy your text, refresh the page, and try again. This resolves 100% of connection issues.' }
+      ]
+    }
+  },
+  about: {
+    he: {
+      title: 'אודות LIFESCRIPT: היומן הקולנועי הראשון מסוגו',
+      sections: [
+        { h: 'החזון שלנו', p: 'כולנו חיים בתוך סיפור, אבל לעיתים קרובות אנחנו שוכחים שאנחנו אלו שמחזיקים בעט. LIFESCRIPT נולדה כדי להעניק לך את הכיסא של הבמאי. זהו לא רק יומן אישי, אלא סטודיו לחיים – מרחב שבו המציאות היומיומית פוגשת את הקסם של הקולנוע.' },
+        { h: "תרפיה דרך עדשת הז'אנר", p: 'הלב של הפרויקט הוא היכולת לבצע מסגור מחדש (Reframing) לחוויות שלנו. משבר הופך ל"קומדיה של טעויות" שמאפשרת לצחוק על הקושי, מאבק הופך ל"סרט אקשן" שבו אתה הגיבור המנצח, ורגעים פשוטים הופכים לדרמה פיוטית. השימוש בז\'אנרים מעניק לך נקודת מבט חדשה ומעצימה על החיים.' },
+        { h: 'טכנולוגיה עם נשמה אנושית', p: 'LIFESCRIPT נולדה מתוך מסע אישי של אמן ויוצר שגילה את כוחה של הבינה המלאכותית לא כתחליף ליצירה, אלא כשותף לדיאלוג. המערכת משלבת בין האינטואיציה של האמן לדיוק של הטכנולוגיה כדי לזקק רגש גולמי לחזון ויזואלי עוצמתי.' },
+        { h: 'איך להפיק את המיטב?', p: 'התהליך פשוט: כתוב בכנות ביומן, בחר זווית (ז\'אנר) שתרצה לחקור דרכה את היום שלך, ושמור את הפוסטר שנוצר. כך תבנה לעצמך ארכיון ויזואלי של מסע החיים שלך – יצירת אמנות אחת בכל יום.' }
+      ],
+      quote: "Don't just live your life. Direct it."
+    },
+    en: {
+      title: 'ABOUT LIFESCRIPT: THE FIRST CINEMATIC JOURNAL',
+      sections: [
+        { h: 'Our Vision', p: 'We all live in a story, but too often we forget that we hold the pen. LIFESCRIPT was born to give you the director’s chair—a space where daily reality meets cinematic magic.' },
+        { h: 'Genre Therapy', p: 'The heart of the project is "Reframing" the human experience. A crisis becomes a "Comedy of Errors," a struggle turns into an "Action Movie" where you are the hero, and routine moments become poetic drama.' },
+        { h: 'Technology with Soul', p: 'Born from an artist\'s journey, LIFESCRIPT uses AI as a dialogue partner to refine raw emotion into visual vision, putting technology at the service of your personal story.' },
+        { h: 'How to Direct Your Story', p: 'Write honestly, choose a new genre to view your day through, and save your poster. Build a visual archive of your life journey—one piece of art every day.' }
+      ],
+      quote: "Don't just live your life. Direct it."
+    }
+  }
+};
+
 function HomePage() {
   const [script, setScript] = useState('');
   const [loading, setLoading] = useState(false);
@@ -273,8 +374,16 @@ track('Script Created', {
   // חשוב: אל תפתח כאן את ה-SelectedPoster עדיין!
   
   try {
-    const response = await fetch('/api/generate-poster', { /* ... הגדרות ה-fetch שלך ... */ });
-    const data = await response.json();
+const response = await fetch('/api/generate-poster', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        script: scriptText,
+        genre: selectedGenre,
+        lang: lang 
+      }),
+    });
+        const data = await response.json();
 
     if (data.success && data.imageUrl) {
       // רק כאן, כשיש הצלחה, אנחנו מציגים את הפוסטר
@@ -432,9 +541,9 @@ track('Script Created', {
   )}
 </AnimatePresence>
 
-{/* --- Modal משפטי/תמיכה קולנועי --- */}
+{/* --- Modal מאוחד וסופי --- */}
 <AnimatePresence>
-  {modalContent && (
+  {modalContent && MODAL_DATA[modalContent] && (
     <motion.div 
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/95 backdrop-blur-xl px-6"
@@ -443,347 +552,62 @@ track('Script Created', {
       <motion.div 
         initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-[#0f1117] border border-[#d4a373]/20 p-8 md:p-12 pt-24 md:pt-32 rounded-[2.5rem] max-w-2xl w-full max-h-[85vh] overflow-y-auto relative custom-scrollbar shadow-2xl"
+        className="bg-[#0f1117] border border-[#d4a373]/20 p-8 md:p-12 pt-16 rounded-[2.5rem] max-w-2xl w-full max-h-[85vh] overflow-hidden relative shadow-2xl"
       >
-       
+        <div className={lang === 'he' ? 'text-right' : 'text-left'} dir={lang === 'he' ? 'rtl' : 'ltr'}>
+          <div className="flex items-center justify-between border-b border-[#d4a373]/10 pb-4 mb-6">
+            <h2 className="text-[#d4a373] text-2xl font-black uppercase tracking-tighter italic">
+              {MODAL_DATA[modalContent][lang].title}
+            </h2>
+            <button onClick={() => setModalContent(null)} className="text-white/20 hover:text-[#d4a373] transition-colors p-2">
+              <X size={28} />
+            </button>
+          </div>
+          
+          <div className="space-y-8 text-gray-300 text-sm md:text-base leading-relaxed overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar">
+            {MODAL_DATA[modalContent][lang].sections.map((section, idx) => (
+              <section 
+                key={idx} 
+                className={MODAL_DATA[modalContent][lang].type === 'faq' ? "bg-white/5 p-5 rounded-2xl border border-white/5" : ""}
+              >
+                <h3 className="text-white font-bold mb-2 flex items-center gap-2">
+                  {MODAL_DATA[modalContent][lang].type === 'faq' ? (
+                    <span className="text-[#d4a373]">{(idx + 1).toString().padStart(2, '0')}.</span>
+                  ) : (
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#d4a373]"></span>
+                  )}
+                  {section.h}
+                </h3>
+                <p className={MODAL_DATA[modalContent][lang].type === 'faq' ? "text-gray-400 text-xs md:text-sm" : "opacity-80"}>
+                  {section.p}
+                </p>
+              </section>
+            ))}
 
-        {modalContent === 'terms' && (
-  <div className={lang === 'he' ? 'text-right' : 'text-left'} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-    <div className="flex items-center justify-between border-b border-[#d4a373]/10 pb-4 mb-6">
-  <h2 className="text-[#d4a373] text-2xl font-black uppercase tracking-tighter italic">
-{lang === 'he' ? 'תנאי שימוש - חוזה הפקה' : 'TERMS OF SERVICE - PRODUCTION CONTRACT'}  </h2>
-  <button onClick={() => setModalContent(null)} className="text-white/20 hover:text-[#d4a373] transition-colors p-2">
-    <X size={28} />
-  </button>
-</div>
-    
-    <div className="space-y-6 text-gray-300 text-sm md:text-base leading-relaxed overflow-y-auto max-h-[65vh] pr-2 custom-scrollbar">
-      
-      {/* 1. בעלות וקניין רוחני */}
-      <section>
-        <h3 className="text-white font-bold mb-2">
-          {lang === 'he' ? '1. בעלות על התוכן והיצירה' : '1. Ownership & Intellectual Property'}
-        </h3>
-        <p className="opacity-80">
-          {lang === 'he' 
-            ? 'כל זכויות הקניין הרוחני בתסריטים ובפוסטרים שנוצרו באמצעות LIFESCRIPT שייכות לך, המשתמש, באופן מלא ובלעדי. אתה חופשי לשתף, להפיץ ולהשתמש ביצירה לכל מטרה אישית.' 
-            : 'All intellectual property rights in the scripts and posters created through LIFESCRIPT belong entirely and exclusively to you, the user. You are free to share, distribute, and use the work for any personal purpose.'}
-        </p>
-      </section>
+            {MODAL_DATA[modalContent][lang].summary && (
+              <div className="bg-white/5 p-4 rounded-xl border border-white/5 mt-8 text-center italic text-[11px] text-[#d4a373]/80">
+                {MODAL_DATA[modalContent][lang].summary}
+              </div>
+            )}
 
-      {/* 2. שימוש בבינה מלאכותית ואחריות לתוכן */}
-      <section>
-        <h3 className="text-white font-bold mb-2">
-          {lang === 'he' ? '2. טכנולוגיית AI ואחריות על התוכן' : '2. AI Technology & Content Responsibility'}
-        </h3>
-        <p className="opacity-80">
-          {lang === 'he' 
-            ? 'השירות מבוסס על מודלי בינה מלאכותית מתקדמים. המשתמש מבין כי התוכן עשוי להכיל אי-דיוקים עובדתיים, הטיות או טעויות גנרטיביות. האחריות על השימוש בתוכן והפצתו חלה על המשתמש בלבד.' 
-            : 'The service is based on advanced AI models. The user understands that content may contain factual inaccuracies, biases, or generative errors. Responsibility for using and distributing the content lies solely with the user.'}
-        </p>
-      </section>
+            {MODAL_DATA[modalContent][lang].quote && (
+              <p className="text-center text-[10px] tracking-[0.6em] text-[#d4a373]/40 uppercase py-4 border-t border-white/5">
+                {MODAL_DATA[modalContent][lang].quote}
+              </p>
+            )}
 
-      {/* 3. הגבלות שימוש וקוד אתי */}
-      <section>
-        <h3 className="text-white font-bold mb-2">
-          {lang === 'he' ? '3. הגבלות שימוש וקוד אתי' : '3. Usage Restrictions & Ethics'}
-        </h3>
-        <p className="opacity-80">
-          {lang === 'he' 
-            ? 'חל איסור מוחלט להשתמש במערכת ליצירת תוכן פוגעני, אלים, מסית, פורנוגרפי או כזה המפר זכויות של צדדים שלישיים. המערכת שומרת לעצמה את הזכות לחסום גישה למשתמשים שיעשו שימוש לרעה בטכנולוגיה.' 
-            : 'It is strictly forbidden to use the system to create offensive, violent, inciting, pornographic content, or content that violates the rights of third parties. The system reserves the right to block access to users who misuse the technology.'}
-        </p>
-      </section>
-
-      {/* 4. הגבלת אחריות טכנית */}
-      <section>
-        <h3 className="text-white font-bold mb-2">
-          {lang === 'he' ? '4. הגבלת אחריות (Disclaimer)' : '4. Disclaimer of Warranties'}
-        </h3>
-        <p className="opacity-80">
-          {lang === 'he' 
-            ? 'השירות ניתן כפי שהוא ("AS IS"). LIFESCRIPT אינה מתחייבת לזמינות רציפה של השרתים או לכך שהתוצאה תתאים לציפיות המשתמש ב-100%. לא נהיה אחראים לכל נזק ישיר או עקיף הנובע מהשימוש באפליקציה.' 
-            : 'The service is provided "AS IS". LIFESCRIPT does not guarantee continuous server availability or that the results will meet user expectations 100%. We will not be liable for any direct or indirect damage resulting from the use of the application.'}
-        </p>
-      </section>
-
-      {/* 5. שינויים בשירות */}
-      <section>
-        <h3 className="text-white font-bold mb-2">
-          {lang === 'he' ? '5. עדכונים ושינויים' : '5. Updates & Changes'}
-        </h3>
-        <p className="opacity-80">
-          {lang === 'he' 
-            ? 'אנו שומרים לעצמנו את הזכות לעדכן את תנאי השימוש או לשנות את מאפייני השירות מעת לעת, ללא הודעה מוקדמת, בכדי להמשיך ולשפר את חווית ההפקה.' 
-            : 'We reserve the right to update these terms or change service features from time to time, without prior notice, to continue improving the production experience.'}
-        </p>
-      </section>
-
-      {/* 6. שימוש הוגן */}
-      <section>
-        <h3 className="text-white font-bold mb-2">
-          {lang === 'he' ? '6. מדיניות שימוש הוגן' : '6. Fair Use Policy'}
-        </h3>
-        <p className="opacity-80">
-          {lang === 'he' 
-            ? 'אנו מפעילים מדיניות שימוש הוגן בכדי למנוע עומס על המערכת. חל איסור על שימוש בבוטים או באמצעים אוטומטיים. אנו שומרים לעצמנו את הזכות להגביל את מכסת היצירה היומית לכל משתמש.' 
-            : 'We operate a fair use policy to prevent system overload. The use of bots or automated tools is strictly prohibited. We reserve the right to limit the daily generation quota per user.'}
-        </p>
-      </section>
-
-      {/* 7. מגבלת גיל */}
-      <section>
-        <h3 className="text-white font-bold mb-2">
-          {lang === 'he' ? '7. הגבלת גיל' : '7. Age Restriction'}
-        </h3>
-        <p className="opacity-80">
-          {lang === 'he' 
-            ? 'השימוש ב-LIFESCRIPT מיועד למשתמשים מעל גיל 13. בשימושך בשירות אתה מצהיר כי אתה עומד בתנאי הגיל הנדרשים.' 
-            : 'Use of LIFESCRIPT is intended for users over the age of 13. By using the service, you represent that you meet the age requirements.'}
-        </p>
-      </section>
-
-      {/* 8. שירותי צד ג' */}
-      <section>
-        <h3 className="text-white font-bold mb-2">
-          {lang === 'he' ? '8. שירותי צד שלישי' : '8. Third-Party Services'}
-        </h3>
-        <p className="opacity-80">
-          {lang === 'he' 
-            ? 'השירות משתלב עם ספקי בינה מלאכותית חיצוניים (כגון OpenRouter, Cohere ו-Pollinations). LIFESCRIPT אינה אחראית לשינויים במדיניות או בזמינות של שירותים אלו.' 
-            : 'The service integrates with third-party AI providers (e.g., OpenRouter, Cohere, and Pollinations). LIFESCRIPT is not responsible for changes in the policies or availability of these services.'}
-        </p>
-      </section>
-
-      <div className="pt-6 text-center border-t border-white/5 opacity-50 text-[10px] tracking-widest uppercase">
-        {lang === 'he' ? 'עודכן לאחרונה: ינואר 2026' : 'Last Updated: January 2026'}
-      </div>
-
-    </div>
-  </div>
-)}
-
-       {modalContent === 'privacy' && (
-  <div className={lang === 'he' ? 'text-right' : 'text-left'} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-    <div className="flex items-center justify-between border-b border-[#d4a373]/10 pb-4 mb-6">
-  <h2 className="text-[#d4a373] text-2xl font-black uppercase tracking-tighter italic">
-{lang === 'he' ? 'פרטיות וביטחון מידע' : 'PRIVACY & DATA SECURITY'}  </h2>
-  <button onClick={() => setModalContent(null)} className="text-white/20 hover:text-[#d4a373] transition-colors p-2">
-    <X size={28} />
-  </button>
-</div>
-    
-    <div className="space-y-6 text-gray-300 text-sm md:text-base leading-relaxed overflow-y-auto max-h-[65vh] pr-2 custom-scrollbar">
-      
-      {/* 1. מדיניות אי-אחסון */}
-      <section>
-        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#d4a373]"></span>
-          {lang === 'he' ? '1. מדיניות "אפס אחסון" (Zero Storage)' : '1. Zero Storage Policy'}
-        </h3>
-        <p className="opacity-80">
-          {lang === 'he' 
-            ? 'התוכן האישי שלך הוא רכושך בלבד. הטקסטים שאתה מזין והתסריטים שנוצרים מעובדים בזמן אמת ונמחקים לצמיתות מהשרתים שלנו מיד עם סיום הסשן. אנחנו לא שומרים היסטוריית כתיבה מטעמי פרטיות.' 
-            : 'Your personal content is yours alone. The texts you enter and the generated scripts are processed in real-time and permanently deleted from our servers immediately after the session ends. We do not store writing history for privacy reasons.'}
-        </p>
-      </section>
-
-      {/* 2. קניין רוחני - חשוב מאוד ליוצרים */}
-      <section>
-        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#d4a373]"></span>
-          {lang === 'he' ? '2. זכויות יוצרים וקניין רוחני' : '2. Intellectual Property'}
-        </h3>
-        <p className="opacity-80">
-          {lang === 'he' 
-            ? 'כל זכויות הקניין הרוחני על התסריטים שנוצרים באמצעות המערכת שייכות לך באופן מלא. LIFESCRIPT אינה טוענת לבעלות על הסיפורים, הדמויות או התכנים המופקים עבורך.' 
-            : 'All intellectual property rights for the scripts generated through the system belong entirely to you. LIFESCRIPT claims no ownership over the stories, characters, or content produced for you.'}
-        </p>
-      </section>
-
-      {/* 3. עיבוד AI - הניסוח המעודכן והמגן */}
-      <section>
-        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#d4a373]"></span>
-          {lang === 'he' ? '3. עיבוד נתונים ע"י ספקי AI' : '3. AI Data Processing'}
-        </h3>
-        <p className="opacity-80">
-          {lang === 'he' 
-            ? 'המידע מועבר לספקי עיבוד מובילים (כגון Google, DeepSeek ו-OpenRouter) בערוץ מוצפן לצורך יצירת התוכן בלבד. אנו עושים מאמץ לבחור ספקים ומסלולי שירות המבטיחים את פרטיות המידע. עם זאת, המשתמש מודע לכך שחלק מהשירותים הניתנים במסלולי חינם עשויים להשתמש במידע אנונימי לשיפור טכנולוגי של הספק. בכל מקרה, אנו לא שומרים את המידע לשימושנו העתידי.' 
-            : 'Data is transmitted to leading processors (e.g., Google, DeepSeek, and OpenRouter) via encrypted channels solely for content generation. We strive to select providers and service tiers that prioritize data privacy. However, the user acknowledges that some services provided under free tiers may use anonymized data for the provider\'s technological improvement. In any case, we do not store the data for our own future use.'}
-        </p>
-      </section>
-
-      {/* 4. עוגיות ואבטחה מקומית */}
-      <section>
-        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#d4a373]"></span>
-          {lang === 'he' ? '4. שימוש בטכנולוגיית אחסון מקומי' : '4. Local Storage Technology'}
-        </h3>
-        <p className="opacity-80">
-          {lang === 'he' 
-            ? 'המערכת משתמשת ב-LocalStorage כדי לשמור את מפתחות הגישה והגדרות השפה שלך על המכשיר האישי שלך בלבד. מידע זה אינו מועבר לצד שלישי ואינו משמש למעקב פרסומי.' 
-            : 'The system uses LocalStorage to save your access keys and language settings on your personal device only. This information is not shared with third parties and is not used for advertising tracking.'}
-        </p>
-      </section>
-
-      {/* הצהרה מסכמת */}
-      <div className="bg-white/5 p-4 rounded-xl border border-white/5 mt-8 text-center italic text-[11px] md:text-xs text-[#d4a373]/80">
-        {lang === 'he' 
-          ? '"הפרטיות שלך היא התסריט הכי חשוב שאנחנו מגנים עליו."' 
-          : '"Your privacy is the most important script we protect."'}
-      </div>
-
-    </div>
-  </div>
-)}
-
-        {modalContent === 'support' && (
-  <div className={lang === 'he' ? 'text-right' : 'text-left'} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-    <div className="flex items-center justify-between border-b border-[#d4a373]/10 pb-4 mb-6">
-  <h2 className="text-[#d4a373] text-2xl font-black uppercase tracking-tighter italic">
-{lang === 'he' ? 'מוקד תמיכה ופתרון תקלות' : 'PRODUCTION SUPPORT & FAQ'}  </h2>
-  <button onClick={() => setModalContent(null)} className="text-white/20 hover:text-[#d4a373] transition-colors p-2">
-    <X size={28} />
-  </button>
-</div>
-
-    <div className="space-y-6 overflow-y-auto max-h-[65vh] pr-2 custom-scrollbar">
-      
-      {/* בעיה 1 - אורך טקסט */}
-      <section className="bg-white/5 p-5 rounded-2xl border border-white/5 hover:border-[#d4a373]/20 transition-colors">
-        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
-          <span className="text-[#d4a373]">01.</span>
-          {lang === 'he' ? 'הכפתור "צור תסריט" לא מגיב?' : 'Generate button not responding?'}
-        </h3>
-        <p className="text-gray-400 text-xs md:text-sm leading-relaxed">
-          {lang === 'he' 
-            ? 'הבינה המלאכותית זקוקה למינימום של 5 מילים כדי להתחיל לביים. הרחב מעט את התיאור ביומן והכפתור יפתח מיידית.' 
-            : 'The AI needs at least 5 words to start directing. Expand your journal entry slightly and the button will activate.'}
-        </p>
-      </section>
-
-      {/* בעיה 2 - פוסטר */}
-      <section className="bg-white/5 p-5 rounded-2xl border border-white/5 hover:border-[#d4a373]/20 transition-colors">
-        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
-          <span className="text-[#d4a373]">02.</span>
-          {lang === 'he' ? 'הפוסטר לא נטען או נראה ריק?' : 'Poster not loading or looks empty?'}
-        </h3>
-        <p className="text-gray-400 text-xs md:text-sm leading-relaxed">
-          {lang === 'he' 
-            ? 'רינדור גרפי הוא תהליך מורכב. אם הפוסטר לא הופיע תוך 10 שניות, לחץ שוב על כפתור היצירה. אין צורך לרענן את הדף.' 
-            : 'Graphic rendering is a complex process. If the poster doesn\'t appear within 10 seconds, click Generate again. No need to refresh.'}
-        </p>
-      </section>
-
-      {/* בעיה 3 - סאונד */}
-      <section className="bg-white/5 p-5 rounded-2xl border border-white/5 hover:border-[#d4a373]/20 transition-colors">
-        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
-          <span className="text-[#d4a373]">03.</span>
-          {lang === 'he' ? 'בעיות סאונד ומוזיקה?' : 'Sound or music issues?'}
-        </h3>
-        <p className="text-gray-400 text-xs md:text-sm leading-relaxed">
-          {lang === 'he' 
-            ? 'ודא שהמכשיר אינו על מצב שקט (Silent). בדפדפני מובייל, לעיתים יש ללחוץ על כפתור הרמקול בטופס כדי לאפשר למוזיקה להתחיל.' 
-            : 'Ensure your device isn\'t on Silent mode. On mobile browsers, you might need to tap the speaker icon to enable audio.'}
-        </p>
-      </section>
-
-      {/* בעיה 4 - הקפאה */}
-      <section className="bg-white/5 p-5 rounded-2xl border border-white/5 hover:border-[#d4a373]/20 transition-colors">
-        <h3 className="text-white font-bold mb-2 flex items-center gap-2">
-          <span className="text-[#d4a373]">04.</span>
-          {lang === 'he' ? 'ההקלדה נעצרה באמצע?' : 'Typing stopped mid-way?'}
-        </h3>
-        <p className="text-gray-400 text-xs md:text-sm leading-relaxed">
-          {lang === 'he' 
-            ? 'במידה והתסריט הפסיק להיכתב, העתק את הטקסט שכתבת, רענן את הדף (Refresh) ונסה שוב. זה פותר 100% מתקלות התקשורת.' 
-            : 'If the script stops writing, copy your text, refresh the page, and try again. This resolves 100% of connection issues.'}
-        </p>
-      </section>
-
-      {/* הודעת סיום אסטרטגית */}
-      <div className="pt-6 text-center border-t border-white/5">
-        <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-4">
-          {lang === 'he' 
-            ? 'אנחנו כרגע בשלב הרצה אקסקלוסיבית (Beta)' 
-            : 'Currently in exclusive Beta phase'}
-        </p>
-        <div className="inline-block px-6 py-2 rounded-full bg-[#d4a373]/10 border border-[#d4a373]/20 text-[#d4a373] text-[11px] font-bold">
-          {lang === 'he' ? 'המשך הפקה נעימה!' : 'Keep Directing!'}
+            {MODAL_DATA[modalContent][lang].footerLabel && (
+              <div className="pt-6 text-center border-t border-white/5">
+                <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-4">
+                  {MODAL_DATA[modalContent][lang].footerLabel}
+                </p>
+                <div className="inline-block px-6 py-2 rounded-full bg-[#d4a373]/10 border border-[#d4a373]/20 text-[#d4a373] text-[11px] font-bold">
+                  {MODAL_DATA[modalContent][lang].footerButton}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-
-    </div>
-  </div>
-)}
-
-        {modalContent === 'about' && (
-  <div className={lang === 'he' ? 'text-right' : 'text-left'} dir={lang === 'he' ? 'rtl' : 'ltr'}>
-<div className="flex items-center justify-between border-b border-[#d4a373]/10 pb-4 mb-6">
-  <h2 className="text-[#d4a373] text-2xl font-black uppercase tracking-tighter italic">
-      {lang === 'he' ? 'אודות LIFESCRIPT: היומן הקולנועי הראשון מסוגו' : 'ABOUT LIFESCRIPT: THE FIRST CINEMATIC JOURNAL'}
-</h2>
-  <button onClick={() => setModalContent(null)} className="text-white/20 hover:text-[#d4a373] transition-colors p-2">
-    <X size={28} />
-  </button>
-</div>    
-    <div className="space-y-8 text-gray-300 text-sm md:text-base leading-relaxed overflow-y-auto max-h-[65vh] pr-2 custom-scrollbar">
-      <section>
-        <h3 className="text-white font-bold mb-2 text-lg">
-          {lang === 'he' ? 'החזון שלנו' : 'Our Vision'}
-        </h3>
-        <p>
-          {lang === 'he' 
-            ? 'כולנו חיים בתוך סיפור, אבל לעיתים קרובות מדי אנחנו שוכחים שאנחנו אלו שמחזיקים בעט. LIFESCRIPT נולדה כדי להעניק לך את הכיסא של הבמאי. זהו לא רק יומן אישי, אלא סטודיו לחיים – מרחב שבו המציאות היומיומית שלך פוגשת את הקסם של הקולנוע.' 
-            : 'We all live in a story, but too often we forget that we hold the pen. LIFESCRIPT was born to give you the director’s chair. It’s not just a personal journal, but a life studio – a space where your daily reality meets the magic of cinema.'}
-        </p>
-      </section>
-
-      <section className="bg-white/5 p-6 rounded-2xl border border-[#d4a373]/10">
-        <h3 className="text-[#d4a373] font-bold mb-3 uppercase tracking-widest text-sm">
-          {lang === 'he' ? "הלב שבפרויקט: תרפיה דרך עדשת הז'אנר" : 'The Heart of the Project: Genre Therapy'}
-        </h3>
-        <p className="mb-4">
-          {lang === 'he' 
-            ? 'לפעמים החיים מאתגרים, מתסכלים או שגרתיים. הלב של LIFESCRIPT הוא היכולת לבצע Reframing (מסגור מחדש) לחוויה האנושית:' 
-            : 'Sometimes life is challenging, frustrating, or just routine. The heart of LIFESCRIPT is the ability to perform "Reframing" on the human experience:'}
-        </p>
-        <ul className="space-y-3 opacity-90">
-          <li>• <strong>{lang === 'he' ? 'משבר הופך לקומדיה:' : 'Crisis to Comedy:'}</strong> {lang === 'he' ? 'להפוך יום עמוס בכעסים ל"קומדיה של טעויות" ותלמד לצחוק על מה שפעם הכעיס.' : 'Turn a day of anger into a "Comedy of Errors" and learn to laugh at what once frustrated you.'}</li>
-          <li>• <strong>{lang === 'he' ? 'קושי הופך לגבורה:' : 'Hardship to Heroism:'}</strong> {lang === 'he' ? 'להפוך התמודדות מורכבת ל"סרט אקשן" שבו אתה הגיבור המנצח כנגד כל הסיכויים.' : 'Turn a complex struggle into an "Action Movie" where you are the hero winning against all odds.'}</li>
-          <li>• <strong>{lang === 'he' ? 'שגרה הופכת לשירה:' : 'Routine to Poetry:'}</strong> {lang === 'he' ? 'להפוך רגעים פשוטים ל"סרט דוקומנטרי" פיוטי או ל"דרמה" מרגשת. השימוש בז\'אנרים מאפשר לקבל נקודת מבט חדשה.' : 'Turn simple moments into a poetic "Documentary" or a moving "Drama". Using different genres allows for a new, empowering perspective.'}</li>
-        </ul>
-      </section>
-
-      <section>
-        <h3 className="text-white font-bold mb-2">
-          {lang === 'he' ? 'מניצוץ אנושי לטכנולוגיה עם נשמה' : 'From Human Spark to Technology with Soul'}
-        </h3>
-        <p>
-          {lang === 'he' 
-            ? 'הפרויקט נולד מתוך מסע אישי של אמן ויוצר. בתהליך העבודה על אחת מיצירותיי, גיליתי את כוחו של ה-AI לא כתחליף ליצירה, אלא כשותף לדיאלוג שמאפשר לזקק רגש גולמי לחזון ויזואלי. LIFESCRIPT היא התוצאה: האינטואיציה של האמן והדיוק של הטכנולוגיה, בשירות הסיפור שלך.' 
-            : 'This project was born from an artist\'s journey. While working on one of my pieces, I discovered the power of AI not as a replacement for creativity, but as a dialogue partner that refines raw emotion into visual vision. LIFESCRIPT is the result: Artist intuition meets technological precision, in service of your story.'}
-        </p>
-      </section>
-
-      <section className="border-t border-white/5 pt-6">
-        <h3 className="text-[#d4a373] font-bold mb-3">
-          {lang === 'he' ? 'איך להפיק את המיטב מהחוויה?' : 'How to Get the Most Out of the Experience?'}
-        </h3>
-        <ul className="space-y-2">
-          <li><strong>1. {lang === 'he' ? 'כתוב בכנות:' : 'Write Honestly:'}</strong> {lang === 'he' ? 'שפוך את מחשבות היום לתוך היומן בלי פילטרים.' : 'Pour your daily thoughts into the journal without filters.'}</li>
-          <li><strong>2. {lang === 'he' ? 'בחר זווית חדשה:' : 'Choose a New Angle:'}</strong> {lang === 'he' ? 'בחר ז\'אנר שיעזור לך לראות את היום שעבר באור אחר.' : 'Pick a genre that helps you see your day in a different light.'}</li>
-          <li><strong>3. {lang === 'he' ? 'שמור את הפוסטר:' : 'Save the Poster:'}</strong> {lang === 'he' ? 'בנה לעצמך ארכיון ויזואלי של מסע החיים שלך – יצירת אמנות אחת בכל יום.' : 'Build a visual archive of your life journey – one piece of art every day.'}</li>
-        </ul>
-      </section>
-
-      <p className="text-center text-[10px] tracking-[0.6em] text-[#d4a373]/40 uppercase py-4">
-        Don't just live your life. Direct it.
-      </p>
-    </div>
-  </div>
-)}
       </motion.div>
     </motion.div>
   )}
@@ -1194,7 +1018,7 @@ track('Script Created', {
           </p>
 
         {/* קישורי משנה - גרסה דחוסה מקסימלית (Micro-Typography) */}
-<div className={`flex flex-row justify-center items-center gap-0 w-full px-0.5 ${lang === 'he' ? 'flex-row-reverse' : 'flex-row'}`}>
+<div className="flex flex-row justify-center items-center gap-2 w-full px-0.5">
   <button 
     onClick={() => setModalContent('about')}
     className="text-[#d4a373] hover:text-white transition-all duration-300 text-[6px] md:text-[9px] font-normal uppercase tracking-tighter whitespace-nowrap px-1"
