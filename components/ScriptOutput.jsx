@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo} from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Download, Share2, Check, Film, Volume2, VolumeX, Loader2, FastForward } from 'lucide-react';
-import html2canvas from 'html2canvas';
 import * as htmlToImage from 'html-to-image'; // וודא שזה מופיע בראש הקובץ
 import { track } from '@vercel/analytics';
 
@@ -68,15 +67,16 @@ const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST')
   const pauseTimer = useRef(null);
   const timerRef = useRef(null);
   const audioContext = useRef(null);
-  const audioBuffer = useRef(null);
+ const audioBuffer = useRef(null);
   const flashBuffer = useRef(null);
   const isMutedRef = useRef(false);
 
-  // --- לוגיקת הודעות טעינה לפוסטר ---
-  // חשוב: זיהוי השפה מתבצע כאן בתוך הקומפוננט
-  const isHebrew = isTextHebrew(cleanScript);
-  const posterTitle = getCinematicTitle(cleanScript);
-  const posterLoadingMessages = isHebrew ? [
+  // --- משתנים נגזרים (Memoized) - ריכוז לוגיקה כירורגי ---
+  const isHebrew = useMemo(() => isTextHebrew(script || ''), [script]);
+  
+  const posterTitle = useMemo(() => getCinematicTitle(cleanScript), [cleanScript]);
+
+  const posterLoadingMessages = useMemo(() => isHebrew ? [
     "מנתח את האסתטיקה של התסריט...",
     "מלהק כוכבים לפוסטר הרשמי...",
     "מעצב את התאורה בסט הצילומים...",
@@ -92,12 +92,30 @@ const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST')
     "Color grading and filtering...",
     "Rendering poster in 4K...",
     "Hanging the poster for the premiere..."
-  ];
+  ], [isHebrew]);
+
+  const credits = useMemo(() => {
+    return isHebrew ? {
+      comingSoon: 'בקרוב בקולנוע',
+      line1: producerName && producerName.trim() !== "" 
+        ? `בימוי: ${producerName} • הפקה: סטודיו LIFESCRIPT` 
+        : `בימוי: עדי אלמו • הפקה: סטודיו LIFESCRIPT`,
+      line2: 'צילום: מעבדת AI • עיצוב אמנותי: הוליווד דיגיטלית • ליהוק: וירטואלי',
+      line3: 'מוזיקה: THE MASTER • עריכה: סוכן 2005 • אפקטים: מנוע קולנועי',
+      copyright: `© ${new Date().getFullYear()} LIFESCRIPT STUDIO • כל הזכויות שמורות`
+    } : {
+      comingSoon: 'COMING SOON',
+      line1: producerName && producerName.trim() !== "" 
+        ? `DIRECTED BY ${producerName.toUpperCase()} • PRODUCTION: LIFESCRIPT STUDIO` 
+        : `DIRECTED BY ADI ALAMO • PRODUCTION: LIFESCRIPT STUDIO`,
+      line2: 'CINEMATOGRAPHY: AI LAB • ART DIRECTION: DIGITAL HOLLYWOOD • CASTING: VIRTUAL',
+      line3: 'MUSIC: THE MASTER • EDITING: AGENT 2005 • VFX: CINEMATIC ENGINE',
+      copyright: `© ${new Date().getFullYear()} LIFESCRIPT STUDIO • ALL RIGHTS RESERVED`
+    };
+  }, [isHebrew, producerName]);
 
   // סנכרון Ref להשתקה
   useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
-
-  // טיימר הודעות הטעינה של הפוסטר
   useEffect(() => {
     let interval;
     if (posterLoading) {
@@ -449,25 +467,7 @@ const handleCapturePoster = async (action) => {
       return () => clearTimeout(timer);
     }
   }, [isTyping]);
-  // --- הגדרות הקרדיטים עם השם הדינמי ---
-// בדיקה ישירה של השפה והזרקת הקרדיטים המלאים
-  // לוגיקה כירורגית: אם המשתמש הזין שם, הוא הופך לבמאי והשם המקורי נמחק
-  const credits = isHebrew ? {
-    comingSoon: 'בקרוב בקולנוע',
-    line1: producerName && producerName.trim() !== "" 
-      ? `בימוי: ${producerName} • הפקה: סטודיו LIFESCRIPT` 
-      : `בימוי: עדי אלמו • הפקה: סטודיו LIFESCRIPT`,
-    line2: 'צילום: מעבדת AI • עיצוב אמנותי: הוליווד דיגיטלית • ליהוק: וירטואלי',
-    line3: 'מוזיקה: THE MASTER • עריכה: סוכן 2005 • אפקטים: מנוע קולנועי',
-    copyright: `© ${new Date().getFullYear()} LIFESCRIPT STUDIO • כל הזכויות שמורות`  } : {
-    comingSoon: 'COMING SOON',
-    line1: producerName && producerName.trim() !== "" 
-      ? `DIRECTED BY ${producerName.toUpperCase()} • PRODUCTION: LIFESCRIPT STUDIO` 
-      : `DIRECTED BY ADI ALAMO • PRODUCTION: LIFESCRIPT STUDIO`,
-    line2: 'CINEMATOGRAPHY: AI LAB • ART DIRECTION: DIGITAL HOLLYWOOD • CASTING: VIRTUAL',
-    line3: 'MUSIC: THE MASTER • EDITING: AGENT 2005 • VFX: CINEMATIC ENGINE',
-    copyright: `© ${new Date().getFullYear()} LIFESCRIPT STUDIO • ALL RIGHTS RESERVED`  };
-
+ 
   return (
 <div className="space-y-6 w-full max-w-[100vw]" style={{ contain: 'paint layout' }}>      
       {/* Toolbar - תיקון חיתוך כותרת */}
