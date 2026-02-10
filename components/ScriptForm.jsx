@@ -18,39 +18,39 @@ const LOADING_MESSAGES = {
 };
 
 // --- רכיבי אנימציה (מוגדרים מחוץ לקומפוננטה כדי למנוע יצירה מחדש בכל רינדור) ---
-const DramaScene = ({ isSelected }) => (
+const DramaScene = React.memo(({ isSelected }) => (
   <motion.div animate={isSelected ? { rotate: [0, -15, 0] } : {}} transition={{ duration: 2, repeat: Infinity }}>
     <Clapperboard size={32} strokeWidth={isSelected ? 2 : 1.5} />
   </motion.div>
-);
-const ComedyScene = ({ isSelected }) => (
+));
+const ComedyScene = React.memo(({ isSelected }) => (
   <motion.div animate={isSelected ? { rotate: [-5, 5, -5], scale: [1, 1.1, 1] } : {}} transition={{ duration: 0.5, repeat: Infinity }}>
     <Mic size={32} strokeWidth={isSelected ? 2 : 1.5} />
   </motion.div>
-);
-const ActionScene = ({ isSelected }) => (
+));
+const ActionScene = React.memo(({ isSelected }) => (
   <div className="relative flex items-center justify-center">
     <motion.div animate={isSelected ? { rotate: 360 } : {}} transition={{ duration: 4, repeat: Infinity, ease: "linear" }}>
       <Crosshair size={32} strokeWidth={isSelected ? 2 : 1.5} />
     </motion.div>
     {isSelected && <motion.div animate={{ opacity: [0, 1, 0], scale: [0.5, 1.5, 0.5] }} transition={{ duration: 0.5, repeat: Infinity }} className="absolute w-2 h-2 bg-red-500 rounded-full" />}
   </div>
-);
-const SciFiScene = ({ isSelected }) => (
+));
+const SciFiScene = React.memo(({ isSelected }) => (
   <motion.div animate={isSelected ? { rotate: 360, color: ['#06b6d4', '#ffffff', '#06b6d4'] } : {}} transition={{ duration: 3, repeat: Infinity }}>
     <Atom size={32} strokeWidth={isSelected ? 2 : 1.5} />
   </motion.div>
-);
-const HorrorScene = ({ isSelected }) => (
+));
+const HorrorScene = React.memo(({ isSelected }) => (
   <motion.div animate={isSelected ? { x: [-2, 2, -2], opacity: [1, 0.7, 1] } : {}} transition={{ duration: 0.2, repeat: Infinity }}>
     <Skull size={32} strokeWidth={isSelected ? 2 : 1.5} />
   </motion.div>
-);
-const RomanceScene = ({ isSelected }) => (
+));
+const RomanceScene = React.memo(({ isSelected }) => (
   <motion.div animate={isSelected ? { scale: [1, 1.2, 1] } : {}} transition={{ duration: 2, repeat: Infinity }}>
     <Gem size={32} strokeWidth={isSelected ? 2 : 1.5} />
   </motion.div>
-);
+));
 
 // --- רשימת הז'אנרים ---
 const genres = [
@@ -70,8 +70,6 @@ const ScriptForm = ({ onSubmit, loading, lang, isTyping, isTypingGlobal, produce
   const [isCopied, setIsCopied] = useState(false);
   const [isMusicMuted, setIsMusicMuted] = useState(false);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
-  const getWordCount = (text) => text.trim() ? text.trim().split(/\s+/).length : 0;
-  // --- בתוך ScriptForm ---
 
 // 1. חישוב מונה מילים חכם (לא מכביד על המעבד)
 const currentWordCount = React.useMemo(() => {
@@ -101,9 +99,8 @@ useEffect(() => {
     const audio = document.getElementById('main-bg-music');
     if (!audio) return;
 
-    const formattedGenre = genreValue.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
-    const fileName = `${formattedGenre}_bg.m4a`;
-    
+   const fileName = `${genreValue}_bg.m4a`;
+
     if (!audio.src.endsWith(fileName)) {
       audio.pause();
       audio.src = `/audio/${fileName}`;
@@ -420,7 +417,7 @@ className={`relative flex flex-col items-center justify-between h-28 md:h-32 p-4
             : 'bg-[#d4a373] py-5 md:py-7 hover:scale-[1.01] active:scale-[0.98]'
         } ${(!journalEntry.trim() || !activeGenre) && !loading ? 'opacity-30 grayscale cursor-not-allowed' : 'opacity-100'}`}
       >
-{!loading && !isLocked && journalEntry.trim() && activeGenre && (
+{!loading && journalEntry.trim() && activeGenre && (
             <motion.div 
             animate={{ x: ['-100%', '200%'] }}
             transition={{ repeat: Infinity, duration: 3, ease: "linear" }}

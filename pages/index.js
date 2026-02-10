@@ -546,7 +546,7 @@ const response = await fetch('/api/generate-poster', {
   {modalContent && MODAL_DATA[modalContent] && (
     <motion.div 
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/95 backdrop-blur-xl px-6"
+      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/95 md:backdrop-blur-xl px-6"
       onClick={() => setModalContent(null)}
     >
       <motion.div 
@@ -729,8 +729,8 @@ const response = await fetch('/api/generate-poster', {
             <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              transition={{ duration: 0.8, ease: "easeInOut" }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
               className="mt-16 mb-10"
             >
               <div className="text-center mb-10">
@@ -1062,17 +1062,30 @@ const response = await fetch('/api/generate-poster', {
         @media (min-width: 768px) { :root { font-size: 20px; } }
         .font-heebo { font-family: 'Heebo', sans-serif !important; }
         .glass-panel {
-          border: 1px solid rgba(212, 163, 115, 0.15);
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-        input, textarea, select, button { font-size: 1.2rem !important; }
-        @media screen and (max-width: 768px) {
+  border: 1px solid rgba(212, 163, 115, 0.15);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  /* ביטול בלור כבד במובייל לשיפור ביצועים */
+  background: rgba(3, 7, 18, 0.8);
+}
+@media (max-width: 768px) {
+  .glass-panel {
+    background: rgba(3, 7, 18, 0.95); /* כהה יותר במקום טשטוש */
+    backdrop-blur: none !important;
+  }
+}
+input, textarea, select, button { 
+  font-size: 1.2rem !important; 
+  touch-action: manipulation; /* מבטל השהיית לחיצה במובייל */
+}
+          @media screen and (max-width: 768px) {
           input, textarea, select { font-size: 16px !important; }
         }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(212, 163, 115, 0.2); border-radius: 10px; }
-      
+      .motion-safe {
+  will-change: transform, opacity;
+}
       `}</style>
    <Analytics />
    </div>
