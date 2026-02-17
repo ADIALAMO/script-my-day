@@ -73,8 +73,11 @@ function MyApp({ Component, pageProps }) {
       </Script>
       {/* המבנה הראשי של האתר עם צבעי המותג והגדרות הבחירה */}
       <main className="min-h-screen bg-[#030712] selection:bg-[#d4a373]/30">
+        {/* אלמנט אודיו גלובלי לניהול מוזיקת הרקע */}
+        <audio id="main-bg-music" preload="auto" style={{ display: 'none' }} />
+        
         <Component {...pageProps} />
-      <SpeedInsights />
+        <SpeedInsights />
       </main>
     </>
   );

@@ -19,7 +19,9 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { prompt, deviceId: bodyDeviceId, isAdmin: isAdminBody } = req.body;
+// הגנה: שואב את הפרומפט מכל מקור אפשרי ב-body
+  const rawPrompt = req.body.prompt || req.body.visualPrompt || ""; 
+  const { deviceId: bodyDeviceId, isAdmin: isAdminBody } = req.body;
   const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
   const seed = Math.floor(Math.random() * 999999);
 
@@ -51,11 +53,18 @@ export default async function handler(req, res) {
       } catch (e) { console.error("Redis update error:", e); }
     }
   };
-  const agentPrompt = prompt.replace(/\[image:\s*/i, '').replace(/\]$/, '').trim();
-  const fidelityInstruction = "distinct male and female characters, heterosexual couple, (same sex couple: -1.5), (homoerotic: -1.5), (gay: -1.5), (text: -2.0), (title: -2.0), (letters: -2.0), (watermark: -2.0), (typography: -2.0), (signature: -2.0), (writing: -2.0), (logo: -2.0)";  const backUpRefinement = ", (deformed iris, deformed pupils, semi-realistic, cgi, 3d, render, sketch, cartoon, drawing, anime, mutated hands and fingers:1.4), (deformed, distorted, disfigured:1.3), poorly drawn, bad anatomy, wrong anatomy, extra limb, missing limb, floating limbs, disconnected limbs, mutation, mutated, ugly, disgusting, amputation";
-  // פרומפט מלוטש - עבר לסוכן, אך נשמר כאן כבסיס ויזואלי חזק
-  const finalPrompt = `A high-end cinematic RAW 35mm film still of: ${agentPrompt}. Shot on IMAX, perfect facial symmetry, realistic skin textures, sharp focus, 8k, masterpiece. (Strictly NO text, NO distortion, NO blurry faces, NO extra fingers, NO titles). ${fidelityInstruction}`;
+// 1. ניקוי בטוח: מוודא שהמשתנה הוא מחרוזת לפני ה-replace
+  const agentPrompt = typeof rawPrompt === 'string' && rawPrompt.length > 0
+    ? rawPrompt.replace(/\[image:\s*/i, '').replace(/\]$/, '').trim()
+    : "Cinematic movie poster, dramatic lighting";
 
+  // 2. הגדרות איכות (שים לב - הוצאנו מהערה!)
+  const fidelityInstruction = "distinct male and female characters, heterosexual couple, (same sex couple: -1.5), (homoerotic: -1.5), (gay: -1.5), (text: -2.0), (title: -2.0), (letters: -2.0), (watermark: -2.0), (typography: -2.0), (signature: -2.0), (writing: -2.0), (logo: -2.0)";
+  const backUpRefinement = ", (deformed iris, deformed pupils, semi-realistic, cgi, 3d, render, sketch, cartoon, drawing, anime, mutated hands and fingers:1.4), (deformed, distorted, disfigured:1.3), poorly drawn, bad anatomy, wrong anatomy, extra limb, missing limb, floating limbs, disconnected limbs, mutation, mutated, ugly, disgusting, amputation";
+
+  // 3. פרומפט סופי
+  const finalPrompt = `A high-end cinematic RAW 35mm film still of: ${agentPrompt}. Shot on IMAX, perfect facial symmetry, realistic skin textures, sharp focus, 8k, masterpiece. (Strictly NO text, NO distortion, NO blurry faces, NO extra fingers, NO titles). ${fidelityInstruction}`;
+  
   // פונקציית עזר להורדת תמונה והפיכתה ל-Base64 (חיוני ל-Pollinations)
   async function getBase64Image(url) {
     const resp = await fetch(url, { signal: AbortSignal.timeout(15000) });

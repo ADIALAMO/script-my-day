@@ -4,11 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Film, Copyright, AlertCircle, Key, X, Download, Share2, Camera, MessageSquare, Send, Check } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import LaunchTicket from '../components/LaunchTicket';
-import ScriptForm from '../components/ScriptForm';
 import ScriptOutput from '../components/ScriptOutput';
+import ScriptForm from '../components/ScriptForm';
+import { useBackgroundAudio } from '../hooks/useBackgroundAudio'; // הוספת ה-Hookimport ScriptOutput from '../components/ScriptOutput';
 import { Analytics } from '@vercel/analytics/react';
 import { track } from '@vercel/analytics';
-import { SHOWCASE_POSTERS } from '../constants/showcase';const genreIcons = {
+import { SHOWCASE_POSTERS } from '../constants/showcase';
+const genreIcons = {
   sciFi: '🚀',
   horror: '👻',
   comedy: '😂',
@@ -178,32 +180,7 @@ const handleSendFeedback = async () => {
   useEffect(() => {
     setMounted(true);
 
-    const unlockAudio = () => {
-  let dramaAudio = document.getElementById('main-bg-music');
-  
-  if (!dramaAudio) {
-    dramaAudio = new Audio('/audio/drama_bg.m4a');
-    dramaAudio.id = 'main-bg-music';
-    document.body.appendChild(dramaAudio); // הזרקה פיזית ל-DOM
-  }
-  
-  dramaAudio.loop = true;
-  dramaAudio.volume = 0.4;
-  
-  dramaAudio.play()
-    .then(() => {
-      console.log("Audio System Online");
-      window.mainAudio = dramaAudio; // הופכים אותו לנגיש גלובלית
-      window.removeEventListener('click', unlockAudio);
-      window.removeEventListener('touchstart', unlockAudio);
-    })
-    .catch(e => console.log("Waiting for user gesture..."));
-};
-
-    window.addEventListener('click', unlockAudio);
-    window.addEventListener('touchstart', unlockAudio);
-
-    // ... שאר הקוד של ה-LocalStorage נשאר בדיוק אותו דבר ...
+    // שמירה על הפונקציות החיוניות: טעינת נתוני משתמש
     const savedName = localStorage.getItem('lifescript_producer_name');
     if (savedName) setProducerName(savedName);
 
@@ -214,11 +191,7 @@ const handleSendFeedback = async () => {
       const newId = 'ds_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
       localStorage.setItem('lifescript_device_id', newId);
     }
-
-    return () => {
-      window.removeEventListener('click', unlockAudio);
-      window.removeEventListener('touchstart', unlockAudio);
-    };
+    // האודיו כעת מנוהל על ידי ה-Hook בתוך ה-Components, אין צורך ב-EventListener כאן
   }, []);
   
   const toggleLanguage = () => setLang(prev => prev === 'he' ? 'en' : 'he');
@@ -374,13 +347,24 @@ track('Script Created', {
   // חשוב: אל תפתח כאן את ה-SelectedPoster עדיין!
   
   try {
-const response = await fetch('/api/generate-poster', {
+// חילוץ התיאור הוויזואלי מתוך התסריט (מחפש את [image: ...])
+    const marker = "[image:";
+    const markerIndex = scriptText.toLowerCase().indexOf(marker);
+    let visualPrompt = "Cinematic movie poster, dramatic lighting"; // ברירת מחדל
+
+    if (markerIndex !== -1) {
+      const endBracketIndex = scriptText.indexOf("]", markerIndex);
+      visualPrompt = scriptText.substring(markerIndex + marker.length, endBracketIndex).trim();
+    }
+
+    const response = await fetch('/api/generate-poster', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
-        script: scriptText,
+        prompt: visualPrompt, // <--- זה המפתח שה-API מחפש!
         genre: selectedGenre,
-        lang: lang 
+        lang: lang,
+        deviceId: localStorage.getItem('lifescript_device_id') // מומלץ להוסיף ללוגים
       }),
     });
         const data = await response.json();
@@ -699,12 +683,14 @@ const response = await fetch('/api/generate-poster', {
  <div className="bg-[#030712]/60 backdrop-blur-3xl p-8 md:p-16 relative">
   <ScriptForm
   onSubmit={handleGenerateScript} 
-  loading={loading || isTypingGlobal}
+  loading={loading || isTyping} 
   lang={lang} 
-  isTypingGlobal={isTypingGlobal}
   producerName={producerName}
   setProducerName={setProducerName}
-  onInputChange={setIsTyping}
+  // הוספת הפרופ ששולט על האנימציה של ה-AI בתוך הטופס
+  isTypingGlobal={isTypingGlobal} 
+  // חיבור ה-State שמעדכן אם המשתמש מקליד (בשביל הטיפים)
+  onInputChange={(val) => setIsTyping(val)} 
 />
 
     {/* שמירה על מנגנון השגיאות המקורי שלך */}
@@ -801,13 +787,15 @@ const response = await fetch('/api/generate-poster', {
   script={script} 
   lang={lang} 
   genre={selectedGenre} 
-  setIsTypingGlobal={setIsTypingGlobal}
+  setIsTypingGlobal={setIsTyping}
   producerName={producerName}
-  posterUrl={selectedPoster?.src} // <--- הוסף את זה
-  onGeneratePoster={() => handleGeneratePoster(script)} // <--- הוסף את זה
-  loading={loading} // <--- הוסף את זה
-  error={error} // <--- הוסף את זה
-/>     </motion.div>
+  // פונקציות חיוניות ליצירת פוסטר
+  posterUrl={selectedPoster?.src} 
+  onGeneratePoster={() => handleGeneratePoster(script)} 
+  loading={loading}
+  error={error} 
+/>
+     </motion.div>
           )}
         </AnimatePresence>
        {/* --- מודל הרחבה קטן ויוקרתי (Expanded Panel) --- */}
