@@ -1,43 +1,40 @@
 // pages/api/proxy-image.js
-
-// הגדרות שרת לביטול מגבלת גודל הקובץ (פתרון לשגיאת 4MB)
-export const config = {
-  api: {
-    responseLimit: false, // מאפשר העברת תמונות באיכות גבוהה מעל 4MB
-    bodyParser: false,    // משפר ביצועים בהעברת נתונים בינאריים (תמונות)
-  },
-};
-
 export default async function handler(req, res) {
   const { url } = req.query;
+  if (!url) return res.status(400).send('No URL');
 
-  if (!url) {
-    return res.status(400).send('Missing URL parameter');
-  }
+  const finalUrl = decodeURIComponent(url);
+  console.log("🎯 Proxy attempting fetch to:", finalUrl);
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(finalUrl, {
+      method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        // הוספנו Headers של דפדפן אמיתי כדי שלא יחסמו אותנו
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
       }
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch image: ${response.statusText}`);
+      // אם זה נכשל, בוא נראה בדיוק מה הסטטוס בטרמינל
+      console.error(`❌ Source failed: ${response.status} ${response.statusText}`);
+      return res.status(response.status).send(`Pollinations failed: ${response.status}`);
     }
 
+    const contentType = response.headers.get('content-type');
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // הגדרת כותרות (Headers)
-    res.setHeader('Content-Type', response.headers.get('Content-Type') || 'image/jpeg');
-    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-
-    // שליחת התמונה
-    res.send(buffer);
-
+    // הגדרות למניעת שגיאות CORS בדפדפן
+    res.setHeader('Content-Type', contentType || 'image/png');
+    res.setHeader('Access-Control-Allow-Origin', '*'); 
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    
+    return res.send(buffer);
   } catch (error) {
-    console.error('Proxy Error:', error);
-    res.status(500).send('Error fetching image');
+    console.error('🔥 Proxy Critical Error:', error.message);
+    return res.status(500).send("Proxy error");
   }
 }

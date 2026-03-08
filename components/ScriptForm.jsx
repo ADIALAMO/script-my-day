@@ -12,7 +12,7 @@ const LOADING_MESSAGES = {
   en: ["Scanning memories...", "Analyzing story DNA...", "Building tension...", "Polishing dialogue...", "Developing characters...", "Plotting twists...", "Printing scripts..."]
 };
 
-const ScriptForm = ({ onSubmit, loading, lang, producerName, setProducerName }) => {
+const ScriptForm = ({ onSubmit, loading, lang, producerName, setProducerName, isTypingGlobal, onInputChange, showTips, setShowTips }) => {
   const [journalEntry, setJournalEntry] = useState('');
   const [activeGenre, setActiveGenre] = useState('drama');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -59,6 +59,84 @@ const ScriptForm = ({ onSubmit, loading, lang, producerName, setProducerName }) 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-10 md:space-y-12">
+      {/* כפתור הטיפים - ממוקם מעל המסגרת, צמוד למרכז */}
+      <div className="w-full flex justify-center mb-2 mt-4 relative z-[100]">
+        <div className="flex flex-col items-center">
+          <button
+            type="button"
+            onClick={() => setShowTips(!showTips)}
+            className="flex flex-col items-center gap-2 group transition-all duration-500"
+          >
+            <div className="w-10 h-10 rounded-full border border-[#d4a373]/30 flex items-center justify-center bg-[#030712] group-hover:bg-[#d4a373]/20 group-hover:border-[#d4a373] shadow-[0_0_20px_rgba(212,163,115,0.15)] transition-all duration-500">
+              <span className="text-sm">💡</span>
+            </div>
+            <span className="text-[9px] font-black tracking-[0.3em] uppercase text-[#d4a373]/60 group-hover:text-[#d4a373] transition-all duration-300">
+              {lang === 'he' ? 'טיפים להפקה' : 'PRODUCTION TIPS'}
+            </span>
+          </button>
+
+          <AnimatePresence>
+            {showTips && (
+              <div key="global-overlay-wrapper">
+                {/* Overlay גלובלי - חוסם את כל המסך לסגירה חלקה */}
+                <div
+                  className="fixed inset-0 w-screen h-screen bg-transparent z-[9998]"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowTips(false);
+                  }}
+                />
+
+                {/* חלונית הטיפים - מופיעה מתחת לכפתור, מעל המסגרת */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10, x: '-50%', scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, x: '-50%', scale: 1 }}
+                  exit={{ opacity: 0, y: 10, x: '-50%', scale: 0.95 }}
+                  className="absolute top-20 left-1/2 w-80 bg-[#0b0d12]/95 border border-[#d4a373]/30 p-8 rounded-[2rem] shadow-[0_25px_100px_rgba(0,0,0,0.8)] z-[9999] backdrop-blur-3xl"
+                  dir={lang === 'he' ? 'rtl' : 'ltr'}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#d4a373] text-[8px] font-black px-3 py-1 rounded-full text-black tracking-widest uppercase">
+                    {lang === 'he' ? 'הנחיות בימוי' : 'Director Notes'}
+                  </div>
+
+                  <h4 className="text-[#d4a373] font-black text-xs mb-6 uppercase tracking-widest italic border-b border-[#d4a373]/10 pb-3 text-center">
+                    {lang === 'he' ? 'איך להפיק את המיטב?' : 'HOW TO DIRECT?'}
+                  </h4>
+
+                  <ul className="space-y-5">
+                    {[
+                      {
+                        id: "01",
+                        title: lang === 'he' ? 'כתוב בכנות' : 'Write Honestly',
+                        desc: lang === 'he' ? 'שפוך את מחשבות היום בלי פילטרים.' : 'Pour your thoughts without filters.'
+                      },
+                      {
+                        id: "02",
+                        title: lang === 'he' ? 'בחר זווית חדשה' : 'Pick a New Angle',
+                        desc: lang === 'he' ? 'בחר ז\'אנר שיעזור לך לראות את היום באור אחר.' : 'Pick a genre for a new perspective.'
+                      },
+                      {
+                        id: "03",
+                        title: lang === 'he' ? 'שמור את הפוסטר' : 'Save the Poster',
+                        desc: lang === 'he' ? 'בנה ארכיון ויזואלי של מסע החיים שלך.' : 'Build a visual archive of your journey.'
+                      }
+                    ].map((item) => (
+                      <li key={item.id} className="flex items-start gap-3">
+                        <span className="text-[10px] font-black text-[#d4a373]">{item.id}.</span>
+                        <p className="text-[11px] leading-relaxed text-gray-300">
+                          <strong className="text-white block mb-0.5">{item.title}</strong>
+                          {item.desc}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
       <div className="relative group">
         <div className="flex justify-between items-center mb-4 px-2">
           <label className="flex items-center gap-2 text-[#d4a373] text-[10px] md:text-xs font-black uppercase tracking-[0.3em] italic">
@@ -103,11 +181,22 @@ const ScriptForm = ({ onSubmit, loading, lang, producerName, setProducerName }) 
         <div className="relative">
           <textarea
             value={journalEntry}
-            onChange={(e) => {
-              const words = e.target.value.trim().split(/\s+/);
-              if (words.length <= 500) setJournalEntry(e.target.value);
-              else setJournalEntry(words.slice(0, 500).join(' '));
-            }}
+            // הקוד המלא והמתוקן ל-textarea:
+onChange={(e) => {
+  const value = e.target.value;
+  const words = value.trim().split(/\s+/);
+  
+  if (words.length <= 500) {
+    setJournalEntry(value);
+  } else {
+    setJournalEntry(words.slice(0, 500).join(' '));
+  }
+  
+  // השורה הקריטית שחיברנו ל-Props החדשים:
+  if (onInputChange) {
+    onInputChange(value.length > 0);
+  }
+}}
             disabled={isLocked}
             className={`w-full px-6 py-8 md:px-10 md:py-10 text-lg md:text-xl text-white bg-black/40 border border-white/10 rounded-[2rem] md:rounded-[3rem] focus:border-[#d4a373]/50 focus:bg-black/60 outline-none transition-all duration-500 min-h-[220px] md:min-h-[280px] shadow-[inset_0_2px_40px_rgba(0,0,0,0.7)] leading-relaxed resize-none backdrop-blur-sm placeholder-gray-700 ${isLocked ? 'opacity-50 cursor-not-allowed grayscale-[0.5]' : ''}`}
             placeholder={lang === 'he' ? 'איך עבר היום? ספר לי במילים שלך...' : 'How was your day? Tell me in your own words...'}
