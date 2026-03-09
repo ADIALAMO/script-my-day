@@ -181,22 +181,25 @@ const ScriptForm = ({ onSubmit, loading, lang, producerName, setProducerName, is
         <div className="relative">
           <textarea
             value={journalEntry}
-            // הקוד המלא והמתוקן ל-textarea:
-onChange={(e) => {
-  const value = e.target.value;
-  const words = value.trim().split(/\s+/);
-  
-  if (words.length <= 500) {
-    setJournalEntry(value);
-  } else {
-    setJournalEntry(words.slice(0, 500).join(' '));
-  }
-  
-  // השורה הקריטית שחיברנו ל-Props החדשים:
-  if (onInputChange) {
-    onInputChange(value.length > 0);
-  }
-}}
+            onChange={(e) => {
+              const value = e.target.value;
+              const words = value.trim().split(/\s+/);
+              
+              // ניהול הגבלת מילים
+              if (words.length <= 500) {
+                setJournalEntry(value);
+              } else {
+                setJournalEntry(words.slice(0, 500).join(' '));
+              }
+              
+              // עדכון כירורגי: 
+              // אנחנו קוראים ל-onInputChange כדי לבשר למערכת שהמשתמש פעיל.
+              // זה אמור לאפס את ה-isTypingGlobal ל-false ב-HomePage ולשחרר את ה-Header.
+              if (onInputChange) {
+                onInputChange(false); // שולח false ל-isTyping כדי לוודא שהממשק פתוח
+              }
+            }}
+            // הנעילה (isLocked) תהיה תקפה רק בזמן ש-isLoading מהשרת הוא true
             disabled={isLocked}
             className={`w-full px-6 py-8 md:px-10 md:py-10 text-lg md:text-xl text-white bg-black/40 border border-white/10 rounded-[2rem] md:rounded-[3rem] focus:border-[#d4a373]/50 focus:bg-black/60 outline-none transition-all duration-500 min-h-[220px] md:min-h-[280px] shadow-[inset_0_2px_40px_rgba(0,0,0,0.7)] leading-relaxed resize-none backdrop-blur-sm placeholder-gray-700 ${isLocked ? 'opacity-50 cursor-not-allowed grayscale-[0.5]' : ''}`}
             placeholder={lang === 'he' ? 'איך עבר היום? ספר לי במילים שלך...' : 'How was your day? Tell me in your own words...'}
