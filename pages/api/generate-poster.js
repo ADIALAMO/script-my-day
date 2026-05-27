@@ -1,16 +1,5 @@
 
-import Redis from 'ioredis';
-
-// יצירת חיבור ל-Redis באמצעות המשתנה שיש לך ב-.env
-const redis = new Redis(process.env.REDIS_URL, {
-  maxRetriesPerRequest: 1, 
-  connectTimeout: 1000,    
-  lazyConnect: true,       
-  retryStrategy: () => null 
-});
-
-// תופס שגיאות כדי שלא יקפיצו את ה-Error Overlay האדום
-redis.on('error', (err) => console.log('📡 Redis Offline Mode (Poster API)'));
+import redis from '../../lib/redis.js';
 
 export default async function handler(req, res) {
   const sanitize = (str) => (typeof str === 'string' ? str.trim() : '');  res.setHeader('Access-Control-Allow-Origin', '*');
@@ -48,8 +37,10 @@ export default async function handler(req, res) {
   const trackUsage = async () => {
     if (usageKey && !isAdmin) {
       try {
-        await redis.incr(usageKey);
-        await redis.expire(usageKey, 86400);
+        const pipeline = redis.pipeline();
+        pipeline.incr(usageKey);
+        pipeline.expire(usageKey, 86400);
+        await pipeline.exec();
       } catch (e) { console.error("Redis update error:", e); }
     }
   };

@@ -12,7 +12,7 @@ const LOADING_MESSAGES = {
   en: ["Scanning memories...", "Analyzing story DNA...", "Building tension...", "Polishing dialogue...", "Developing characters...", "Plotting twists...", "Printing scripts..."]
 };
 
-const ScriptForm = ({ onSubmit, loading, lang, producerName, setProducerName, isTypingGlobal, onInputChange, showTips, setShowTips }) => {
+const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProducerName, isTypingGlobal, onInputChange, showTips, setShowTips }) => {
   const [journalEntry, setJournalEntry] = useState('');
   const [activeGenre, setActiveGenre] = useState('drama');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -271,6 +271,21 @@ const ScriptForm = ({ onSubmit, loading, lang, producerName, setProducerName, is
           )}
         </div>
       </motion.button>
+
+      <AnimatePresence>
+        {loading && onCancel && (
+          <motion.button
+            type="button"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            onClick={onCancel}
+            className="w-full mt-3 py-3 rounded-[1.5rem] border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-black uppercase tracking-widest transition-all"
+          >
+            {lang === 'he' ? '✕ בטל הפקה' : '✕ CANCEL'}
+          </motion.button>
+        )}
+      </AnimatePresence>
     </form>
   );
 }

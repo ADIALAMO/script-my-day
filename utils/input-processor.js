@@ -41,7 +41,7 @@ const InputProcessor = {
         words: ['אהבה', 'לב', 'זוגיות', 'נשיקה', 'דייט', 'חתונה', 'פרחים', 'מבט', 'מרגש', 'ביחד', 'געגוע', 'חיבוק', 'מקסים', 'יפה', 'נשמה', 'love', 'heart', 'romance', 'date', 'wedding', 'kiss', 'together', 'sweet', 'beautiful', 'crush', 'miss', 'hug', 'soul', 'flowers'],
         weight: 1.2 // עדיפות קלה לתמות רומנטיות ביומן
       },
-      sciFi: {
+      'sci-fi': {
         words: ['חלל', 'עתיד', 'רובוט', 'טכנולוגיה', 'כוכב', 'ספינה', 'לייזר', 'מכונה', 'זמן', 'גלקסיה', 'ניסוי', 'מדעי', 'מוזר', 'space', 'robot', 'future', 'alien', 'technology', 'star', 'ship', 'laser', 'machine', 'time', 'galaxy', 'science', 'planet', 'universe'],
         weight: 0.9
       },
@@ -63,7 +63,7 @@ const InputProcessor = {
       }
     };
 
-    let scores = { sciFi: 0, horror: 0, comedy: 0, romance: 0, action: 0, drama: 0 };
+    let scores = { 'sci-fi': 0, horror: 0, comedy: 0, romance: 0, action: 0, drama: 0 };
     
     // חישוב ניקוד חכם הכולל ספירת מופעים מרובים ומשקולות
     Object.keys(markers).forEach(genre => {

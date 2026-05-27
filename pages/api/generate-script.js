@@ -1,22 +1,12 @@
 import { generateScript } from '../../lib/story-service.js';
-import Redis from 'ioredis';
-// ייבוא המעבד החדש שיצרנו
-import { sanitize, prepareForAI } from '../../utils/input-processor';
+import redis from '../../lib/redis.js';
+import { sanitize } from '../../utils/input-processor';
 
 // --- הגדרה קריטית להרצה על Vercel: מאפשר זמן המתנה ל-AI ---
 export const config = {
   maxDuration: 60, 
 };
 
-// חיבור ל-Redis באמצעות ה-URL מה-env (בדיוק כמו בפוסטר)
-const kv = new Redis(process.env.REDIS_URL, {
-  maxRetriesPerRequest: 1, 
-  connectTimeout: 1000,    
-  lazyConnect: true,       
-  retryStrategy: () => null 
-});
-
-kv.on('error', (err) => console.log('📡 Redis Offline Mode (Local/Network)'));
 const DAILY_LIMIT = 2;
 
 export default async function handler(req, res) {
@@ -27,10 +17,10 @@ export default async function handler(req, res) {
 
   try {
     // שליפת נתונים גולמיים מהבקשה
-    const { journalEntry, genre, adminKeyBody, deviceId: bodyDeviceId } = req.body;
-    
+    const { journalEntry, genre, deviceId: bodyDeviceId } = req.body;
+
     // 2. אימות אדמין
-    const clientAdminKey = sanitize(req.headers['x-admin-key'] || req.headers['X-Admin-Key'] || adminKeyBody || '');
+    const clientAdminKey = sanitize(req.headers['x-admin-key'] || req.headers['X-Admin-Key'] || '');
     const serverAdminSecret = sanitize(process.env.ADMIN_SECRET || '');
     const isAdmin = serverAdminSecret !== '' && clientAdminKey === serverAdminSecret;
 
@@ -50,7 +40,7 @@ export default async function handler(req, res) {
      try {
         // שימוש ב-Race כדי לא להיתקע אם ה-DNS של Redis לא מגיב
         const currentUsage = await Promise.race([
-          kv.get(usageKey),
+          redis.get(usageKey),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1000))
         ]);
 
@@ -75,8 +65,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ message: 'היומן קצר מדי או חסר.' });
     }
 
-    // 5. הגנה על הפרומפט (Prompt Shield)
-    const safeJournalEntry = prepareForAI(journalEntry);
+    // 5. ניקוי הקלט — העטיפה בסמני הזרקה מתבצעת ב-buildScriptPrompt בלבד (מניעת double-wrap)
+    const safeJournalEntry = sanitize(journalEntry);
 
     // 6. הפעלת מנוע התסריטים המשודרג (השלב האיטי)
     const result = await generateScript(safeJournalEntry, cleanGenre);
@@ -85,13 +75,16 @@ export default async function handler(req, res) {
       return res.status(500).json({ message: result.error || 'נכשלה יצירת התסריט.' });
     }
 
-    // --- רישום המכסה רק לאחר הצלחה מוכחת ---
+    // --- רישום המכסה רק לאחר הצלחה מוכחת (atomic pipeline: incr + expire בפקודה אחת) ---
     if (!isAdmin && usageKey) {
       try {
-        // המזהה כבר מחובר, פשוט מעדכנים
-        const newVal = await kv.incr(usageKey);
-        await kv.expire(usageKey, 86400);
-        console.log(`✅ Script Quota updated. Current usage: ${newVal}`);
+        const pipeline = redis.pipeline();
+        pipeline.incr(usageKey);
+        pipeline.expire(usageKey, 86400);
+        const results = await pipeline.exec();
+        const [incrErr, newVal] = results[0];
+        if (!incrErr) console.log(`✅ Script Quota updated. Current usage: ${newVal}`);
+        else console.error("Quota incr failed:", incrErr.message);
       } catch (err) {
         console.error("Quota update failed:", err.message);
       }
@@ -106,7 +99,6 @@ export default async function handler(req, res) {
     
   } catch (error) {
     console.error("API ERROR:", error);
-    try { await kv.disconnect(); } catch(e) {}
     return res.status(500).json({ message: 'תקלה פנימית בשרת. אנא נסה שוב מאוחר יותר.' });
   }
 }

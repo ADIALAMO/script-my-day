@@ -1,0 +1,233 @@
+// pages/api/generate-script.ts
+import { generateScript } from '../../lib/story-service.js'; // נצטרך להגדיר טיפוסים גם כאן
+import Redis from 'ioredis';
+import { sanitize, prepareForAI } from '../../utils/input-processor';
+import { ScriptSchema, Script, ScriptResult, Genre } from '../../lib/types'; // ייבוא טיפוסים
+import { buildScriptPrompt, detectLanguage, mapGenreToLabel, modelConfigurations } from '../../lib/agent'; // ייבוא פונקציות וקונפיגורציות
+import { z } from 'zod'; // ייבוא Zod
+
+// --- הגדרות קבועות ---
+const DAILY_LIMIT = 2;
+const REDIS_TIMEOUT = 1000; // ms
+const AI_REQUEST_TIMEOUT = 80000; // הגדלת ה-timeout לבקשת ה-AI
+
+// --- חיבור ל-Redis ---
+const kv = new Redis(process.env.REDIS_URL, {
+  maxRetriesPerRequest: 1,
+  connectTimeout: 1000,
+  lazyConnect: true,
+  retryStrategy: (times: number) => {
+    console.log(`Redis retry attempt: ${times}`);
+    // אם מנסים יותר מ-3 פעמים, או שהשגיאה היא רשת - נחזיר null כדי לא לנסות שוב
+    if (times > 3) return null;
+    // נחכה 50ms + 50ms * מספר הניסיונות
+    return Math.min(50 + times * 50, 2000);
+  }
+});
+
+kv.on('error', (err: Error) => console.log(`📡 Redis connection error: ${err.message}. Proceeding in offline mode.`));
+kv.on('connect', () => console.log('✅ Redis connected successfully.'));
+
+// --- הגדרת טיפוסים לבקשת ה-API ---
+interface RequestBody {
+  journalEntry: string;
+  genre?: string;
+  adminKeyBody?: string;
+  deviceId?: string;
+}
+
+// --- פונקציית ה-AI המרכזית ---
+async function callAIModels(promptMessages: Array<{ role: string; content: string }>, modelConfig: ProviderConfig, model: ModelConfig): Promise<ScriptResult> {
+  const apiKey = process.env[modelConfig.keyEnvVar];
+  if (!apiKey) {
+    console.warn(`API Key not found for provider: ${modelConfig.provider}`);
+    return { success: false, error: `API Key missing for ${modelConfig.provider}` };
+  }
+
+  const endpoint = modelConfig.provider === "gemini" ? "https://generativelanguage.googleapis.com/v1beta/models/${model.name}:generateContent?key=${apiKey}"
+                 : modelConfig.provider === "openrouter" ? "https://openrouter.ai/api/v1/chat/completions"
+                 : ""; // הוסף נקודות קצה לספקים אחרים
+
+  if (!endpoint) return { success: false, error: `Unsupported provider: ${modelConfig.provider}` };
+
+  const requestBody = modelConfig.provider === "gemini"
+    ? { contents: promptMessages, generationConfig: { temperature: model.temperature, maxOutputTokens: model.maxOutputTokens } }
+    : { model: model.name, messages: promptMessages, temperature: model.temperature, max_tokens: model.max_tokens };
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(modelConfig.provider === "openrouter" && { 'Authorization': `Bearer ${apiKey}` }),
+      },
+      body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(AI_REQUEST_TIMEOUT) // שימוש ב-AbortSignal ל-timeout
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({})); // נסה לנתח שגיאה, אחרת השאר ריק
+      console.error(`AI API Error (${modelConfig.provider} - ${model.name}): ${response.status} ${response.statusText}`, errorData);
+      return { success: false, error: `API Error: ${response.status} ${errorData.error?.message || response.statusText}` };
+    }
+
+    const data = await response.json();
+
+    // --- אימות הפלט באמצעות Zod ---
+    let parsedData: Script | null = null;
+    let errorMessage = '';
+
+    if (modelConfig.provider === "gemini") {
+      // Gemini מחזיר את התוכן בתוך data.candidates[0].content.parts[0].text
+      const geminiResponseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (geminiResponseText) {
+        try {
+          const jsonResponse = JSON.parse(geminiResponseText);
+          const validationResult = ScriptSchema.safeParse(jsonResponse);
+          if (validationResult.success) {
+            parsedData = validationResult.data;
+          } else {
+            errorMessage = `Zod validation failed for Gemini response: ${validationResult.error.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')}`;
+            console.warn(errorMessage);
+          }
+        } catch (e) {
+          errorMessage = `Failed to parse Gemini JSON response: ${e.message}. Raw response: ${geminiResponseText}`;
+          console.warn(errorMessage);
+        }
+      } else {
+         errorMessage = "Gemini response did not contain expected text content.";
+         console.warn(errorMessage, data);
+      }
+    } else if (modelConfig.provider === "openrouter") {
+      // OpenRouter מחזיר את התוכן בתוך data.choices[0].message.content
+      const openRouterResponseText = data.choices?.[0]?.message?.content;
+       if (openRouterResponseText) {
+        try {
+          const jsonResponse = JSON.parse(openRouterResponseText);
+          const validationResult = ScriptSchema.safeParse(jsonResponse);
+          if (validationResult.success) {
+            parsedData = validationResult.data;
+          } else {
+            errorMessage = `Zod validation failed for OpenRouter response: ${validationResult.error.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')}`;
+            console.warn(errorMessage);
+          }
+        } catch (e) {
+          errorMessage = `Failed to parse OpenRouter JSON response: ${e.message}. Raw response: ${openRouterResponseText}`;
+          console.warn(errorMessage);
+        }
+      } else {
+         errorMessage = "OpenRouter response did not contain expected message content.";
+         console.warn(errorMessage, data);
+      }
+    }
+    // ... הוסף לוגיקה עבור ספקים אחרים
+
+    if (parsedData) {
+      return { success: true, data: parsedData, model: model.name };
+    } else {
+      // אם הפלט לא היה JSON תקין או לא עבר אימות Zod, נחזיר שגיאה
+      // ניתן להוסיף כאן לוגיקה לניסיון תיקון או להפעיל Fallback מיידי
+      return { success: false, error: errorMessage || "Invalid AI response format or content.", model: model.name };
+    }
+
+  } catch (error: any) {
+    if (error.name === 'TimeoutError') {
+        console.warn(`AI Request timed out for ${modelConfig.provider} - ${model.name}`);
+        return { success: false, error: `AI request timed out (${model.name})` };
+    }
+    console.error(`Error calling AI (${modelConfig.provider} - ${model.name}):`, error);
+    return { success: false, error: `Network or server error (${model.name})` };
+  }
+}
+
+// --- פונקציית ה-handler הראשית ---
+export default async function handler(req, res) {
+  // ... (לוגיקת אימות מתודה, אדמין, Redis - כפי שהייתה) ...
+
+  try {
+    const { journalEntry, genre, adminKeyBody, deviceId: bodyDeviceId }: RequestBody = req.body;
+    // ... (שאר הלוגיקה) ...
+
+    // 5. הפעלת מנוע התסריטים המשודרג (השלב האיטי)
+    const lang = detectLanguage(journalEntry);
+    const genreLabel = mapGenreToLabel(genre, lang);
+    const safeGenreKey = genre?.toLowerCase().trim() || 'drama';
+    const genreInfo = (GENRE_DNA as any)[lang]?.[safeGenreKey] || (GENRE_DNA as any)[lang]?.drama;
+
+    let scriptResult: ScriptResult = { success: false, error: "No AI model could generate the script." };
+    let usedModel: string | null = null;
+
+    // --- לולאת Fallback מבוססת modelConfigurations ---
+    for (const providerConfig of modelConfigurations) {
+      const apiKey = process.env[providerConfig.keyEnvVar];
+      if (!apiKey) {
+        console.log(`Skipping provider ${providerConfig.provider}: API Key not set.`);
+        continue;
+      }
+
+      for (const model of providerConfig.models) {
+        console.log(`Attempting to generate script with: ${providerConfig.provider} - ${model.name}`);
+
+        // בניית הפרומפט הספציפי למודל ולספק
+        const { messages } = buildScriptPrompt(
+          prepareForAI(journalEntry), // השתמש בפונקציית הניקוי
+          genre,
+          "medium" // ניתן להתאים את רמת היצירתיות
+        );
+
+        const result = await callAIModels(messages, providerConfig, model);
+        usedModel = model.name; // שמור את שם המודל האחרון שניסינו
+
+        if (result.success && result.data) {
+          // אימות נוסף של הנתונים שהתקבלו (למקרה ש-Zod עבר אך הנתונים עדיין לא תקינים)
+          const finalValidation = ScriptSchema.safeParse(result.data);
+          if (finalValidation.success) {
+             scriptResult = { success: true, data: finalValidation.data, model: usedModel };
+             console.log(`✅ Successfully generated script with ${usedModel}`);
+             break; // יצאנו מהלולאה כי הצלחנו
+          } else {
+             console.warn(`Zod validation failed on final result from ${usedModel}: ${finalValidation.error.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')}`);
+             // המשך לנסות מודלים אחרים
+          }
+        } else {
+          console.warn(`Failed to generate script with ${model.name}: ${result.error}`);
+          // ניתן להוסיף כאן לוגיקה לטיפול בשגיאות ספציפיות (למשל, Rate Limit)
+        }
+      } // סוף לולאת מודלים
+
+      if (scriptResult.success) break; // אם הצלחנו, צא מלולאת הספקים
+    } // סוף לולאת ספקים
+
+    // --- טיפול בתוצאה הסופית ---
+    if (!scriptResult.success) {
+      console.error("All AI models failed to generate a script.");
+      // אם כל הניסיונות נכשלו, החזר שגיאה כללית
+      return res.status(500).json({
+        success: false,
+        message: "🎬 Production Halted: All AI servers offline or failed to respond correctly. Please try again later.",
+        error: scriptResult.error // החזר את השגיאה האחרונה שקיבלנו
+      });
+    }
+
+    // --- רישום המכסה רק לאחר הצלחה מוכחת ---
+    // ... (לוגיקת Redis כפי שהייתה) ...
+
+    // 7. החזרת התוצאה לממשק
+    return res.status(200).json({
+      success: true,
+      script: scriptResult.data, // החזר את האובייקט המובנה
+      model: scriptResult.model
+    });
+
+  } catch (error: any) {
+    console.error("API ERROR:", error);
+    try { await kv.disconnect(); } catch(e) {}
+    return res.status(500).json({ message: 'Internal Server Error. Please try again later.', error: error.message });
+  }
+}
+
+// --- פונקציית story-service (צריך להגדיר טיפוסים) ---
+// import { ScriptResult } from '../../lib/types';
+// async function generateScript(journalEntry: string, genre: Genre): Promise<ScriptResult> {
+//   // ... הלוגיקה תועבר לכאן או תופעל מתוך ה-handler
+// }

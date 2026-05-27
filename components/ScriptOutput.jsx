@@ -104,43 +104,49 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName }) 
 
   // --- מנוע סאונד קולנועי משודרג ---
    useEffect(() => {
+    let unlockFn = null;
+
     const initAudio = async () => {
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (!audioContext.current) audioContext.current = new AudioCtx();
-        
+
         const response = await fetch('/audio/typewriter.m4a');
         const arrayBuffer = await response.arrayBuffer();
         audioBuffer.current = await audioContext.current.decodeAudioData(arrayBuffer);
-        
+
         const responseFlash = await fetch('/audio/camera-flash.wav');
         const arrayBufferFlash = await responseFlash.arrayBuffer();
         flashBuffer.current = await audioContext.current.decodeAudioData(arrayBufferFlash);
 
-        // וידוא שהקונטקסט לא נמצא במצב suspended מיד לאחר הטעינה
-        // זה מבטיח שהסאונד יתחיל לעבוד גם ללא אינטראקציית משתמש ראשונית
         if (audioContext.current?.state === 'suspended') {
-          // ננסה לחדש את הקונטקסט. אם נכשל, נתפוס את השגיאה ונמשיך.
           await audioContext.current.resume().catch(e => console.warn("Failed to resume AudioContext on init:", e));
         }
 
-        // פונקציית unlock שמתעוררת בלחיצה הראשונה של המשתמש באתר (כגיבוי)
-        // נשמור את ה‑listeners האלה למקרה שה‑resume הראשוני נכשל
         const unlock = () => {
           if (audioContext.current?.state === 'suspended') {
             audioContext.current.resume().catch(e => console.warn("Failed to resume AudioContext on user interaction:", e));
           }
-          // מסירים את ההאזנה אחרי הפעם הראשונה שזה עובד
           window.removeEventListener('click', unlock);
           window.removeEventListener('touchstart', unlock);
           window.removeEventListener('mousemove', unlock);
         };
+        unlockFn = unlock;
         window.addEventListener('click', unlock);
         window.addEventListener('touchstart', unlock);
         window.addEventListener('mousemove', unlock);
       } catch (e) { console.error("Audio engine failed", e); }
     };
     initAudio();
+
+    return () => {
+      if (unlockFn) {
+        window.removeEventListener('click', unlockFn);
+        window.removeEventListener('touchstart', unlockFn);
+        window.removeEventListener('mousemove', unlockFn);
+      }
+      audioContext.current?.close().catch(() => {});
+    };
   }, []);
 
  const playSound = useCallback(() => {
@@ -237,7 +243,10 @@ const playFlashSound = useCallback(() => {
   timerRef.current = setTimeout(typeChar, 40);
 };
     typeChar();
-    return () => clearTimeout(timerRef.current);
+    return () => {
+      clearTimeout(timerRef.current);
+      setIsTypingGlobal?.(false);
+    };
   }, [cleanScript]);
 
   // --- Poster Generation ---

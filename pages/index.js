@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Film, Copyright, AlertCircle, Key, X, Download, Share2, Camera, MessageSquare, Send, Check } from 'lucide-react';
@@ -15,13 +15,14 @@ import { MODAL_DATA } from '../constants/modalData';
 
 function HomePage() {
   const [script, setScript] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [scriptLoading, setScriptLoading] = useState(false);
+  const [posterLoading, setPosterLoading] = useState(false);
   const [error, setError] = useState('');
   const [lang, setLang] = useState('en');
   const [mounted, setMounted] = useState(false);
-  const [isTypingGlobal, setIsTypingGlobal] = useState(false);
 
   const [selectedGenre, setSelectedGenre] = useState(null);
+  // isTyping: true while ScriptOutput's typewriter animation is running
   const [isTyping, setIsTyping] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [tempAdminKey, setTempAdminKey] = useState('');
@@ -30,6 +31,9 @@ function HomePage() {
   const [showGallery, setShowGallery] = useState(true);
   const [selectedPoster, setSelectedPoster] = useState(null);
   const [producerName, setProducerName] = useState('');
+
+  const abortControllerRef = useRef(null);
+  const lastJournalEntryRef = useRef({ entry: '', genre: '' });
 
   // --- Director's Log Logic ---
   const [showFeedback, setShowFeedback] = useState(false);
@@ -105,11 +109,21 @@ function HomePage() {
     }
   };
 
+  const handleCancelGeneration = () => {
+    abortControllerRef.current?.abort();
+    setScriptLoading(false);
+  };
+
   const handleGenerateScript = async (journalEntry, genre) => {
     if (!journalEntry || journalEntry.trim().length < 5) return;
 
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    lastJournalEntryRef.current = { entry: journalEntry, genre };
+
     setShowGallery(false);
-    setLoading(true);
+    setScriptLoading(true);
     setError('');
     setScript('');
     setSelectedGenre(genre);
@@ -125,12 +139,12 @@ function HomePage() {
           'x-admin-key': savedAdminKey,
           'x-device-id': deviceId
         },
+        signal: controller.signal,
         body: JSON.stringify({
           journalEntry,
           genre,
           producerName: producerName || (lang === 'he' ? 'אורח' : 'Guest'),
           deviceId: deviceId,
-          adminKeyBody: savedAdminKey
         }),
       });
 
@@ -150,7 +164,7 @@ function HomePage() {
           : "🎬 Production wrapped for today. Daily quota reached - see you at tomorrow's premiere!";
 
         setError(quotaMsg);
-        setLoading(false);
+        setScriptLoading(false);
         return;
       }
 
@@ -186,6 +200,7 @@ function HomePage() {
       }
 
     } catch (err) {
+      if (err.name === 'AbortError') return;
       console.error("Frontend Generation Error:", err);
       if (typeof window !== 'undefined' && window.gtag) {
         window.gtag('event', 'script_error', {
@@ -208,12 +223,12 @@ function HomePage() {
         setError(err.message || 'תקלה בתקשורת עם השרת');
       }
     } finally {
-      setLoading(false);
+      setScriptLoading(false);
     }
   };
 
   const handleGeneratePoster = async (scriptText) => {
-    setLoading(true);
+    setPosterLoading(true);
     setError('');
 
     try {
@@ -248,7 +263,7 @@ function HomePage() {
       setError(err.message);
       setSelectedPoster(null);
     } finally {
-      setLoading(false);
+      setPosterLoading(false);
     }
   };
 
@@ -424,16 +439,16 @@ function HomePage() {
         <motion.section
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className={`glass-panel rounded-[3rem] overflow-hidden shadow-2xl relative ${(loading || isTyping) ? 'ai-loading-active' : ''}`}
+          className={`glass-panel rounded-[3rem] overflow-hidden shadow-2xl relative ${(scriptLoading || isTyping) ? 'ai-loading-active' : ''}`}
         >
           <div className="bg-[#030712]/60 backdrop-blur-3xl p-8 md:p-16 relative">
             <ScriptForm
               onSubmit={handleGenerateScript}
-              loading={loading || isTyping}
+              onCancel={handleCancelGeneration}
+              loading={scriptLoading}
               lang={lang}
               producerName={producerName}
               setProducerName={setProducerName}
-              isTypingGlobal={isTypingGlobal}
               onInputChange={(val) => setIsTyping(val)}
               showTips={showTips}
               setShowTips={setShowTips}
@@ -446,10 +461,22 @@ function HomePage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="mt-10 p-6 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center gap-4 text-red-400 text-xl md:text-2xl font-bold text-center"
+                  className="mt-10 p-6 rounded-2xl bg-red-500/10 border border-red-500/20 flex flex-col items-center justify-center gap-4 text-red-400 text-center"
+                  dir={lang === 'he' ? 'rtl' : 'ltr'}
                 >
-                  <AlertCircle size={28} />
-                  <span>{error}</span>
+                  <div className="flex items-center gap-3 text-xl md:text-2xl font-bold">
+                    <AlertCircle size={28} />
+                    <span>{error}</span>
+                  </div>
+                  {lastJournalEntryRef.current.entry && (
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateScript(lastJournalEntryRef.current.entry, lastJournalEntryRef.current.genre)}
+                      className="px-6 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 text-sm font-black uppercase tracking-widest transition-all"
+                    >
+                      {lang === 'he' ? '↺ נסה שוב' : '↺ RETRY'}
+                    </button>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -519,7 +546,7 @@ function HomePage() {
 
         {/* תצוגת התסריט והפוסטר */}
         <AnimatePresence mode="wait">
-          {script && !loading && (
+          {script && !scriptLoading && (
             <motion.div
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
@@ -533,10 +560,6 @@ function HomePage() {
                 genre={selectedGenre}
                 setIsTypingGlobal={setIsTyping}
                 producerName={producerName}
-                posterUrl={selectedPoster?.src}
-                onGeneratePoster={() => handleGeneratePoster(script)}
-                loading={loading}
-                error={error}
               />
             </motion.div>
           )}

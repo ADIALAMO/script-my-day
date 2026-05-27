@@ -1,0 +1,53 @@
+    {
+      "compilerOptions": {
+        "target": "es5",
+        "lib": ["dom", "dom.iterable", "esnext"],
+        "allowJs": true,
+        "skipLibCheck": true,
+        "strict": true,
+        "noEmit": true,
+        "esModuleInterop": true,
+        "module": "esnext",
+        "moduleResolution": "bundler",
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "jsx": "preserve",
+        "incremental": true,
+        "plugins": [
+          {
+            "name": "next"
+          }
+        ],
+        "paths": {
+          "@/*": ["./*"]
+        }
+      },
+      "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+      "exclude": ["node_modules"]
+    }
+    ```
+3.  יצירת `next-env.d.ts` (אם לא קיים) עם ההגדרה:
+    ```typescript
+    /// <reference types="next" />
+    /// <reference types="next/image-types/global" />
+    // NOTE: This file should not be edited
+    // see https://nextjs.org/docs/basic-features/typescript for more information.
+    ```
+
+---
+
+### שלב 1: המרת קבצי תצורה וספריות (לא UI)
+**קבצים מושפעים:** `lib/`, `utils/`, `constants/`, `hooks/`
+**עדכונים נדרשים:**
+
+| קובץ מקור | קובץ יעד | שינויים נדרשים |
+|-----------|-----------|----------------|
+| `lib/agent.js` | `lib/agent.ts` | הגדרת 인터 פייסים (interfaces) לפרמטרים ולפונקציות. |
+| `lib/story-service.js` | `lib/story-service.ts` | הגדרת טיפוסים לפונקציות `generateScript`, `generatePoster`. |
+| `lib/types.js` | `lib/types.ts` | המרת אובייקטים/מבנים ל-`interface` או `type`. זהו הקובץ המרכזי לטיפוסים. |
+| `utils/input-processor.js` | `utils/input-processor.ts` | טיפוסים לפרמטרי הקלט והפלט. |
+| `hooks/useBackgroundAudio.js` | `hooks/useBackgroundAudio.ts` | טיפוסים ל-state, refs, ו-props של הוק. |
+| `constants/showcase.js` | `constants/showcase.ts` | טיפוסים למערכים/אובייקטים. |
+| `constants/modalData.js` | `constants/modalData.ts` | טיפוסים למידע המודאל. |
+
+**הערה:** קובץ `lib/types.ts` יהיה המרכז הטיפוסי העולמי. יש ליצור שם טיפוסים כמו:
