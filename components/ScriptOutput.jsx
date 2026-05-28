@@ -556,7 +556,7 @@ const playFlashSound = useCallback(() => {
           const resp = await fetch('/api/generate-poster', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: panel.visual, genre, lang }),
+            body: JSON.stringify({ prompt: panel.visual, genre, lang, requestType: 'comic' }),
           });
           const data = await resp.json();
           if (!storyboardActiveRef.current) return;
