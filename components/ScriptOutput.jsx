@@ -32,7 +32,7 @@ const translateGenre = (genre) => {
   return map[normalized] || genre || 'Cinematic';
 };
 
-function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName }) {
+function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, onPosterGenerated }) {
   const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST');
   
   // --- States ---
@@ -271,9 +271,12 @@ const playFlashSound = useCallback(() => {
       }
       if (data.success) {
         setPosterUrl(data.imageUrl);
+        onPosterGenerated?.(data.imageUrl);
       } else { throw new Error(data.message); }
     } catch (error) {
-      setPosterUrl(`https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${Math.random()}&model=flux`);
+      const fallbackUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${Math.random()}&model=flux`;
+      setPosterUrl(fallbackUrl);
+      onPosterGenerated?.(fallbackUrl);
     }
   };
 

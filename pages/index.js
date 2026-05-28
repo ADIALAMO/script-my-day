@@ -12,6 +12,8 @@ import { Analytics } from '@vercel/analytics/react';
 import { track } from '@vercel/analytics';
 import { SHOWCASE_POSTERS } from '../constants/showcase';
 import { MODAL_DATA } from '../constants/modalData';
+import HistoryPanel from '../components/HistoryPanel';
+import { useScriptHistory } from '../hooks/useScriptHistory';
 
 function HomePage() {
   const [script, setScript] = useState('');
@@ -34,6 +36,10 @@ function HomePage() {
 
   const abortControllerRef = useRef(null);
   const lastJournalEntryRef = useRef({ entry: '', genre: '' });
+  const currentEntryIdRef = useRef(null);
+
+  const { history, addEntry, updateEntry, deleteEntry } = useScriptHistory();
+  const [showHistory, setShowHistory] = useState(false);
 
   // --- Director's Log Logic ---
   const [showFeedback, setShowFeedback] = useState(false);
@@ -183,6 +189,14 @@ function HomePage() {
 
       if (finalScript) {
         setScript(finalScript);
+        currentEntryIdRef.current = addEntry({
+          genre,
+          lang,
+          producerName: producerName || (lang === 'he' ? 'אורח' : 'Guest'),
+          journalEntry,
+          script: finalScript,
+          posterUrl: '',
+        });
         track('Script Created', {
           genre: selectedGenre,
           language: lang,
@@ -287,7 +301,12 @@ function HomePage() {
         <div className="mesh-sphere w-[500px] h-[500px] bg-blue-900/10 bottom-[-10%] right-[-10%]" />
       </div>
 
-      <Navbar lang={lang} onLanguageToggle={toggleLanguage} />
+      <Navbar
+        lang={lang}
+        onLanguageToggle={toggleLanguage}
+        historyCount={history.length}
+        onHistoryOpen={() => setShowHistory(true)}
+      />
 
       <main className="container mx-auto pt-4 md:pt-8 pb-12 px-6 max-w-5xl flex-grow relative z-10">
 
@@ -560,6 +579,7 @@ function HomePage() {
                 genre={selectedGenre}
                 setIsTypingGlobal={setIsTyping}
                 producerName={producerName}
+                onPosterGenerated={(url) => updateEntry(currentEntryIdRef.current, { posterUrl: url })}
               />
             </motion.div>
           )}
@@ -740,6 +760,21 @@ function HomePage() {
         </div>
       </footer>
       
+      <HistoryPanel
+        isOpen={showHistory}
+        onClose={() => setShowHistory(false)}
+        history={history}
+        onReload={(entry) => {
+          setScript(entry.script);
+          setSelectedGenre(entry.genre);
+          setShowGallery(false);
+          setError('');
+          currentEntryIdRef.current = entry.id;
+        }}
+        onDelete={deleteEntry}
+        lang={lang}
+      />
+
       <Analytics />
     </div>
   );
