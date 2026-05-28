@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, useReducer } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Download, Share2, Check, CheckCheck, Film, Volume2, VolumeX, Loader2, FastForward, Pencil, RotateCcw, FileText, ChevronDown, Printer, X, Mail, NotebookPen, Clapperboard } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
@@ -46,6 +46,24 @@ const translateGenre = (genre) => {
   return map[normalized] || genre || 'Cinematic';
 };
 
+// Opt 5: Reducer consolidates all panel-image state transitions. INIT_ALL flips every skeleton to
+// loading in one render cycle; SET_PANEL updates individual panels as they resolve asynchronously.
+function panelImagesReducer(state, action) {
+  switch (action.type) {
+    case 'INIT_ALL': {
+      const next = {};
+      for (let i = 0; i < action.count; i++) next[i] = { loading: true, url: null, error: false };
+      return next;
+    }
+    case 'SET_PANEL':
+      return { ...state, [action.idx]: action.payload };
+    case 'RESET':
+      return {};
+    default:
+      return state;
+  }
+}
+
 function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, onPosterGenerated, onScriptEdited }) {
   const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST');
   
@@ -78,7 +96,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
   const [storyboardError, setStoryboardError] = useState('');
   const [storyboardMsgIdx, setStoryboardMsgIdx] = useState(0);
   // panelImages: { [idx]: { loading: bool, url: string|null, error: bool } }
-  const [panelImages, setPanelImages] = useState({});
+  const [panelImages, dispatchPanelImages] = useReducer(panelImagesReducer, {});
   const [comicStyle, setComicStyle] = useState('anime');
 
   // --- Refs ---
@@ -436,7 +454,7 @@ const playFlashSound = useCallback(() => {
     setShowStoryboard(false);
     setStoryboardPanels([]);
     setStoryboardError('');
-    setPanelImages({});
+    dispatchPanelImages({ type: 'RESET' });
   }, [script]);
 
   // --- Typing Engine ---
@@ -528,10 +546,12 @@ const playFlashSound = useCallback(() => {
   }, [storyboardLoading, storyboardLoadingMessages.length]);
 
   const generateStoryboardImages = async (panels) => {
+    // Opt 5: single INIT_ALL dispatch flips all skeletons to loading in one render cycle,
+    // replacing the N individual setPanelImages(loading:true) calls that each triggered a re-render.
+    dispatchPanelImages({ type: 'INIT_ALL', count: panels.length });
     await Promise.allSettled(
       panels.map(async (panel, idx) => {
         if (!storyboardActiveRef.current) return;
-        setPanelImages(prev => ({ ...prev, [idx]: { loading: true, url: null, error: false } }));
         try {
           const resp = await fetch('/api/generate-poster', {
             method: 'POST',
@@ -541,13 +561,13 @@ const playFlashSound = useCallback(() => {
           const data = await resp.json();
           if (!storyboardActiveRef.current) return;
           if (data.success && data.imageUrl) {
-            setPanelImages(prev => ({ ...prev, [idx]: { loading: false, url: data.imageUrl, error: false } }));
+            dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: false, url: data.imageUrl, error: false } });
           } else {
-            setPanelImages(prev => ({ ...prev, [idx]: { loading: false, url: null, error: true } }));
+            dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: false, url: null, error: true } });
           }
         } catch {
           if (!storyboardActiveRef.current) return;
-          setPanelImages(prev => ({ ...prev, [idx]: { loading: false, url: null, error: true } }));
+          dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: false, url: null, error: true } });
         }
       })
     );
@@ -555,7 +575,7 @@ const playFlashSound = useCallback(() => {
 
   const generateStoryboard = async () => {
     storyboardActiveRef.current = false;
-    setPanelImages({});
+    dispatchPanelImages({ type: 'RESET' });
     setStoryboardLoading(true);
     setStoryboardError('');
     try {
@@ -1049,7 +1069,7 @@ const playFlashSound = useCallback(() => {
             panels={storyboardPanels}
             lang={lang}
             panelImages={panelImages}
-            onClose={() => { storyboardActiveRef.current = false; setShowStoryboard(false); setStoryboardPanels([]); setPanelImages({}); }}
+            onClose={() => { storyboardActiveRef.current = false; setShowStoryboard(false); setStoryboardPanels([]); dispatchPanelImages({ type: 'RESET' }); }}
           />
         )}
       </AnimatePresence>
