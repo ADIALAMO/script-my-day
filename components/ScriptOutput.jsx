@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Copy, Download, Share2, Check, CheckCheck, Film, Volume2, VolumeX, Loader2, FastForward, Pencil, RotateCcw, FileText, ChevronDown, Printer, X, Mail, NotebookPen } from 'lucide-react';
+import { Copy, Download, Share2, Check, CheckCheck, Film, Volume2, VolumeX, Loader2, FastForward, Pencil, RotateCcw, FileText, ChevronDown, Printer, X, Mail, NotebookPen, Clapperboard } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
 import { track } from '@vercel/analytics';
 import PosterRenderer from './PosterRenderer'; 
 import { detectLanguage } from '../lib/agent';
+import StoryboardView from './StoryboardView';
 
 // --- Brand SVG icons (inline, no external dependency) ---
 const WhatsAppIcon = () => (
@@ -70,7 +71,18 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
 
+  // --- Storyboard states ---
+  const [showStoryboard, setShowStoryboard] = useState(false);
+  const [storyboardPanels, setStoryboardPanels] = useState([]);
+  const [storyboardLoading, setStoryboardLoading] = useState(false);
+  const [storyboardError, setStoryboardError] = useState('');
+  const [storyboardMsgIdx, setStoryboardMsgIdx] = useState(0);
+  // panelImages: { [idx]: { loading: bool, url: string|null, error: bool } }
+  const [panelImages, setPanelImages] = useState({});
+  const [comicStyle, setComicStyle] = useState('anime');
+
   // --- Refs ---
+  const storyboardActiveRef = useRef(false);
   const scrollRef = useRef(null);
   const posterRef = useRef(null);
   const isAutoScrollPaused = useRef(false);
@@ -420,6 +432,11 @@ const playFlashSound = useCallback(() => {
     setEditedText('');
     setSaveStatus('idle');
     clearTimeout(saveDebounceRef.current);
+    storyboardActiveRef.current = false;
+    setShowStoryboard(false);
+    setStoryboardPanels([]);
+    setStoryboardError('');
+    setPanelImages({});
   }, [script]);
 
   // --- Typing Engine ---
@@ -485,6 +502,82 @@ const playFlashSound = useCallback(() => {
       const fallbackUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${Math.random()}&model=flux`;
       setPosterUrl(fallbackUrl);
       onPosterGenerated?.(fallbackUrl);
+    }
+  };
+
+  const storyboardLoadingMessages = useMemo(() => isHebrew ? [
+    'סורק סצנות...', 'ממפה פאנלים...', 'מדפיס קווי דיו...', 'מסיים ציורים...'
+  ] : [
+    'Scanning scenes...', 'Mapping panels...', 'Inking drawings...', 'Composing frames...'
+  ], [isHebrew]);
+
+  const comicStyleOptions = useMemo(() => isHebrew ? [
+    { value: 'anime', label: 'אנימה סטודיו' },
+    { value: 'marvel', label: 'מארוול רטרו' },
+    { value: 'noir', label: 'נואר קולנועי' }
+  ] : [
+    { value: 'anime', label: 'ANIME STUDIO' },
+    { value: 'marvel', label: 'MARVEL RETRO' },
+    { value: 'noir', label: 'CINEMATIC NOIR' }
+  ], [isHebrew]);
+
+  useEffect(() => {
+    if (!storyboardLoading) { setStoryboardMsgIdx(0); return; }
+    const id = setInterval(() => setStoryboardMsgIdx(p => (p + 1) % storyboardLoadingMessages.length), 2200);
+    return () => clearInterval(id);
+  }, [storyboardLoading, storyboardLoadingMessages.length]);
+
+  const generateStoryboardImages = async (panels) => {
+    await Promise.allSettled(
+      panels.map(async (panel, idx) => {
+        if (!storyboardActiveRef.current) return;
+        setPanelImages(prev => ({ ...prev, [idx]: { loading: true, url: null, error: false } }));
+        try {
+          const resp = await fetch('/api/generate-poster', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: panel.visual, genre, lang }),
+          });
+          const data = await resp.json();
+          if (!storyboardActiveRef.current) return;
+          if (data.success && data.imageUrl) {
+            setPanelImages(prev => ({ ...prev, [idx]: { loading: false, url: data.imageUrl, error: false } }));
+          } else {
+            setPanelImages(prev => ({ ...prev, [idx]: { loading: false, url: null, error: true } }));
+          }
+        } catch {
+          if (!storyboardActiveRef.current) return;
+          setPanelImages(prev => ({ ...prev, [idx]: { loading: false, url: null, error: true } }));
+        }
+      })
+    );
+  };
+
+  const generateStoryboard = async () => {
+    storyboardActiveRef.current = false;
+    setPanelImages({});
+    setStoryboardLoading(true);
+    setStoryboardError('');
+    try {
+      const response = await fetch('/api/generate-storyboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ script: cleanScript, lang, genre, comicStyle }),
+      });
+      const data = await response.json();
+      if (data.success && data.panels?.length > 0) {
+        storyboardActiveRef.current = true;
+        setStoryboardPanels(data.panels);
+        setShowStoryboard(true);
+        track('Storyboard Generated', { genre, language: lang });
+        generateStoryboardImages(data.panels);
+      } else {
+        throw new Error(data.error || 'Generation failed');
+      }
+    } catch (err) {
+      setStoryboardError(isHebrew ? 'יצירת הסטוריבורד נכשלה. נסה שוב.' : 'Storyboard generation failed. Please try again.');
+    } finally {
+      setStoryboardLoading(false);
     }
   };
 
@@ -851,13 +944,38 @@ const playFlashSound = useCallback(() => {
         </AnimatePresence>
       </div>
 
-      {!isTyping && !showPoster && (
-        <div className="flex justify-center py-6 px-4">
-          <button onClick={generatePoster} disabled={posterLoading} className="w-full bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black font-black py-4 rounded-2xl">
-            {posterLoading ? <Loader2 className="animate-spin mx-auto" /> : (isHebrew ? 'צור פוסטר קולנועי' : 'GENERATE MOVIE POSTER')}
-          </button>
+      {!isTyping && displayText.length > 0 && (!showPoster || !showStoryboard) && (
+        <div className="py-6 px-4 space-y-3">
+          {!showStoryboard && !storyboardLoading && (
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              {comicStyleOptions.map(opt => (
+                <button key={opt.value} onClick={() => setComicStyle(opt.value)} className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all duration-200 ${comicStyle === opt.value ? 'bg-[#d4a373]/20 border border-[#d4a373]/60 text-[#d4a373]' : 'bg-white/[0.04] border border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20'}`}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-3">
+            {!showPoster && (
+              <button onClick={generatePoster} disabled={posterLoading} className={`${showStoryboard ? 'w-full' : 'flex-1'} bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black font-black py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-60 transition-opacity`}>
+                {posterLoading ? <Loader2 size={18} className="animate-spin" /> : <span>{isHebrew ? 'צור פוסטר קולנועי' : 'GENERATE MOVIE POSTER'}</span>}
+              </button>
+            )}
+            {!showStoryboard && (
+              <button onClick={generateStoryboard} disabled={storyboardLoading} className={`${showPoster ? 'w-full' : 'flex-1'} border border-[#d4a373]/40 bg-[#050710] text-[#d4a373] font-black py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-[#d4a373]/10 hover:border-[#d4a373]/70 transition-all duration-300 disabled:opacity-60`}>
+                {storyboardLoading ? <Clapperboard size={18} className="animate-spin text-[#d4a373]/60" /> : <><Clapperboard size={18} /><span>{isHebrew ? 'צור קומיקס' : 'GENERATE COMIC STORYBOARD'}</span></>}
+              </button>
+            )}
+          </div>
         </div>
       )}
+      <AnimatePresence>
+        {storyboardError && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-4 px-5 py-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] font-medium text-center">
+            {storyboardError}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showPoster && (
@@ -881,6 +999,58 @@ const playFlashSound = useCallback(() => {
   playFlashSound={playFlashSound}   // <-- הוספת ה‑prop
 />
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Storyboard Loading Skeleton ──────────────────────────── */}
+      <AnimatePresence>
+        {storyboardLoading && !showStoryboard && (
+          <motion.div key="storyboard-skeleton" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 16 }} transition={{ duration: 0.55, ease: 'easeOut' }} className="mx-2 md:mx-4 mt-6 bg-[#030712]/90 border border-white/5 rounded-[2.5rem] overflow-hidden">
+            <div className="flex items-center justify-between px-7 py-5 border-b border-[#d4a373]/10">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-[#d4a373]/10 shrink-0">
+                  <Clapperboard size={14} className="text-[#d4a373] animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-[#d4a373] font-black uppercase text-[10px] tracking-[0.35em]">
+                    {isHebrew ? 'בונה קומיקס' : 'BUILDING STORYBOARD'}
+                  </h3>
+                  <p className="text-gray-500 text-[9px] tracking-widest mt-0.5 uppercase">
+                    {storyboardLoadingMessages[storyboardMsgIdx]}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="p-5 md:p-7">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                {[0, 1, 2, 3, 4, 5].map(i => (
+                  <div key={i} className="bg-[#050710] border border-[#d4a373]/8 rounded-[1.75rem] overflow-hidden">
+                    <div className="relative aspect-[3/2] bg-[#02040a] overflow-hidden">
+                      <motion.div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.035] to-transparent skew-x-12 pointer-events-none" animate={{ x: ['-150%', '220%'] }} transition={{ repeat: Infinity, duration: 2.4, ease: 'linear', delay: i * 0.12 }} />
+                      <div className="absolute top-3 left-3 h-5 w-16 bg-[#d4a373]/8 rounded-lg" />
+                    </div>
+                    <div className="p-4 space-y-2">
+                      <div className="h-3 bg-white/5 rounded-full w-4/5" />
+                      <div className="h-2.5 bg-white/[0.03] rounded-full w-2/3" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Storyboard View ───────────────────────────────────────── */}
+      <AnimatePresence>
+        {showStoryboard && storyboardPanels.length > 0 && (
+          <StoryboardView
+            key="storyboard-view"
+            panels={storyboardPanels}
+            lang={lang}
+            panelImages={panelImages}
+            onClose={() => { storyboardActiveRef.current = false; setShowStoryboard(false); setStoryboardPanels([]); setPanelImages({}); }}
+          />
         )}
       </AnimatePresence>
 
