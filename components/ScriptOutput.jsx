@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Copy, Download, Share2, Check, Film, Volume2, VolumeX, Loader2, FastForward } from 'lucide-react';
+import { Copy, Download, Share2, Check, CheckCheck, Film, Volume2, VolumeX, Loader2, FastForward, Pencil, RotateCcw } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
 import { track } from '@vercel/analytics';
 import PosterRenderer from './PosterRenderer'; 
@@ -32,7 +32,7 @@ const translateGenre = (genre) => {
   return map[normalized] || genre || 'Cinematic';
 };
 
-function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, onPosterGenerated }) {
+function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, onPosterGenerated, onScriptEdited }) {
   const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST');
   
   // --- States ---
@@ -49,6 +49,12 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const [posterError, setPosterError] = useState('');
 
+  // --- Editor states ---
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedText, setEditedText] = useState('');
+  const [isEdited, setIsEdited] = useState(false);
+  const [saveStatus, setSaveStatus] = useState('idle'); // 'idle' | 'saved'
+
   // --- Refs ---
   const scrollRef = useRef(null);
   const posterRef = useRef(null);
@@ -59,9 +65,11 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
   const audioBuffer = useRef(null);
   const flashBuffer = useRef(null);
   const isMutedRef = useRef(false);
+  const textareaRef = useRef(null);
+  const saveDebounceRef = useRef(null);
 
   const isHebrew = useMemo(() => isTextHebrew(script || ''), [script]);
-  const posterTitle = useMemo(() => getCinematicTitle(cleanScript), [cleanScript]);
+  const posterTitle = useMemo(() => getCinematicTitle(displayText || cleanScript), [displayText, cleanScript]);
 
   const posterLoadingMessages = useMemo(() => isHebrew ? [
     "מנתח את האסתטיקה של התסריט...", "מלהק כוכבים לפוסטר הרשמי...", "מעצב את התאורה בסט הצילומים...",
@@ -196,6 +204,59 @@ const playFlashSound = useCallback(() => {
   source.start(now, 0.5); 
 }, [flashBuffer.current]);
 
+  // --- Editor lifecycle ---
+
+  // Auto-focus + cursor-to-end when entering edit mode
+  useEffect(() => {
+    if (!isEditing || !textareaRef.current) return;
+    const ta = textareaRef.current;
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+  }, [isEditing]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => () => clearTimeout(saveDebounceRef.current), []);
+
+  // Debounced auto-save while the user types (2 s of inactivity)
+  const handleEditChange = useCallback((e) => {
+    const value = e.target.value;
+    setEditedText(value);
+    setSaveStatus('idle');
+    clearTimeout(saveDebounceRef.current);
+    saveDebounceRef.current = setTimeout(() => {
+      onScriptEdited?.(value);
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 1800);
+    }, 2000);
+  }, [onScriptEdited]);
+
+  // Commit edits: final save, update display, mark as edited
+  const handleEditDone = useCallback(() => {
+    clearTimeout(saveDebounceRef.current);
+    const hasChanged = editedText !== cleanScript;
+    if (hasChanged) {
+      setDisplayText(editedText);
+      setIsEdited(true);
+      onScriptEdited?.(editedText);
+    }
+    setIsEditing(false);
+    setSaveStatus('idle');
+  }, [editedText, cleanScript, onScriptEdited]);
+
+  // Discard edits: restore original AI text
+  const handleEditRevert = useCallback(() => {
+    clearTimeout(saveDebounceRef.current);
+    setEditedText(cleanScript);
+    setDisplayText(cleanScript);
+    setIsEditing(false);
+    // Only push a history update if we're reverting a previously committed edit
+    if (isEdited) {
+      setIsEdited(false);
+      onScriptEdited?.(cleanScript);
+    }
+    setSaveStatus('idle');
+  }, [cleanScript, isEdited, onScriptEdited]);
+
   // --- Script Processing ---
   useEffect(() => {
     if (!script) return;
@@ -212,6 +273,12 @@ const playFlashSound = useCallback(() => {
     }
     setDisplayText('');
     setShowPoster(false);
+    // Reset editor so a new script always starts in read-only mode
+    setIsEditing(false);
+    setIsEdited(false);
+    setEditedText('');
+    setSaveStatus('idle');
+    clearTimeout(saveDebounceRef.current);
   }, [script]);
 
   // --- Typing Engine ---
@@ -375,6 +442,9 @@ const playFlashSound = useCallback(() => {
     }
   };
 
+  // Single source for download / copy — reflects committed edits
+  const currentScriptText = displayText || cleanScript;
+
   return (
     <div className="space-y-6 w-full max-w-[100vw]">
       {/* Toolbar */}
@@ -383,42 +453,103 @@ const playFlashSound = useCallback(() => {
           <Film size={18} className="text-[#d4a373]" />
           <h2 className="text-[#d4a373] font-black uppercase text-[10px] tracking-widest italic">LIFESCRIPT STUDIO</h2>
         </div>
+
         <div className="flex items-center gap-2">
+          {/* Typewriter skip */}
           {isTyping && (
-            <button onClick={() => { clearTimeout(timerRef.current); setDisplayText(cleanScript); setIsTyping(false); setIsTypingGlobal?.(false); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#d4a373]/20 border border-[#d4a373]/40 rounded-full text-[10px] text-[#d4a373] font-bold">
+            <button
+              onClick={() => { clearTimeout(timerRef.current); setDisplayText(cleanScript); setIsTyping(false); setIsTypingGlobal?.(false); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#d4a373]/20 border border-[#d4a373]/40 rounded-full text-[10px] text-[#d4a373] font-bold"
+            >
               <FastForward size={12} /> {isHebrew ? 'דלג' : 'SKIP'}
             </button>
           )}
+
+          {/* Edit-mode controls (only after typewriter finishes) */}
+          <AnimatePresence mode="wait">
+            {!isTyping && displayText.length > 0 && (
+              isEditing ? (
+                <motion.div
+                  key="edit-active"
+                  initial={{ opacity: 0, scale: 0.92 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.92 }}
+                  transition={{ duration: 0.15 }}
+                  className="flex items-center gap-1.5"
+                >
+                  {/* Revert */}
+                  <button
+                    onClick={handleEditRevert}
+                    title={isHebrew ? 'בטל עריכה' : 'Revert to original'}
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-xl text-gray-500 hover:text-red-400 hover:border-red-500/30 hover:bg-red-500/8 transition-all duration-200 text-[9px] font-black uppercase tracking-wider"
+                  >
+                    <RotateCcw size={12} />
+                    <span className="hidden sm:inline">{isHebrew ? 'שחזר' : 'Revert'}</span>
+                  </button>
+                  {/* Done */}
+                  <button
+                    onClick={handleEditDone}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-[#d4a373] text-black rounded-xl font-black text-[9px] uppercase tracking-wider hover:bg-white active:scale-95 transition-all duration-200 shadow-[0_0_16px_rgba(212,163,115,0.25)]"
+                  >
+                    <CheckCheck size={12} />
+                    <span>{isHebrew ? 'אישור' : 'Done'}</span>
+                  </button>
+                </motion.div>
+              ) : (
+                <motion.button
+                  key="edit-trigger"
+                  initial={{ opacity: 0, scale: 0.92 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.92 }}
+                  transition={{ duration: 0.15 }}
+                  onClick={() => { setEditedText(displayText); setIsEditing(true); }}
+                  title={isHebrew ? 'ערוך תסריט' : 'Edit script'}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 border rounded-xl text-[9px] font-black uppercase tracking-wider transition-all duration-200
+                    ${isEdited
+                      ? 'border-[#d4a373]/40 bg-[#d4a373]/10 text-[#d4a373] hover:bg-[#d4a373]/20'
+                      : 'border-white/10 bg-white/5 text-gray-500 hover:text-[#d4a373] hover:border-[#d4a373]/30 hover:bg-[#d4a373]/8'
+                    }`}
+                >
+                  <Pencil size={12} />
+                  <span className="hidden sm:inline">
+                    {isEdited
+                      ? (isHebrew ? 'ערוך שוב' : 'Re-edit')
+                      : (isHebrew ? 'עריכה' : 'Edit')}
+                  </span>
+                </motion.button>
+              )
+            )}
+          </AnimatePresence>
+
+          {/* Mute */}
           <button onClick={() => setIsMuted(!isMuted)} className="p-2.5 bg-white/5 border border-white/10 rounded-xl">
             {isMuted ? <VolumeX size={18} className="text-red-500" /> : <Volume2 size={18} className="text-[#d4a373]" />}
           </button>
-          {/* כפתור הורדת התסריט - הוחזר ותוקן */}
-          <button 
+
+          {/* Download — reflects committed edits */}
+          <button
             onClick={() => {
-              const blob = new Blob([cleanScript], { type: 'text/plain;charset=utf-8' });
+              const blob = new Blob([currentScriptText], { type: 'text/plain;charset=utf-8' });
               const url = URL.createObjectURL(blob);
               const link = document.createElement('a');
               link.href = url;
               link.download = `${posterTitle || 'script'}.txt`;
-              document.body.appendChild(link); // חשוב: הוסף ל‑DOM לפני הלחיצה
+              document.body.appendChild(link);
               link.click();
-              // השהה את ביטול ה‑URL והסרת הקישור כדי לוודא שההורדה מתחילה
-              setTimeout(() => {
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-              }, 200); // 200ms אמורים להספיק לדפדפן להתחיל את ההורדה
-            }} 
+              setTimeout(() => { document.body.removeChild(link); URL.revokeObjectURL(url); }, 200);
+            }}
             className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-gray-400 hover:text-[#d4a373] transition-colors"
           >
             <Download size={18} />
           </button>
-          {/* כפתור העתקת התסריט - הוחזר */}
-          <button 
+
+          {/* Copy — reflects committed edits */}
+          <button
             onClick={() => {
-              navigator.clipboard.writeText(cleanScript);
+              navigator.clipboard.writeText(currentScriptText);
               setIsCopied(true);
               setTimeout(() => setIsCopied(false), 2000);
-            }} 
+            }}
             className="p-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors"
           >
             {isCopied ? <Check size={18} className="text-green-500" /> : <Copy size={18} className="text-gray-400" />}
@@ -427,9 +558,15 @@ const playFlashSound = useCallback(() => {
       </div>
 
       {/* Script View */}
-      <div className="relative rounded-[3.5rem] overflow-hidden bg-[#030712]/90 border border-white/5 mx-2 md:mx-4">
-        <div 
-          ref={scrollRef} 
+      <div
+        className={`relative rounded-[3.5rem] overflow-hidden bg-[#030712]/90 mx-2 md:mx-4 transition-all duration-500
+          ${isEditing
+            ? 'border border-[#d4a373]/45 shadow-[0_0_40px_rgba(212,163,115,0.10),inset_0_0_40px_rgba(212,163,115,0.03)]'
+            : 'border border-white/5'
+          }`}
+      >
+        <div
+          ref={scrollRef}
           className="h-[500px] md:h-[650px] overflow-y-auto p-10 md:p-20 custom-scrollbar relative"
           style={{ scrollBehavior: 'smooth' }}
           onWheel={() => {
@@ -438,20 +575,85 @@ const playFlashSound = useCallback(() => {
             pauseTimer.current = setTimeout(() => { isAutoScrollPaused.current = false; }, 4000);
           }}
         >
-          <div className={`script-font text-xl md:text-3xl leading-[2.5] text-gray-100 whitespace-pre-wrap pb-40 ${isHebrew ? 'text-right' : 'text-left'}`}>
-            {displayText}
-            {isTyping && <span className="inline-block w-2.5 h-8 bg-[#d4a373] ml-1 animate-pulse align-middle" />}
-          </div>
+          {isEditing ? (
+            /* ── Live editor ─────────────────────────────────────────── */
+            <textarea
+              ref={textareaRef}
+              value={editedText}
+              onChange={handleEditChange}
+              dir={isHebrew ? 'rtl' : 'ltr'}
+              spellCheck={false}
+              className={`w-full min-h-[420px] md:min-h-[570px] bg-transparent outline-none resize-none
+                script-font text-xl md:text-3xl leading-[2.5] text-gray-100
+                placeholder-gray-700 caret-[#d4a373]
+                ${isHebrew ? 'text-right' : 'text-left'}`}
+              style={{ fontFamily: "'Courier Prime', 'Courier New', monospace" }}
+            />
+          ) : (
+            /* ── Read-only / typewriter display ─────────────────────── */
+            <div
+              className={`script-font text-xl md:text-3xl leading-[2.5] text-gray-100 whitespace-pre-wrap pb-40
+                ${isHebrew ? 'text-right' : 'text-left'}`}
+            >
+              {displayText}
+              {isTyping && (
+                <motion.span
+                  animate={{ opacity: [1, 0, 1] }}
+                  transition={{ duration: 0.9, repeat: Infinity }}
+                  className="inline-block w-2.5 h-8 bg-[#d4a373] ml-1 align-middle"
+                />
+              )}
+            </div>
+          )}
         </div>
-        {!isTyping && displayText.length > 0 && (
-          <div className="absolute bottom-5 left-0 right-0 px-6 flex justify-between items-end z-30">
-             <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
-                <span className="text-[#d4a373] text-[12px] font-bold">{isHebrew ? 'ההפקה סיימה' : 'PRODUCTION COMPLETE'}</span>
-             </div>
-             <img src="/icon.png" className="w-8 h-8 object-contain opacity-50" alt="icon" />
-          </div>
-        )}
+
+        {/* Bottom status badge — hidden during editing to avoid textarea overlap */}
+        <AnimatePresence mode="wait">
+          {!isTyping && !isEditing && displayText.length > 0 && (
+            <motion.div
+              key={isEdited ? 'edited' : 'complete'}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.25 }}
+              className="absolute bottom-5 left-0 right-0 px-6 flex justify-between items-end z-30"
+            >
+              <div className="flex items-center gap-2">
+                {isEdited ? (
+                  <>
+                    <Pencil size={11} className="text-[#d4a373]" />
+                    <span className="text-[#d4a373] text-[12px] font-bold tracking-wider">
+                      {isHebrew ? 'נערך ידנית' : 'EDITED'}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-[#d4a373] text-[12px] font-bold">
+                      {isHebrew ? 'ההפקה סיימה' : 'PRODUCTION COMPLETE'}
+                    </span>
+                  </>
+                )}
+              </div>
+              <img src="/icon.png" className="w-8 h-8 object-contain opacity-50" alt="icon" />
+            </motion.div>
+          )}
+
+          {/* Auto-save flash — appears briefly after debounced write */}
+          {saveStatus === 'saved' && (
+            <motion.div
+              key="save-flash"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.2 }}
+              className="absolute bottom-5 right-6 z-30 flex items-center gap-1.5 text-[#d4a373]/60 text-[10px] font-black uppercase tracking-widest"
+            >
+              <CheckCheck size={11} />
+              {isHebrew ? 'נשמר' : 'Saved'}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {!isTyping && !showPoster && (

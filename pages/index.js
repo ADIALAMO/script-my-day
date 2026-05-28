@@ -580,6 +580,7 @@ function HomePage() {
                 setIsTypingGlobal={setIsTyping}
                 producerName={producerName}
                 onPosterGenerated={(url) => updateEntry(currentEntryIdRef.current, { posterUrl: url })}
+                onScriptEdited={(text) => updateEntry(currentEntryIdRef.current, { script: text })}
               />
             </motion.div>
           )}
