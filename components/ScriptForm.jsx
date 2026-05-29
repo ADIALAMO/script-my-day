@@ -1,16 +1,13 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Copy, Download, Check, Volume2, Camera, VolumeX, Film } from 'lucide-react';
-
-// רכיבים ו-Hook חדשים
+import { Sparkles, Copy, Download, Check, Volume2, VolumeX, Film } from 'lucide-react';
 import { GenreSelector } from './GenreSelector';
 import { InspirationModal } from './InspirationModal';
 import { useBackgroundAudio } from '../hooks/useBackgroundAudio';
+import { useRotatingMessages } from '../hooks/useRotatingMessages';
 
-const LOADING_MESSAGES = {
-  he: ["סורק זכרונות...", "מנתח DNA סיפורי...", "בונה מתח דרמטי...", "מלטש דיאלוגים...", "מעבה דמויות...", "פורש קווי עלילה...", "מדפיס עותקים..."],
-  en: ["Scanning memories...", "Analyzing story DNA...", "Building tension...", "Polishing dialogue...", "Developing characters...", "Plotting twists...", "Printing scripts..."]
-};
+const LOADING_MESSAGES_HE = ["סורק זכרונות...", "מנתח DNA סיפורי...", "בונה מתח דרמטי...", "מלטש דיאלוגים...", "מעבה דמויות...", "פורש קווי עלילה...", "מדפיס עותקים..."];
+const LOADING_MESSAGES_EN = ["Scanning memories...", "Analyzing story DNA...", "Building tension...", "Polishing dialogue...", "Developing characters...", "Plotting twists...", "Printing scripts..."];
 
 const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProducerName, isTypingGlobal, onInputChange, showTips, setShowTips }) => {
   const [journalEntry, setJournalEntry] = useState('');
@@ -18,24 +15,15 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isMusicMuted, setIsMusicMuted] = useState(false);
-  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+  const clapperRef = useRef(null); // ref so we can stop a prior clapper before replaying
 
-  // שימוש ב-Hook לניהול אודיו
   useBackgroundAudio(activeGenre, isMusicMuted);
 
   const currentWordCount = useMemo(() => journalEntry.trim() ? journalEntry.trim().split(/\s+/).length : 0, [journalEntry]);
   const isLocked = loading;
 
-  useEffect(() => {
-    let interval;
-    const messages = LOADING_MESSAGES[lang] || LOADING_MESSAGES.en;
-    if (loading) {
-      interval = setInterval(() => setLoadingMessageIndex((prev) => (prev + 1) % messages.length), 2800);
-    } else {
-      setLoadingMessageIndex(0);
-    }
-    return () => clearInterval(interval);
-  }, [loading, lang]);
+  const loadingMessages  = lang === 'he' ? LOADING_MESSAGES_HE : LOADING_MESSAGES_EN;
+  const currentLoadingMsg = useRotatingMessages(loadingMessages, 2800, loading);
 
   const handleDownloadJournal = () => {
     const blob = new Blob([journalEntry], { type: 'text/plain' });
@@ -49,8 +37,22 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (loading ||isLocked || !journalEntry.trim() || !activeGenre) return;
-    
+    if (loading || isLocked || !journalEntry.trim() || !activeGenre) return;
+
+    // Clapper snap — stop any prior instance before replaying so clicks never stack.
+    // Triggered inside the user-gesture handler so autoplay policy is satisfied.
+    // Fails silently if /audio/clapper.mp3 is absent or the codec is unsupported.
+    try {
+      if (clapperRef.current) {
+        clapperRef.current.pause();
+        clapperRef.current.currentTime = 0;
+      }
+      const clapper = new Audio('/audio/clapper.mp3');
+      clapper.volume = 0.65;
+      clapper.play().catch(() => {});
+      clapperRef.current = clapper;
+    } catch {}
+
     if (typeof window !== 'undefined' && window.gtag) {
       window.gtag('event', 'generate_script_start', { genre: activeGenre, word_count: currentWordCount });
     }
@@ -258,8 +260,8 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
                 ))}
               </div>
               <AnimatePresence mode="wait">
-                <motion.span key={loadingMessageIndex} initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -15, opacity: 0 }} className="text-[13px] md:text-[18px]">
-                  {LOADING_MESSAGES[lang][loadingMessageIndex]}
+                <motion.span key={currentLoadingMsg} initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -15, opacity: 0 }} className="text-[13px] md:text-[18px]">
+                  {currentLoadingMsg}
                 </motion.span>
               </AnimatePresence>
             </div>

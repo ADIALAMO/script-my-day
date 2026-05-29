@@ -1,8 +1,9 @@
 import React, { memo } from 'react';
 import { motion } from 'framer-motion';
 import { Clapperboard, Mic, Crosshair, Atom, Skull, Gem } from 'lucide-react';
+import { GENRE_META } from '../constants/genres.js';
 
-// --- תת-רכיבי האנימציה ---
+// ── Animated scene icons (component data stays here — not serialisable to constants) ──
 const DramaScene = memo(({ isSelected }) => (
   <motion.div animate={isSelected ? { rotate: [0, -15, 0] } : {}} transition={{ duration: 2, repeat: Infinity }}>
     <Clapperboard size={32} strokeWidth={isSelected ? 2 : 1.5} />
@@ -37,14 +38,21 @@ const RomanceScene = memo(({ isSelected }) => (
   </motion.div>
 ));
 
-const GENRES_DATA = [
-  { label: { he: 'דרמה', en: 'Drama' }, value: 'drama', component: DramaScene, activeClass: 'bg-indigo-600/20 border-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.3)]', textClass: 'text-indigo-400', glowColor: '#6366f1' },
-  { label: { he: 'קומדיה', en: 'Comedy' }, value: 'comedy', component: ComedyScene, activeClass: 'bg-amber-500/20 border-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.3)]', textClass: 'text-amber-400', glowColor: '#f59e0b' },
-  { label: { he: 'פעולה', en: 'Action' }, value: 'action', component: ActionScene, activeClass: 'bg-red-600/20 border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.4)]', textClass: 'text-red-500', glowColor: '#ef4444' },
-  { label: { he: 'מד"ב', en: 'Sci-Fi' }, value: 'sci-fi', component: SciFiScene, activeClass: 'bg-cyan-500/20 border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.3)]', textClass: 'text-cyan-400', glowColor: '#06b6d4' },
-  { label: { he: 'אימה', en: 'Horror' }, value: 'horror', component: HorrorScene, activeClass: 'bg-emerald-900/40 border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.2)]', textClass: 'text-emerald-500', glowColor: '#10b981' },
-  { label: { he: 'רומנטיקה', en: 'Romance' }, value: 'romance', component: RomanceScene, activeClass: 'bg-rose-500/20 border-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.3)]', textClass: 'text-rose-400', glowColor: '#f43f5e' },
-];
+// Merge shared metadata from constants with the local React component.
+const SCENE_COMPONENTS = {
+  drama:   DramaScene,
+  comedy:  ComedyScene,
+  action:  ActionScene,
+  'sci-fi': SciFiScene,
+  horror:  HorrorScene,
+  romance: RomanceScene,
+};
+
+const GENRES_DATA = Object.values(GENRE_META).map(g => ({
+  ...g,
+  value:     g.key,
+  component: SCENE_COMPONENTS[g.key],
+}));
 
 export const GenreSelector = memo(({ activeGenre, onGenreChange, isLocked, lang }) => {
   return (

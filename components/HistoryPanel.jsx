@@ -1,23 +1,7 @@
 import React, { memo, useEffect, useCallback, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Clapperboard, Trash2, Film, Clock, ChevronRight } from 'lucide-react';
-
-// ─── Genre metadata — mirrors GenreSelector.jsx colours exactly ─────────────
-const GENRE_META = {
-  drama:    { color: '#6366f1', bg: 'rgba(99,102,241,0.12)',   border: 'rgba(99,102,241,0.25)',  chipCls: 'bg-indigo-500/20 text-indigo-400',  label: { en: 'Drama',   he: 'דרמה'     } },
-  comedy:   { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',  border: 'rgba(245,158,11,0.25)',  chipCls: 'bg-amber-500/20 text-amber-400',    label: { en: 'Comedy',  he: 'קומדיה'   } },
-  action:   { color: '#ef4444', bg: 'rgba(239,68,68,0.12)',   border: 'rgba(239,68,68,0.25)',   chipCls: 'bg-red-500/20 text-red-400',        label: { en: 'Action',  he: 'פעולה'    } },
-  'sci-fi': { color: '#06b6d4', bg: 'rgba(6,182,212,0.12)',   border: 'rgba(6,182,212,0.25)',   chipCls: 'bg-cyan-500/20 text-cyan-400',      label: { en: 'Sci-Fi',  he: 'מד"ב'    } },
-  horror:   { color: '#10b981', bg: 'rgba(16,185,129,0.12)',  border: 'rgba(16,185,129,0.25)',  chipCls: 'bg-emerald-500/20 text-emerald-400',label: { en: 'Horror',  he: 'אימה'     } },
-  romance:  { color: '#f43f5e', bg: 'rgba(244,63,94,0.12)',   border: 'rgba(244,63,94,0.25)',   chipCls: 'bg-rose-500/20 text-rose-400',      label: { en: 'Romance', he: 'רומנטיקה' } },
-};
-const FALLBACK_GENRE = {
-  color: '#d4a373',
-  bg: 'rgba(212,163,115,0.12)',
-  border: 'rgba(212,163,115,0.25)',
-  chipCls: 'bg-[#d4a373]/20 text-[#d4a373]',
-  label: { en: 'Script', he: 'תסריט' },
-};
+import { getGenreMeta, FALLBACK_GENRE_META as FALLBACK_GENRE } from '../constants/genres.js';
 
 // ─── Pure helpers ────────────────────────────────────────────────────────────
 function getRelativeTime(ts, lang) {
@@ -107,7 +91,7 @@ function EmptyState({ lang }) {
 const HistoryItem = memo(function HistoryItem({ entry, onReload, onDelete, lang, isLast }) {
   const [isConfirming, setIsConfirming] = useState(false);
   const confirmTimer = useRef(null);
-  const gm = GENRE_META[entry.genre] || FALLBACK_GENRE;
+  const gm = getGenreMeta(entry.genre);
 
   useEffect(() => () => clearTimeout(confirmTimer.current), []);
 

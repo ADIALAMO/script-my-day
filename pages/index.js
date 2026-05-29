@@ -1,25 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Film, Copyright, AlertCircle, Key, X, Download, Share2, Camera, MessageSquare, Send, Check } from 'lucide-react';
+import { Film, Copyright, AlertCircle, Key, X, Download, Share2, MessageSquare, Send, Check } from 'lucide-react';
 import { getMsg, CODES, isQuotaError, inferCode } from '../lib/messages.js';
 import Navbar from '../components/Navbar';
-import LaunchTicket from '../components/LaunchTicket';
 import ScriptOutput from '../components/ScriptOutput';
 import HeroSection from '../components/HeroSection';
 import ScriptForm from '../components/ScriptForm';
-import { useBackgroundAudio } from '../hooks/useBackgroundAudio';
 import { Analytics } from '@vercel/analytics/react';
 import { track } from '@vercel/analytics';
 import { SHOWCASE_POSTERS } from '../constants/showcase';
 import { MODAL_DATA } from '../constants/modalData';
 import HistoryPanel from '../components/HistoryPanel';
+import CinematicLoader from '../components/CinematicLoader';
 import { useScriptHistory } from '../hooks/useScriptHistory';
 
 function HomePage() {
   const [script, setScript] = useState('');
   const [scriptLoading, setScriptLoading] = useState(false);
-  const [posterLoading, setPosterLoading] = useState(false);
   const [error, setError] = useState('');
   const [lang, setLang] = useState('en');
   const [mounted, setMounted] = useState(false);
@@ -96,6 +94,17 @@ function HomePage() {
       localStorage.setItem('lifescript_device_id', newId);
     }
   }, []);
+
+  // ── Global body-scroll lock ──────────────────────────────────────────────
+  // Prevents background scroll bleed whenever any page-level overlay is open.
+  // HistoryPanel owns its own lock internally; this covers all other modals.
+  useEffect(() => {
+    const anyOpen = showAdminPanel || !!modalContent || !!selectedPoster;
+    if (!anyOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [showAdminPanel, modalContent, selectedPoster]);
 
   const toggleLanguage = () => setLang(prev => prev === 'he' ? 'en' : 'he');
 
@@ -240,7 +249,6 @@ function HomePage() {
         <link rel="apple-touch-icon" href="/icon.png" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#030712" />
-        <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@100;300;400;700;900&display=swap" rel="stylesheet" />
       </Head>
 
       {/* רקע גרדיאנט קולנועי */}
@@ -256,7 +264,7 @@ function HomePage() {
         onHistoryOpen={() => setShowHistory(true)}
       />
 
-      <main className="container mx-auto pt-4 md:pt-8 pb-12 px-6 max-w-5xl flex-grow relative z-10">
+      <main className="container mx-auto pt-4 md:pt-8 pb-12 px-6 max-w-5xl flex-grow relative">
 
         <HeroSection setShowAdminPanel={setShowAdminPanel} lang={lang} />
 
@@ -267,7 +275,7 @@ function HomePage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-xl px-6"
+              className="fixed inset-0 z-[9000] flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 md:p-6"
               onClick={() => setShowAdminPanel(false)}
             >
               <motion.div
@@ -275,7 +283,7 @@ function HomePage() {
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.9, y: 20 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-[#0f1117] border border-[#d4a373]/30 p-8 md:p-12 rounded-[2.5rem] shadow-2xl w-full max-w-lg relative text-center"
+                className="bg-[#0f1117] border border-[#d4a373]/30 p-8 md:p-12 rounded-[2.5rem] shadow-2xl w-full max-w-lg relative text-center max-h-[calc(100vh-2rem)] overflow-y-auto"
               >
                 {/* כפתור סגירה */}
                 <button
@@ -335,13 +343,13 @@ function HomePage() {
           {modalContent && MODAL_DATA[modalContent] && (
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/95 md:backdrop-blur-xl px-6"
+              className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/95 md:backdrop-blur-xl p-4 md:p-6"
               onClick={() => setModalContent(null)}
             >
               <motion.div
                 initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-[#0f1117] border border-[#d4a373]/20 p-8 md:p-12 pt-16 rounded-[2.5rem] max-w-2xl w-full max-h-[85vh] overflow-hidden relative shadow-2xl"
+                className="bg-[#0f1117] border border-[#d4a373]/20 p-8 md:p-12 pt-16 rounded-[2.5rem] max-w-2xl w-full max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-4rem)] overflow-hidden relative shadow-2xl flex flex-col"
               >
                 <div className={lang === 'he' ? 'text-right' : 'text-left'} dir={lang === 'he' ? 'rtl' : 'ltr'}>
                   <div className="flex items-center justify-between border-b border-[#d4a373]/10 pb-4 mb-6">
@@ -448,6 +456,15 @@ function HomePage() {
               )}
             </AnimatePresence>
           </div>
+
+          {/* Inline cinematic loader — overlays this panel only, never full-screen */}
+          <CinematicLoader
+            isVisible={scriptLoading}
+            lang={lang}
+            producerName={producerName || (lang === 'he' ? 'אורח' : 'Guest')}
+            onCancel={handleCancelGeneration}
+            phase="script"
+          />
         </motion.section>
 
         {/* Gallery Section */}
@@ -515,10 +532,10 @@ function HomePage() {
         <AnimatePresence mode="wait">
           {script && !scriptLoading && (
             <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.55, ease: "easeOut" }}
               className="mt-16 md:mt-24"
             >
               <ScriptOutput
@@ -715,6 +732,7 @@ function HomePage() {
         </div>
       </footer>
       
+      {/* Cinematic fullscreen loader — script generation */}
       <HistoryPanel
         isOpen={showHistory}
         onClose={() => setShowHistory(false)}

@@ -2,22 +2,11 @@ import { generateScript } from '../../lib/story-service.js';
 import redis from '../../lib/redis.js';
 import { sanitize } from '../../utils/input-processor';
 import { CODES } from '../../lib/messages.js';
+import { nextMidnightUTC, extractIdentifier, isAdminRequest } from '../../lib/api-utils.js';
 
-// --- הגדרה קריטית להרצה על Vercel: מאפשר זמן המתנה ל-AI ---
-export const config = {
-  maxDuration: 60, 
-};
+export const config = { maxDuration: 60 };
 
 const DAILY_LIMIT = 3;
-
-// Returns the Unix timestamp (seconds) of the next UTC midnight so quota keys
-// always expire on the calendar-day boundary, not 24h after the last request.
-function nextMidnightUTC() {
-  const now = new Date();
-  return Math.floor(
-    new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)) / 1000
-  );
-}
 
 export default async function handler(req, res) {
   // 1. אבטחת מתודה
@@ -29,23 +18,16 @@ export default async function handler(req, res) {
     // שליפת נתונים גולמיים מהבקשה
     const { journalEntry, genre, deviceId: bodyDeviceId } = req.body;
 
-    // 2. אימות אדמין
-    const clientAdminKey = sanitize(req.headers['x-admin-key'] || req.headers['X-Admin-Key'] || '');
-    const serverAdminSecret = sanitize(process.env.ADMIN_SECRET || '');
-    const isAdmin = serverAdminSecret !== '' && clientAdminKey === serverAdminSecret;
+    // 2. Admin check
+    const isAdmin = isAdminRequest(req);
 
     let usageKey = null;
 
-    // 3. מנגנון Blocking פונקציונלי (Redis)
+    // 3. Quota gate
     if (!isAdmin) {
-      const identifier = req.headers['x-device-id'] || 
-                         bodyDeviceId ||
-                         (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 
-                         req.socket.remoteAddress;
-                       
-      const today = new Date().toISOString().split('T')[0];
-      // שימוש במפתח ייעודי לתסריטים כדי להפריד מהפוסטרים
-      usageKey = `usage:script:${identifier}:${today}`;
+      const identifier = extractIdentifier(req, bodyDeviceId);
+      const today      = new Date().toISOString().split('T')[0];
+      usageKey         = `usage:script:${identifier}:${today}`;
 
       try {
         const currentUsage = await redis.get(usageKey);

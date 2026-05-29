@@ -1,44 +1,47 @@
-:root {
-  --sat: env(safe-area-inset-top);
-}
+/* Google Fonts — must precede @tailwind so browsers honour @import order */
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime&family=Heebo:wght@300;400;700;900&display=swap');
 
-button {
-  touch-action: manipulation; /* מסיר את השיהוי של ה-300ms בלחיצה */
-  -webkit-tap-highlight-color: transparent; /* מסיר את הריבוע הכחול המכוער בלחיצה באייפון */
-}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ייבוא פונטים ישירות ל-CSS כדי למנוע אזהרות ב-Next.js */
-@import url('https://fonts.googleapis.com/css2?family=Courier+Prime&family=Heebo:wght@300;400;700;900&display=swap');
-
-@theme {
+/* ── CSS Custom Properties ─────────────────────────────────────────────────── */
+:root {
+  --sat: env(safe-area-inset-top);
   --color-gold: #d4a373;
-  --color-dark-bg: #0a0a0a;
-  
-  /* הגדרת פונטים כמשתנים של Tailwind */
+  --color-gold-light: #fefae0;
+  --color-dark-bg: #030712;
   --font-heebo: "Heebo", sans-serif;
   --font-courier: "Courier Prime", monospace;
-}
 
-/* הגדרות בסיס */
-:root {
   background-color: var(--color-dark-bg);
   color: white;
   color-scheme: dark;
 }
 
+/* ── Base ───────────────────────────────────────────────────────────────────── */
 body {
   margin: 0;
   padding: 0;
   font-family: var(--font-heebo);
   background-color: var(--color-dark-bg);
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* עיצוב גלובלי לכרטיסים (Glassmorphism) */
+button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Typography ─────────────────────────────────────────────────────────────── */
+.script-font {
+  font-family: var(--font-courier);
+  line-height: 1.8;
+}
+
+/* ── Glassmorphism ──────────────────────────────────────────────────────────── */
 .glass-card {
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(12px);
@@ -47,56 +50,6 @@ body {
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
 }
 
-/* התאמות לטקסט תסריט (לשימוש בתוך ScriptOutput) */
-.script-font {
-  font-family: var(--font-courier);
-  line-height: 1.6;
-}
-
-/* אפקט גלילה יפה (Custom Scrollbar) */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #0a0a0a;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #222;
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #d4a373;
-}
-
-/* מניעת קפיצות בטעינה */
-.animate-in {
-  animation-fill-mode: forwards;
-}@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Courier+Prime&family=Heebo:wght@300;400;700;900&display=swap');
-
-:root {
-  --color-gold: #d4a373;
-  --color-gold-light: #fefae0;
-  --color-dark-bg: #030712; /* עמוק יותר מבעבר */
-}
-
-body {
-  margin: 0;
-  padding: 0;
-  font-family: 'Heebo', sans-serif;
-  background-color: var(--color-dark-bg);
-  color: white;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-}
-
-/* אפקט זכוכית יוקרתי (Ultra-Glass) */
 .glass-panel {
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(20px) saturate(180%);
@@ -105,17 +58,7 @@ body {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
-/* אנימציית הילה לכתיבת ה-AI */
-@keyframes ai-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(212, 163, 115, 0.1); border-color: rgba(212, 163, 115, 0.2); }
-  50% { box-shadow: 0 0 40px rgba(212, 163, 115, 0.3); border-color: rgba(212, 163, 115, 0.5); }
-}
-
-.ai-loading-active {
-  animation: ai-glow 2s infinite ease-in-out;
-}
-
-/* רקע ערפילית נע */
+/* ── Background Mesh ────────────────────────────────────────────────────────── */
 .mesh-gradient {
   position: fixed;
   top: 0;
@@ -136,95 +79,73 @@ body {
 
 @keyframes float {
   from { transform: translate(0, 0) scale(1); }
-  to { transform: translate(100px, 50px) scale(1.2); }
+  to   { transform: translate(100px, 50px) scale(1.2); }
 }
 
-/* פונט תסריט */
-.script-font {
-  font-family: 'Courier Prime', monospace;
-  line-height: 1.8;
+/* ── AI Generation Glow ─────────────────────────────────────────────────────── */
+@keyframes ai-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(212, 163, 115, 0.1); border-color: rgba(212, 163, 115, 0.2); }
+  50%       { box-shadow: 0 0 40px rgba(212, 163, 115, 0.3); border-color: rgba(212, 163, 115, 0.5); }
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: var(--color-gold); }
-/* אנימציית פלאש משודרגת - מסונכרנת לסאונד טעינה של 3 שניות */
+.ai-loading-active {
+  animation: ai-glow 2s infinite ease-in-out;
+}
+
+/* ── Camera Flash ───────────────────────────────────────────────────────────── */
 @keyframes camera-flash {
-  0% { 
-    background-color: rgba(255, 255, 255, 0); 
-  }
-  5% { 
-    background-color: rgba(255, 255, 255, 0.98); /* הבזק חזק ברגע ה"קליק" */
-  }
-  20% { 
-    background-color: rgba(255, 255, 255, 0.4); /* דעיכה מהירה לחצי שקיפות */
-  }
-  100% { 
-    background-color: rgba(255, 255, 255, 0); /* דעיכה איטית מאוד בזמן ה-Charging */
-  }
+  0%   { background-color: rgba(255, 255, 255, 0); }
+  5%   { background-color: rgba(255, 255, 255, 0.98); }
+  20%  { background-color: rgba(255, 255, 255, 0.4); }
+  100% { background-color: rgba(255, 255, 255, 0); }
 }
 
 .flash-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   z-index: 100;
   pointer-events: none;
-  /* שינינו ל-2.5 שניות כדי ללוות את רוב אורך הסאונד */
   animation: camera-flash 2.5s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-/* עיצוב פס גלילה דק וזהוב לגלריה */
-.custom-gallery-scroll::-webkit-scrollbar {
-  width: 4px; /* דק מאוד שלא יפריע לעין */
-}
 
-.custom-gallery-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
+/* ── Scrollbars ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-gold); }
 
-.custom-gallery-scroll::-webkit-scrollbar-thumb {
-  background: #d4a373; /* צבע הזהב של המותג */
-  border-radius: 20px;
-}
+/* Slim gold scrollbar for the showcase gallery */
+.custom-gallery-scroll::-webkit-scrollbar       { width: 4px; }
+.custom-gallery-scroll::-webkit-scrollbar-track { background: transparent; }
+.custom-gallery-scroll::-webkit-scrollbar-thumb { background: var(--color-gold); border-radius: 20px; }
+.custom-gallery-scroll { scrollbar-width: thin; scrollbar-color: var(--color-gold) transparent; }
 
-.custom-gallery-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: #d4a373 transparent;
-}
-/* --- תיקון כירורגי לאזור לחיצה (Close Button) במובייל --- */
-
-/* הגדרת בסיס לכפתור הסגירה */
+/* ── Close Button (mobile hit-area expansion) ───────────────────────────────── */
 .close-button {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  touch-action: manipulation; /* מסיר השהיית לחיצה במובייל */
-  z-index: 160; /* מבטיח שהוא מעל הכל */
+  touch-action: manipulation;
+  z-index: 160;
 }
 
-/* הרחבת שטח פגיעה במובייל בלבד */
 @media (max-width: 768px) {
   .close-button::after {
     content: '';
     position: absolute;
-    /* הסטת נקודת המרכז למטה: מתחיל 10 פיקסלים מעל ונמשך עמוק למטה */
-    top: -10px; 
+    top: -10px;
     left: 50%;
     transform: translateX(-50%);
-    width: 65px;  /* רוחב לחיצה נדיב */
-    height: 90px; /* גובה לחיצה נדיב שמושך את ה"מגנט" למטה */
+    width: 65px;
+    height: 90px;
     background: transparent;
     z-index: 10;
   }
 }
 
-/* במידה וה-X שלך הוא בתוך אלמנט שמקבל קלאס של Lucide או SVG */
-.close-button svg {
-  pointer-events: none; /* גורם ללחיצה "לעבור דרך" האייקון לאזור הלחיצה המורחב */
-}
+.close-button svg { pointer-events: none; }
+
+/* ── Misc ───────────────────────────────────────────────────────────────────── */
+.animate-in { animation-fill-mode: forwards; }

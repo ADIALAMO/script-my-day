@@ -1,6 +1,6 @@
-
 import redis from '../../lib/redis.js';
 import { CODES } from '../../lib/messages.js';
+import { nextMidnightUTC, extractIdentifier, isAdminRequest } from '../../lib/api-utils.js';
 
 // ─── Shared utility ───────────────────────────────────────────────────────────
 
@@ -262,47 +262,20 @@ const COMIC_CASCADE = [
 
 const POSTER_DAILY_LIMIT = 2;
 
-// Returns the Unix timestamp (seconds) of the next UTC midnight so quota keys
-// always expire on the calendar-day boundary, not 24h after the last request.
-function nextMidnightUTC() {
-  const now = new Date();
-  return Math.floor(
-    new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)) / 1000
-  );
-}
-
 // ─── Handler ─────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
-  const sanitize = (str) => (typeof str === 'string' ? str.trim() : '');
-
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
 
   const { prompt, visualPrompt, deviceId: bodyDeviceId, requestType, panelIndex } = req.body;
   const rawPrompt = prompt || visualPrompt || '';
-  const seed = Math.floor(Math.random() * 999999);
+  const seed      = Math.floor(Math.random() * 999999);
 
-  // Admin key accepted from headers only — never from request body.
-  const clientAdminKey = sanitize(req.headers['x-admin-key'] || req.headers['X-Admin-Key'] || '');
-  const serverAdminSecret = sanitize(
-    process.env.ADMIN_SECRET_KEY || process.env.ADMIN_SECRET || ''
-  );
-  const isAdmin = serverAdminSecret !== '' && clientAdminKey === serverAdminSecret;
-
+  const isAdmin = isAdminRequest(req);
   const isComic = requestType === 'comic' || requestType === 'storyboard';
 
-  // Comic quota is gated and incremented in generate-storyboard.js (the single entry point for the
-  // full comic flow). Individual panel image calls here are unrestricted — blocking mid-generation
-  // would corrupt the storyboard. Only poster requests are gated below.
-  const identifier =
-    req.headers['x-device-id'] ||
-    bodyDeviceId ||
-    (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
-    req.socket.remoteAddress;
+  // Comic quota is owned by generate-storyboard.js — individual panel calls are unrestricted.
+  const identifier = extractIdentifier(req, bodyDeviceId);
 
   const today = new Date().toISOString().split('T')[0];
   const usageKey = `usage:poster:${identifier}:${today}`;

@@ -1,17 +1,11 @@
 import { sanitize } from '../../utils/input-processor';
 import redis from '../../lib/redis.js';
 import { CODES } from '../../lib/messages.js';
+import { nextMidnightUTC, extractIdentifier, isAdminRequest } from '../../lib/api-utils.js';
 
 export const config = { maxDuration: 45 };
 
 const COMIC_DAILY_LIMIT = 1;
-
-function nextMidnightUTC() {
-  const now = new Date();
-  return Math.floor(
-    new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)) / 1000
-  );
-}
 
 function extractPanels(rawText) {
   const text = rawText.trim();
@@ -168,17 +162,8 @@ export default async function handler(req, res) {
   try {
     const { script, lang, genre, comicStyle, deviceId: bodyDeviceId } = req.body;
 
-    // Admin bypass — header only (never body).
-    const clientAdminKey = (req.headers['x-admin-key'] || req.headers['X-Admin-Key'] || '').trim();
-    const serverAdminSecret = (process.env.ADMIN_SECRET_KEY || process.env.ADMIN_SECRET || '').trim();
-    const isAdmin = serverAdminSecret !== '' && clientAdminKey === serverAdminSecret;
-
-    // Identifier resolved here so it's in scope for both the quota gate and the post-success increment.
-    const identifier =
-      req.headers['x-device-id'] ||
-      bodyDeviceId ||
-      (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
-      req.socket.remoteAddress;
+    const isAdmin    = isAdminRequest(req);
+    const identifier = extractIdentifier(req, bodyDeviceId);
     const today = new Date().toISOString().split('T')[0];
     // Storyboard is the single quota gate for the entire comic flow.
     // generate-poster.js skips comic quota checks — panel calls are unrestricted once the

@@ -30,7 +30,7 @@ function HeroSection({ setShowAdminPanel, lang }) {
       </div>
 
       <h1
-        onClick={() => setShowAdminPanel(!setShowAdminPanel)}
+        onClick={() => setShowAdminPanel(prev => !prev)}
         className="text-5xl md:text-[7.5rem] font-black mb-3 bg-gradient-to-b from-[#d4a373] via-[#fefae0] to-[#d4a373] bg-clip-text text-transparent italic tracking-tighter uppercase leading-[0.8] cursor-pointer select-none drop-shadow-[0_10px_30px_rgba(212,163,115,0.2)]"
         style={{
           paddingLeft: '0.15em',

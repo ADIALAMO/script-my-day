@@ -13,13 +13,14 @@ function PosterRenderer({
   posterRef,
   posterTitle,
   credits,
-  handleCapturePoster, // פונקציה זו מועברת מ‑ScriptOutput
+  handleCapturePoster,
+  onRetryGenerate,
   lang,
   genre,
   posterLoadingMessages,
   setTriggerFlash,
   setPosterLoading,
-  playFlashSound, // <-- הוספת ה‑prop החדש
+  playFlashSound,
 }) {
   const isHebrew = lang === 'he'; // Assuming lang is passed correctly
 
@@ -114,9 +115,7 @@ function PosterRenderer({
                    if (typeof window !== 'undefined' && window.gtag) {
                      window.gtag('event', 'poster_retry_click', { genre: genre });
                    }
-                   // קריאה לפונקציה שמייצרת את הפוסטר מחדש (צריך להיות מועבר כ‑prop)
-                   // נניח ש‑handleGeneratePoster הוא ה‑prop הנכון
-                   handleCapturePoster('generate'); // שימוש ב‑handleCapturePoster כפונקציה כללית
+                   onRetryGenerate?.();
                    }}
                     className="group relative px-8 py-3 overflow-hidden rounded-full transition-all duration-300 active:scale-95"
                 >
