@@ -1,6 +1,13 @@
 import redis from '../../lib/redis.js';
 import { CODES } from '../../lib/messages.js';
 import { nextMidnightUTC, extractIdentifier, isAdminRequest } from '../../lib/api-utils.js';
+import {
+  PROVIDER_KEY,
+  extractStatusCode,
+  getOpenProviders,
+  recordFailure,
+  recordSuccess,
+} from '../../lib/circuit-breaker.js';
 
 // ─── Shared utility ───────────────────────────────────────────────────────────
 
@@ -42,10 +49,9 @@ function makePlaceholderImage(label = 'Scene unavailable') {
 // Auth: x-goog-api-key header (correct for generateContent image endpoints).
 // responseModalities is intentionally omitted — dedicated image models infer it.
 //
-// Retry strategy: Google's free-tier burst limit fires when 5 parallel panel requests
-// arrive simultaneously (~2 succeed, ~3 get 429). Retrying after 5s + random jitter
-// spreads the retries across the ~6s quota-reset window so they don't re-collide.
-// Two retries cover the worst-case burst before handing off to HuggingFace.
+// Retry logic removed: the circuit breaker in lib/circuit-breaker.js now owns the
+// cooldown window. A 429 opens the circuit for 45s so subsequent panel requests skip
+// Gemini instantly rather than each burning 15s of internal retries.
 async function runGemini(prompt, _seed) {
   const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
   if (!key) throw new Error('GEMINI_API_KEY not configured');
@@ -53,51 +59,34 @@ async function runGemini(prompt, _seed) {
   const model = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image';
   console.log(`✨ Trying: Gemini Image (${model})`);
 
-  const RETRY_DELAYS_MS = [5000, 10000];
-
-  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
-    if (attempt > 0) {
-      const wait = RETRY_DELAYS_MS[attempt - 1] + Math.random() * 2000;
-      console.log(`♻️ Gemini 429 retry ${attempt}/${RETRY_DELAYS_MS.length} in ${Math.round(wait)}ms`);
-      await new Promise((r) => setTimeout(r, wait));
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: 'POST',
+      headers: {
+        'x-goog-api-key': key,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+      }),
+      signal: AbortSignal.timeout(30000),
     }
+  );
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      {
-        method: 'POST',
-        headers: {
-          'x-goog-api-key': key,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-        }),
-        signal: AbortSignal.timeout(30000),
-      }
-    );
-
-    if (res.status === 429) {
-      if (attempt === RETRY_DELAYS_MS.length) {
-        throw new Error('Gemini 429: burst limit persists after retries');
-      }
-      continue;
-    }
-
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Gemini ${res.status}: ${err.substring(0, 150)}`);
-    }
-
-    const data = await res.json();
-    const parts = data.candidates?.[0]?.content?.parts ?? [];
-    const imgPart = parts.find((p) => p.inlineData || p.inline_data);
-    if (!imgPart) throw new Error('Gemini returned no image in response parts');
-
-    const blob = imgPart.inlineData ?? imgPart.inline_data;
-    const mime = blob.mimeType ?? blob.mime_type ?? 'image/png';
-    return { imageUrl: `data:${mime};base64,${blob.data}`, provider: 'Gemini-Flash' };
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Gemini ${res.status}: ${err.substring(0, 150)}`);
   }
+
+  const data = await res.json();
+  const parts = data.candidates?.[0]?.content?.parts ?? [];
+  const imgPart = parts.find((p) => p.inlineData || p.inline_data);
+  if (!imgPart) throw new Error('Gemini returned no image in response parts');
+
+  const blob = imgPart.inlineData ?? imgPart.inline_data;
+  const mime = blob.mimeType ?? blob.mime_type ?? 'image/png';
+  return { imageUrl: `data:${mime};base64,${blob.data}`, provider: 'Gemini-Flash' };
 }
 
 // HuggingFace FLUX.1-schnell — free HF token, no credit card.
@@ -340,24 +329,38 @@ export default async function handler(req, res) {
   // Stagger parallel comic panel requests so they don't all hit Gemini simultaneously.
   // Panel 0 fires immediately; each subsequent panel waits 400ms × its index.
   // At 7 panels: last panel waits 2.4s — well within the 6s Gemini burst-reset window.
+  // The stagger also ensures panels 1+ start after panel 0 may have already written
+  // circuit-open state to Redis, so they skip downed providers from the first request.
   // Poster requests (no panelIndex) are unaffected.
   const idx = typeof panelIndex === 'number' ? panelIndex : parseInt(panelIndex, 10) || 0;
   if (idx > 0) {
     await new Promise((r) => setTimeout(r, idx * 400));
   }
 
+  // Filter the cascade to providers that are not currently circuit-open.
+  // Falls back to the full cascade when Redis is unavailable (getOpenProviders returns empty Set).
+  const openProviders  = await getOpenProviders(redis);
+  const activeCascade  = cascade.filter((fn) => !openProviders.has(PROVIDER_KEY[fn.name]));
+  const liveCascade    = activeCascade.length ? activeCascade : cascade;
+
+  if (openProviders.size > 0) {
+    console.log(`⚡ Circuit skip: [${[...openProviders].join(', ')}]`);
+  }
   console.log(
     `🎬 Image Generation: ${trackLabel}${idx > 0 ? ` [panel ${idx}]` : ''} → ` +
-      cascade.map((fn) => fn.name).join(' → ')
+      liveCascade.map((fn) => fn.name).join(' → ')
   );
 
-  for (const provider of cascade) {
+  for (const provider of liveCascade) {
     try {
       const result = await provider(finalPrompt, seed);
+      await recordSuccess(redis, PROVIDER_KEY[provider.name]);
       console.log(`✅ SUCCESS via ${result.provider}`);
       await trackUsage();
       return res.status(200).json({ success: true, ...result });
     } catch (e) {
+      const code = extractStatusCode(e.message);
+      await recordFailure(redis, PROVIDER_KEY[provider.name], code);
       console.warn(`⚠️ ${provider.name} failed (next): ${e.message}`);
     }
   }
