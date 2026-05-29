@@ -1,6 +1,17 @@
 import { sanitize } from '../../utils/input-processor';
+import redis from '../../lib/redis.js';
+import { CODES } from '../../lib/messages.js';
 
 export const config = { maxDuration: 45 };
+
+const COMIC_DAILY_LIMIT = 1;
+
+function nextMidnightUTC() {
+  const now = new Date();
+  return Math.floor(
+    new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)) / 1000
+  );
+}
 
 function extractPanels(rawText) {
   const text = rawText.trim();
@@ -155,13 +166,48 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
 
   try {
-    const { script, lang, genre, comicStyle } = req.body;
+    const { script, lang, genre, comicStyle, deviceId: bodyDeviceId } = req.body;
+
+    // Admin bypass — header only (never body).
+    const clientAdminKey = (req.headers['x-admin-key'] || req.headers['X-Admin-Key'] || '').trim();
+    const serverAdminSecret = (process.env.ADMIN_SECRET_KEY || process.env.ADMIN_SECRET || '').trim();
+    const isAdmin = serverAdminSecret !== '' && clientAdminKey === serverAdminSecret;
+
+    // Identifier resolved here so it's in scope for both the quota gate and the post-success increment.
+    const identifier =
+      req.headers['x-device-id'] ||
+      bodyDeviceId ||
+      (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
+      req.socket.remoteAddress;
+    const today = new Date().toISOString().split('T')[0];
+    // Storyboard is the single quota gate for the entire comic flow.
+    // generate-poster.js skips comic quota checks — panel calls are unrestricted once the
+    // storyboard step is approved and counted here.
+    const usageKey = `usage:comic:${identifier}:${today}`;
+
+    if (!isAdmin) {
+      try {
+        const currentUsage = await redis.get(usageKey);
+        const used = parseInt(currentUsage, 10) || 0;
+        console.log(`📊 Comic quota: ${usageKey} → ${used}/${COMIC_DAILY_LIMIT}`);
+        if (used >= COMIC_DAILY_LIMIT) {
+          return res.status(429).json({
+            success: false,
+            code: CODES.QUOTA_COMIC,
+            message: 'Daily comic quota reached. Come back tomorrow.',
+          });
+        }
+      } catch (e) {
+        console.warn(`⚠️ Comic quota check skipped (Redis unavailable): ${e.message}`);
+      }
+    }
+
     // Opt 3: input ceiling tightened to 3000 — eliminates the redundant .slice(0, 3000) that was
     // silently discarding the last 500 chars of a 3500-char sanitized input.
     const cleanScript = sanitize(script || '', 3000);
 
     if (!cleanScript || cleanScript.length < 20) {
-      return res.status(400).json({ success: false, error: 'Script text too short' });
+      return res.status(400).json({ success: false, code: CODES.INPUT_TOO_SHORT, message: 'Script text too short.' });
     }
 
     const staticInstruction = buildStaticInstruction(lang || 'en');
@@ -171,25 +217,43 @@ export default async function handler(req, res) {
     const geminiKey = process.env.GOOGLE_GEMINI_API_KEY?.trim();
     const openrouterKey = process.env.OPENROUTER_API_KEY?.trim();
 
+    let enrichedPanels = null;
+
     if (geminiKey) {
       const panels = await tryGemini(staticInstruction, cleanScript, geminiKey);
       if (panels) {
-        const enrichedPanels = panels.map(p => ({ ...p, visual: `${track.prefix} ${p.visual} ${track.suffix}` }));
-        return res.status(200).json({ success: true, panels: enrichedPanels });
+        enrichedPanels = panels.map(p => ({ ...p, visual: `${track.prefix} ${p.visual} ${track.suffix}` }));
       }
     }
 
-    if (openrouterKey) {
+    if (!enrichedPanels && openrouterKey) {
       const panels = await tryOpenRouter(staticInstruction, cleanScript, openrouterKey);
       if (panels) {
-        const enrichedPanels = panels.map(p => ({ ...p, visual: `${track.prefix} ${p.visual} ${track.suffix}` }));
-        return res.status(200).json({ success: true, panels: enrichedPanels });
+        enrichedPanels = panels.map(p => ({ ...p, visual: `${track.prefix} ${p.visual} ${track.suffix}` }));
       }
     }
 
-    return res.status(500).json({ success: false, error: 'All storyboard engines offline.' });
+    if (!enrichedPanels) {
+      return res.status(500).json({ success: false, code: CODES.STORYBOARD_FAIL, message: 'All storyboard engines offline.' });
+    }
+
+    // Increment comic quota only after a successful storyboard generation.
+    // This is the single consumption point for the entire comic flow (panel image calls are unrestricted).
+    if (!isAdmin) {
+      try {
+        const pipeline = redis.pipeline();
+        pipeline.incr(usageKey);
+        pipeline.expireat(usageKey, nextMidnightUTC());
+        const [newVal] = await pipeline.exec();
+        console.log(`✅ Comic quota: ${newVal}/${COMIC_DAILY_LIMIT} used`);
+      } catch (err) {
+        console.warn(`⚠️ Comic quota increment skipped (Redis unavailable): ${err.message}`);
+      }
+    }
+
+    return res.status(200).json({ success: true, panels: enrichedPanels });
   } catch (err) {
     console.error('Storyboard API error:', err);
-    return res.status(500).json({ success: false, error: 'Internal server error' });
+    return res.status(500).json({ success: false, code: CODES.SERVER_ERROR, message: 'Internal server error.' });
   }
 }

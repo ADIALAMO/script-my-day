@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Film, Copyright, AlertCircle, Key, X, Download, Share2, Camera, MessageSquare, Send, Check } from 'lucide-react';
+import { getMsg, CODES, isQuotaError, inferCode } from '../lib/messages.js';
 import Navbar from '../components/Navbar';
 import LaunchTicket from '../components/LaunchTicket';
 import ScriptOutput from '../components/ScriptOutput';
@@ -45,6 +46,7 @@ function HomePage() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackStatus, setFeedbackStatus] = useState('idle');
+  const [feedbackError, setFeedbackError] = useState('');
 
   const handleSendFeedback = async () => {
     if (!feedbackText.trim()) return;
@@ -68,6 +70,7 @@ function HomePage() {
           setShowFeedback(false);
           setFeedbackStatus('idle');
           setFeedbackText('');
+          setFeedbackError('');
         }, 2500);
       } else {
         throw new Error('Server responded with error');
@@ -75,7 +78,7 @@ function HomePage() {
     } catch (err) {
       console.error("Feedback error:", err);
       setFeedbackStatus('idle');
-      alert(lang === 'he' ? 'תקלה בתקשורת עם השרת. נסה שוב.' : 'Communication error. Please try again.');
+      setFeedbackError(getMsg(CODES.FEEDBACK_FAIL, lang));
     }
   };
 
@@ -165,11 +168,7 @@ function HomePage() {
         if (typeof window !== 'undefined' && window.gtag) {
           window.gtag('event', 'script_error', { error_type: 'quota_reached', genre });
         }
-        const quotaMsg = lang === 'he'
-          ? "🎬 הצילומים להיום הסתיימו. המכסה היומית נוצלה - נתראה מחר בבכורה!"
-          : "🎬 Production wrapped for today. Daily quota reached - see you at tomorrow's premiere!";
-
-        setError(quotaMsg);
+        setError(getMsg(data.code || CODES.QUOTA_SCRIPT, lang));
         setScriptLoading(false);
         return;
       }
@@ -210,7 +209,7 @@ function HomePage() {
         }
         console.log("✅ Script received successfully!");
       } else {
-        throw new Error('התקבלה תשובה ריקה מהשרת');
+        throw new Error(CODES.EMPTY_RESPONSE);
       }
 
     } catch (err) {
@@ -223,61 +222,10 @@ function HomePage() {
           genre
         });
       }
-      if (err.message.includes('fetch failed') || !navigator.onLine) {
-        setError(lang === 'he' ? 'אין חיבור אינטרנט פעיל - ההפקה הופסקה' : 'No internet connection - Production halted');
-      } else if (err.message.includes('401') || err.message.toLowerCase().includes('unauthorized')) {
-        setError(lang === 'he'
-          ? 'גישת מנהל נכשלה: הסיסמה שגויה או פגה.'
-          : 'Admin access failed: Incorrect or expired password.');
-      } else if (err.message.includes('429')) {
-        setError(lang === 'he'
-          ? 'המכסה היומית הסתיימה או שיש עומס. נסה שוב בעוד רגע.'
-          : 'Daily limit reached or system busy. Try again in a moment.');
-      } else {
-        setError(err.message || 'תקלה בתקשורת עם השרת');
-      }
+      const code = Object.values(CODES).includes(err.message) ? err.message : inferCode(err);
+      setError(getMsg(code, lang));
     } finally {
       setScriptLoading(false);
-    }
-  };
-
-  const handleGeneratePoster = async (scriptText) => {
-    setPosterLoading(true);
-    setError('');
-
-    try {
-      const marker = "[image:";
-      const markerIndex = scriptText.toLowerCase().indexOf(marker);
-      let visualPrompt = "Cinematic movie poster, dramatic lighting";
-
-      if (markerIndex !== -1) {
-        const endBracketIndex = scriptText.indexOf("]", markerIndex);
-        visualPrompt = scriptText.substring(markerIndex + marker.length, endBracketIndex).trim();
-      }
-
-      const response = await fetch('/api/generate-poster', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: visualPrompt,
-          genre: selectedGenre,
-          lang: lang,
-          deviceId: localStorage.getItem('lifescript_device_id')
-        }),
-      });
-      const data = await response.json();
-
-      if (data.success && data.imageUrl) {
-        setSelectedPoster({ src: data.imageUrl, id: 'generated' });
-      } else {
-        throw new Error(data.message || 'הפקת הפוסטר נכשלה');
-      }
-    } catch (err) {
-      console.error("Poster Error Caught:", err);
-      setError(err.message);
-      setSelectedPoster(null);
-    } finally {
-      setPosterLoading(false);
     }
   };
 
@@ -709,12 +657,18 @@ function HomePage() {
                   className="w-full bg-black/40 border border-white/5 rounded-2xl p-4 text-sm text-white placeholder-gray-600 focus:border-[#d4a373]/40 outline-none transition-all min-h-[120px] resize-none mb-6"
                 />
 
+                {feedbackError && (
+                  <p className="text-red-400 text-[11px] text-center mb-3 font-medium">
+                    {feedbackError}
+                  </p>
+                )}
+
                 <button
-                  onClick={handleSendFeedback}
+                  onClick={() => { setFeedbackError(''); handleSendFeedback(); }}
                   disabled={feedbackStatus !== 'idle' || !feedbackText.trim()}
                   className={`w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2
-                    ${feedbackStatus === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 
-                      feedbackStatus === 'sending' ? 'bg-[#d4a373]/10 text-[#d4a373] animate-pulse' : 
+                    ${feedbackStatus === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                      feedbackStatus === 'sending' ? 'bg-[#d4a373]/10 text-[#d4a373] animate-pulse' :
                       'bg-[#d4a373] text-black hover:bg-white active:scale-95'}`}
                 >
                   {feedbackStatus === 'success' ? (

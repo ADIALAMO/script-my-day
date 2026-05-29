@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Download, Share2, Check, CheckCheck, Film, Volume2, VolumeX, Loader2, FastForward, Pencil, RotateCcw, FileText, ChevronDown, Printer, X, Mail, NotebookPen, Clapperboard } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
 import { track } from '@vercel/analytics';
-import PosterRenderer from './PosterRenderer'; 
+import PosterRenderer from './PosterRenderer';
 import { detectLanguage } from '../lib/agent';
 import StoryboardView from './StoryboardView';
+import { getMsg, CODES, isQuotaError } from '../lib/messages.js';
 
 // --- Brand SVG icons (inline, no external dependency) ---
 const WhatsAppIcon = () => (
@@ -94,6 +95,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
   const [storyboardPanels, setStoryboardPanels] = useState([]);
   const [storyboardLoading, setStoryboardLoading] = useState(false);
   const [storyboardError, setStoryboardError] = useState('');
+  const [storyboardErrorCode, setStoryboardErrorCode] = useState('');
   const [storyboardMsgIdx, setStoryboardMsgIdx] = useState(0);
   // panelImages: { [idx]: { loading: bool, url: string|null, error: bool } }
   const [panelImages, dispatchPanelImages] = useReducer(panelImagesReducer, {});
@@ -493,33 +495,51 @@ const playFlashSound = useCallback(() => {
   }, [cleanScript]);
 
   // --- Poster Generation ---
-  const generatePoster = async () => { 
+  const generatePoster = async () => {
     setPosterLoading(true);
     setPosterError('');
     setShowPoster(true);
     const genreTag = translateGenre(genre);
     const prompt = `A textless movie poster style, depicting: ${visualPrompt}. Genre: ${genreTag}. High budget Hollywood production, epic scale, 8k, ultra-detailed, sharp focus. (NO TEXT)`;
-    
+    const deviceId = typeof window !== 'undefined' ? localStorage.getItem('lifescript_device_id') || '' : '';
+    const adminKey = typeof window !== 'undefined' ? localStorage.getItem('lifescript_admin_key') || '' : '';
+
     try {
       const response = await fetch('/api/generate-poster', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, genre, lang }), 
+        headers: {
+          'Content-Type': 'application/json',
+          'x-device-id': deviceId,
+          'x-admin-key': adminKey,
+        },
+        body: JSON.stringify({ prompt, genre, lang, deviceId }),
       });
       const data = await response.json();
+
       if (response.status === 429) {
-        setPosterError(lang === 'he' ? "🎬 המכסה היומית נוצלה - נתראה מחר בבכורה!" : "🎬 Daily quota reached!");
+        setPosterError(getMsg(data.code || CODES.QUOTA_POSTER, lang));
         setPosterLoading(false);
         return;
       }
-      if (data.success) {
+
+      // Cascade exhausted: all providers failed, placeholder returned.
+      // Show the error state instead of a mystery grey image so the user can retry.
+      if (data.isPlaceholder) {
+        setPosterError(getMsg(CODES.PROVIDERS_BUSY, lang));
+        setPosterLoading(false);
+        return;
+      }
+
+      if (data.success && data.imageUrl) {
         setPosterUrl(data.imageUrl);
         onPosterGenerated?.(data.imageUrl);
-      } else { throw new Error(data.message); }
-    } catch (error) {
-      const fallbackUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=1024&height=1024&seed=${Math.random()}&model=flux`;
-      setPosterUrl(fallbackUrl);
-      onPosterGenerated?.(fallbackUrl);
+      } else {
+        setPosterError(getMsg(data.code || CODES.POSTER_FAIL, lang));
+        setPosterLoading(false);
+      }
+    } catch {
+      setPosterError(getMsg(navigator.onLine ? CODES.POSTER_FAIL : CODES.NETWORK_OFFLINE, lang));
+      setPosterLoading(false);
     }
   };
 
@@ -578,13 +598,22 @@ const playFlashSound = useCallback(() => {
     dispatchPanelImages({ type: 'RESET' });
     setStoryboardLoading(true);
     setStoryboardError('');
+    setStoryboardErrorCode('');
+    const deviceId = typeof window !== 'undefined' ? localStorage.getItem('lifescript_device_id') || '' : '';
+    const adminKey = typeof window !== 'undefined' ? localStorage.getItem('lifescript_admin_key') || '' : '';
+
     try {
       const response = await fetch('/api/generate-storyboard', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ script: cleanScript, lang, genre, comicStyle }),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-device-id': deviceId,
+          'x-admin-key': adminKey,
+        },
+        body: JSON.stringify({ script: cleanScript, lang, genre, comicStyle, deviceId }),
       });
       const data = await response.json();
+
       if (data.success && data.panels?.length > 0) {
         storyboardActiveRef.current = true;
         setStoryboardPanels(data.panels);
@@ -592,10 +621,14 @@ const playFlashSound = useCallback(() => {
         track('Storyboard Generated', { genre, language: lang });
         generateStoryboardImages(data.panels);
       } else {
-        throw new Error(data.error || 'Generation failed');
+        const code = data.code || CODES.STORYBOARD_FAIL;
+        setStoryboardErrorCode(code);
+        setStoryboardError(getMsg(code, lang));
       }
-    } catch (err) {
-      setStoryboardError(isHebrew ? 'יצירת הסטוריבורד נכשלה. נסה שוב.' : 'Storyboard generation failed. Please try again.');
+    } catch {
+      const code = navigator.onLine ? CODES.STORYBOARD_FAIL : CODES.NETWORK_OFFLINE;
+      setStoryboardErrorCode(code);
+      setStoryboardError(getMsg(code, lang));
     } finally {
       setStoryboardLoading(false);
     }
@@ -991,8 +1024,25 @@ const playFlashSound = useCallback(() => {
       )}
       <AnimatePresence>
         {storyboardError && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-4 px-5 py-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] font-medium text-center">
-            {storyboardError}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className={`mx-4 px-5 py-4 rounded-2xl border flex flex-col items-center gap-3 text-center ${
+              isQuotaError(storyboardErrorCode)
+                ? 'bg-[#d4a373]/8 border-[#d4a373]/20 text-[#d4a373]/80'
+                : 'bg-red-500/10 border-red-500/20 text-red-400'
+            }`}
+          >
+            <p className="text-[12px] font-medium">{storyboardError}</p>
+            {!isQuotaError(storyboardErrorCode) && (
+              <button
+                onClick={generateStoryboard}
+                className="px-5 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:border-white/25 transition-all duration-200"
+              >
+                {lang === 'he' ? '↺ נסה שוב' : '↺ TRY AGAIN'}
+              </button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

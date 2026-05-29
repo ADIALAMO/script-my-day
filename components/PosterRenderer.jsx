@@ -91,8 +91,8 @@ function PosterRenderer({
                 </div>
                 <div className="h-6">
                   <AnimatePresence mode="wait">
-                    <motion.p key={posterLoadingMessages.index} initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -15, opacity: 0 }} className="text-[#d4a373] text-[10px] font-black uppercase tracking-[0.4em] whitespace-nowrap">
-                      {posterLoadingMessages.message}
+                    <motion.p key={posterLoadingMessages} initial={{ y: 15, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -15, opacity: 0 }} className="text-[#d4a373] text-[10px] font-black uppercase tracking-[0.4em] whitespace-nowrap">
+                      {posterLoadingMessages}
                     </motion.p>
                   </AnimatePresence>
                 </div>
