@@ -5,6 +5,7 @@ import { GenreSelector } from './GenreSelector';
 import { InspirationModal } from './InspirationModal';
 import { useBackgroundAudio } from '../hooks/useBackgroundAudio';
 import { useRotatingMessages } from '../hooks/useRotatingMessages';
+import { useCinematicAudio } from '../hooks/useCinematicAudio';
 
 const LOADING_MESSAGES_HE = ["סורק זכרונות...", "מנתח DNA סיפורי...", "בונה מתח דרמטי...", "מלטש דיאלוגים...", "מעבה דמויות...", "פורש קווי עלילה...", "מדפיס עותקים..."];
 const LOADING_MESSAGES_EN = ["Scanning memories...", "Analyzing story DNA...", "Building tension...", "Polishing dialogue...", "Developing characters...", "Plotting twists...", "Printing scripts..."];
@@ -18,6 +19,7 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
   const clapperRef = useRef(null); // ref so we can stop a prior clapper before replaying
 
   useBackgroundAudio(activeGenre, isMusicMuted);
+  const { playSound: playTypewriterSound } = useCinematicAudio();
 
   const currentWordCount = useMemo(() => journalEntry.trim() ? journalEntry.trim().split(/\s+/).length : 0, [journalEntry]);
   const isLocked = loading;
@@ -186,19 +188,20 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
             onChange={(e) => {
               const value = e.target.value;
               const words = value.trim().split(/\s+/);
-              
+
+              // Play typewriter click on each keystroke — the 80 ms throttle
+              // inside the hook prevents audio spam on paste or rapid typing.
+              playTypewriterSound();
+
               // ניהול הגבלת מילים
               if (words.length <= 500) {
                 setJournalEntry(value);
               } else {
                 setJournalEntry(words.slice(0, 500).join(' '));
               }
-              
-              // עדכון כירורגי: 
-              // אנחנו קוראים ל-onInputChange כדי לבשר למערכת שהמשתמש פעיל.
-              // זה אמור לאפס את ה-isTypingGlobal ל-false ב-HomePage ולשחרר את ה-Header.
+
               if (onInputChange) {
-                onInputChange(false); // שולח false ל-isTyping כדי לוודא שהממשק פתוח
+                onInputChange(false);
               }
             }}
             // הנעילה (isLocked) תהיה תקפה רק בזמן ש-isLoading מהשרת הוא true
@@ -236,6 +239,7 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
           type="text" value={producerName} 
           onChange={(e) => {
             const val = e.target.value.slice(0, 22);
+            playTypewriterSound();
             setProducerName(val);
             localStorage.setItem('lifescript_producer_name', val);
           }}

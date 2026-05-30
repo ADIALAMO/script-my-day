@@ -38,7 +38,11 @@ export function useTypewriter({ cleanScript, setIsTypingGlobal, playSound }) {
 
       setDisplayText(cleanScript.substring(0, i + 1));
 
-      if (cleanScript[i] && !/\s/.test(cleanScript[i]) && i % 2 === 0) {
+      // Fire on every non-whitespace character — the 80 ms throttle gate inside
+      // playSound() controls density (≤12/s).  Removing the old `i % 2 === 0`
+      // guard means the sound is always simultaneous with the character appearing,
+      // not offset by an arbitrary even/odd index.
+      if (cleanScript[i] && !/\s/.test(cleanScript[i])) {
         playSound();
       }
 

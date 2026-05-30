@@ -542,50 +542,65 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
       {/* ── Action buttons ────────────────────────────────────────────── */}
       {!isTyping && currentDisplayText.length > 0 && (!showPoster || !showStoryboard) && (
         <div className="py-6 px-4 space-y-3">
-          {!showStoryboard && !storyboardLoading && (
-            <div className="flex items-center justify-center gap-2 flex-wrap">
-              {comicStyleOptions.map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => setComicStyle(opt.value)}
-                  className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all duration-200
-                    ${comicStyle === opt.value
-                      ? 'bg-[#d4a373]/20 border border-[#d4a373]/60 text-[#d4a373]'
-                      : 'bg-white/[0.04] border border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20'
-                    }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+
+          {/* ── POSTER SECTION ── */}
+          {!showPoster && (
+            <button
+              onClick={generatePoster}
+              disabled={posterLoading}
+              className="w-full bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black font-black py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-60 transition-opacity"
+            >
+              {posterLoading
+                ? <Loader2 size={18} className="animate-spin" />
+                : <span>{isHebrew ? 'צור פוסטר קולנועי' : 'GENERATE MOVIE POSTER'}</span>
+              }
+            </button>
+          )}
+
+          {/* Divider — only shown when both sections are visible */}
+          {!showPoster && !showStoryboard && (
+            <div className="flex items-center gap-3 py-1">
+              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+              <span className="text-[7.5px] font-black uppercase tracking-[0.28em]" style={{ color: 'rgba(255,255,255,0.18)' }}>
+                {isHebrew ? 'קומיקס' : 'COMIC STORYBOARD'}
+              </span>
+              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
             </div>
           )}
 
-          <div className="flex gap-3">
-            {!showPoster && (
-              <button
-                onClick={generatePoster}
-                disabled={posterLoading}
-                className={`${showStoryboard ? 'w-full' : 'flex-1'} bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black font-black py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-60 transition-opacity`}
-              >
-                {posterLoading
-                  ? <Loader2 size={18} className="animate-spin" />
-                  : <span>{isHebrew ? 'צור פוסטר קולנועי' : 'GENERATE MOVIE POSTER'}</span>
-                }
-              </button>
-            )}
-            {!showStoryboard && (
+          {/* ── COMIC SECTION — style selector grouped directly above its generate button ── */}
+          {!showStoryboard && (
+            <div className="space-y-2">
+              {!storyboardLoading && (
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                  {comicStyleOptions.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setComicStyle(opt.value)}
+                      className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all duration-200
+                        ${comicStyle === opt.value
+                          ? 'bg-[#d4a373]/20 border border-[#d4a373]/60 text-[#d4a373]'
+                          : 'bg-white/[0.04] border border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20'
+                        }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
               <button
                 onClick={generateStoryboard}
                 disabled={storyboardLoading}
-                className={`${showPoster ? 'w-full' : 'flex-1'} border border-[#d4a373]/40 bg-[#050710] text-[#d4a373] font-black py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-[#d4a373]/10 hover:border-[#d4a373]/70 transition-all duration-300 disabled:opacity-60`}
+                className="w-full border border-[#d4a373]/40 bg-[#050710] text-[#d4a373] font-black py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-[#d4a373]/10 hover:border-[#d4a373]/70 transition-all duration-300 disabled:opacity-60"
               >
                 {storyboardLoading
                   ? <Clapperboard size={18} className="animate-spin text-[#d4a373]/60" />
                   : <><Clapperboard size={18} /><span>{isHebrew ? 'צור קומיקס' : 'GENERATE COMIC STORYBOARD'}</span></>
                 }
               </button>
-            )}
-          </div>
+            </div>
+          )}
+
         </div>
       )}
 

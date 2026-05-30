@@ -1,128 +1,85 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 /**
- * Manages the Web Audio API context, sound-buffer loading, and playback
- * for the two cinematic sound effects: typewriter click and camera flash.
+ * Cinematic sound effects — typewriter click and camera-flash shutter.
  *
- * Key design decisions:
- *   - `playSound` is throttled to ≤12 clicks/s so a rapid typing loop never
- *     floods the audio thread with hundreds of BufferSourceNode instances.
- *   - Neither callback attempts an async `AudioContext.resume()` inline —
- *     that would stall tight loops. The context is instead unlocked lazily
- *     on the first user interaction (click / touchstart / mousemove).
+ * Uses HTMLAudioElement + cloneNode() instead of Web Audio API.
+ * Rationale: AudioContext has well-known React lifecycle conflicts —
+ * the effect cleanup closes the context, any subsequent decodeAudioData
+ * or resume() call throws InvalidStateError. HTMLAudioElement carries none
+ * of that baggage: no context to close, no resume() dance, and the browser's
+ * user-activation state persists across async boundaries so play() works
+ * anywhere after the first real user gesture on the page.
+ *
+ * cloneNode() creates a new element sharing the same decoded media resource
+ * from the browser's cache, enabling rapid overlapping playback without
+ * re-fetching or re-decoding the file on every click.
  */
 export function useCinematicAudio() {
   const [isMuted, setIsMuted] = useState(false);
+  const isMutedRef    = useRef(false);
+  const lastClickRef  = useRef(0);
+  const typewriterRef = useRef(null); // source element — never played directly
+  const flashRef      = useRef(null);
 
-  const audioContextRef = useRef(null);
-  const audioBufferRef  = useRef(null);
-  const flashBufferRef  = useRef(null);
-  const isMutedRef      = useRef(false);
-  // Throttle gate: tracks the last ms a typewriter click was emitted.
-  const lastClickRef    = useRef(0);
-
-  // Keep the ref in sync so callbacks never read stale state.
   useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
 
-  // Initialise AudioContext and pre-decode both sound files.
   useEffect(() => {
-    let unlockFn = null;
+    const tw = new Audio('/audio/typewriter.m4a');
+    tw.preload = 'auto';
+    typewriterRef.current = tw;
 
-    const initAudio = async () => {
-      try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!audioContextRef.current) audioContextRef.current = new AudioCtx();
-
-        const [typeBuf, flashBuf] = await Promise.all([
-          fetch('/audio/typewriter.m4a')
-            .then(r => r.arrayBuffer())
-            .then(ab => audioContextRef.current.decodeAudioData(ab)),
-          fetch('/audio/camera-flash.wav')
-            .then(r => r.arrayBuffer())
-            .then(ab => audioContextRef.current.decodeAudioData(ab)),
-        ]);
-
-        audioBufferRef.current = typeBuf;
-        flashBufferRef.current = flashBuf;
-
-        // Attempt an immediate resume; if blocked, the gesture listener below handles it.
-        audioContextRef.current.resume().catch(() => {});
-
-        // Lazy unlock — required on iOS and policy-strict browsers.
-        const unlock = () => {
-          if (audioContextRef.current?.state !== 'running') {
-            audioContextRef.current?.resume().catch(() => {});
-          }
-          window.removeEventListener('click',      unlock);
-          window.removeEventListener('touchstart', unlock);
-          window.removeEventListener('mousemove',  unlock);
-        };
-        unlockFn = unlock;
-        window.addEventListener('click',      unlock);
-        window.addEventListener('touchstart', unlock);
-        window.addEventListener('mousemove',  unlock);
-      } catch (e) {
-        console.warn('Audio engine failed to initialise:', e.message);
-      }
-    };
-
-    initAudio();
+    const fl = new Audio('/audio/camera-flash.wav');
+    fl.preload = 'auto';
+    flashRef.current = fl;
 
     return () => {
-      if (unlockFn) {
-        window.removeEventListener('click',      unlockFn);
-        window.removeEventListener('touchstart', unlockFn);
-        window.removeEventListener('mousemove',  unlockFn);
-      }
-      audioContextRef.current?.close().catch(() => {});
+      // Release media resources without touching any AudioContext.
+      tw.src = '';
+      fl.src = '';
     };
   }, []);
 
   /**
-   * Typewriter click — throttled to one emission per 80 ms (≈12/s max).
-   * Skips silently if the AudioContext is not yet in the 'running' state
-   * to avoid async resume() calls inside the tight typing loop.
+   * Typewriter click — throttled to ≤12 clicks/s.
+   * Cloning the source element lets rapid-fire calls overlap without
+   * reloading the file; each clone is GC'd when its playback ends.
    */
   const playSound = useCallback(() => {
     const now = Date.now();
-    if (now - lastClickRef.current < 80) return;       // throttle gate
+    if (now - lastClickRef.current < 80) return;
     lastClickRef.current = now;
+    if (isMutedRef.current || !typewriterRef.current) return;
 
-    if (isMutedRef.current) return;
-    if (!audioBufferRef.current || !audioContextRef.current) return;
-    if (audioContextRef.current.state !== 'running') return; // skip, don't try async resume
-
-    const ctx    = audioContextRef.current;
-    const source = ctx.createBufferSource();
-    const gain   = ctx.createGain();
-    source.buffer = audioBufferRef.current;
-    gain.gain.setValueAtTime(0.38, ctx.currentTime); // lower than 0.6 — less audio fatigue
-    source.connect(gain);
-    gain.connect(ctx.destination);
-    source.start(0);
+    const s = /** @type {HTMLAudioElement} */ (typewriterRef.current.cloneNode());
+    s.volume = 0.38;
+    s.play().catch(() => {}); // silently ignore — fires fine after any user gesture
   }, []);
 
   /**
-   * Camera-flash shutter — used once per poster reveal.
-   * Not throttled (single shot) and handles a suspended context gracefully.
+   * Camera-flash shutter — single shot with a 2.5 s fade-out.
+   * Starts playback at 0.5 s into the file (skips the silent lead-in),
+   * then ramps volume down to near-zero via a lightweight interval.
    */
   const playFlashSound = useCallback(() => {
-    if (isMutedRef.current) return;
-    if (!flashBufferRef.current || !audioContextRef.current) return;
+    if (isMutedRef.current || !flashRef.current) return;
 
-    const ctx = audioContextRef.current;
-    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-    if (ctx.state !== 'running') return;
+    const s = /** @type {HTMLAudioElement} */ (flashRef.current.cloneNode());
+    s.currentTime = 0.5; // skip silent lead-in, matching original Web Audio offset
+    s.volume = 0.9;
+    s.play().catch(() => {});
 
-    const source = ctx.createBufferSource();
-    const gain   = ctx.createGain();
-    source.buffer = flashBufferRef.current;
-    const now = ctx.currentTime;
-    gain.gain.setValueAtTime(1.0, now);
-    gain.gain.linearRampToValueAtTime(0.1, now + 2.5);
-    source.connect(gain);
-    gain.connect(ctx.destination);
-    source.start(now, 0.5);
+    // Fade 0.9 → 0 over 2.5 s in 80 ms steps (mirrors the old gain ramp).
+    const start = Date.now();
+    const timer = setInterval(() => {
+      const t = (Date.now() - start) / 2500;
+      if (t >= 1) {
+        clearInterval(timer);
+        try { s.pause(); } catch {}
+        return;
+      }
+      try { s.volume = Math.max(0, 0.9 * (1 - t)); } catch { clearInterval(timer); }
+    }, 80);
   }, []);
 
   return { isMuted, setIsMuted, playSound, playFlashSound };

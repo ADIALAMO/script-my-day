@@ -39,61 +39,16 @@ const QUOTES_HE = [
   "תקציב הקייטרינג נגמר בדיוק בסצנה הכי חשובה...",
 ];
 
-// ── Film strip — scrolling perforations ──────────────────────────────────────
-// Renders as a narrow column on the left or right edge of the parent container.
-// Uses absolute inset-y positioning, so it adapts to any container height.
-
-const HOLE_H = 52;
-
-function FilmStrip({ side }) {
-  return (
-    <div
-      aria-hidden="true"
-      className={`absolute inset-y-0 ${side === 'left' ? 'left-0' : 'right-0'} w-6 sm:w-8 overflow-hidden`}
-      style={{
-        background: '#030303',
-        [side === 'left' ? 'borderRight' : 'borderLeft']: '1px solid rgba(255,255,255,0.05)',
-      }}
-    >
-      <motion.div
-        className="absolute top-0 left-0 right-0 flex flex-col items-center"
-        animate={{ y: `-${HOLE_H}px` }}
-        initial={{ y: '0px' }}
-        transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }}
-      >
-        {Array.from({ length: 80 }).map((_, i) => (
-          <div
-            key={i}
-            style={{
-              height: HOLE_H, width: '100%', flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <div style={{
-              width: 11, height: 17,
-              background: 'rgba(0,0,0,0.9)',
-              border: '1px solid rgba(255,255,255,0.07)',
-              borderRadius: 2,
-            }} />
-          </div>
-        ))}
-      </motion.div>
-    </div>
-  );
-}
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 /**
- * Inline cinematic loader — renders as `absolute inset-0` over its parent.
- *
- * The parent MUST have `position: relative` and ideally `overflow: hidden`
- * so the film strips and blur are clipped correctly.
+ * Compact bottom status bar — renders as a fixed floating pill at the bottom
+ * of the viewport. Does NOT overlay the page content.
  *
  * Props:
  *   isVisible      — drives AnimatePresence mount/unmount
  *   lang           — 'en' | 'he'
- *   producerName   — shown in the director credit line
+ *   producerName   — shown nowhere now, kept for API compat
  *   onCancel       — if provided, a cancel button appears after 3 s
  *   phase          — 'script' | 'storyboard' — changes the status label
  */
@@ -109,7 +64,7 @@ export default function CinematicLoader({
   const quote    = useRotatingMessages(quotes, 2500, isVisible);
 
   const statusLabel = phase === 'storyboard'
-    ? (isHebrew ? 'מפיק קומיקס...'  : 'COMPOSING STORYBOARD...')
+    ? (isHebrew ? 'מפיק קומיקס...'  : 'COMPOSING...')
     : (isHebrew ? 'בהפקה...'        : 'IN PRODUCTION...');
 
   return (
@@ -117,119 +72,122 @@ export default function CinematicLoader({
       {isVisible && (
         <motion.div
           key="cinematic-loader"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.25 }}
-          // Inline overlay — covers the parent container only, not the viewport.
-          // Parent must be position:relative + overflow:hidden.
-          className="absolute inset-0 z-[50] overflow-hidden bg-black/90 backdrop-blur-md"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          transition={{ duration: 0.28, ease: 'easeOut' }}
+          // Floating pill fixed to bottom of viewport.
+          // pointer-events-none so the page stays interactive; cancel btn re-enables.
+          className="fixed bottom-6 left-4 right-4 z-[90] pointer-events-none"
+          style={{ maxWidth: 560, margin: '0 auto' }}
         >
-          {/* Subtle film-flicker overlay */}
-          <motion.div
-            aria-hidden="true"
-            className="absolute inset-0 bg-white pointer-events-none"
-            animate={{ opacity: [0, 0.012, 0, 0.008, 0, 0.014, 0] }}
-            transition={{ duration: 6, repeat: Infinity, times: [0, 0.08, 0.16, 0.5, 0.58, 0.82, 1] }}
-          />
-
-          {/* Vertical film strips — left and right edges */}
-          <FilmStrip side="left" />
-          <FilmStrip side="right" />
-
-          {/* ── Centre content ───────────────────────────────────────────── */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 px-10 sm:px-14 pb-6 text-center pointer-events-none">
-
-            {/* Clapperboard — slow breathe pulse */}
-            <motion.div
-              animate={{ opacity: [0.6, 1, 0.6] }}
-              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-[68px] h-[68px] rounded-[1.5rem] flex items-center justify-center shrink-0"
-              style={{
-                background: 'rgba(212,163,115,0.07)',
-                border: '1px solid rgba(212,163,115,0.2)',
-                boxShadow: '0 0 32px rgba(212,163,115,0.07)',
-              }}
-            >
-              <Clapperboard size={30} strokeWidth={1.5} className="text-[#d4a373]" />
-            </motion.div>
-
-            {/* Studio + status labels */}
-            <div className="space-y-1.5">
-              <p className="text-[7.5px] font-black tracking-[0.55em] uppercase"
-                 style={{ color: 'rgba(212,163,115,0.38)' }}>
-                LIFESCRIPT STUDIO
-              </p>
-              <p className="text-[9.5px] font-black tracking-[0.3em] uppercase"
-                 style={{ color: 'rgba(255,255,255,0.16)' }}>
-                {statusLabel}
-              </p>
+          <div
+            className="relative rounded-2xl overflow-hidden"
+            style={{
+              background: 'rgba(3,7,18,0.96)',
+              border: '1px solid rgba(255,255,255,0.07)',
+              boxShadow: '0 16px 48px rgba(0,0,0,0.72), 0 0 0 1px rgba(212,163,115,0.05)',
+            }}
+          >
+            {/* Shimmer line along top edge */}
+            <div className="absolute top-0 left-0 right-0 h-[1.5px] overflow-hidden">
+              <motion.div
+                className="absolute top-0 h-full w-[55%]"
+                style={{
+                  background: 'linear-gradient(90deg, transparent, rgba(212,163,115,0.55), transparent)',
+                }}
+                animate={{ x: ['-100%', '270%'] }}
+                transition={{ duration: 2.4, repeat: Infinity, ease: 'linear' }}
+              />
             </div>
 
-            {/* Rotating Hollywood quote */}
-            <div className="min-h-[60px] flex items-center justify-center w-full max-w-[260px] sm:max-w-sm">
-              <AnimatePresence mode="wait">
-                <motion.p
-                  key={quote}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.36, ease: 'easeOut' }}
-                  className="text-[13px] sm:text-sm font-light italic leading-relaxed"
+            {/* Single content row */}
+            <div className={`flex items-center gap-3 px-4 py-[11px] ${isHebrew ? 'flex-row-reverse' : ''}`}>
+
+              {/* Pulsing clapperboard icon */}
+              <motion.div
+                animate={{ opacity: [0.45, 1, 0.45] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                className="shrink-0"
+              >
+                <Clapperboard size={14} strokeWidth={1.6} className="text-[#d4a373]" />
+              </motion.div>
+
+              {/* Status label */}
+              <span
+                className="shrink-0 text-[7.5px] font-black uppercase tracking-[0.24em]"
+                style={{ color: 'rgba(212,163,115,0.65)' }}
+              >
+                {statusLabel}
+              </span>
+
+              {/* Separator */}
+              <span className="shrink-0 text-[7px]" style={{ color: 'rgba(255,255,255,0.14)' }}>·</span>
+
+              {/* Rotating quote — truncated to a single line */}
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={quote}
+                    initial={{ opacity: 0, x: isHebrew ? -6 : 6 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: isHebrew ? 6 : -6 }}
+                    transition={{ duration: 0.28, ease: 'easeOut' }}
+                    className="text-[9.5px] font-light truncate"
+                    style={{
+                      color: 'rgba(255,255,255,0.35)',
+                      fontFamily: "'Courier Prime','Courier New',monospace",
+                      direction: isHebrew ? 'rtl' : 'ltr',
+                    }}
+                  >
+                    {quote}
+                  </motion.p>
+                </AnimatePresence>
+              </div>
+
+              {/* Pulse dots */}
+              <div className="flex gap-[3px] shrink-0">
+                {[0, 0.35, 0.7].map((delay, i) => (
+                  <motion.div
+                    key={i}
+                    className="w-[3.5px] h-[3.5px] rounded-full"
+                    style={{ background: 'rgba(212,163,115,0.45)' }}
+                    animate={{ opacity: [0.2, 1, 0.2], scale: [0.8, 1.25, 0.8] }}
+                    transition={{ duration: 1.1, repeat: Infinity, delay, ease: 'easeInOut' }}
+                  />
+                ))}
+              </div>
+
+              {/* Cancel button — appears after 3 s, pointer-events re-enabled */}
+              {onCancel && (
+                <motion.button
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 3, duration: 0.35 }}
+                  onClick={onCancel}
+                  className="pointer-events-auto shrink-0 flex items-center gap-1 px-2.5 py-[5px] rounded-full text-[7px] font-black uppercase tracking-widest transition-colors duration-200"
                   style={{
-                    color: 'rgba(255,255,255,0.58)',
-                    fontFamily: "'Courier Prime','Courier New',monospace",
-                    direction: isHebrew ? 'rtl' : 'ltr',
+                    border: '1px solid rgba(239,68,68,0.22)',
+                    background: 'rgba(239,68,68,0.06)',
+                    color: 'rgba(248,113,113,0.55)',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.color = 'rgba(248,113,113,0.9)';
+                    e.currentTarget.style.borderColor = 'rgba(239,68,68,0.45)';
+                    e.currentTarget.style.background = 'rgba(239,68,68,0.10)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.color = 'rgba(248,113,113,0.55)';
+                    e.currentTarget.style.borderColor = 'rgba(239,68,68,0.22)';
+                    e.currentTarget.style.background = 'rgba(239,68,68,0.06)';
                   }}
                 >
-                  &ldquo;{quote}&rdquo;
-                </motion.p>
-              </AnimatePresence>
+                  <X size={7} />
+                  {isHebrew ? 'בטל' : 'CANCEL'}
+                </motion.button>
+              )}
             </div>
-
-            {/* Director credit */}
-            {producerName && (
-              <p className="text-[7.5px] tracking-[0.35em] uppercase"
-                 style={{ color: 'rgba(255,255,255,0.13)' }}>
-                {isHebrew
-                  ? `בימוי: ${producerName}`
-                  : `DIRECTED BY ${producerName.toUpperCase()}`}
-              </p>
-            )}
           </div>
-
-          {/* Cancel button — pointer-events re-enabled, appears after 3 s */}
-          {onCancel && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 3, duration: 0.4 }}
-              className="absolute bottom-6 left-0 right-0 flex justify-center pointer-events-auto"
-            >
-              <button
-                onClick={onCancel}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[8.5px] font-black uppercase tracking-widest transition-all duration-250"
-                style={{
-                  border: '1px solid rgba(239,68,68,0.22)',
-                  background: 'rgba(239,68,68,0.06)',
-                  color: 'rgba(248,113,113,0.52)',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.color = 'rgba(248,113,113,0.88)';
-                  e.currentTarget.style.borderColor = 'rgba(239,68,68,0.45)';
-                  e.currentTarget.style.background = 'rgba(239,68,68,0.10)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.color = 'rgba(248,113,113,0.52)';
-                  e.currentTarget.style.borderColor = 'rgba(239,68,68,0.22)';
-                  e.currentTarget.style.background = 'rgba(239,68,68,0.06)';
-                }}
-              >
-                <X size={9} />
-                {isHebrew ? 'בטל הפקה' : 'CANCEL PRODUCTION'}
-              </button>
-            </motion.div>
-          )}
         </motion.div>
       )}
     </AnimatePresence>

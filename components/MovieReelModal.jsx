@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Download, Loader2, AlertCircle, Video } from 'lucide-react';
+import { X, Download, Loader2, AlertCircle, Video, VolumeX, Volume2 } from 'lucide-react';
 import { track } from '@vercel/analytics';
 
 // ── Canvas dimensions ────────────────────────────────────────────────────────
@@ -297,11 +297,14 @@ export default function MovieReelModal({
   }, [isOpen, genre]);
 
   // ── Generation state ────────────────────────────────────────────────────
-  const [phase,    setPhase]    = useState('idle'); // 'idle'|'generating'|'done'|'error'
-  const [progress, setProgress] = useState(0);
-  const [videoUrl, setVideoUrl] = useState(null);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [label,    setLabel]    = useState('');
+  const [phase,        setPhase]        = useState('idle'); // 'idle'|'generating'|'done'|'error'
+  const [progress,     setProgress]     = useState(0);
+  const [videoUrl,     setVideoUrl]     = useState(null);
+  const [errorMsg,     setErrorMsg]     = useState('');
+  const [label,        setLabel]        = useState('');
+  // Video preview starts muted so autoPlay always works (browser policy).
+  // User can unmute with one tap via the overlay button.
+  const [isVideoMuted, setIsVideoMuted] = useState(true);
 
   const canvasRef    = useRef(null);   // hidden 720×1280 render target
   const previewRef   = useRef(null);   // visible small preview canvas
@@ -348,6 +351,11 @@ export default function MovieReelModal({
 
   useEffect(() => () => { if (videoUrl) URL.revokeObjectURL(videoUrl); }, [videoUrl]);
 
+  // Reset video mute state each time a new reel is ready.
+  useEffect(() => {
+    if (phase === 'done') setIsVideoMuted(true);
+  }, [phase]);
+
   // ── Panels with loaded images ───────────────────────────────────────────
   const usablePanelData = useMemo(
     () => panels
@@ -370,6 +378,17 @@ export default function MovieReelModal({
     setProgress(0);
     cancelledRef.current = false;
     chunksRef.current    = [];
+
+    // Create AudioContext synchronously while still in the user-gesture call stack.
+    // Browsers require this for autoplay policy compliance — creating it after any
+    // `await` loses the gesture context and leaves the context in 'suspended' state.
+    let audioCtx = null;
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      audioCtx.resume().catch(() => {});
+    } catch {
+      audioCtx = null;
+    }
 
     const canvas = canvasRef.current;
     const ctx    = canvas.getContext('2d');
@@ -406,27 +425,30 @@ export default function MovieReelModal({
       if (validItems.length === 0) throw new Error('All panel images failed to decode.');
 
       // 2. Audio (fail-open) ───────────────────────────────────────────────
-      let audioCtx = null; let audioDest = null; let audioSrc = null;
+      let audioDest = null; let audioSrc = null;
       try {
-        audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
-        audioDest = audioCtx.createMediaStreamDestination();
+        if (audioCtx) {
+          audioDest = audioCtx.createMediaStreamDestination();
 
-        const audioFile = SOUNDTRACKS.find(s => s.key === soundtrack)?.file
-          || '/audio/drama_bg.m4a';
+          const audioFile = SOUNDTRACKS.find(s => s.key === soundtrack)?.file
+            || '/audio/drama_bg.m4a';
 
-        const resp = await fetch(audioFile);
-        if (resp.ok) {
-          const buf  = await audioCtx.decodeAudioData(await resp.arrayBuffer());
-          const gain = audioCtx.createGain();
-          gain.gain.value = 0.45;
-          audioSrc = audioCtx.createBufferSource();
-          audioSrc.buffer = buf;
-          audioSrc.loop   = true;
-          audioSrc.connect(gain);
-          gain.connect(audioDest);
-          audioSrc.start();
+          const resp = await fetch(audioFile);
+          if (resp.ok) {
+            const buf  = await audioCtx.decodeAudioData(await resp.arrayBuffer());
+            const gain = audioCtx.createGain();
+            gain.gain.value = 0.45;
+            audioSrc = audioCtx.createBufferSource();
+            audioSrc.buffer = buf;
+            audioSrc.loop   = true;
+            audioSrc.connect(gain);
+            gain.connect(audioDest);
+            audioSrc.start();
+          }
         }
-      } catch { audioCtx = null; }
+      } catch {
+        audioCtx = null; audioDest = null;
+      }
 
       if (cancelledRef.current) { try { audioCtx?.close(); } catch {} return; }
 
@@ -503,6 +525,12 @@ export default function MovieReelModal({
           drawEndCard(ctx, producerName, logoImg, f / (END_FRAMES - 1));
           await advance();
         }
+
+        // Hold the final end-card frame for two extra capture intervals before
+        // stopping the recorder.  canvas.captureStream(30) samples on its own
+        // independent timer; without this pause the last 1–2 drawn frames may
+        // not be sampled before recorder.stop() finalises the stream.
+        if (!cancelledRef.current) await sleep(MS_PER_FRAME * 2);
       }
 
       // 6. Finalize ────────────────────────────────────────────────────────
@@ -795,15 +823,46 @@ export default function MovieReelModal({
                     className="flex flex-col items-center gap-4"
                   >
                     <div
-                      className="rounded-2xl overflow-hidden border border-[#d4a373]/25 bg-black shadow-[0_8px_36px_rgba(212,163,115,0.14)] shrink-0"
+                      className="relative rounded-2xl overflow-hidden border border-[#d4a373]/25 bg-black shadow-[0_8px_36px_rgba(212,163,115,0.14)] shrink-0"
                       style={{ width: PREVIEW_W, height: PREVIEW_H }}
                     >
                       <video
                         ref={videoRef}
                         src={videoUrl}
-                        autoPlay loop muted playsInline
+                        autoPlay loop playsInline
+                        muted={isVideoMuted}
                         className="w-full h-full object-cover"
                       />
+
+                      {/* Sound toggle — always visible; one tap unmutes with a real gesture */}
+                      <button
+                        onClick={() => {
+                          const vid = videoRef.current;
+                          if (!vid) return;
+                          const next = !isVideoMuted;
+                          // Set directly on the DOM element first to avoid React
+                          // reconciliation delay, then sync React state.
+                          vid.muted = next;
+                          if (!next) vid.play().catch(() => { vid.muted = true; setIsVideoMuted(true); });
+                          setIsVideoMuted(next);
+                        }}
+                        className="absolute bottom-2.5 right-2.5 flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200"
+                        style={{
+                          background: 'rgba(0,0,0,0.62)',
+                          border: isVideoMuted
+                            ? '1px solid rgba(255,255,255,0.14)'
+                            : '1px solid rgba(212,163,115,0.45)',
+                          backdropFilter: 'blur(6px)',
+                        }}
+                        title={isVideoMuted
+                          ? (isHebrew ? 'הפעל קול' : 'Tap to hear audio')
+                          : (isHebrew ? 'השתק' : 'Mute')}
+                      >
+                        {isVideoMuted
+                          ? <VolumeX size={13} className="text-white/55" />
+                          : <Volume2 size={13} className="text-[#d4a373]" />
+                        }
+                      </button>
                     </div>
                     <div className="w-full space-y-3">
                       {/* Success badge */}
