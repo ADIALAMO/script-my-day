@@ -38,9 +38,10 @@ function makePlaceholderImage(label = 'Scene unavailable') {
 
 // ─── Provider implementations ─────────────────────────────────────────────────
 
-// Gemini Image Generation — Google AI Studio key, no credit card required.
-// Free tier: 10 RPM / ~500 RPD. Returns base64 inline — no CDN fetch, no polling.
-// Get a free key at aistudio.google.com → set GEMINI_API_KEY env var.
+// Gemini Image Generation — Google AI Studio key.
+// IMPORTANT: Image generation is NOT available on the free tier (IPM=0 as of Dec 2025).
+// A Google Cloud billing account must be linked to your AI Studio project for image access.
+// Paid Tier 1 gives ~10 IPM. Get a key at aistudio.google.com → set GEMINI_API_KEY env var.
 //
 // Model default: gemini-2.5-flash-image (stable, v1beta).
 // Override via GEMINI_IMAGE_MODEL — use gemini-3.1-flash-image for the newer "Nano Banana" line.
@@ -75,8 +76,24 @@ async function runGemini(prompt, _seed) {
   );
 
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Gemini ${res.status}: ${err.substring(0, 150)}`);
+    // Capture full diagnostic payload — the previous 150-char truncation was hiding whether
+    // this is a billing block ("free_tier_requests: limit=0", quota=0 = no allocation at all)
+    // vs a genuine rate limit ("RATE_LIMIT_EXCEEDED" = burst over 10 IPM).
+    const retryAfter     = res.headers.get('Retry-After');
+    const quotaMetric    = res.headers.get('x-goog-quota-metric');
+    const quotaLimit     = res.headers.get('x-goog-quota-limit');
+    const quotaRemaining = res.headers.get('x-goog-quota-remaining');
+    const errBody        = await res.text();
+
+    console.error(`🔴 Gemini ${res.status} full diagnostic — model=${model}`, {
+      retryAfter,
+      quotaMetric,
+      quotaLimit,
+      quotaRemaining,
+      body: errBody,
+    });
+
+    throw new Error(`Gemini ${res.status}: ${errBody.substring(0, 300)}`);
   }
 
   const data = await res.json();
@@ -218,14 +235,15 @@ async function runPollinationsFlux(prompt, seed) {
 // ─── Cascade definitions ─────────────────────────────────────────────────────
 //
 // TRACK A — Standalone Poster
-//   P1 Gemini Flash       → 10 RPM / 500 RPD free, inline base64, no CC required
+//   P1 Gemini Flash       → REQUIRES billing on GCP project (free tier IPM=0 since Dec 2025)
+//                           10 IPM paid tier; inline base64, no CDN polling
 //   P2 HuggingFace        → free HF token, cold-start aware, cache-bypassed
 //   P3 Cloudflare Workers → ~170 img/day free (10K neurons), no CC, base64 JSON
 //   P4 OpenRouter Klein   → paid key required, solid quality fallback
 //   P5 Pollinations       → anonymous, 1 req/15s throttled — final safety net
 //
 // TRACK B — Comic/Storyboard Panel
-//   P1 Gemini Flash       → stagger pre-applied per panelIndex; 429s self-resolve
+//   P1 Gemini Flash       → client-side 2s stagger + circuit breaker: only panel 0 hits Gemini
 //   P2 HuggingFace        → x-wait-for-model absorbs cold-start stalls between panels
 //   P3 Cloudflare Workers → high daily budget handles panel burst overflow
 //   P4 Pollinations       → anonymous sequential fallback
@@ -255,6 +273,17 @@ const POSTER_DAILY_LIMIT = 2;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
+
+  // Diagnostic: log which cascade providers are actually configured.
+  // Missing entries explain why images fall through to placeholders.
+  console.log('🔍 Provider env check:', {
+    GEMINI_API_KEY:         !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY),
+    GEMINI_IMAGE_MODEL:     process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image (default)',
+    HF_TOKEN:               !!process.env.HF_TOKEN,
+    CLOUDFLARE_ACCOUNT_ID:  !!process.env.CLOUDFLARE_ACCOUNT_ID,
+    CLOUDFLARE_API_TOKEN:   !!process.env.CLOUDFLARE_API_TOKEN,
+    OPENROUTER_API_KEY:     !!process.env.OPENROUTER_API_KEY,
+  });
 
   const { prompt, visualPrompt, deviceId: bodyDeviceId, requestType, panelIndex } = req.body;
   const rawPrompt = prompt || visualPrompt || '';
@@ -326,15 +355,20 @@ export default async function handler(req, res) {
   const cascade = isComic ? COMIC_CASCADE : POSTER_CASCADE;
   const trackLabel = isComic ? 'TRACK B (Comic)' : 'TRACK A (Poster)';
 
-  // Stagger parallel comic panel requests so they don't all hit Gemini simultaneously.
-  // Panel 0 fires immediately; each subsequent panel waits 400ms × its index.
-  // At 7 panels: last panel waits 2.4s — well within the 6s Gemini burst-reset window.
-  // The stagger also ensures panels 1+ start after panel 0 may have already written
-  // circuit-open state to Redis, so they skip downed providers from the first request.
+  // Stagger parallel comic panel requests to let the circuit breaker propagate.
+  // Panel 0 fires immediately. Each subsequent panel waits 2 000ms × its index.
+  // At 7 panels: last panel starts at 12s — stays well inside the Vercel 60s timeout
+  // while giving the circuit breaker enough time to register panel 0's failure (~120ms
+  // to Gemini 429 + Redis write) before panels 1+ read it.
+  //
+  // Primary throttle mechanism is the circuit breaker, not the stagger:
+  //   panel 0 hits Gemini → 429 → circuit opens (45s) → panels 1+ skip Gemini entirely
+  //   and jump straight to HuggingFace/Cloudflare. Only ONE Gemini IPM slot is consumed.
+  //
   // Poster requests (no panelIndex) are unaffected.
   const idx = typeof panelIndex === 'number' ? panelIndex : parseInt(panelIndex, 10) || 0;
   if (idx > 0) {
-    await new Promise((r) => setTimeout(r, idx * 400));
+    await new Promise((r) => setTimeout(r, idx * 2000));
   }
 
   // Filter the cascade to providers that are not currently circuit-open.

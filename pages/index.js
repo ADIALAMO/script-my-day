@@ -170,7 +170,12 @@ function HomePage() {
       try {
         data = await response.json();
       } catch (e) {
-        if (!response.ok) throw new Error(lang === 'he' ? 'שרת ההפקה לא זמין כרגע' : 'Production server offline');
+        // Vercel returned a bare HTML body (hard infrastructure timeout / 504).
+        // There is no JSON to inspect — log what we know and surface the HTTP status.
+        if (!response.ok) {
+          console.error(`🔴 Non-JSON ${response.status} from /api/generate-script — likely a Vercel timeout`);
+          throw new Error(lang === 'he' ? `שרת ההפקה לא זמין כרגע (HTTP ${response.status})` : `Production server offline (HTTP ${response.status})`);
+        }
       }
 
       if (response.status === 429) {
@@ -183,6 +188,10 @@ function HomePage() {
       }
 
       if (!response.ok) {
+        // Log the full diagnostic payload — message, type, and stack all come from
+        // the server's 🔴 SERVER CRASH response body during debugging.
+        console.error('🔴 Server error payload:', data);
+        if (data.errorStack) console.error('Server stack trace:\n', data.errorStack);
         if (typeof window !== 'undefined' && window.gtag) {
           window.gtag('event', 'script_error', {
             error_type: 'server_error',

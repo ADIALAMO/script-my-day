@@ -65,9 +65,22 @@ export function useStoryboardGeneration({ lang, genre, cleanScript, script }) {
 
   const generateStoryboardImages = useCallback(async (panels) => {
     dispatchPanelImages({ type: 'INIT_ALL', count: panels.length });
-    await Promise.allSettled(
-      panels.map(async (panel, idx) => {
-        if (!storyboardActiveRef.current) return;
+
+    // Dispatch panel requests with a client-side stagger so they arrive at the server
+    // 2 000ms apart. This matches the server-side stagger window (idx * 2000ms) and
+    // ensures panel 1 does NOT hit the server before panel 0 has had time to write its
+    // circuit-breaker failure to Redis (~120ms round-trip). Without this stagger, all 7
+    // requests arrive simultaneously and read a clean circuit state — none of them benefit
+    // from panel 0's Gemini failure — causing a burst of Gemini hits or Pollinations hits.
+    //
+    // Each fetch is NOT awaited inline; it runs in the background and updates state
+    // independently via dispatchPanelImages, preserving the progressive-loading UX where
+    // panels fill in as they complete rather than all at once at the end.
+    for (const [idx, panel] of panels.entries()) {
+      if (!storyboardActiveRef.current) break;
+
+      // Fire and forget — panel fills in when the provider responds.
+      (async () => {
         try {
           const resp = await fetch('/api/generate-poster', {
             method:  'POST',
@@ -91,8 +104,15 @@ export function useStoryboardGeneration({ lang, genre, cleanScript, script }) {
           if (!storyboardActiveRef.current) return;
           dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: false, url: null, error: true } });
         }
-      })
-    );
+      })();
+
+      // Wait before launching the next panel so the server-side circuit breaker state
+      // has time to be written by the previous panel's request. Skip the delay after
+      // the last panel — no next request to stagger.
+      if (idx < panels.length - 1) {
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    }
   }, [genre, lang]);
 
   // ── Storyboard fetch ──────────────────────────────────────────────────────
