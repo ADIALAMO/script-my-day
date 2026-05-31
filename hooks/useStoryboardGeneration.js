@@ -12,6 +12,15 @@ function panelImagesReducer(state, action) {
       for (let i = 0; i < action.count; i++) next[i] = { loading: true, url: null, error: false };
       return next;
     }
+    case 'INIT_FROM_HISTORY': {
+      const next = {};
+      action.panels.forEach((p, i) => {
+        next[i] = p.imageUrl
+          ? { loading: false, url: p.imageUrl, error: false }
+          : { loading: false, url: null, error: true };
+      });
+      return next;
+    }
     case 'SET_PANEL':
       return { ...state, [action.idx]: action.payload };
     case 'RESET':
@@ -26,96 +35,181 @@ const STORYBOARD_MESSAGES_EN = ['Scanning scenes...', 'Mapping panels...', 'Inki
 
 /**
  * Manages the full storyboard lifecycle: panel data fetching, per-panel
- * image generation, loading state, error state, and comic style selection.
- * Self-resets whenever the parent `script` prop changes.
+ * image generation, R2 upload, loading state, error state, and style selection.
  *
- * Image generation is intentionally skipped for locked panels (idx >= unlockedPanels)
- * so free-tier users never consume Cloudflare / OpenRouter credits on content they
- * cannot see. StoryboardView renders a blur/lock overlay for those slots instead.
+ * Image generation is skipped for locked panels (idx >= unlockedPanels) so
+ * free-tier users never consume AI credits on content they cannot see.
  *
- * @param {Object} opts
- * @param {string} opts.lang        - 'en' | 'he'
- * @param {string} opts.genre       - Active genre key
- * @param {string} opts.cleanScript - Parsed script text (used as generation input)
- * @param {string} opts.script      - Raw script prop — used only as a reset signal
- * @param {Function} opts.onAuthRequired - Called with context string when API returns 403
+ * Persistence flow (three phases):
+ *   1. Storyboard text arrives → onPanelsGenerated(panels, imageUrl=null each)
+ *      Saves the narrative plan immediately even if the user closes early.
+ *   2. Each AI image arrives → shown as data URI instantly (zero extra wait).
+ *   3. Each image uploads to R2 in the background → CDN URL hot-swaps the
+ *      data URI in state; onPanelsGenerated called again with the new URL.
+ *      History entry grows richer with each completed upload, never blocks UX.
+ *
+ * @param {Object}   opts
+ * @param {string}   opts.lang             - 'en' | 'he'
+ * @param {string}   opts.genre            - Active genre key
+ * @param {string}   opts.cleanScript      - Parsed script text (generation input)
+ * @param {string}   opts.script           - Raw script prop — reset signal only
+ * @param {Function} opts.onAuthRequired   - Called with context on 403
+ * @param {Function} opts.onPanelsGenerated - Called with merged panel array
+ *   whenever the text or a CDN URL becomes available. Parent persists to history.
  */
-export function useStoryboardGeneration({ lang, genre, cleanScript, script, onAuthRequired }) {
+export function useStoryboardGeneration({
+  lang,
+  genre,
+  cleanScript,
+  script,
+  onAuthRequired,
+  onPanelsGenerated,
+  initialPanels,
+}) {
   const isHebrew = lang === 'he';
 
-  const [showStoryboard,    setShowStoryboard]    = useState(false);
-  const [storyboardPanels,  setStoryboardPanels]  = useState([]);
-  const [storyboardLoading, setStoryboardLoading] = useState(false);
-  const [storyboardError,   setStoryboardError]   = useState('');
+  const [showStoryboard,      setShowStoryboard]      = useState(false);
+  const [storyboardPanels,    setStoryboardPanels]    = useState([]);
+  const [storyboardLoading,   setStoryboardLoading]   = useState(false);
+  const [storyboardError,     setStoryboardError]     = useState('');
   const [storyboardErrorCode, setStoryboardErrorCode] = useState('');
-  const [comicStyle,        setComicStyle]         = useState('anime');
-  const [panelImages, dispatchPanelImages]         = useReducer(panelImagesReducer, {});
-  const [unlockedPanels,    setUnlockedPanels]     = useState(0);
+  const [comicStyle,          setComicStyle]           = useState('anime');
+  const [panelImages, dispatchPanelImages]             = useReducer(panelImagesReducer, {});
+  const [unlockedPanels,      setUnlockedPanels]       = useState(0);
 
+  // Tracks whether the current generation session is still active.
+  // Set to false on reset / close so in-flight callbacks self-abort.
   const storyboardActiveRef = useRef(false);
+
+  // Accumulates R2 CDN URLs as each panel upload completes.
+  // Reset at the start of every new generation run.
+  const panelCdnUrlsRef = useRef({});
+
+  // Stable ref to the latest onPanelsGenerated callback.
+  // Using a ref avoids adding the callback to useCallback dep arrays,
+  // which would recreate generateStoryboardImages on every parent render.
+  const onPanelsGeneratedRef = useRef(onPanelsGenerated);
+  useEffect(() => { onPanelsGeneratedRef.current = onPanelsGenerated; }, [onPanelsGenerated]);
 
   const messages       = isHebrew ? STORYBOARD_MESSAGES_HE : STORYBOARD_MESSAGES_EN;
   const currentMessage = useRotatingMessages(messages, 2200, storyboardLoading);
 
-  // Reset all storyboard state whenever a new script arrives.
+  // ── Reset on new script / restore from history ──────────────────────────
   useEffect(() => {
     storyboardActiveRef.current = false;
-    setShowStoryboard(false);
-    setStoryboardPanels([]);
+    panelCdnUrlsRef.current     = {};
     setStoryboardError('');
     setStoryboardErrorCode('');
-    setUnlockedPanels(0);
-    dispatchPanelImages({ type: 'RESET' });
-  }, [script]);
 
-  // ── Panel image generation ────────────────────────────────────────────────
+    if (initialPanels && initialPanels.length > 0) {
+      // Restore saved panels from history — skip re-generation entirely.
+      setStoryboardPanels(initialPanels);
+      setUnlockedPanels(initialPanels.length);
+      setShowStoryboard(true);
+      dispatchPanelImages({ type: 'INIT_FROM_HISTORY', panels: initialPanels });
+    } else {
+      setShowStoryboard(false);
+      setStoryboardPanels([]);
+      setUnlockedPanels(0);
+      dispatchPanelImages({ type: 'RESET' });
+    }
+  }, [script, initialPanels]);
 
-  const generateStoryboardImages = useCallback(async (panels, unlocked) => {
+  // ── Panel image generation + R2 upload ───────────────────────────────────
+
+  const generateStoryboardImages = useCallback(async (panels, unlocked, sessionId) => {
     dispatchPanelImages({ type: 'INIT_ALL', count: panels.length });
 
-    // Fire image requests only for unlocked panels. Locked panels (idx >= unlocked)
-    // stay in their initial "loading: true" state — StoryboardView renders a lock
-    // overlay for them and never tries to display panelImages state for those slots.
-    //
-    // All unlocked requests fire concurrently (no stagger needed — Cloudflare Workers AI
-    // handles burst well, and the Gemini-era stagger has been removed along with Gemini).
+    // Fire requests only for unlocked panels — locked panels stay as loading
+    // skeletons; StoryboardView renders the lock overlay for those slots instead.
+    // All unlocked requests fire concurrently (no stagger — Cloudflare handles burst).
     for (const [idx, panel] of panels.entries()) {
       if (idx >= unlocked) break;
       if (!storyboardActiveRef.current) break;
 
-      // Fire and forget — panel fills in when the provider responds.
+      // Each panel is fire-and-forget so they render progressively.
       (async () => {
         try {
+          // ── Phase 1: AI image generation ──────────────────────────────────
           const resp = await fetch('/api/generate-poster', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              prompt: panel.visual,
+              prompt:      panel.visual,
               genre,
               lang,
               requestType: 'comic',
-              panelIndex: idx,
+              panelIndex:  idx,
             }),
           });
           const data = await resp.json();
           if (!storyboardActiveRef.current) return;
+
           if (data.success && data.imageUrl) {
-            dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: false, url: data.imageUrl, error: false } });
+            // ── Phase 2: show data URI immediately (instant UX) ────────────
+            dispatchPanelImages({
+              type: 'SET_PANEL', idx,
+              payload: { loading: false, url: data.imageUrl, error: false },
+            });
+
+            // ── Phase 3: background R2 upload (does NOT block the image) ───
+            // Determine extension from data URI prefix.
+            const ext = data.imageUrl.startsWith('data:image/png') ? 'png' : 'jpg';
+            const key = `panels/${sessionId}_${String(idx).padStart(2, '0')}.${ext}`;
+
+            fetch('/api/upload-panel', {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ imageData: data.imageUrl, key }),
+            })
+              .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+              .then(({ url: cdnUrl }) => {
+                if (!cdnUrl || !storyboardActiveRef.current) return;
+
+                // ── Phase 4: hot-swap data URI → permanent CDN URL ──────────
+                dispatchPanelImages({
+                  type: 'SET_PANEL', idx,
+                  payload: { loading: false, url: cdnUrl, error: false },
+                });
+
+                // ── Phase 5: persist updated panels to history ──────────────
+                // Build the full merged array with all CDN URLs known so far.
+                panelCdnUrlsRef.current[idx] = cdnUrl;
+                const merged = panels.map((p, i) => ({
+                  ...p,
+                  imageUrl: panelCdnUrlsRef.current[i] ?? null,
+                }));
+                onPanelsGeneratedRef.current?.(merged);
+              })
+              .catch((err) => {
+                // Upload failed silently — the data URI keeps displaying for
+                // the current session; history entry has imageUrl: null for
+                // this panel and can be regenerated later.
+                console.warn(`⚠️ R2 upload skipped for panel ${idx}: ${err.message}`);
+              });
+
           } else {
-            dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: false, url: null, error: true } });
+            dispatchPanelImages({
+              type: 'SET_PANEL', idx,
+              payload: { loading: false, url: null, error: true },
+            });
           }
         } catch {
           if (!storyboardActiveRef.current) return;
-          dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: false, url: null, error: true } });
+          dispatchPanelImages({
+            type: 'SET_PANEL', idx,
+            payload: { loading: false, url: null, error: true },
+          });
         }
       })();
     }
-  }, [genre, lang]);
+  }, [genre, lang]); // onPanelsGeneratedRef is a ref — intentionally excluded from deps
 
-  // ── Storyboard fetch ──────────────────────────────────────────────────────
+  // ── Storyboard text fetch ─────────────────────────────────────────────────
 
   const generateStoryboard = useCallback(async () => {
     storyboardActiveRef.current = false;
+    panelCdnUrlsRef.current     = {};
     dispatchPanelImages({ type: 'RESET' });
     setStoryboardLoading(true);
     setStoryboardError('');
@@ -144,8 +238,6 @@ export function useStoryboardGeneration({ lang, genre, cleanScript, script, onAu
       }
 
       if (data.success && data.panels?.length > 0) {
-        // unlockedPanels from API tells us how many panels this tier may see.
-        // Default to full panel count if the field is missing (backwards compat).
         const unlocked = typeof data.unlockedPanels === 'number'
           ? data.unlockedPanels
           : data.panels.length;
@@ -155,7 +247,15 @@ export function useStoryboardGeneration({ lang, genre, cleanScript, script, onAu
         setUnlockedPanels(unlocked);
         setShowStoryboard(true);
         track('Storyboard Generated', { genre, language: lang });
-        generateStoryboardImages(data.panels, unlocked);
+
+        // Persist panel text to history immediately (imageUrl: null per panel).
+        // Even if the user closes before images finish, the narrative plan is saved.
+        onPanelsGeneratedRef.current?.(data.panels.map(p => ({ ...p, imageUrl: null })));
+
+        // Unique session ID scopes all R2 keys for this generation run.
+        const sessionId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        generateStoryboardImages(data.panels, unlocked, sessionId);
+
       } else {
         const code = data.code || CODES.STORYBOARD_FAIL;
         setStoryboardErrorCode(code);

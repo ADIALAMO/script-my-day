@@ -45,6 +45,8 @@ function HomePage() {
 
   const { history, addEntry, updateEntry, deleteEntry } = useScriptHistory();
   const [showHistory, setShowHistory] = useState(false);
+  const [initialPanels,    setInitialPanels]    = useState(null);
+  const [initialPosterUrl, setInitialPosterUrl] = useState(null);
 
   // ── Auth modal (unauthenticated flows) ────────────────────────────────────
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -224,6 +226,8 @@ function HomePage() {
     setError('');
     setScript('');
     setSelectedGenre(genre);
+    setInitialPanels(null);
+    setInitialPosterUrl(null);
 
     try {
       const savedAdminKey = localStorage.getItem('lifescript_admin_key') || '';
@@ -717,7 +721,10 @@ function HomePage() {
                 producerName={producerName}
                 onPosterGenerated={(url) => updateEntry(currentEntryIdRef.current, { posterUrl: url })}
                 onScriptEdited={(text) => updateEntry(currentEntryIdRef.current, { script: text })}
+                onPanelsGenerated={(panels) => updateEntry(currentEntryIdRef.current, { panels })}
                 onAuthRequired={openAuthModal}
+                initialPanels={initialPanels}
+                initialPosterUrl={initialPosterUrl}
               />
             </motion.div>
           )}
@@ -915,6 +922,8 @@ function HomePage() {
           setShowGallery(false);
           setError('');
           currentEntryIdRef.current = entry.id;
+          setInitialPanels(entry.panels?.length > 0 ? entry.panels : null);
+          setInitialPosterUrl(entry.posterUrl || null);
         }}
         onDelete={deleteEntry}
         lang={lang}

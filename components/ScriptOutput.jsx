@@ -47,7 +47,7 @@ const getCinematicTitle = (text) => {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, onPosterGenerated, onScriptEdited, onAuthRequired }) {
+function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, onPosterGenerated, onScriptEdited, onAuthRequired, onPanelsGenerated, initialPanels, initialPosterUrl }) {
   const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST');
 
   // ── Script parsing ─────────────────────────────────────────────────────────
@@ -97,7 +97,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
     unlockedPanels,
     comicStyle, setComicStyle, currentStoryboardMessage,
     generateStoryboard, closeStoryboard,
-  } = useStoryboardGeneration({ lang, genre, cleanScript, script, onAuthRequired });
+  } = useStoryboardGeneration({ lang, genre, cleanScript, script, onAuthRequired, onPanelsGenerated, initialPanels });
 
   // ── Script processing effect ───────────────────────────────────────────────
   useEffect(() => {
@@ -114,12 +114,20 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
       setVisualPrompt('Cinematic masterpiece, dramatic lighting');
     }
     resetPoster();
+    if (initialPosterUrl) {
+      // Restore a poster saved from a previous session.
+      // posterLoading=true keeps the image opacity-0 while the proxy fetches the
+      // CDN URL; PosterRenderer's onLoad then fires setPosterLoading(false) → flash.
+      setPosterUrl(initialPosterUrl);
+      setShowPoster(true);
+      setPosterLoading(true);
+    }
     setIsEditing(false);
     setIsEdited(false);
     setEditedText('');
     setSaveStatus('idle');
     clearTimeout(saveDebounceRef.current);
-  }, [script]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [script, initialPosterUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Editor state ───────────────────────────────────────────────────────────
   const [isEditing,  setIsEditing]  = useState(false);

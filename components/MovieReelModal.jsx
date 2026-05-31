@@ -46,10 +46,17 @@ const GENRE_SOUNDTRACK_MAP = {
 function loadImg(src) {
   return new Promise((resolve, reject) => {
     if (!src) return reject(new Error('no src'));
+    // R2/CDN URLs are cross-origin and lack CORS headers on the r2.dev subdomain.
+    // Routing them through /api/proxy-image makes them same-origin, so the canvas
+    // never becomes tainted and captureStream() records real video frames.
+    // Data URIs and relative paths are already same-origin — no rewrite needed.
+    const imgSrc = src.startsWith('http')
+      ? `/api/proxy-image?url=${encodeURIComponent(src)}`
+      : src;
     const img = new Image();
     img.onload  = () => resolve(img);
     img.onerror = () => reject(new Error('image load failed'));
-    img.src = src;
+    img.src = imgSrc;
   });
 }
 

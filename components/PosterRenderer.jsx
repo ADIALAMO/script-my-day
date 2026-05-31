@@ -33,28 +33,31 @@ function PosterRenderer({
     >
       <div ref={posterRef} className="relative aspect-[2/3] w-full max-w-[450px] mx-auto rounded-[3.5rem] md:rounded-[4.5rem] overflow-hidden bg-[#030712] shadow-4xl border border-[#d4a373]/30">
         {posterUrl && (
-          <img 
-            src={posterUrl} 
-            crossOrigin="anonymous"
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${posterLoading ? 'opacity-0' : 'opacity-100'}`} 
+          <img
+            src={posterUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(posterUrl)}` : posterUrl}
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${posterLoading ? 'opacity-0' : 'opacity-100'}`}
             onLoad={() => {
               if (typeof window !== 'undefined' && window.gtag) {
                 window.gtag('event', 'poster_rendered_visually', { genre: genre });
               }
-              
-              // הפעלת סאונד הפלאש מיד לאחר טעינת התמונה
-              playFlashSound();
 
-              // השהיה מינימלית ביותר לסנכרון עין-אוזן
+              // History restores arrive as http URLs (proxied CDN).
+              // Fresh generations are always data URIs.  Skip all cinematic
+              // fanfare on history loads — just reveal the image silently.
+              if (posterUrl.startsWith('http')) {
+                setPosterLoading(false);
+                return;
+              }
+
+              // Fresh generation: play the cinematic flash reveal.
+              playFlashSound();
               setTimeout(() => {
                 window.requestAnimationFrame(() => {
                   setTriggerFlash(true);
                   setPosterLoading(false);
-                  
-                  // פלאש קצר ומהיר (0.5 שניות) לאפקט מקצועי
                   setTimeout(() => setTriggerFlash(false), 500);
                 });
-              }, 50); 
+              }, 50);
             }}
             onError={() => setPosterLoading(false)}
             alt="Movie Poster"

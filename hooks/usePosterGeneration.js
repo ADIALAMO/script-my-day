@@ -103,8 +103,33 @@ export function usePosterGeneration({
       }
 
       if (data.success && data.imageUrl) {
+        // Phase 1: show the data URI immediately — zero extra wait.
         setPosterUrl(data.imageUrl);
         onPosterGenerated?.(data.imageUrl);
+
+        // Phase 2: upload to R2 in the background — same hot-swap pattern as panels.
+        // On success, replace the data URI with the permanent CDN URL in both
+        // local state and the history entry so the thumbnail and future reel
+        // generation always reference a stable, proxy-safe CDN URL.
+        const ext = data.imageUrl.startsWith('data:image/png') ? 'png' : 'jpg';
+        const key = `posters/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        fetch('/api/upload-panel', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ imageData: data.imageUrl, key }),
+        })
+          .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+          .then(({ url: cdnUrl }) => {
+            if (!cdnUrl) return;
+            // Only persist the CDN URL to history — do NOT swap the displayed
+            // posterUrl.  Replacing the src mid-render causes the browser to blank
+            // the <img> element immediately while the proxy fetch is in flight
+            // (~1 s), making the poster disappear even though posterLoading=false.
+            // The data URI already loaded and visible; it stays as the display URL
+            // for the lifetime of this session.
+            onPosterGenerated?.(cdnUrl);
+          })
+          .catch(err => console.warn(`⚠️ Poster R2 upload skipped: ${err.message}`));
       } else {
         setPosterError(getMsg(data.code || CODES.POSTER_FAIL, lang));
         setPosterLoading(false);
