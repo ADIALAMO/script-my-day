@@ -1,99 +1,216 @@
 export const MODAL_DATA = {
+
+  // ─── Terms of Service ──────────────────────────────────────────────────────
+
   terms: {
     he: {
       title: 'תנאי שימוש',
       sections: [
-        { h: '1. בעלות על התוכן והיצירה', p: 'כל זכויות הקניין הרוחני בתסריטים ובפוסטרים שנוצרו באמצעות LIFESCRIPT שייכות לך, המשתמש, באופן מלא ובלעדי. אתה חופשי לשתף, להפיץ ולהשתמש ביצירה לכל מטרה אישית.' },
-        { h: '2. טכנולוגיית AI ואחריות לתוכן', p: 'השירות מבוסס על מודלי בינה מלאכותית מתקדמים. המשתמש מבין כי התוכן עשוי להכיל אי-דיוקים עובדתיים, הטיות או טעויות גנרטיביות. האחריות על השימוש בתוכן והפצתו חלה על המשתמש בלבד.' },
-        { h: '3. הגבלות שימוש וקוד אתי', p: 'חל איסור מוחלט להשתמש במערכת ליצירת תוכן פוגעני, אלים, מסית, פורנוגרפי או כזה המפר זכויות של צדדים שלישיים. המערכת שומרת לעצמה את הזכות לחסום גישה למשתמשים שיעשו שימוש לרעה בטכנולוגיה.' },
-        { h: '4. הגבלת אחריות (Disclaimer)', p: 'השירות ניתן כפי שהוא ("AS IS"). LIFESCRIPT אינה מתחייבת לזמינות רציפה של השרתים או לכך שהתוצאה תתאים לציפיות המשתמש ב-100%. לא נהיה אחראים לכל נזק ישיר או עקיף הנובע מהשימוש באפליקציה.' },
-        { h: '5. עדכונים ושינויים', p: 'אנו שומרים לעצמנו את הזכות לעדכן את תנאי השימוש או לשנות את מאפייני השירות מעת לעת, ללא הודעה מוקדמת, בכדי להמשיך ולשפר את חווית ההפקה.' },
-        { h: '6. מדיניות שימוש הוגן', p: 'אנו מפעילים מדיניות שימוש הוגן בכדי למנוע עומס על המערכת. חל איסור על שימוש בבוטים או באמצעים אוטומטיים. אנו שומרים לעצמנו את הזכות להגביל את מכסת היצירה היומית לכל משתמש.' },
-        { h: '7. הגבלת גיל', p: 'השימוש ב-LIFESCRIPT מיועד למשתמשים מעל גיל 13. בשימושך בשירות אתה מצהיר כי אתה עומד בתנאי הגיל הנדרשים.' },
-        { h: '8. שירותי צד שלישי', p: 'השירות משתלב עם ספקי בינה מלאכותית חיצוניים (כגון OpenRouter, Cohere ו-Pollinations). LIFESCRIPT אינה אחראית לשינויים במדיניות או בזמינות של שירותים אלו.' }
-      ]
+        {
+          h: '1. בעלות מלאה על היצירה',
+          p: 'כל התסריטים, הפוסטרים, פאנלי הקומיקס וכל תוכן שנוצר עבורך שייכים לך באופן מלא ובלעדי. LIFESCRIPT אינה טוענת לבעלות כלשהי על יצירותיך — לא על הסיפורים, לא על הדמויות ולא על התוצר הויזואלי שנוצר עבורך.',
+        },
+        {
+          h: '2. מדיניות שימוש הוגן ומגבלות יומיות',
+          p: 'לשמירה על איכות השירות לכלל המשתמשים, כל חשבון מוגבל ל-3 תסריטים, 2 פוסטרים ו-1 קומיקס ביום. מגבלות אלו מתאפסות בחצות UTC. ייתכנו תנודות בביצועים הנובעות מעומס על ספקי AI גלובליים — אלו אינן תקלה, אלא ניהול אינטליגנטי של משאבי הייצור.',
+        },
+        {
+          h: '3. הגנת תוכן וניקוי קלטים אוטומטי',
+          p: 'כל טקסט שנשלח למערכת עובר ניקוי אוטומטי לסינון HTML, תגיות זדוניות והזרקות קוד. חל איסור מוחלט לנסות לעקוף מנגנונים אלו, להשתמש בטכניקות Prompt Injection לשינוי התנהגות ה-AI, או להזין תוכן פוגעני, אלים, פורנוגרפי, גזעני או תוכן המופנה כלפי קטינים.',
+        },
+        {
+          h: '4. ביצועי השירות ואדפטציה דינמית',
+          p: 'המערכת פועלת עם ארכיטקטורת Circuit Breaker שמנתבת כל בקשה לספק הזמין ביותר בזמן אמת. מהירות יצירת תמונות ותסריטים עשויה להשתנות בהתאם לזמינות ספקים גלובליים. שינויים אלו אינם מהווים כשל שירות — אלא מנגנון איזון חכם.',
+        },
+        {
+          h: '5. הגבלת גיל, AI ושירותי צד שלישי',
+          p: 'השירות מיועד למשתמשים מגיל 13 ומעלה. LIFESCRIPT משתמשת בשירותי AI חיצוניים (Google AI, OpenRouter). אנחנו לא אחראים לשינויים במדיניות ספקים אלו. התוכן שנוצר מבוסס על בינה מלאכותית ועשוי להכיל אי-דיוקים; האחריות על השימוש בו חלה על המשתמש בלבד.',
+        },
+      ],
     },
     en: {
       title: 'TERMS',
       sections: [
-        { h: '1. Ownership & Intellectual Property', p: 'All intellectual property rights in the scripts and posters created through LIFESCRIPT belong entirely and exclusively to you, the user.' },
-        { h: '2. AI Technology & Content Responsibility', p: 'The service is based on advanced AI models. The user understands that content may contain factual inaccuracies or biases.' },
-        { h: '3. Usage Restrictions & Ethics', p: 'It is strictly forbidden to use the system to create offensive, violent, or pornographic content.' },
-        { h: '4. Disclaimer of Warranties', p: 'The service is provided "AS IS". LIFESCRIPT does not guarantee continuous server availability.' },
-        { h: '5. Updates & Changes', p: 'We reserve the right to update these terms or change service features from time to time.' },
-        { h: '6. Fair Use Policy', p: 'We operate a fair use policy to prevent system overload. Use of bots is prohibited.' },
-        { h: '7. Age Restriction', p: 'Use of LIFESCRIPT is intended for users over the age of 13.' },
-        { h: '8. Third-Party Services', p: 'The service integrates with third-party AI providers. LIFESCRIPT is not responsible for their availability.' }
-      ]
-    }
+        {
+          h: '1. Full Ownership of Creations',
+          p: 'All scripts, posters, comic panels, and any content generated for you belong entirely and exclusively to you. LIFESCRIPT makes no claim of ownership over your creations — not your stories, characters, or the visual output generated on your behalf.',
+        },
+        {
+          h: '2. Fair Use Policy & Daily Limits',
+          p: 'To maintain quality service for all users, each account is limited to 3 scripts, 2 posters, and 1 comic per day. Limits reset at UTC midnight. Performance variations may occur due to load on global AI providers — these are not failures, but intelligent management of production resources.',
+        },
+        {
+          h: '3. Content Protection & Automatic Input Sanitization',
+          p: 'All text submitted to the system is automatically sanitized to filter HTML, malicious tags, and injection attempts. It is strictly forbidden to bypass these mechanisms, use prompt-injection techniques to alter AI behavior, or submit offensive, violent, pornographic, racist, or minors-targeted content.',
+        },
+        {
+          h: '4. Service Performance & Dynamic Adaptation',
+          p: 'The system operates a Circuit Breaker architecture that routes each request to the most available provider in real time. Image and script generation speed may vary based on global provider availability. These variations are not service failures — they are intelligent load balancing.',
+        },
+        {
+          h: '5. Age Restriction, AI & Third-Party Services',
+          p: 'This service is intended for users aged 13 and above. LIFESCRIPT uses third-party AI services (Google AI, OpenRouter). We are not responsible for changes in their policies. AI-generated content may contain inaccuracies; the user bears sole responsibility for how it is used.',
+        },
+      ],
+    },
   },
+
+  // ─── Privacy Policy ────────────────────────────────────────────────────────
+
   privacy: {
     he: {
       title: 'פרטיות',
       summary: '"הפרטיות שלך היא התסריט הכי חשוב שאנחנו מגנים עליו."',
       sections: [
-        { h: '1. מדיניות "אפס אחסון" (Zero Storage)', p: 'התוכן האישי שלך הוא רכושך בלבד. הטקסטים שאתה מזין והתסריטים שנוצרים מעובדים בזמן אמת ונמחקים לצמיתות מהשרתים שלנו מיד עם סיום הסשן. אנחנו לא שומרים היסטוריית כתיבה מטעמי פרטיות.' },
-        { h: '2. זכויות יוצרים וקניין רוחני', p: 'כל זכויות הקניין הרוחני על התסריטים שנוצרים באמצעות המערכת שייכות לך באופן מלא. LIFESCRIPT אינה טוענת לבעלות על הסיפורים, הדמויות או התכנים המופקים עבורך.' },
-        { h: '3. עיבוד נתונים ע"י ספקי AI', p: 'המידע מועבר לספקי עיבוד מובילים (כגון Google, DeepSeek ו-OpenRouter) בערוץ מוצפן לצורך יצירת התוכן בלבד. אנו עושים מאמץ לבחור ספקים ומסלולי שירות המבטיחים את פרטיות המידע. עם זאת, המשתמש מודע לכך שחלק מהשירותים הניתנים במסלולי חינם עשויים להשתמש במידע אנונימי לשיפור טכנולוגי של הספק.' },
-        { h: '4. שימוש בטכנולוגיית אחסון מקומי', p: 'המערכת משתמשת ב-LocalStorage כדי לשמור את מפתחות הגישה והגדרות השפה שלך על המכשיר האישי שלך בלבד. מידע זה אינו מועבר לצד שלישי ואינו משמש למעקב פרסומי.' }
-      ]
+        {
+          h: '1. מדיניות "אפס אחסון" (Zero Storage)',
+          p: 'הטקסטים שאתה מזין, התסריטים שנוצרים, הפוסטרים הקולנועיים ופאנלי הקומיקס — כל אלו שייכים לך ולך בלבד ואינם נשמרים, נצברים או מאוחסנים בשום שרת שלנו. הנתונים עוברים ישירות לעיבוד ונמחקים עם סיום כל בקשה. אין לנו היסטוריית יצירה, אין קבצי גיבוי, ואין מסד נתונים שמחזיק את הסיפור שלך.',
+        },
+        {
+          h: '2. עיבוד מאובטח דרך ספקי AI מובילים',
+          p: 'הטקסט שלך מועבר בצורה מוצפנת (HTTPS) לשרתי Google AI, OpenRouter ושרתים מובילים נוספים בתחום, לצורך יצירת התסריט והתמונות. אנחנו משתמשים במפתחות API ייעודיים שאינם מזהים אותך אישית. שירותים אלו אינם שומרים את התוכן שלך לאחר השלמת הבקשה ואינם משתמשים בו למטרות פרסום.',
+        },
+        {
+          h: '3. אנחנו לא מוכרים מידע',
+          p: 'אנחנו לא מוכרים, לא משתפים ולא מעבדים את הקלטים שלך לשום מטרה פרסומית או מסחרית. LIFESCRIPT מרוויחה מהיכולת לייצר עבורך — לא ממה שאתה כותב.',
+        },
+        {
+          h: '4. אחסון מקומי בלבד (LocalStorage)',
+          p: 'שם המשתמש שלך, הגדרות השפה ומפתח הגישה נשמרים על המכשיר האישי שלך בלבד, בזיכרון המקומי של הדפדפן. מידע זה אינו מועבר לשרתינו ואינו משמש לשום מטרת מעקב או פרסום.',
+        },
+      ],
     },
     en: {
       title: 'PRIVACY',
       summary: '"Your privacy is the most important script we protect."',
       sections: [
-        { h: '1. Zero Storage Policy', p: 'Your personal content is yours alone. Data is processed in real-time and permanently deleted immediately after the session ends.' },
-        { h: '2. Intellectual Property', p: 'All intellectual property rights for the scripts generated through the system belong entirely to you.' },
-        { h: '3. AI Data Processing', p: 'Data is transmitted to leading processors via encrypted channels solely for content generation. We strive to select providers that prioritize data privacy.' },
-        { h: '4. Local Storage Technology', p: 'The system uses LocalStorage to save your access keys and language settings on your personal device only.' }
-      ]
-    }
+        {
+          h: '1. Zero Storage Policy',
+          p: 'Your input texts, generated scripts, movie posters, and comic panels all belong exclusively to you and are never stored, cached, or saved on any of our servers. Data goes directly to processing and is deleted upon completion of each request. We have no creation history, no backup files, and no database holding your story.',
+        },
+        {
+          h: '2. Secure Processing via Trusted AI Providers',
+          p: 'Your text is transmitted over encrypted HTTPS to Google AI, OpenRouter, and other industry-leading AI infrastructure providers, for the purpose of generating scripts and images. We use dedicated API tokens that do not personally identify you. These services do not retain your content after a request is completed and do not use it for advertising.',
+        },
+        {
+          h: "3. We Don't Sell Your Data",
+          p: "We do not sell, share, or repurpose your inputs for any advertising or commercial purpose. LIFESCRIPT profits from the ability to generate for you — not from what you write.",
+        },
+        {
+          h: '4. Local Storage Only',
+          p: "Your display name, language settings, and access key are stored only on your personal device, in your browser's local storage. This information never reaches our servers and is never used for tracking.",
+        },
+      ],
+    },
   },
+
+  // ─── Support / Help Center ─────────────────────────────────────────────────
+
   support: {
     he: {
       title: 'תמיכה',
       type: 'faq',
-      footerLabel: 'אנחנו כרגע בשלב הרצה אקסקלוסיבית (Beta)',
+      footerLabel: 'LIFESCRIPT בשלב Beta מוקדם — מעריכים כל הערה ורעיון',
       footerButton: 'המשך הפקה נעימה!',
       sections: [
-        { h: 'הכפתור "צור תסריט" לא מגיב?', p: 'הבינה המלאכותית זקוקה למינימום של 5 מילים כדי להתחיל לביים. הרחב מעט את התיאור ביומן והכפתור יפתח מיידית.' },
-        { h: 'הפוסטר לא נטען או נראה ריק?', p: 'רינדור גרפי הוא תהליך מורכב. אם הפוסטר לא הופיע תוך 10 שניות, לחץ שוב על כפתור היצירה. אין צורך לרענן את הדף.' },
-        { h: 'בעיות סאונד ומוזיקה?', p: 'ודא שהמכשיר אינו על מצב שקט (Silent). בדפדפני מובייל, לעיתים יש ללחוץ על כפתור הרמקול בטופס כדי לאפשר למוזיקה להתחיל.' },
-        { h: 'ההקלדה נעצרה באמצע?', p: 'במידה והתסריט הפסיק להיכתב, העתק את הטקסט שכתבת, רענן את הדף (Refresh) ונסה שוב. זה פותר 100% מתקלות התקשורת.' }
-      ]
+        {
+          h: 'הכפתור "צור תסריט" לא מגיב?',
+          p: 'המנגנון דורש לפחות 5 מילים כדי לבנות עולם. הרחב את תיאור היומן — שם דמות, רגש, מקום — והכפתור ייפתח מיידית.',
+        },
+        {
+          h: 'למה פאנלי הקומיקס נטענים בהדרגה?',
+          p: 'כל פאנל נוצר בנפרד ומוצג ברגע שמוכן — כדי שלא תחכה לכלום. הפאנלים ממשיכים להיווצר ברקע גם אם הראשון כבר גלוי על המסך. זה עיצוב מכוון ולא תקלה.',
+        },
+        {
+          h: 'פאנל מסוים לוקח יותר זמן מהאחרים?',
+          p: 'המערכת מנהלת עומסים בזמן אמת. אם ספק ויזואלי מסוים עמוס, המנגנון מנתב אוטומטית לספק חלופי — כמו Flux — כדי להבטיח את איכות התמונה הגבוהה ביותר. זה לוקח עוד כמה שניות, אבל שווה את זה.',
+        },
+        {
+          h: 'הפוסטר לא נטען?',
+          p: 'לחץ שוב על "צור פוסטר קולנועי". אם הבעיה חוזרת, רענון מלא של הדף פותר את הבעיה ב-100% מהמקרים.',
+        },
+        {
+          h: 'בעיות סאונד ומוזיקה?',
+          p: 'ודא שהמכשיר אינו על מצב שקט (Silent). בדפדפני מובייל, לעיתים יש ללחוץ על כפתור הרמקול בטופס כדי לאפשר את המוזיקה.',
+        },
+      ],
     },
     en: {
       title: 'SUPPORT',
       type: 'faq',
-      footerLabel: 'Currently in exclusive Beta phase',
+      footerLabel: 'LIFESCRIPT is in early Beta — every note and idea is valued',
+      footerButton: 'Happy Directing!',
       sections: [
-        { h: 'Generate button not responding?', p: 'The AI needs at least 5 words to start directing. Expand your journal entry slightly and the button will activate.' },
-        { h: 'Poster not loading or looks empty?', p: 'Graphic rendering is a complex process. If the poster doesn\'t appear within 10 seconds, click Generate again. No need to refresh.' },
-        { h: 'Sound or music issues?', p: 'Ensure your device isn\'t on Silent mode. On mobile browsers, you might need to tap the speaker icon to enable audio.' },
-        { h: 'Typing stopped mid-way?', p: 'If the script stops writing, copy your text, refresh the page, and try again. This resolves 100% of connection issues.' }
-      ]
-    }
+        {
+          h: 'Generate button not responding?',
+          p: 'The engine needs at least 5 words to build a world. Expand your journal entry — a character name, an emotion, a location — and the button will activate immediately.',
+        },
+        {
+          h: 'Why are comic panels loading one by one?',
+          p: "Each panel is generated independently and appears the moment it's ready — so you're never staring at a blank screen. Panels continue loading in the background even as the first ones are already visible. This is intentional design, not a bug.",
+        },
+        {
+          h: 'One panel taking longer than the others?',
+          p: 'The system manages provider load in real time. If a particular visual provider is under pressure, the engine automatically re-routes to an alternative — like Flux — to guarantee the highest image quality. It takes a few extra seconds, but it\'s worth it.',
+        },
+        {
+          h: 'Poster not loading?',
+          p: 'Click "Generate Movie Poster" again. If the issue persists, a full page refresh resolves it every time.',
+        },
+        {
+          h: 'Sound or music issues?',
+          p: "Ensure your device isn't on Silent mode. On mobile browsers, tap the speaker icon in the form to allow audio.",
+        },
+      ],
+    },
   },
+
+  // ─── About ─────────────────────────────────────────────────────────────────
+
   about: {
     he: {
       title: 'אודות',
       sections: [
-        { h: 'החזון שלנו', p: 'כולנו חיים בתוך סיפור, אבל לעיתים קרובות אנחנו שוכחים שאנחנו אלו שמחזיקים בעט. LIFESCRIPT נולדה כדי להעניק לך את הכיסא של הבמאי. זהו לא רק יומן אישי, אלא סטודיו לחיים – מרחב שבו המציאות היומיומית פוגשת את הקסם של הקולנוע.' },
-        { h: "תרפיה דרך עדשת הז'אנר", p: 'הלב של הפרויקט הוא היכולת לבצע מסגור מחדש (Reframing) לחוויות שלנו. משבר הופך ל"קומדיה של טעויות" שמאפשרת לצחוק על הקושי, מאבק הופך ל"סרט אקשן" שבו אתה הגיבור המנצח, ורגעים פשוטים הופכים לדרמה פיוטית. השימוש בז\'אנרים מעניק לך נקודת מבט חדשה ומעצימה על החיים.' },
-        { h: 'טכנולוגיה עם נשמה אנושית', p: 'LIFESCRIPT נולדה מתוך מסע אישי של אמן ויוצר שגילה את כוחה של הבינה המלאכותית לא כתחליף ליצירה, אלא כשותף לדיאלוג. המערכת משלבת בין האינטואיציה של האמן לדיוק של הטכנולוגיה כדי לזקק רגש גולמי לחזון ויזואלי עוצמתי.' },
-        { h: 'איך להפיק את המיטב?', p: 'התהליך פשוט: כתוב בכנות ביומן, בחר זווית (ז\'אנר) שתרצה לחקור דרכה את היום שלך, ושמור את הפוסטר שנוצר. כך תבנה לעצמך ארכיון ויזואלי של מסע החיים שלך – יצירת אמנות אחת בכל יום.' }
+        {
+          h: 'החזון: מחיים לתסריט, מתסריט לקומיקס',
+          p: 'כולנו חיים בתוך סיפור. LIFESCRIPT לוקחת את האירועים של היום שלך — שיחה שהייתה, רגע שחלף, רגש שנותר — ומרימה אותם לרמת ייצור קולנועי מלאה. כותבים תסריט. מפיקים פוסטר. יוצרים קומיקס.',
+        },
+        {
+          h: 'מנגנון AI מרובה-ספקים',
+          p: 'מאחורי כל לחיצה פועל מנגנון שמריץ בו-זמנית מספר מודלי שפה מהמתקדמים בעולם — Gemini Flash, Gemma ו-DeepSeek — ובוחר אוטומטית את המהיר שמחזיר תוצאה מושלמת. לתמונות, קסקדה חכמה של ספקים ויזואליים — Gemini, FLUX, Cloudflare AI ועוד — מבטיחה פוסטר ופאנלים תמיד, גם בשיא העומס.',
+        },
+        {
+          h: 'מהתסריט ללוח הסיפור',
+          p: 'אחרי שהתסריט מוכן, LIFESCRIPT ממשיכה בהפקה: מנתחת את הסצנות, מחלקת אותן ל-5 עד 7 פאנלים ומייצרת כל פאנל בנפרד — בסגנון שבחרת: אנימה סטודיו, מארוול רטרו, או נואר קולנועי. הפאנלים מופיעים בהדרגה ברגע שמוכנים, כך שהיצירה מתגלה בפניך סצנה אחר סצנה.',
+        },
+        {
+          h: 'איך להפיק את המיטב?',
+          p: "כתוב בכנות — לפחות שלוש משפטים שמתארים מה קרה, מה הרגשת ומי היה שם. לאחר שה-AI מפיק את התסריט, יש לך שליטה מלאה לערוך, לדייק ולשכלל אותו. בשלב הבא, הפק פוסטר קולנועי מרהיב שיהווה את השער לסיפור שלך, ומשם המשך ליצירת לוח קומיקס מטורף המציג את הסצנות פאנל אחר פאנל. ולסיום — צור ריל קולנועי זז ישירות מהפאנלים שהופקו. שמור את התוצרים שלך — כל יום הוא פרק חדש בארכיון הקולנועי האישי שלך.",
+        },
       ],
-      quote: "Don't just live your life. Direct it."
+      quote: "Don't just live your story — direct it.",
     },
     en: {
       title: 'ABOUT',
       sections: [
-        { h: 'Our Vision', p: 'We all live in a story, but too often we forget that we hold the pen. LIFESCRIPT was born to give you the director’s chair—a space where daily reality meets cinematic magic.' },
-        { h: 'Genre Therapy', p: 'The heart of the project is "Reframing" the human experience. A crisis becomes a "Comedy of Errors," a struggle turns into an "Action Movie" where you are the hero, and routine moments become poetic drama.' },
-        { h: 'Technology with Soul', p: 'Born from an artist\'s journey, LIFESCRIPT uses AI as a dialogue partner to refine raw emotion into visual vision, putting technology at the service of your personal story.' },
-        { h: 'How to Direct Your Story', p: 'Write honestly, choose a new genre to view your day through, and save your poster. Build a visual archive of your life journey—one piece of art every day.' }
+        {
+          h: 'Vision: From Life to Script, From Script to Comic',
+          p: 'We all live inside a story. LIFESCRIPT takes the real events of your day — a conversation that happened, a moment that passed, an emotion that stayed — and elevates them to full cinematic production. Write a script. Generate a poster. Create a comic.',
+        },
+        {
+          h: 'Intelligent Multi-Provider AI Engine',
+          p: 'Behind every click, an engine simultaneously races multiple world-class language models — Gemini Flash, Gemma, and DeepSeek — automatically selecting the fastest model that returns a perfect result. For visuals, a smart cascade of image providers — Gemini, FLUX, Cloudflare AI, and more — ensures your poster and panels are always delivered, even under heavy global load.',
+        },
+        {
+          h: 'From Script to Storyboard',
+          p: "Once your script is ready, LIFESCRIPT continues production: it analyzes scenes, breaks them into 5–7 panels, and generates each independently — in your chosen style: Anime Studio, Marvel Retro, or Cinematic Noir. Panels appear progressively the moment they're ready, so your creation reveals itself scene by scene.",
+        },
+        {
+          h: 'How to Direct Your Best Story',
+          p: "Write honestly — at least three sentences describing what happened, how you felt, and who was there. Once the AI generates your script, you have full control to edit, refine, and perfect it. Next, generate a stunning Movie Poster to serve as the cover of your story, then transform it into an awesome multi-panel comic book. Finally, create a cinematic Reel directly from your generated panels. Save your creations — every day is a new chapter in your personal cinematic archive.",
+        },
       ],
-      quote: "Don't just live your life. Direct it."
-    }
-  }
+      quote: "Don't just live your story — direct it.",
+    },
+  },
 };

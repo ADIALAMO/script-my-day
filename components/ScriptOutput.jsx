@@ -7,8 +7,8 @@ import {
 } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { getMsg, CODES, isQuotaError } from '../lib/messages.js';
-import { detectLanguage } from '../lib/agent';
 import { getGenreLabel } from '../constants/genres.js';
+import { HEBREW_RANGE } from '../constants/language.js';
 import PosterRenderer from './PosterRenderer';
 import StoryboardView from './StoryboardView';
 import MovieReelModal from './MovieReelModal';
@@ -32,7 +32,7 @@ const FacebookIcon = () => (
 );
 
 // ── Pure helpers (local, no duplication with other files) ────────────────────
-const isTextHebrew   = (text) => /[֐-׿]/.test(text);
+const isTextHebrew   = (text) => HEBREW_RANGE.test(text);
 
 const getCinematicTitle = (text) => {
   if (!text) return '';

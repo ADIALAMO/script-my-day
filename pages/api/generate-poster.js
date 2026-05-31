@@ -272,6 +272,7 @@ const POSTER_DAILY_LIMIT = 2;
 // ─── Handler ─────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
+  try {
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
 
   // Diagnostic: log which cascade providers are actually configured.
@@ -411,4 +412,17 @@ export default async function handler(req, res) {
     isPlaceholder: true,
     details: `All providers exhausted (${trackLabel}).`,
   });
+  } catch (error) {
+    console.error('🔴 SERVER CRASH ——————————————————————————');
+    console.error('Name   :', error.name);
+    console.error('Message:', error.message);
+    console.error('Stack  :', error.stack);
+    console.error('————————————————————————————————————————————');
+    return res.status(500).json({
+      success: false,
+      code: 'SERVER_ERROR',
+      message: error.message || 'Internal server error.',
+      errorType: error.name,
+    });
+  }
 }

@@ -117,15 +117,11 @@ export default async function handler(req, res) {
     console.error('Stack  :', error.stack);
     console.error('————————————————————————————————————————————');
 
-    // Return the real error in the body so the browser console shows exactly
-    // what broke instead of a generic "500 HTML block".
-    // Remove errorStack before going to production once the root cause is found.
     return res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',
       message: error.message || 'Internal server error.',
       errorType: error.name,
-      errorStack: error.stack,
     });
   }
 }

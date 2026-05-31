@@ -3,7 +3,7 @@ import redis from '../../lib/redis.js';
 import { CODES } from '../../lib/messages.js';
 import { nextMidnightUTC, extractIdentifier, isAdminRequest } from '../../lib/api-utils.js';
 
-export const config = { maxDuration: 45 };
+export const maxDuration = 60;
 
 const COMIC_DAILY_LIMIT = 1;
 

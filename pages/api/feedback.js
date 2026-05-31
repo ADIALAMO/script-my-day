@@ -1,18 +1,9 @@
 import redis from '../../lib/redis.js';
 import { extractIdentifier } from '../../lib/api-utils.js';
+import { sanitize } from '../../utils/input-processor.js';
 
 const RATE_LIMIT      = 5;     // max submissions per window
 const RATE_WINDOW_SEC = 3600;  // 1 hour
-const MAX_TEXT_LEN    = 500;
-
-function sanitizeText(raw) {
-  if (typeof raw !== 'string') return '';
-  return raw
-    .replace(/<[^>]*>/g, '')  // strip HTML tags
-    .replace(/[<>]/g, '')     // belt-and-suspenders angle-bracket strip
-    .trim()
-    .slice(0, MAX_TEXT_LEN);
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -20,7 +11,7 @@ export default async function handler(req, res) {
   }
 
   const { text, lang, producerName } = req.body;
-  const cleanText = sanitizeText(text);
+  const cleanText = sanitize(text, 500);
 
   if (!cleanText) {
     return res.status(400).json({ message: 'Feedback text is required' });
