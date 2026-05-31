@@ -19,7 +19,7 @@ import CinematicLoader from '../components/CinematicLoader';
 import { useScriptHistory } from '../hooks/useScriptHistory';
 
 function HomePage() {
-  const { data: session } = useSession();
+  const { data: session, update: updateSession } = useSession();
 
   const [script, setScript] = useState('');
   const [scriptLoading, setScriptLoading] = useState(false);
@@ -52,6 +52,8 @@ function HomePage() {
 
   // ── Upgrade modal (authenticated free users) ───────────────────────────────
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  // Stripe checkout return — 'success' | 'cancelled' | null
+  const [checkoutNotice, setCheckoutNotice] = useState(null);
 
   // Smart router: authenticated users hitting 'upgrade' see the Pro plan modal,
   // not the sign-in modal. All other contexts go to the auth gate.
@@ -74,6 +76,14 @@ function HomePage() {
     if (next) localStorage.setItem('lifescript_dev_tier', next);
     else localStorage.removeItem('lifescript_dev_tier');
   }, [devTier]);
+
+  // Auto-dismiss the success notice after 7 s so it doesn't linger.
+  // Cancelled notice stays until the user explicitly closes it.
+  useEffect(() => {
+    if (checkoutNotice !== 'success') return;
+    const t = setTimeout(() => setCheckoutNotice(null), 7000);
+    return () => clearTimeout(t);
+  }, [checkoutNotice]);
 
   // --- Director's Log Logic ---
   const [showFeedback, setShowFeedback] = useState(false);
@@ -127,16 +137,33 @@ function HomePage() {
     const savedDevTier = localStorage.getItem('lifescript_dev_tier');
     if (savedDevTier === 'free' || savedDevTier === 'pro') setDevTier(savedDevTier);
 
-    // Bootstrap admin key from URL on first mobile visit.
-    // Usage: http://192.168.x.x:3000?admin_key=YOUR_SECRET
-    // The key is persisted to localStorage and the param is scrubbed from the
-    // URL immediately so it doesn't appear in browser history or get shared.
+    // ── URL param handling — single replaceState for all recognised params ──
+    // admin_key : mobile dev bootstrap (stores to localStorage, scrubs from URL)
+    // checkout  : Stripe return signal — 'success' | 'cancelled'
     const urlParams = new URLSearchParams(window.location.search);
+    let urlDirty = false;
+
     const urlAdminKey = urlParams.get('admin_key');
     if (urlAdminKey) {
       localStorage.setItem('lifescript_admin_key', urlAdminKey);
       setTempAdminKey(urlAdminKey);
       urlParams.delete('admin_key');
+      urlDirty = true;
+    }
+
+    const checkoutParam = urlParams.get('checkout');
+    if (checkoutParam === 'success') {
+      setCheckoutNotice('success');
+      updateSession?.(); // force NextAuth to re-fetch session from server
+      urlParams.delete('checkout');
+      urlDirty = true;
+    } else if (checkoutParam === 'cancelled') {
+      setCheckoutNotice('cancelled');
+      urlParams.delete('checkout');
+      urlDirty = true;
+    }
+
+    if (urlDirty) {
       const cleanUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
       window.history.replaceState(null, '', cleanUrl);
     }
@@ -335,6 +362,67 @@ function HomePage() {
       <main className="container mx-auto pt-4 md:pt-8 pb-12 px-6 max-w-5xl flex-grow relative">
 
         <HeroSection setShowAdminPanel={setShowAdminPanel} lang={lang} />
+
+        {/* ── Stripe checkout return notification ───────────────────────── */}
+        <AnimatePresence>
+          {checkoutNotice && (
+            <motion.div
+              key="checkout-notice"
+              initial={{ opacity: 0, y: -10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.98 }}
+              transition={{ duration: 0.32, ease: 'easeOut' }}
+              className="mb-4"
+            >
+              {checkoutNotice === 'success' ? (
+                <div
+                  className="flex items-center gap-3.5 px-5 py-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 shadow-[0_4px_24px_rgba(245,158,11,0.10)]"
+                  dir={lang === 'he' ? 'rtl' : 'ltr'}
+                >
+                  <div className="shrink-0 w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
+                    <Check size={14} className="text-amber-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-amber-400 font-black text-[13px] leading-none mb-0.5">
+                      {lang === 'he' ? '✦ ברוך הבא לפרו!' : '✦ Welcome to Pro!'}
+                    </p>
+                    <p className="text-amber-400/55 text-[11px]">
+                      {lang === 'he'
+                        ? 'החשבון שלך שודרג. כל יכולות הפרו פעילות עכשיו.'
+                        : 'Your account is upgraded. All Pro features are now active.'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setCheckoutNotice(null)}
+                    aria-label={lang === 'he' ? 'סגור' : 'Dismiss'}
+                    className="shrink-0 p-1.5 rounded-lg text-amber-400/35 hover:text-amber-400 hover:bg-amber-500/10 transition-all duration-150"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  className="flex items-center gap-3.5 px-5 py-4 rounded-2xl bg-white/[0.04] border border-white/8"
+                  dir={lang === 'he' ? 'rtl' : 'ltr'}
+                >
+                  <AlertCircle size={15} className="shrink-0 text-white/30" />
+                  <p className="flex-1 text-white/40 text-[12px]">
+                    {lang === 'he'
+                      ? 'הרכישה בוטלה — תוכל לשדרג בכל עת.'
+                      : 'Checkout was cancelled — you can upgrade anytime.'}
+                  </p>
+                  <button
+                    onClick={() => setCheckoutNotice(null)}
+                    aria-label={lang === 'he' ? 'סגור' : 'Dismiss'}
+                    className="shrink-0 p-1.5 text-white/20 hover:text-white/50 transition-colors duration-150"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Admin Panel */}
         <AnimatePresence>
