@@ -29,11 +29,15 @@ const STORYBOARD_MESSAGES_EN = ['Scanning scenes...', 'Mapping panels...', 'Inki
  * image generation, loading state, error state, and comic style selection.
  * Self-resets whenever the parent `script` prop changes.
  *
+ * Image generation is intentionally skipped for locked panels (idx >= unlockedPanels)
+ * so free-tier users never consume Cloudflare / OpenRouter credits on content they
+ * cannot see. StoryboardView renders a blur/lock overlay for those slots instead.
+ *
  * @param {Object} opts
  * @param {string} opts.lang        - 'en' | 'he'
  * @param {string} opts.genre       - Active genre key
- * @param {string}   opts.cleanScript    - Parsed script text (used as generation input)
- * @param {string}   opts.script         - Raw script prop — used only as a reset signal
+ * @param {string} opts.cleanScript - Parsed script text (used as generation input)
+ * @param {string} opts.script      - Raw script prop — used only as a reset signal
  * @param {Function} opts.onAuthRequired - Called with context string when API returns 403
  */
 export function useStoryboardGeneration({ lang, genre, cleanScript, script, onAuthRequired }) {
@@ -46,6 +50,7 @@ export function useStoryboardGeneration({ lang, genre, cleanScript, script, onAu
   const [storyboardErrorCode, setStoryboardErrorCode] = useState('');
   const [comicStyle,        setComicStyle]         = useState('anime');
   const [panelImages, dispatchPanelImages]         = useReducer(panelImagesReducer, {});
+  const [unlockedPanels,    setUnlockedPanels]     = useState(0);
 
   const storyboardActiveRef = useRef(false);
 
@@ -59,25 +64,23 @@ export function useStoryboardGeneration({ lang, genre, cleanScript, script, onAu
     setStoryboardPanels([]);
     setStoryboardError('');
     setStoryboardErrorCode('');
+    setUnlockedPanels(0);
     dispatchPanelImages({ type: 'RESET' });
   }, [script]);
 
   // ── Panel image generation ────────────────────────────────────────────────
 
-  const generateStoryboardImages = useCallback(async (panels) => {
+  const generateStoryboardImages = useCallback(async (panels, unlocked) => {
     dispatchPanelImages({ type: 'INIT_ALL', count: panels.length });
 
-    // Dispatch panel requests with a client-side stagger so they arrive at the server
-    // 2 000ms apart. This matches the server-side stagger window (idx * 2000ms) and
-    // ensures panel 1 does NOT hit the server before panel 0 has had time to write its
-    // circuit-breaker failure to Redis (~120ms round-trip). Without this stagger, all 7
-    // requests arrive simultaneously and read a clean circuit state — none of them benefit
-    // from panel 0's Gemini failure — causing a burst of Gemini hits or Pollinations hits.
+    // Fire image requests only for unlocked panels. Locked panels (idx >= unlocked)
+    // stay in their initial "loading: true" state — StoryboardView renders a lock
+    // overlay for them and never tries to display panelImages state for those slots.
     //
-    // Each fetch is NOT awaited inline; it runs in the background and updates state
-    // independently via dispatchPanelImages, preserving the progressive-loading UX where
-    // panels fill in as they complete rather than all at once at the end.
+    // All unlocked requests fire concurrently (no stagger needed — Cloudflare Workers AI
+    // handles burst well, and the Gemini-era stagger has been removed along with Gemini).
     for (const [idx, panel] of panels.entries()) {
+      if (idx >= unlocked) break;
       if (!storyboardActiveRef.current) break;
 
       // Fire and forget — panel fills in when the provider responds.
@@ -106,13 +109,6 @@ export function useStoryboardGeneration({ lang, genre, cleanScript, script, onAu
           dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: false, url: null, error: true } });
         }
       })();
-
-      // Wait before launching the next panel so the server-side circuit breaker state
-      // has time to be written by the previous panel's request. Skip the delay after
-      // the last panel — no next request to stagger.
-      if (idx < panels.length - 1) {
-        await new Promise((r) => setTimeout(r, 2000));
-      }
     }
   }, [genre, lang]);
 
@@ -127,6 +123,7 @@ export function useStoryboardGeneration({ lang, genre, cleanScript, script, onAu
 
     const deviceId = typeof window !== 'undefined' ? localStorage.getItem('lifescript_device_id') || '' : '';
     const adminKey = typeof window !== 'undefined' ? localStorage.getItem('lifescript_admin_key') || '' : '';
+    const devTier  = typeof window !== 'undefined' ? localStorage.getItem('lifescript_dev_tier')  || '' : '';
 
     try {
       const response = await fetch('/api/generate-storyboard', {
@@ -135,6 +132,7 @@ export function useStoryboardGeneration({ lang, genre, cleanScript, script, onAu
           'Content-Type': 'application/json',
           'x-device-id':  deviceId,
           'x-admin-key':  adminKey,
+          ...(devTier ? { 'x-dev-tier': devTier } : {}),
         },
         body: JSON.stringify({ script: cleanScript, lang, genre, comicStyle, deviceId }),
       });
@@ -146,11 +144,18 @@ export function useStoryboardGeneration({ lang, genre, cleanScript, script, onAu
       }
 
       if (data.success && data.panels?.length > 0) {
+        // unlockedPanels from API tells us how many panels this tier may see.
+        // Default to full panel count if the field is missing (backwards compat).
+        const unlocked = typeof data.unlockedPanels === 'number'
+          ? data.unlockedPanels
+          : data.panels.length;
+
         storyboardActiveRef.current = true;
         setStoryboardPanels(data.panels);
+        setUnlockedPanels(unlocked);
         setShowStoryboard(true);
         track('Storyboard Generated', { genre, language: lang });
-        generateStoryboardImages(data.panels);
+        generateStoryboardImages(data.panels, unlocked);
       } else {
         const code = data.code || CODES.STORYBOARD_FAIL;
         setStoryboardErrorCode(code);
@@ -173,6 +178,7 @@ export function useStoryboardGeneration({ lang, genre, cleanScript, script, onAu
     storyboardActiveRef.current = false;
     setShowStoryboard(false);
     setStoryboardPanels([]);
+    setUnlockedPanels(0);
     dispatchPanelImages({ type: 'RESET' });
   }, []);
 
@@ -183,6 +189,7 @@ export function useStoryboardGeneration({ lang, genre, cleanScript, script, onAu
     storyboardError,
     storyboardErrorCode,
     panelImages,
+    unlockedPanels,
     comicStyle,
     setComicStyle,
     currentStoryboardMessage: currentMessage,

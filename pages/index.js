@@ -32,6 +32,7 @@ function HomePage() {
   const [isTyping, setIsTyping] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [tempAdminKey, setTempAdminKey] = useState('');
+  const [devTier, setDevTier] = useState(null); // null | 'free' | 'pro' — admin preview only
   const [modalContent, setModalContent] = useState(null);
   const [showTips, setShowTips] = useState(false);
   const [showGallery, setShowGallery] = useState(true);
@@ -66,6 +67,13 @@ function HomePage() {
   const closeAuthModal = useCallback(() => {
     setShowAuthModal(false);
   }, []);
+
+  const cycleDevTier = useCallback(() => {
+    const next = devTier === null ? 'free' : devTier === 'free' ? 'pro' : null;
+    setDevTier(next);
+    if (next) localStorage.setItem('lifescript_dev_tier', next);
+    else localStorage.removeItem('lifescript_dev_tier');
+  }, [devTier]);
 
   // --- Director's Log Logic ---
   const [showFeedback, setShowFeedback] = useState(false);
@@ -115,6 +123,9 @@ function HomePage() {
 
     const savedKey = localStorage.getItem('lifescript_admin_key');
     if (savedKey) setTempAdminKey(savedKey);
+
+    const savedDevTier = localStorage.getItem('lifescript_dev_tier');
+    if (savedDevTier === 'free' || savedDevTier === 'pro') setDevTier(savedDevTier);
 
     if (!localStorage.getItem('lifescript_device_id')) {
       const newId = 'ds_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
@@ -389,12 +400,11 @@ function HomePage() {
           context={authModalContext}
         />
 
-        {/* Upgrade modal — Pro plan preview for authenticated free users */}
+        {/* Upgrade modal — Pro plan for authenticated free users */}
         <UpgradeModal
           isOpen={showUpgradeModal}
           onClose={() => setShowUpgradeModal(false)}
           lang={lang}
-          onStripeCheckout={null}
         />
 
         {/* Modals (Terms, Privacy, Support, About) */}
@@ -807,6 +817,24 @@ function HomePage() {
         onDelete={deleteEntry}
         lang={lang}
       />
+
+      {/* Dev tier preview toggle — only visible when admin key is configured */}
+      {mounted && !!tempAdminKey && (
+        <button
+          onClick={cycleDevTier}
+          title="Dev: cycle tier preview (free → pro → admin)"
+          className={`fixed bottom-6 left-6 z-[9999] flex items-center gap-1.5 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.18em] border backdrop-blur-md shadow-lg transition-all duration-200 select-none
+            ${devTier === 'free'
+              ? 'bg-sky-500/15 border-sky-500/35 text-sky-400 hover:bg-sky-500/25'
+              : devTier === 'pro'
+              ? 'bg-amber-500/15 border-amber-500/35 text-amber-400 hover:bg-amber-500/25'
+              : 'bg-white/[0.06] border-white/10 text-white/30 hover:bg-white/[0.10] hover:text-white/50'}`}
+        >
+          <span className="opacity-40 text-[7px] font-black">DEV</span>
+          <span className="opacity-20 mx-0.5">·</span>
+          <span>{devTier ? `AS ${devTier.toUpperCase()}` : 'ADMIN'}</span>
+        </button>
+      )}
 
       <Analytics />
     </div>

@@ -94,6 +94,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
   const {
     showStoryboard, storyboardPanels, storyboardLoading,
     storyboardError, storyboardErrorCode, panelImages,
+    unlockedPanels,
     comicStyle, setComicStyle, currentStoryboardMessage,
     generateStoryboard, closeStoryboard,
   } = useStoryboardGeneration({ lang, genre, cleanScript, script, onAuthRequired });
@@ -672,6 +673,8 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
             lang={lang}
             panelImages={panelImages}
             onClose={closeStoryboard}
+            unlockedPanels={unlockedPanels}
+            onUpgrade={() => onAuthRequired('upgrade')}
           />
         )}
       </AnimatePresence>

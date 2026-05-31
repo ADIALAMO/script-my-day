@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Copy, Check, X, Clapperboard, Film, Loader2, ChevronDown, Download, Share2 } from 'lucide-react';
+import { Copy, Check, X, Clapperboard, Film, Loader2, ChevronDown, Download, Share2, Lock, Crown } from 'lucide-react';
 
-export default function StoryboardView({ panels, lang, panelImages, onClose }) {
+export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade }) {
   const isHebrew = lang === 'he';
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [allCopied, setAllCopied] = useState(false);
@@ -18,7 +18,11 @@ export default function StoryboardView({ panels, lang, panelImages, onClose }) {
 
   const copyAll = () => {
     const sep = '\n\n' + '━'.repeat(40) + '\n\n';
-    const allText = panels.map(p => `PANEL ${String(p.panel).padStart(2, '0')} — ${p.scene}\n\nVISUAL PROMPT:\n${p.visual}\n\n${isHebrew ? 'דיאלוג' : 'DIALOGUE'}:\n${p.dialogue || '—'}`).join(sep);
+    // Only copy prompts from unlocked panels
+    const visiblePanels = panels.slice(0, unlockedPanels);
+    const allText = visiblePanels.map(p =>
+      `PANEL ${String(p.panel).padStart(2, '0')} — ${p.scene}\n\nVISUAL PROMPT:\n${p.visual}\n\n${isHebrew ? 'דיאלוג' : 'DIALOGUE'}:\n${p.dialogue || '—'}`
+    ).join(sep);
     navigator.clipboard?.writeText(allText);
     setAllCopied(true);
     setTimeout(() => setAllCopied(false), 2000);
@@ -59,13 +63,15 @@ export default function StoryboardView({ panels, lang, panelImages, onClose }) {
     return 'pending';
   };
 
+  const lockedCount = Math.max(0, panels.length - unlockedPanels);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 16 }}
       transition={{ duration: 0.55, ease: 'easeOut' }}
-      className="mx-2 md:mx-4 mt-6 bg-[#030712]/90 border border-white/5 rounded-[2.5rem] overflow-hidden"
+      className="mx-2 md:mx-4 mt-6 bg-[#030712]/90 border border-white/5 rounded-[2.5rem] [overflow:clip]"
     >
       {/* ── Header ────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-7 py-5 border-b border-[#d4a373]/10" dir={isHebrew ? 'rtl' : 'ltr'}>
@@ -91,6 +97,78 @@ export default function StoryboardView({ panels, lang, panelImages, onClose }) {
       <div className="p-5 md:p-7">
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
           {panels.map((panel, idx) => {
+            const isLocked = idx >= unlockedPanels;
+
+            /* ── Locked Panel Card ─────────────────────────────── */
+            if (isLocked) {
+              return (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ delay: idx * 0.06, duration: 0.4, ease: 'easeOut' }}
+                  onClick={onUpgrade}
+                  className="group bg-[#050710] border border-amber-500/10 rounded-[1.75rem] overflow-hidden hover:border-amber-500/30 hover:shadow-[0_8px_40px_rgba(245,158,11,0.09)] transition-all duration-400 cursor-pointer"
+                >
+                  {/* Image zone */}
+                  <div className="relative aspect-[3/2] overflow-hidden bg-[#030409]">
+                    {/* Atmospheric gradient — suggests cinematic depth */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#120a1e] via-[#040208] to-[#1a1008] pointer-events-none" />
+                    {/* Subtle diagonal texture */}
+                    <div
+                      className="absolute inset-0 opacity-[0.025] pointer-events-none"
+                      style={{ backgroundImage: 'repeating-linear-gradient(45deg,#fff 0px,#fff 1px,transparent 1px,transparent 9px)' }}
+                    />
+                    {/* Amber radial glow — intensifies on hover */}
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(245,158,11,0.07)_0%,transparent_65%)] group-hover:bg-[radial-gradient(ellipse_at_center,rgba(245,158,11,0.13)_0%,transparent_65%)] transition-all duration-400 pointer-events-none" />
+
+                    {/* Panel badge */}
+                    <div className="absolute top-3 left-3 z-20 px-2.5 py-1 bg-black/70 backdrop-blur-sm border border-amber-500/12 rounded-lg" dir="ltr">
+                      <span className="text-amber-500/38 font-black text-[9px] tracking-[0.35em] uppercase">
+                        {`PANEL ${String(panel.panel).padStart(2, '0')}`}
+                      </span>
+                    </div>
+
+                    {/* Scene badge — blurred to hint without revealing */}
+                    <div className="absolute top-3 right-3 z-20 max-w-[52%] px-2 py-1 bg-black/40 backdrop-blur-sm rounded-lg">
+                      <span className="text-white/15 text-[8px] font-mono tracking-wide truncate block blur-[3px] select-none" dir="ltr">
+                        {panel.scene}
+                      </span>
+                    </div>
+
+                    {/* Lock CTA — centered */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center z-10 gap-2.5 px-4">
+                      <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/22 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.13)] group-hover:shadow-[0_0_30px_rgba(245,158,11,0.24)] group-hover:bg-amber-500/16 transition-all duration-350">
+                        <Lock size={19} className="text-amber-400/65 group-hover:text-amber-400 transition-colors duration-250" />
+                      </div>
+                      <p className="text-amber-400/55 font-black text-[8.5px] tracking-[0.32em] uppercase group-hover:text-amber-400/90 transition-colors duration-250">
+                        {isHebrew ? 'פרו בלבד' : 'Pro Only'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Content zone — blurred dialogue teaser */}
+                  <div className="p-4 space-y-2.5">
+                    {panel.dialogue && (
+                      <p
+                        className="text-white/10 text-[13.5px] italic leading-relaxed blur-[4px] select-none pointer-events-none"
+                        dir={isHebrew ? 'rtl' : 'ltr'}
+                      >
+                        &ldquo;{panel.dialogue}&rdquo;
+                      </p>
+                    )}
+                    <div className="flex items-center gap-1.5 text-amber-500/32 group-hover:text-amber-500/65 transition-colors duration-250">
+                      <Lock size={8} />
+                      <span className="text-[7.5px] font-black uppercase tracking-widest">
+                        {isHebrew ? 'שדרג לצפייה' : 'Upgrade to view'}
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            }
+
+            /* ── Normal (Unlocked) Panel Card ──────────────────── */
             const imgState = getImageState(idx);
             const imgUrl = panelImages?.[idx]?.url;
             const isExpanded = !!expandedPrompts[idx];
@@ -246,6 +324,55 @@ export default function StoryboardView({ panels, lang, panelImages, onClose }) {
             );
           })}
         </div>
+
+        {/* ── Upgrade CTA banner — shown when locked panels exist ── */}
+        {lockedCount > 0 && onUpgrade && (
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut', delay: 0.25 }}
+            onClick={onUpgrade}
+            className="mt-5 relative overflow-hidden rounded-[1.75rem] border border-amber-500/18 bg-[#06050e] cursor-pointer group hover:border-amber-500/38 transition-all duration-400"
+          >
+            {/* Amber hairline accent */}
+            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-amber-400/38 to-transparent" />
+            {/* Sweep shimmer */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500/[0.035] to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-[1200ms] pointer-events-none" />
+
+            <div
+              className="flex flex-col sm:flex-row items-center gap-4 px-6 py-5"
+              dir={isHebrew ? 'rtl' : 'ltr'}
+            >
+              {/* Crown icon */}
+              <div className="shrink-0 w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/22 flex items-center justify-center shadow-[0_0_22px_rgba(245,158,11,0.15)] group-hover:shadow-[0_0_32px_rgba(245,158,11,0.25)] transition-all duration-350">
+                <Crown size={22} className="text-amber-400" />
+              </div>
+
+              {/* Copy */}
+              <div className={`flex-1 min-w-0 ${isHebrew ? 'text-right' : 'text-left'}`}>
+                <p className="text-white font-black text-[14px] leading-snug mb-0.5">
+                  {isHebrew
+                    ? `עוד ${lockedCount} פאנלים ממתינים לך`
+                    : `${lockedCount} more panel${lockedCount > 1 ? 's' : ''} await`}
+                </p>
+                <p className="text-white/35 text-[11.5px] leading-snug">
+                  {isHebrew
+                    ? 'שדרג ל-Pro וקבל את קשת הסיפור המלאה — 7 פאנלים, פרומפטים ועוד'
+                    : 'Upgrade to Pro for the full story arc — 7 panels, visual prompts and more'}
+                </p>
+              </div>
+
+              {/* CTA button */}
+              <button
+                onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
+                className="shrink-0 flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 active:scale-[0.97] text-black font-black text-[12px] px-5 py-2.5 rounded-xl transition-all duration-150 shadow-[0_4px_14px_rgba(245,158,11,0.26)] whitespace-nowrap select-none"
+              >
+                <Crown size={12} />
+                {isHebrew ? 'שדרג עכשיו' : 'Upgrade Now'}
+              </button>
+            </div>
+          </motion.div>
+        )}
 
         {/* ── Copy All Prompts ───────────────────────────────── */}
         <div className="mt-6 flex justify-center">

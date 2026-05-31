@@ -21,7 +21,8 @@
     "next-auth": "^4.24.14",
     "nodemailer": "^7.0.13",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "stripe": "^22.2.0"
   },
   "devDependencies": {
     "autoprefixer": "10.4.20",

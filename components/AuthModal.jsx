@@ -65,13 +65,9 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
     }
   }, [isOpen]);
 
-  // Body scroll lock while open.
-  useEffect(() => {
-    if (!isOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, [isOpen]);
+  // Scroll lock is handled by index.js's global anyOpen effect, which tracks
+  // showAuthModal. A duplicate lock here causes a race: this cleanup runs
+  // after index.js restores '', overwriting it back to 'hidden'. Removed.
 
   const handleGoogleSignIn = () => {
     signIn('google', { callbackUrl: window.location.href });

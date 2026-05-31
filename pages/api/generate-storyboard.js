@@ -1,7 +1,7 @@
 import { sanitize } from '../../utils/input-processor';
 import redis from '../../lib/redis.js';
 import { CODES } from '../../lib/messages.js';
-import { nextMidnightUTC, isAdminRequest } from '../../lib/api-utils.js';
+import { nextMidnightUTC, isAdminRequest, extractDevTier } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { limitFor } from '../../lib/quota.js';
 
@@ -167,18 +167,23 @@ export default async function handler(req, res) {
     const { script, lang, genre, comicStyle } = req.body;
 
     const isAdmin = isAdminRequest(req);
+    // Dev-tier preview: admin can pass x-dev-tier: free|pro to simulate a
+    // specific tier's unlockedPanels without touching real quota counters.
+    const devTier = isAdmin ? extractDevTier(req) : null;
 
     // Storyboard is the single quota gate for the entire comic flow.
     // generate-poster.js skips comic quota checks — panel calls are unrestricted once the
     // storyboard step is approved and counted here.
-    let usageKey   = null;
-    let comicLimit = 0;
-    let maxPanels  = 7;
+    let usageKey      = null;
+    let comicLimit    = 0;
+    let maxPanels     = 7;   // always generate the full story arc for all tiers
+    let unlockedPanels = null; // null → admin default (all panels visible)
 
     if (!isAdmin) {
       const { tier, identifier } = await getSessionAndTier(req, res);
-      comicLimit = limitFor(tier, 'comic');
-      maxPanels  = limitFor(tier, 'maxPanels');
+      comicLimit     = limitFor(tier, 'comic');
+      maxPanels      = limitFor(tier, 'maxPanels');
+      unlockedPanels = limitFor(tier, 'unlockedPanels');
       const today = new Date().toISOString().split('T')[0];
       usageKey    = `usage:comic:${identifier}:${today}`;
 
@@ -255,9 +260,19 @@ export default async function handler(req, res) {
       }
     }
 
-    // Cap panels to the tier's allowed maximum (AI may return more than requested).
+    // Cap panels to maxPanels (the LLM occasionally overshoots its 5-7 target).
     const cappedPanels = maxPanels > 0 ? enrichedPanels.slice(0, maxPanels) : enrichedPanels;
-    return res.status(200).json({ success: true, panels: cappedPanels });
+
+    // Resolve how many panels this tier may see as fully-generated images.
+    // devTier lets an admin preview the free/pro paywall without affecting quotas.
+    const effectiveUnlocked = devTier
+      ? limitFor(devTier, 'unlockedPanels')  // admin previewing a specific tier
+      : unlockedPanels;                       // real tier (null = full admin access)
+    const finalUnlocked = effectiveUnlocked === null
+      ? cappedPanels.length
+      : Math.min(effectiveUnlocked, cappedPanels.length);
+
+    return res.status(200).json({ success: true, panels: cappedPanels, unlockedPanels: finalUnlocked });
   } catch (err) {
     console.error('Storyboard API error:', err);
     return res.status(500).json({ success: false, code: CODES.SERVER_ERROR, message: 'Internal server error.' });
