@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Film, Languages, Clapperboard, LogOut, Crown, ChevronDown, User } from 'lucide-react';
+import { Film, Languages, Clapperboard, LogOut, Crown, ChevronDown, User, CreditCard, Loader2 } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import LaunchTicket from './LaunchTicket';
 
@@ -36,6 +36,26 @@ const FreeBadge = ({ isHe }) => (
 // Dropdown menu rendered via portal so it escapes the navbar's overflow:hidden.
 function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick }) {
   const ref = useRef(null);
+  const [portalLoading, setPortalLoading] = useState(false);
+
+  const handleManageSubscription = async () => {
+    setPortalLoading(true);
+    try {
+      const res  = await fetch('/api/portal', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        console.error('Portal error:', data.error);
+        setPortalLoading(false);
+        return;
+      }
+      // Keep the loading spinner active through the navigation — same pattern
+      // as the checkout redirect so there's no janky button reset before leaving.
+      window.location.href = data.url;
+    } catch (err) {
+      console.error('Portal request failed:', err.message);
+      setPortalLoading(false);
+    }
+  };
 
   // Position the dropdown below the anchor element.
   const [style, setStyle] = useState({});
@@ -101,6 +121,26 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick }
             <Crown size={13} className="shrink-0 group-hover:scale-110 transition-transform" />
             <span className="text-[12px] font-bold">
               {isHe ? 'שדרג לפרו 👑' : 'Upgrade to Pro 👑'}
+            </span>
+          </button>
+        )}
+
+        {/* Manage Subscription — only shown for Pro users */}
+        {isPro && (
+          <button
+            onClick={handleManageSubscription}
+            disabled={portalLoading}
+            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-amber-400/70 hover:text-amber-400 hover:bg-amber-500/[0.07] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 group"
+          >
+            {portalLoading ? (
+              <Loader2 size={13} className="shrink-0 animate-spin" />
+            ) : (
+              <CreditCard size={13} className="shrink-0 group-hover:scale-110 transition-transform" />
+            )}
+            <span className="text-[12px] font-semibold">
+              {portalLoading
+                ? (isHe ? 'פותח...' : 'Opening…')
+                : (isHe ? 'נהל מנוי' : 'Manage Subscription')}
             </span>
           </button>
         )}

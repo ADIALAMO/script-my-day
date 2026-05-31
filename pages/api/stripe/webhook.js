@@ -24,9 +24,16 @@ function collectRawBody(req) {
 
 // ── Tier helpers ──────────────────────────────────────────────────────────────
 
-async function activatePro(userId) {
-  await redis.set(`user:tier:${userId}`, 'pro');
-  console.log(`✅ Stripe webhook: Pro activated → user:tier:${userId}`);
+async function activatePro(userId, stripeCustomerId) {
+  const ops = [redis.set(`user:tier:${userId}`, 'pro')];
+  if (stripeCustomerId) {
+    ops.push(redis.set(`user:stripe_customer:${userId}`, stripeCustomerId));
+  }
+  await Promise.all(ops);
+  console.log(
+    `✅ Stripe webhook: Pro activated → user:tier:${userId}` +
+    (stripeCustomerId ? `, customer=${stripeCustomerId}` : ' (⚠️  no customer ID — portal disabled for this user)')
+  );
 }
 
 async function revokePro(userId) {
@@ -88,7 +95,7 @@ export default async function handler(req, res) {
           break;
         }
 
-        await activatePro(userId);
+        await activatePro(userId, session.customer);
         break;
       }
 
