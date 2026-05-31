@@ -47,7 +47,7 @@ const getCinematicTitle = (text) => {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, onPosterGenerated, onScriptEdited }) {
+function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, onPosterGenerated, onScriptEdited, onAuthRequired }) {
   const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST');
 
   // ── Script parsing ─────────────────────────────────────────────────────────
@@ -89,14 +89,14 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
     posterError, setPosterError, showPoster, setShowPoster,
     triggerFlash, setTriggerFlash, posterRef,
     currentPosterMessage, generatePoster, handleCapturePoster, resetPoster,
-  } = usePosterGeneration({ lang, genre, visualPrompt, posterTitle, isHebrew, finalProducerName, onPosterGenerated });
+  } = usePosterGeneration({ lang, genre, visualPrompt, posterTitle, isHebrew, finalProducerName, onPosterGenerated, onAuthRequired });
 
   const {
     showStoryboard, storyboardPanels, storyboardLoading,
     storyboardError, storyboardErrorCode, panelImages,
     comicStyle, setComicStyle, currentStoryboardMessage,
     generateStoryboard, closeStoryboard,
-  } = useStoryboardGeneration({ lang, genre, cleanScript, script });
+  } = useStoryboardGeneration({ lang, genre, cleanScript, script, onAuthRequired });
 
   // ── Script processing effect ───────────────────────────────────────────────
   useEffect(() => {

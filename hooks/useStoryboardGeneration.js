@@ -32,10 +32,11 @@ const STORYBOARD_MESSAGES_EN = ['Scanning scenes...', 'Mapping panels...', 'Inki
  * @param {Object} opts
  * @param {string} opts.lang        - 'en' | 'he'
  * @param {string} opts.genre       - Active genre key
- * @param {string} opts.cleanScript - Parsed script text (used as generation input)
- * @param {string} opts.script      - Raw script prop — used only as a reset signal
+ * @param {string}   opts.cleanScript    - Parsed script text (used as generation input)
+ * @param {string}   opts.script         - Raw script prop — used only as a reset signal
+ * @param {Function} opts.onAuthRequired - Called with context string when API returns 403
  */
-export function useStoryboardGeneration({ lang, genre, cleanScript, script }) {
+export function useStoryboardGeneration({ lang, genre, cleanScript, script, onAuthRequired }) {
   const isHebrew = lang === 'he';
 
   const [showStoryboard,    setShowStoryboard]    = useState(false);
@@ -138,6 +139,11 @@ export function useStoryboardGeneration({ lang, genre, cleanScript, script }) {
         body: JSON.stringify({ script: cleanScript, lang, genre, comicStyle, deviceId }),
       });
       const data = await response.json();
+
+      if (response.status === 403) {
+        onAuthRequired?.('comic');
+        return;
+      }
 
       if (data.success && data.panels?.length > 0) {
         storyboardActiveRef.current = true;

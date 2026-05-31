@@ -1,6 +1,8 @@
 import redis from '../../lib/redis.js';
 import { CODES } from '../../lib/messages.js';
-import { nextMidnightUTC, extractIdentifier, isAdminRequest } from '../../lib/api-utils.js';
+import { nextMidnightUTC, isAdminRequest } from '../../lib/api-utils.js';
+import { getSessionAndTier } from '../../lib/auth.js';
+import { limitFor } from '../../lib/quota.js';
 import {
   PROVIDER_KEY,
   extractStatusCode,
@@ -265,9 +267,7 @@ const COMIC_CASCADE = [
   runOpenRouterKlein,
 ];
 
-// ─── Quota constants ─────────────────────────────────────────────────────────
-
-const POSTER_DAILY_LIMIT = 2;
+// Poster limit is now tier-aware — see lib/quota.js TIER_LIMITS.
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
 
@@ -286,25 +286,36 @@ export default async function handler(req, res) {
     OPENROUTER_API_KEY:     !!process.env.OPENROUTER_API_KEY,
   });
 
-  const { prompt, visualPrompt, deviceId: bodyDeviceId, requestType, panelIndex } = req.body;
+  const { prompt, visualPrompt, requestType, panelIndex } = req.body;
   const rawPrompt = prompt || visualPrompt || '';
   const seed      = Math.floor(Math.random() * 999999);
 
   const isAdmin = isAdminRequest(req);
   const isComic = requestType === 'comic' || requestType === 'storyboard';
 
-  // Comic quota is owned by generate-storyboard.js — individual panel calls are unrestricted.
-  const identifier = extractIdentifier(req, bodyDeviceId);
-
-  const today = new Date().toISOString().split('T')[0];
-  const usageKey = `usage:poster:${identifier}:${today}`;
+  // Comic quota is owned by generate-storyboard.js — individual panel calls skip poster quota.
+  let usageKey   = null;
+  let posterLimit = 0;
 
   if (!isAdmin && !isComic) {
+    const { tier, identifier } = await getSessionAndTier(req, res);
+    posterLimit = limitFor(tier, 'poster');
+    const today = new Date().toISOString().split('T')[0];
+    usageKey    = `usage:poster:${identifier}:${today}`;
+
+    if (posterLimit === 0) {
+      return res.status(403).json({
+        success: false,
+        code: CODES.NEEDS_ACCOUNT,
+        message: 'Sign in to unlock poster generation.',
+      });
+    }
+
     try {
       const currentUsage = await redis.get(usageKey);
       const used = parseInt(currentUsage, 10) || 0;
-      console.log(`📊 Poster quota: ${usageKey} → ${used}/${POSTER_DAILY_LIMIT}`);
-      if (used >= POSTER_DAILY_LIMIT) {
+      console.log(`📊 Poster quota [${tier}]: ${usageKey} → ${used}/${posterLimit}`);
+      if (posterLimit !== Infinity && used >= posterLimit) {
         return res.status(429).json({
           success: false,
           code: CODES.QUOTA_POSTER,
@@ -317,13 +328,13 @@ export default async function handler(req, res) {
   }
 
   const trackUsage = async () => {
-    if (!isAdmin && !isComic) {
+    if (!isAdmin && !isComic && usageKey && posterLimit !== Infinity) {
       try {
         const pipeline = redis.pipeline();
         pipeline.incr(usageKey);
         pipeline.expireat(usageKey, nextMidnightUTC());
         const [newVal] = await pipeline.exec();
-        console.log(`✅ Poster quota: ${newVal}/${POSTER_DAILY_LIMIT} used`);
+        console.log(`✅ Poster quota: ${newVal}/${posterLimit} used`);
       } catch (e) {
         console.warn(`⚠️ Poster quota increment skipped (Redis unavailable): ${e.message}`);
       }

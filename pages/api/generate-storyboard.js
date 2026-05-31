@@ -1,11 +1,13 @@
 import { sanitize } from '../../utils/input-processor';
 import redis from '../../lib/redis.js';
 import { CODES } from '../../lib/messages.js';
-import { nextMidnightUTC, extractIdentifier, isAdminRequest } from '../../lib/api-utils.js';
+import { nextMidnightUTC, isAdminRequest } from '../../lib/api-utils.js';
+import { getSessionAndTier } from '../../lib/auth.js';
+import { limitFor } from '../../lib/quota.js';
 
 export const maxDuration = 60;
 
-const COMIC_DAILY_LIMIT = 1;
+// Comic limit is now tier-aware — see lib/quota.js TIER_LIMITS.
 
 function extractPanels(rawText) {
   const text = rawText.trim();
@@ -37,16 +39,18 @@ const STYLE_TRACKS = {
 
 // Opt 2: Static instruction separated from dynamic payload to enable Gemini context caching.
 // Opt 1: No prefix/suffix in the visual field — LLM outputs only the core description.
-function buildStaticInstruction(lang) {
+function buildStaticInstruction(lang, maxPanels = 7) {
   const langNote = lang === 'he'
     ? 'The screenplay is in Hebrew. Write "scene" and "dialogue" fields in Hebrew. The "visual" field MUST always be written in English.'
     : 'Write all fields in English.';
+
+  const panelRange = maxPanels <= 2 ? `exactly ${maxPanels}` : '5-7';
 
   return `You are a comic book storyboard artist.
 
 ${langNote}
 
-Break down the screenplay into 5-7 sequential panels covering the full story arc.
+Break down the screenplay into ${panelRange} sequential panels covering the full story arc.
 
 Return ONLY a valid JSON array. No markdown, no backticks, no explanation — just the JSON.
 
@@ -160,22 +164,37 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
 
   try {
-    const { script, lang, genre, comicStyle, deviceId: bodyDeviceId } = req.body;
+    const { script, lang, genre, comicStyle } = req.body;
 
-    const isAdmin    = isAdminRequest(req);
-    const identifier = extractIdentifier(req, bodyDeviceId);
-    const today = new Date().toISOString().split('T')[0];
+    const isAdmin = isAdminRequest(req);
+
     // Storyboard is the single quota gate for the entire comic flow.
     // generate-poster.js skips comic quota checks — panel calls are unrestricted once the
     // storyboard step is approved and counted here.
-    const usageKey = `usage:comic:${identifier}:${today}`;
+    let usageKey   = null;
+    let comicLimit = 0;
+    let maxPanels  = 7;
 
     if (!isAdmin) {
+      const { tier, identifier } = await getSessionAndTier(req, res);
+      comicLimit = limitFor(tier, 'comic');
+      maxPanels  = limitFor(tier, 'maxPanels');
+      const today = new Date().toISOString().split('T')[0];
+      usageKey    = `usage:comic:${identifier}:${today}`;
+
+      if (comicLimit === 0) {
+        return res.status(403).json({
+          success: false,
+          code: CODES.NEEDS_ACCOUNT,
+          message: 'Sign in to unlock comic generation.',
+        });
+      }
+
       try {
         const currentUsage = await redis.get(usageKey);
         const used = parseInt(currentUsage, 10) || 0;
-        console.log(`📊 Comic quota: ${usageKey} → ${used}/${COMIC_DAILY_LIMIT}`);
-        if (used >= COMIC_DAILY_LIMIT) {
+        console.log(`📊 Comic quota [${tier}]: ${usageKey} → ${used}/${comicLimit}`);
+        if (comicLimit !== Infinity && used >= comicLimit) {
           return res.status(429).json({
             success: false,
             code: CODES.QUOTA_COMIC,
@@ -195,7 +214,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, code: CODES.INPUT_TOO_SHORT, message: 'Script text too short.' });
     }
 
-    const staticInstruction = buildStaticInstruction(lang || 'en');
+    const staticInstruction = buildStaticInstruction(lang || 'en', maxPanels);
     // Opt 1: track is resolved here so prefix/suffix are injected server-side after parsing,
     // not included in the LLM prompt — saves ~140-175 output tokens per generation.
     const track = STYLE_TRACKS[comicStyle || 'anime'];
@@ -224,19 +243,21 @@ export default async function handler(req, res) {
 
     // Increment comic quota only after a successful storyboard generation.
     // This is the single consumption point for the entire comic flow (panel image calls are unrestricted).
-    if (!isAdmin) {
+    if (!isAdmin && usageKey && comicLimit !== Infinity) {
       try {
         const pipeline = redis.pipeline();
         pipeline.incr(usageKey);
         pipeline.expireat(usageKey, nextMidnightUTC());
         const [newVal] = await pipeline.exec();
-        console.log(`✅ Comic quota: ${newVal}/${COMIC_DAILY_LIMIT} used`);
+        console.log(`✅ Comic quota: ${newVal}/${comicLimit} used`);
       } catch (err) {
         console.warn(`⚠️ Comic quota increment skipped (Redis unavailable): ${err.message}`);
       }
     }
 
-    return res.status(200).json({ success: true, panels: enrichedPanels });
+    // Cap panels to the tier's allowed maximum (AI may return more than requested).
+    const cappedPanels = maxPanels > 0 ? enrichedPanels.slice(0, maxPanels) : enrichedPanels;
+    return res.status(200).json({ success: true, panels: cappedPanels });
   } catch (err) {
     console.error('Storyboard API error:', err);
     return res.status(500).json({ success: false, code: CODES.SERVER_ERROR, message: 'Internal server error.' });

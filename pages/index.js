@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Head from 'next/head';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Film, Copyright, AlertCircle, Key, X, Download, Share2, MessageSquare, Send, Check } from 'lucide-react';
 import { getMsg, CODES, isQuotaError, inferCode } from '../lib/messages.js';
 import Navbar from '../components/Navbar';
+import AuthModal from '../components/AuthModal';
+import UpgradeModal from '../components/UpgradeModal';
+import { useSession } from 'next-auth/react';
 import ScriptOutput from '../components/ScriptOutput';
 import HeroSection from '../components/HeroSection';
 import ScriptForm from '../components/ScriptForm';
@@ -16,6 +19,8 @@ import CinematicLoader from '../components/CinematicLoader';
 import { useScriptHistory } from '../hooks/useScriptHistory';
 
 function HomePage() {
+  const { data: session } = useSession();
+
   const [script, setScript] = useState('');
   const [scriptLoading, setScriptLoading] = useState(false);
   const [error, setError] = useState('');
@@ -39,6 +44,28 @@ function HomePage() {
 
   const { history, addEntry, updateEntry, deleteEntry } = useScriptHistory();
   const [showHistory, setShowHistory] = useState(false);
+
+  // ── Auth modal (unauthenticated flows) ────────────────────────────────────
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalContext, setAuthModalContext] = useState('general');
+
+  // ── Upgrade modal (authenticated free users) ───────────────────────────────
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Smart router: authenticated users hitting 'upgrade' see the Pro plan modal,
+  // not the sign-in modal. All other contexts go to the auth gate.
+  const openAuthModal = useCallback((context = 'general') => {
+    if (context === 'upgrade' && session) {
+      setShowUpgradeModal(true);
+      return;
+    }
+    setAuthModalContext(context);
+    setShowAuthModal(true);
+  }, [session]);
+
+  const closeAuthModal = useCallback(() => {
+    setShowAuthModal(false);
+  }, []);
 
   // --- Director's Log Logic ---
   const [showFeedback, setShowFeedback] = useState(false);
@@ -99,12 +126,12 @@ function HomePage() {
   // Prevents background scroll bleed whenever any page-level overlay is open.
   // HistoryPanel owns its own lock internally; this covers all other modals.
   useEffect(() => {
-    const anyOpen = showAdminPanel || !!modalContent || !!selectedPoster;
+    const anyOpen = showAdminPanel || !!modalContent || !!selectedPoster || showAuthModal || showUpgradeModal;
     if (!anyOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
-  }, [showAdminPanel, modalContent, selectedPoster]);
+  }, [showAdminPanel, modalContent, selectedPoster, showAuthModal, showUpgradeModal]);
 
   const toggleLanguage = () => setLang(prev => prev === 'he' ? 'en' : 'he');
 
@@ -176,6 +203,12 @@ function HomePage() {
           console.error(`🔴 Non-JSON ${response.status} from /api/generate-script — likely a Vercel timeout`);
           throw new Error(lang === 'he' ? `שרת ההפקה לא זמין כרגע (HTTP ${response.status})` : `Production server offline (HTTP ${response.status})`);
         }
+      }
+
+      if (response.status === 403) {
+        setScriptLoading(false);
+        openAuthModal('quota');
+        return;
       }
 
       if (response.status === 429) {
@@ -271,6 +304,7 @@ function HomePage() {
         onLanguageToggle={toggleLanguage}
         historyCount={history.length}
         onHistoryOpen={() => setShowHistory(true)}
+        onOpenAuthModal={openAuthModal}
       />
 
       <main className="container mx-auto pt-4 md:pt-8 pb-12 px-6 max-w-5xl flex-grow relative">
@@ -346,6 +380,22 @@ function HomePage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Auth modal — sign-in gate for unauthenticated users */}
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={closeAuthModal}
+          lang={lang}
+          context={authModalContext}
+        />
+
+        {/* Upgrade modal — Pro plan preview for authenticated free users */}
+        <UpgradeModal
+          isOpen={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          lang={lang}
+          onStripeCheckout={null}
+        />
 
         {/* Modals (Terms, Privacy, Support, About) */}
         <AnimatePresence>
@@ -555,6 +605,7 @@ function HomePage() {
                 producerName={producerName}
                 onPosterGenerated={(url) => updateEntry(currentEntryIdRef.current, { posterUrl: url })}
                 onScriptEdited={(text) => updateEntry(currentEntryIdRef.current, { script: text })}
+                onAuthRequired={openAuthModal}
               />
             </motion.div>
           )}

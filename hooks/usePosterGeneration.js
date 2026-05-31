@@ -36,6 +36,7 @@ const POSTER_MESSAGES_EN = [
  * @param {boolean}  opts.isHebrew         - Derived from the script text (not lang prop)
  * @param {string}   opts.finalProducerName
  * @param {Function} opts.onPosterGenerated - Called with the final imageUrl on success
+ * @param {Function} opts.onAuthRequired  - Called with context string when the API returns 403
  */
 export function usePosterGeneration({
   lang,
@@ -45,6 +46,7 @@ export function usePosterGeneration({
   isHebrew,
   finalProducerName,
   onPosterGenerated,
+  onAuthRequired,
 }) {
   const [posterUrl,     setPosterUrl]     = useState('');
   const [posterLoading, setPosterLoading] = useState(false);
@@ -80,6 +82,13 @@ export function usePosterGeneration({
         body: JSON.stringify({ prompt, genre, lang, deviceId }),
       });
       const data = await response.json();
+
+      if (response.status === 403) {
+        setPosterLoading(false);
+        setShowPoster(false);
+        onAuthRequired?.('poster');
+        return;
+      }
 
       if (response.status === 429) {
         setPosterError(getMsg(data.code || CODES.QUOTA_POSTER, lang));

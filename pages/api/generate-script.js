@@ -2,12 +2,13 @@ import { generateScript } from '../../lib/story-service.js';
 import redis from '../../lib/redis.js';
 import { sanitize } from '../../utils/input-processor';
 import { CODES } from '../../lib/messages.js';
-import { nextMidnightUTC, extractIdentifier, isAdminRequest } from '../../lib/api-utils.js';
+import { nextMidnightUTC, isAdminRequest } from '../../lib/api-utils.js';
+import { getSessionAndTier } from '../../lib/auth.js';
+import { limitFor } from '../../lib/quota.js';
 
 // Must be a top-level export — NOT nested inside config — for Vercel to honour it.
 export const maxDuration = 60;
 
-const DAILY_LIMIT = 3;
 const REQUIRED_KEYS = ['GOOGLE_GEMINI_API_KEY', 'OPENROUTER_API_KEY', 'COHERE_API_KEY'];
 
 export default async function handler(req, res) {
@@ -39,21 +40,24 @@ export default async function handler(req, res) {
     }
 
     // ── Parse body ────────────────────────────────────────────────────────────
-    const { journalEntry, genre, deviceId: bodyDeviceId } = req.body;
+    const { journalEntry, genre } = req.body;
 
     const isAdmin = isAdminRequest(req);
-    let usageKey = null;
+    let usageKey  = null;
+    let dailyLimit = 0;
 
     // ── Quota gate ────────────────────────────────────────────────────────────
     if (!isAdmin) {
-      const identifier = extractIdentifier(req, bodyDeviceId);
-      const today      = new Date().toISOString().split('T')[0];
-      usageKey         = `usage:script:${identifier}:${today}`;
+      const { tier, identifier } = await getSessionAndTier(req, res);
+      dailyLimit = limitFor(tier, 'script');
+      const today = new Date().toISOString().split('T')[0];
+      usageKey    = `usage:script:${identifier}:${today}`;
 
       try {
         const currentUsage = await redis.get(usageKey);
-        console.log(`📊 Script quota: ${usageKey} → ${currentUsage ?? 0}/${DAILY_LIMIT}`);
-        if (currentUsage && parseInt(currentUsage, 10) >= DAILY_LIMIT) {
+        const used = parseInt(currentUsage, 10) || 0;
+        console.log(`📊 Script quota [${tier}]: ${usageKey} → ${used}/${dailyLimit === Infinity ? '∞' : dailyLimit}`);
+        if (dailyLimit !== Infinity && used >= dailyLimit) {
           return res.status(429).json({
             success: false,
             code: CODES.QUOTA_SCRIPT,
@@ -91,13 +95,13 @@ export default async function handler(req, res) {
     }
 
     // ── Quota increment (atomic pipeline) ─────────────────────────────────────
-    if (!isAdmin && usageKey) {
+    if (!isAdmin && usageKey && dailyLimit !== Infinity) {
       try {
         const pipeline = redis.pipeline();
         pipeline.incr(usageKey);
         pipeline.expireat(usageKey, nextMidnightUTC());
         const [newVal] = await pipeline.exec();
-        console.log(`✅ Script quota: ${newVal}/${DAILY_LIMIT} used`);
+        console.log(`✅ Script quota: ${newVal}/${dailyLimit} used`);
       } catch (err) {
         console.warn(`⚠️ Script quota increment skipped (Redis unavailable): ${err.message}`);
       }
