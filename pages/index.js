@@ -127,6 +127,20 @@ function HomePage() {
     const savedDevTier = localStorage.getItem('lifescript_dev_tier');
     if (savedDevTier === 'free' || savedDevTier === 'pro') setDevTier(savedDevTier);
 
+    // Bootstrap admin key from URL on first mobile visit.
+    // Usage: http://192.168.x.x:3000?admin_key=YOUR_SECRET
+    // The key is persisted to localStorage and the param is scrubbed from the
+    // URL immediately so it doesn't appear in browser history or get shared.
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlAdminKey = urlParams.get('admin_key');
+    if (urlAdminKey) {
+      localStorage.setItem('lifescript_admin_key', urlAdminKey);
+      setTempAdminKey(urlAdminKey);
+      urlParams.delete('admin_key');
+      const cleanUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+      window.history.replaceState(null, '', cleanUrl);
+    }
+
     if (!localStorage.getItem('lifescript_device_id')) {
       const newId = 'ds_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
       localStorage.setItem('lifescript_device_id', newId);
