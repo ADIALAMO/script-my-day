@@ -18,8 +18,8 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
 
   const copyAll = () => {
     const sep = '\n\n' + '━'.repeat(40) + '\n\n';
-    // Only copy prompts from unlocked panels
-    const visiblePanels = panels.slice(0, unlockedPanels);
+    // Skip locked panels — they have no visual prompt to copy.
+    const visiblePanels = panels.filter(p => !p.isLocked && p.visual);
     const allText = visiblePanels.map(p =>
       `PANEL ${String(p.panel).padStart(2, '0')} — ${p.scene}\n\nVISUAL PROMPT:\n${p.visual}\n\n${isHebrew ? 'דיאלוג' : 'DIALOGUE'}:\n${p.dialogue || '—'}`
     ).join(sep);
@@ -97,7 +97,9 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
       <div className="p-5 md:p-7">
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
           {panels.map((panel, idx) => {
-            const isLocked = idx >= unlockedPanels;
+            // panel.isLocked is the canonical signal set by the backend.
+          // The idx >= unlockedPanels check is retained as a defence-in-depth fallback.
+          const isLocked = panel.isLocked === true || idx >= unlockedPanels;
 
             /* ── Locked Panel Card ─────────────────────────────── */
             if (isLocked) {
@@ -285,39 +287,43 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                     </p>
                   )}
 
-                  {/* Visual prompt toggle */}
-                  <button
-                    onClick={() => togglePrompt(idx)}
-                    className="flex items-center gap-1.5 text-[8.5px] font-black uppercase tracking-widest text-gray-600 hover:text-[#d4a373] transition-colors duration-200"
-                    dir="ltr"
-                  >
-                    <ChevronDown size={10} className={`transition-transform duration-250 ${isExpanded ? 'rotate-180' : ''}`} />
-                    <span>{isHebrew ? 'פרומפט ויזואלי' : 'VISUAL PROMPT'}</span>
-                  </button>
+                  {/* Visual prompt toggle — only rendered for unlocked panels that have a prompt */}
+                  {panel.visual && (
+                    <>
+                      <button
+                        onClick={() => togglePrompt(idx)}
+                        className="flex items-center gap-1.5 text-[8.5px] font-black uppercase tracking-widest text-gray-600 hover:text-[#d4a373] transition-colors duration-200"
+                        dir="ltr"
+                      >
+                        <ChevronDown size={10} className={`transition-transform duration-250 ${isExpanded ? 'rotate-180' : ''}`} />
+                        <span>{isHebrew ? 'פרומפט ויזואלי' : 'VISUAL PROMPT'}</span>
+                      </button>
 
-                  {/* Expandable visual prompt */}
-                  <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-64' : 'max-h-0'}`}>
-                    <div className="bg-black/40 rounded-xl p-3 border border-white/5">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[#d4a373]/38 text-[7.5px] font-black tracking-widest uppercase" dir="ltr">
-                          {isHebrew ? 'מותאם ל-Midjourney / Flux' : 'MIDJOURNEY / FLUX READY'}
-                        </span>
-                        <button
-                          onClick={() => copyPanel(idx, panel.visual)}
-                          className="flex items-center gap-1 text-[7.5px] font-bold text-gray-600 hover:text-[#d4a373] transition-colors duration-200"
-                        >
-                          {copiedIndex === idx ? (
-                            <><Check size={8} className="text-green-400" /><span className="text-green-400">{isHebrew ? 'הועתק' : 'Copied'}</span></>
-                          ) : (
-                            <><Copy size={8} /><span>{isHebrew ? 'העתק' : 'Copy'}</span></>
-                          )}
-                        </button>
+                      {/* Expandable visual prompt */}
+                      <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-64' : 'max-h-0'}`}>
+                        <div className="bg-black/40 rounded-xl p-3 border border-white/5">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[#d4a373]/38 text-[7.5px] font-black tracking-widest uppercase" dir="ltr">
+                              {isHebrew ? 'מותאם ל-Midjourney / Flux' : 'MIDJOURNEY / FLUX READY'}
+                            </span>
+                            <button
+                              onClick={() => copyPanel(idx, panel.visual)}
+                              className="flex items-center gap-1 text-[7.5px] font-bold text-gray-600 hover:text-[#d4a373] transition-colors duration-200"
+                            >
+                              {copiedIndex === idx ? (
+                                <><Check size={8} className="text-green-400" /><span className="text-green-400">{isHebrew ? 'הועתק' : 'Copied'}</span></>
+                              ) : (
+                                <><Copy size={8} /><span>{isHebrew ? 'העתק' : 'Copy'}</span></>
+                              )}
+                            </button>
+                          </div>
+                          <p className="text-gray-400 text-[10.5px] leading-[1.75] font-mono" dir="ltr">
+                            {panel.visual}
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-gray-400 text-[10.5px] leading-[1.75] font-mono" dir="ltr">
-                        {panel.visual}
-                      </p>
-                    </div>
-                  </div>
+                    </>
+                  )}
 
                 </div>
               </motion.div>

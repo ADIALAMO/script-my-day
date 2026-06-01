@@ -6,8 +6,19 @@ export default function Document() {
       <Head>
         <meta name="color-scheme" content="dark" />
         <meta name="theme-color" content="#030712" />
+
+        {/* Web App Manifest — must be in _document so iOS reads it before hydration */}
+        <link rel="manifest" href="/manifest.json" />
+
+        {/* iOS standalone PWA */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
+        {/*
+          black-translucent: status bar overlaps the app (we reserve space via
+          safe-area-inset). Use "default" only if you want a separate opaque bar.
+        */}
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="LifeScript" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="apple-touch-startup-image" href="/icon.png" />
 
         <style dangerouslySetInnerHTML={{ __html: `
@@ -17,11 +28,12 @@ export default function Document() {
             height: 100%; width: 100%;
             overflow: hidden; 
           }
-          #global-loader { 
-            background: #030712 !important; 
+          #global-loader {
+            background: #030712 !important;
             position: fixed; inset: 0;
             display: flex; justify-content: center; align-items: center;
             z-index: 99999;
+            pointer-events: none;
           }
           @keyframes pulse {
             0% { transform: scale(0.95); opacity: 0.6; }
@@ -50,21 +62,25 @@ export default function Document() {
         <script dangerouslySetInnerHTML={{
           __html: `
             (function() {
+              var removed = false;
               function removeLoader() {
+                if (removed) return;
+                removed = true;
                 var loader = document.getElementById('global-loader');
                 if (loader) {
                   loader.style.transition = 'opacity 0.4s ease';
                   loader.style.opacity = '0';
                   setTimeout(function() {
                     loader.style.display = 'none';
-                    document.body.style.overflow = 'auto';
-                  }, 400);
+                  }, 420);
                 }
+                document.body.style.overflow = 'auto';
+                document.documentElement.style.overflow = 'auto';
               }
-              if (document.readyState === 'complete') {
-                removeLoader();
+              if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', removeLoader);
               } else {
-                window.addEventListener('load', removeLoader);
+                removeLoader();
               }
             })();
           `

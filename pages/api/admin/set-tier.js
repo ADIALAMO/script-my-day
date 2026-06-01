@@ -1,46 +1,88 @@
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../../../lib/auth.js';
 import { isAdminRequest } from '../../../lib/api-utils.js';
 import redis from '../../../lib/redis.js';
 import { getSessionAndTier } from '../../../lib/auth.js';
 
+// Checks whether the session email is in the ADMIN_EMAILS allowlist.
+// ADMIN_EMAILS env var: comma-separated list of authorised email addresses.
+function isAllowedAdminSession(email) {
+  if (!email || !process.env.ADMIN_EMAILS) return false;
+  const allowed = process.env.ADMIN_EMAILS
+    .split(',')
+    .map(e => e.trim().toLowerCase())
+    .filter(Boolean);
+  return allowed.includes(email.toLowerCase());
+}
+
 /**
- * Dev/testing endpoint — manually promote or demote the current session's user tier.
- *
- * Requires x-admin-key header matching ADMIN_SECRET env var.
- *
  * POST /api/admin/set-tier
- * Body: { tier: 'free' | 'pro' }
  *
- * Usage (curl):
- *   curl -X POST http://localhost:3000/api/admin/set-tier \
- *     -H "Content-Type: application/json" \
- *     -H "x-admin-key: YOUR_ADMIN_SECRET" \
- *     -H "Cookie: next-auth.session-token=YOUR_SESSION_COOKIE" \
- *     -d '{"tier":"pro"}'
+ * Auth (either is sufficient):
+ *   • x-admin-key header matching ADMIN_SECRET_KEY env var  (curl / scripts)
+ *   • Active NextAuth session whose email is in ADMIN_EMAILS  (admin dashboard)
  *
- * Or from the browser console while logged in:
- *   fetch('/api/admin/set-tier', {
- *     method: 'POST',
- *     headers: { 'Content-Type': 'application/json', 'x-admin-key': 'YOUR_ADMIN_SECRET' },
- *     body: JSON.stringify({ tier: 'pro' })
- *   }).then(r => r.json()).then(console.log)
+ * Body:
+ *   { tier: 'free' | 'pro', targetEmail?: string, targetUserId?: string }
+ *
+ * Resolution order for the target user:
+ *   1. targetUserId  — use directly
+ *   2. targetEmail   — look up userId via the NextAuth Upstash adapter index
+ *   3. (neither)     — fall back to the current session user
  */
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  if (!isAdminRequest(req)) {
-    return res.status(403).json({ success: false, error: 'Admin key required.' });
+  // ── Auth gate ──────────────────────────────────────────────────────────────
+  const session = await getServerSession(req, res, authOptions);
+  const sessionEmail = session?.user?.email ?? null;
+
+  if (!isAdminRequest(req) && !isAllowedAdminSession(sessionEmail)) {
+    return res.status(403).json({ success: false, error: 'Admin access required.' });
   }
 
-  const { tier } = req.body ?? {};
+  // ── Input validation ───────────────────────────────────────────────────────
+  const { tier, targetEmail, targetUserId } = req.body ?? {};
+
   if (!['free', 'pro'].includes(tier)) {
     return res.status(400).json({ success: false, error: 'tier must be "free" or "pro".' });
   }
 
-  const { userId, email } = await getSessionAndTier(req, res);
-  if (!userId) {
-    return res.status(401).json({ success: false, error: 'No active session — sign in first.' });
+  // ── Resolve target user ────────────────────────────────────────────────────
+  let userId = targetUserId ?? null;
+  let resolvedEmail = targetEmail ?? null;
+
+  if (!userId && targetEmail) {
+    // The @next-auth/upstash-redis-adapter stores the email → userId index at
+    // this key. It uses the normalised (lowercased) email as written by NextAuth.
+    const stored = await redis.get(`user:email:${targetEmail.toLowerCase()}`);
+    if (!stored) {
+      return res.status(404).json({
+        success: false,
+        error: `No account found for ${targetEmail}. The user must have signed in at least once.`,
+      });
+    }
+    // Upstash may deserialise to an object or return a plain string depending on
+    // how the adapter wrote the value. Guard both shapes.
+    userId = typeof stored === 'object' ? (stored.id ?? String(stored)) : String(stored);
+    resolvedEmail = targetEmail;
   }
 
+  if (!userId) {
+    // No target specified — fall back to the currently authenticated user.
+    const ctx = await getSessionAndTier(req, res);
+    userId = ctx.userId;
+    resolvedEmail = ctx.email;
+  }
+
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      error: 'No target user. Provide targetEmail, targetUserId, or have an active session.',
+    });
+  }
+
+  // ── Write tier to Redis ────────────────────────────────────────────────────
   const key = `user:tier:${userId}`;
   if (tier === 'free') {
     await redis.del(key);
@@ -48,6 +90,6 @@ export default async function handler(req, res) {
     await redis.set(key, tier);
   }
 
-  console.log(`🔧 Admin set-tier: ${email} (${userId}) → ${tier}`);
-  return res.status(200).json({ success: true, userId, email, tier, redisKey: key });
+  console.log(`🔧 Admin set-tier: ${resolvedEmail} (${userId}) → ${tier}`);
+  return res.status(200).json({ success: true, userId, email: resolvedEmail, tier, redisKey: key });
 }

@@ -218,37 +218,64 @@ export default async function handler(req, res) {
   const isAdmin = isAdminRequest(req);
   const isComic = requestType === 'comic' || requestType === 'storyboard';
 
-  // Comic quota is owned by generate-storyboard.js — individual panel calls skip poster quota.
-  let usageKey   = null;
+  // Comic quota accounting is owned by generate-storyboard.js — panel image calls do
+  // not increment the poster counter.  However, each panel request must still be gated
+  // against the tier's unlock limit so that direct API calls cannot bypass the paywall.
+  let usageKey    = null;
   let posterLimit = 0;
 
-  if (!isAdmin && !isComic) {
-    const { tier, identifier } = await getSessionAndTier(req, res);
-    posterLimit = limitFor(tier, 'poster');
-    const today = new Date().toISOString().split('T')[0];
-    usageKey    = `usage:poster:${identifier}:${today}`;
+  if (!isAdmin) {
+    if (isComic) {
+      // ── Comic panel gate ───────────────────────────────────────────────────
+      // generate-storyboard.js is the FIRST layer: it only returns unlocked panels
+      // so the client never receives locked panel data.  This is the SECOND, independent
+      // layer that rejects any direct API call for a panel index beyond the tier limit.
+      const { tier } = await getSessionAndTier(req, res);
+      const unlockedPanels = limitFor(tier, 'unlockedPanels');
 
-    if (posterLimit === 0) {
-      return res.status(403).json({
-        success: false,
-        code: CODES.NEEDS_ACCOUNT,
-        message: 'Sign in to unlock poster generation.',
-      });
-    }
+      // panelIndex arrives as a JSON number from the client; guard against missing /
+      // non-numeric values (which we treat as a rejected request, fail-safe).
+      const idx = Number.isFinite(panelIndex) ? panelIndex : parseInt(panelIndex, 10);
 
-    try {
-      const currentUsage = await redis.get(usageKey);
-      const used = parseInt(currentUsage, 10) || 0;
-      console.log(`📊 Poster quota [${tier}]: ${usageKey} → ${used}/${posterLimit}`);
-      if (posterLimit !== Infinity && used >= posterLimit) {
-        return res.status(429).json({
+      if (!Number.isFinite(idx) || idx >= unlockedPanels) {
+        console.warn(`⛔ Panel blocked — index=${idx}, tier=[${tier}], unlockedPanels=${unlockedPanels}`);
+        return res.status(403).json({
           success: false,
-          code: CODES.QUOTA_POSTER,
-          message: 'Daily poster quota reached. Come back tomorrow.',
+          code: CODES.NEEDS_ACCOUNT,
+          message: 'Upgrade to Pro to generate images for all storyboard panels.',
         });
       }
-    } catch (e) {
-      console.warn(`⚠️ Poster quota check skipped (Redis unavailable): ${e.message}`);
+      console.log(`✅ Panel gate passed — index=${idx}/${unlockedPanels}, tier=[${tier}]`);
+
+    } else {
+      // ── Standalone movie poster quota ──────────────────────────────────────
+      const { tier, identifier } = await getSessionAndTier(req, res);
+      posterLimit = limitFor(tier, 'poster');
+      const today = new Date().toISOString().split('T')[0];
+      usageKey    = `usage:poster:${identifier}:${today}`;
+
+      if (posterLimit === 0) {
+        return res.status(403).json({
+          success: false,
+          code: CODES.NEEDS_ACCOUNT,
+          message: 'Sign in to unlock poster generation.',
+        });
+      }
+
+      try {
+        const currentUsage = await redis.get(usageKey);
+        const used = parseInt(currentUsage, 10) || 0;
+        console.log(`📊 Poster quota [${tier}]: ${usageKey} → ${used}/${posterLimit}`);
+        if (posterLimit !== Infinity && used >= posterLimit) {
+          return res.status(429).json({
+            success: false,
+            code: CODES.QUOTA_POSTER,
+            message: 'Daily poster quota reached. Come back tomorrow.',
+          });
+        }
+      } catch (e) {
+        console.warn(`⚠️ Poster quota check skipped (Redis unavailable): ${e.message}`);
+      }
     }
   }
 

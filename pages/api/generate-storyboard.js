@@ -260,19 +260,38 @@ export default async function handler(req, res) {
       }
     }
 
-    // Cap panels to maxPanels (the LLM occasionally overshoots its 5-7 target).
-    const cappedPanels = maxPanels > 0 ? enrichedPanels.slice(0, maxPanels) : enrichedPanels;
-
-    // Resolve how many panels this tier may see as fully-generated images.
-    // devTier lets an admin preview the free/pro paywall without affecting quotas.
+    // Resolve the effective unlock count.
+    // devTier lets an admin preview the free/pro experience without affecting real quotas.
     const effectiveUnlocked = devTier
-      ? limitFor(devTier, 'unlockedPanels')  // admin previewing a specific tier
-      : unlockedPanels;                       // real tier (null = full admin access)
-    const finalUnlocked = effectiveUnlocked === null
-      ? cappedPanels.length
-      : Math.min(effectiveUnlocked, cappedPanels.length);
+      ? limitFor(devTier, 'unlockedPanels')
+      : unlockedPanels; // null = admin (all panels)
 
-    return res.status(200).json({ success: true, panels: cappedPanels, unlockedPanels: finalUnlocked });
+    // Hard-cap to the LLM target ceiling (prevents rare overshoots above 7).
+    const panelCeiling = (maxPanels > 0 && maxPanels < enrichedPanels.length)
+      ? maxPanels
+      : enrichedPanels.length;
+
+    // Number of panels this tier may have AI images generated for.
+    const unlockedCount = effectiveUnlocked !== null
+      ? Math.min(effectiveUnlocked, panelCeiling)
+      : panelCeiling;
+
+    // Return ALL panels up to the LLM ceiling so the frontend can render the full
+    // story arc grid (including the upgrade teaser cards). Locked panels have their
+    // `visual` prompt stripped and carry `isLocked: true` — the image-generation
+    // instruction never reaches the client. generate-poster.js independently rejects
+    // any image request for a locked index as a second enforcement layer.
+    const cappedPanels = enrichedPanels.slice(0, panelCeiling).map((p, idx) => {
+      if (idx >= unlockedCount) {
+        const { visual, ...safe } = p;
+        return { ...safe, isLocked: true };
+      }
+      return p;
+    });
+
+    const lockedCount = cappedPanels.length - unlockedCount;
+    console.log(`✅ Returning ${cappedPanels.length} panels — ${unlockedCount} unlocked, ${lockedCount} locked (tier=${unlockedPanels ?? 'admin'})`);
+    return res.status(200).json({ success: true, panels: cappedPanels, unlockedPanels: unlockedCount });
   } catch (err) {
     console.error('Storyboard API error:', err);
     return res.status(500).json({ success: false, code: CODES.SERVER_ERROR, message: 'Internal server error.' });

@@ -118,13 +118,16 @@ export function useStoryboardGeneration({
   // ── Panel image generation + R2 upload ───────────────────────────────────
 
   const generateStoryboardImages = useCallback(async (panels, unlocked, sessionId) => {
-    dispatchPanelImages({ type: 'INIT_ALL', count: panels.length });
+    // Only initialise loading state for panels that will actually receive images.
+    // Locked panels (idx >= unlocked) are rendered by StoryboardView as upgrade
+    // teasers and never touch panelImages, so there is no need to track their state.
+    dispatchPanelImages({ type: 'INIT_ALL', count: unlocked });
 
-    // Fire requests only for unlocked panels — locked panels stay as loading
-    // skeletons; StoryboardView renders the lock overlay for those slots instead.
-    // All unlocked requests fire concurrently (no stagger — Cloudflare handles burst).
+    // Fire requests only for unlocked panels.
+    // panel.isLocked guards against edge-cases where the index check alone might
+    // not be sufficient (e.g. history restore with a mixed panel array).
     for (const [idx, panel] of panels.entries()) {
-      if (idx >= unlocked) break;
+      if (idx >= unlocked || panel.isLocked) break;
       if (!storyboardActiveRef.current) break;
 
       // Each panel is fire-and-forget so they render progressively.
@@ -216,8 +219,6 @@ export function useStoryboardGeneration({
     setStoryboardErrorCode('');
 
     const deviceId = typeof window !== 'undefined' ? localStorage.getItem('lifescript_device_id') || '' : '';
-    const adminKey = typeof window !== 'undefined' ? localStorage.getItem('lifescript_admin_key') || '' : '';
-    const devTier  = typeof window !== 'undefined' ? localStorage.getItem('lifescript_dev_tier')  || '' : '';
 
     try {
       const response = await fetch('/api/generate-storyboard', {
@@ -225,8 +226,6 @@ export function useStoryboardGeneration({
         headers: {
           'Content-Type': 'application/json',
           'x-device-id':  deviceId,
-          'x-admin-key':  adminKey,
-          ...(devTier ? { 'x-dev-tier': devTier } : {}),
         },
         body: JSON.stringify({ script: cleanScript, lang, genre, comicStyle, deviceId }),
       });

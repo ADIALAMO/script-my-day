@@ -24,9 +24,7 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
           <title>LIFESCRIPT | Your Life, Directed</title>
           <meta name="description" content="LIFESCRIPT: הופכים כל רגע בחיים ליצירת אמנות קולנועית. יומן תסריטים אישי שנותן לסיפור שלכם את הבמה הראויה לו." />
           <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
-          <meta name="theme-color" content="#030712" />
-          <meta name="apple-mobile-web-app-capable" content="yes" />
-          <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+          {/* PWA / theme meta tags live in _document.js — not duplicated here */}
           <meta property="og:title" content="LIFESCRIPT | Turn Your Life Into A Movie" />
           <meta property="og:description" content="החיים שלך הם סרט, הגיע הזמן לכתוב אותם. יומן תסריטים קולנועי בבימוי Adialamo Production." />
           <meta property="og:type" content="website" />

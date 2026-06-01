@@ -69,7 +69,6 @@ export function usePosterGeneration({
     const genreTag = getGenreLabel(genre, 'en');
     const prompt   = `A textless movie poster style, depicting: ${visualPrompt}. Genre: ${genreTag}. High budget Hollywood production, epic scale, 8k, ultra-detailed, sharp focus. (NO TEXT)`;
     const deviceId = typeof window !== 'undefined' ? localStorage.getItem('lifescript_device_id') || '' : '';
-    const adminKey = typeof window !== 'undefined' ? localStorage.getItem('lifescript_admin_key') || '' : '';
 
     try {
       const response = await fetch('/api/generate-poster', {
@@ -77,7 +76,6 @@ export function usePosterGeneration({
         headers: {
           'Content-Type': 'application/json',
           'x-device-id':  deviceId,
-          'x-admin-key':  adminKey,
         },
         body: JSON.stringify({ prompt, genre, lang, deviceId }),
       });

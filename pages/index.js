@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Head from 'next/head';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Film, Copyright, AlertCircle, Key, X, Download, Share2, MessageSquare, Send, Check } from 'lucide-react';
+import { Film, Copyright, AlertCircle, X, Download, Share2, MessageSquare, Send, Check } from 'lucide-react';
 import { getMsg, CODES, isQuotaError, inferCode } from '../lib/messages.js';
 import Navbar from '../components/Navbar';
 import AuthModal from '../components/AuthModal';
@@ -30,9 +30,6 @@ function HomePage() {
   const [selectedGenre, setSelectedGenre] = useState(null);
   // isTyping: true while ScriptOutput's typewriter animation is running
   const [isTyping, setIsTyping] = useState(false);
-  const [showAdminPanel, setShowAdminPanel] = useState(false);
-  const [tempAdminKey, setTempAdminKey] = useState('');
-  const [devTier, setDevTier] = useState(null); // null | 'free' | 'pro' — admin preview only
   const [modalContent, setModalContent] = useState(null);
   const [showTips, setShowTips] = useState(false);
   const [showGallery, setShowGallery] = useState(true);
@@ -56,6 +53,8 @@ function HomePage() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   // Stripe checkout return — 'success' | 'cancelled' | null
   const [checkoutNotice, setCheckoutNotice] = useState(null);
+  // Incremented to trigger Navbar's useTier to re-fetch
+  const [tierVersion, setTierVersion] = useState(0);
 
   // Smart router: authenticated users hitting 'upgrade' see the Pro plan modal,
   // not the sign-in modal. All other contexts go to the auth gate.
@@ -71,13 +70,6 @@ function HomePage() {
   const closeAuthModal = useCallback(() => {
     setShowAuthModal(false);
   }, []);
-
-  const cycleDevTier = useCallback(() => {
-    const next = devTier === null ? 'free' : devTier === 'free' ? 'pro' : null;
-    setDevTier(next);
-    if (next) localStorage.setItem('lifescript_dev_tier', next);
-    else localStorage.removeItem('lifescript_dev_tier');
-  }, [devTier]);
 
   // Auto-dismiss the success notice after 7 s so it doesn't linger.
   // Cancelled notice stays until the user explicitly closes it.
@@ -133,80 +125,78 @@ function HomePage() {
     const savedName = localStorage.getItem('lifescript_producer_name');
     if (savedName) setProducerName(savedName);
 
-    const savedKey = localStorage.getItem('lifescript_admin_key');
-    if (savedKey) setTempAdminKey(savedKey);
-
-    const savedDevTier = localStorage.getItem('lifescript_dev_tier');
-    if (savedDevTier === 'free' || savedDevTier === 'pro') setDevTier(savedDevTier);
-
-    // ── URL param handling — single replaceState for all recognised params ──
-    // admin_key : mobile dev bootstrap (stores to localStorage, scrubs from URL)
-    // checkout  : Stripe return signal — 'success' | 'cancelled'
-    const urlParams = new URLSearchParams(window.location.search);
-    let urlDirty = false;
-
-    const urlAdminKey = urlParams.get('admin_key');
-    if (urlAdminKey) {
-      localStorage.setItem('lifescript_admin_key', urlAdminKey);
-      setTempAdminKey(urlAdminKey);
-      urlParams.delete('admin_key');
-      urlDirty = true;
-    }
-
-    const checkoutParam = urlParams.get('checkout');
-    if (checkoutParam === 'success') {
-      setCheckoutNotice('success');
-      updateSession?.(); // force NextAuth to re-fetch session from server
-      urlParams.delete('checkout');
-      urlDirty = true;
-    } else if (checkoutParam === 'cancelled') {
-      setCheckoutNotice('cancelled');
-      urlParams.delete('checkout');
-      urlDirty = true;
-    }
-
-    if (urlDirty) {
-      const cleanUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
-      window.history.replaceState(null, '', cleanUrl);
-    }
-
     if (!localStorage.getItem('lifescript_device_id')) {
       const newId = 'ds_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
       localStorage.setItem('lifescript_device_id', newId);
     }
+
+    // ── URL param handling ───────────────────────────────────────────────────
+    // checkout: Stripe return signal — 'success' | 'cancelled'
+    // Returns true if checkout=success was found, so callers can schedule
+    // follow-up tier refreshes.
+    function applyCheckoutParam() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const checkoutParam = urlParams.get('checkout');
+      if (!checkoutParam) return false;
+
+      if (checkoutParam === 'success') {
+        setCheckoutNotice('success');
+        updateSession?.(); // force NextAuth to re-fetch session JWT
+        setTierVersion(v => v + 1); // immediate tier re-fetch in Navbar
+      } else if (checkoutParam === 'cancelled') {
+        setCheckoutNotice('cancelled');
+      }
+
+      urlParams.delete('checkout');
+      const cleanUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+      window.history.replaceState(null, '', cleanUrl);
+      return checkoutParam === 'success';
+    }
+
+    const wasCheckoutSuccess = applyCheckoutParam();
+
+    // Stripe webhooks are async — tier may not be 'pro' in Redis the instant
+    // the user lands back on the app. Poll two more times to catch the update.
+    const retryTimers = wasCheckoutSuccess
+      ? [
+          setTimeout(() => setTierVersion(v => v + 1), 3000),
+          setTimeout(() => setTierVersion(v => v + 1), 8000),
+        ]
+      : [];
+
+    // ── bfcache (Back-Forward Cache) guard ───────────────────────────────────
+    // When the user leaves for Stripe, modern browsers freeze this page in
+    // bfcache. Stripe then redirects back — some browsers restore the frozen
+    // page instead of doing a fresh load, preserving React state exactly as it
+    // was: UpgradeModal open, checkoutState='redirecting', close button hidden,
+    // backdrop click disabled. The result is a fully blocked UI.
+    //
+    // The fix: when pageshow fires with persisted=true (bfcache restore),
+    // force a clean reload so all state resets and URL params are processed.
+    function handlePageShow(event) {
+      if (event.persisted) window.location.reload();
+    }
+
+    window.addEventListener('pageshow', handlePageShow);
+
+    return () => {
+      retryTimers.forEach(clearTimeout);
+      window.removeEventListener('pageshow', handlePageShow);
+    };
   }, []);
 
   // ── Global body-scroll lock ──────────────────────────────────────────────
   // Prevents background scroll bleed whenever any page-level overlay is open.
   // HistoryPanel owns its own lock internally; this covers all other modals.
   useEffect(() => {
-    const anyOpen = showAdminPanel || !!modalContent || !!selectedPoster || showAuthModal || showUpgradeModal;
+    const anyOpen = !!modalContent || !!selectedPoster || showAuthModal || showUpgradeModal;
     if (!anyOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
-  }, [showAdminPanel, modalContent, selectedPoster, showAuthModal, showUpgradeModal]);
+  }, [modalContent, selectedPoster, showAuthModal, showUpgradeModal]);
 
   const toggleLanguage = () => setLang(prev => prev === 'he' ? 'en' : 'he');
-
-  const saveAdminKey = () => {
-    const cleanKey = tempAdminKey.trim();
-
-    if (cleanKey !== "") {
-      localStorage.setItem('lifescript_admin_key', cleanKey);
-      setTempAdminKey(cleanKey);
-      setShowAdminPanel(false);
-      setError('');
-
-      const updateMsg = lang === 'he'
-        ? 'המפתח עודכן. הוא ייבדק בעת יצירת התסריט.'
-        : 'Key updated. It will be verified during generation.';
-
-      console.log(updateMsg);
-    } else {
-      setShowAdminPanel(false);
-    }
-  };
 
   const handleCancelGeneration = () => {
     abortControllerRef.current?.abort();
@@ -230,14 +220,12 @@ function HomePage() {
     setInitialPosterUrl(null);
 
     try {
-      const savedAdminKey = localStorage.getItem('lifescript_admin_key') || '';
       const deviceId = localStorage.getItem('lifescript_device_id') || 'unknown';
 
       const response = await fetch('/api/generate-script', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-admin-key': savedAdminKey,
           'x-device-id': deviceId
         },
         signal: controller.signal,
@@ -361,11 +349,12 @@ function HomePage() {
         historyCount={history.length}
         onHistoryOpen={() => setShowHistory(true)}
         onOpenAuthModal={openAuthModal}
+        tierRefreshToken={tierVersion}
       />
 
       <main className="container mx-auto pt-4 md:pt-8 pb-12 px-6 max-w-5xl flex-grow relative">
 
-        <HeroSection setShowAdminPanel={setShowAdminPanel} lang={lang} />
+        <HeroSection lang={lang} />
 
         {/* ── Stripe checkout return notification ───────────────────────── */}
         <AnimatePresence>
@@ -424,76 +413,6 @@ function HomePage() {
                   </button>
                 </div>
               )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Admin Panel */}
-        <AnimatePresence>
-          {showAdminPanel && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[9000] flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 md:p-6"
-              onClick={() => setShowAdminPanel(false)}
-            >
-              <motion.div
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 20 }}
-                onClick={(e) => e.stopPropagation()}
-                className="bg-[#0f1117] border border-[#d4a373]/30 p-8 md:p-12 rounded-[2.5rem] shadow-2xl w-full max-w-lg relative text-center max-h-[calc(100vh-2rem)] overflow-y-auto"
-              >
-                {/* כפתור סגירה */}
-                <button
-                  onClick={() => setShowAdminPanel(false)}
-                  className="close-button absolute top-6 right-6 text-white/20 hover:text-[#d4a373] transition-colors p-2"
-                >
-                  <X size={24} />
-                </button>
-
-                <Key className="text-[#d4a373] mx-auto mb-4" size={48} />
-
-                {/* כותרת דינמית */}
-                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">
-                  {lang === 'he' ? 'גישת מנהל' : 'ADMIN ACCESS'}
-                </h2>
-
-                {/* תיאור משני דינמי */}
-                <p className="text-[#d4a373]/40 text-xs tracking-widest mt-2 uppercase">
-                  {lang === 'he' ? 'מורשים בלבד' : 'AUTHORIZED PERSONNEL ONLY'}
-                </p>
-
-                <div className="mt-10 space-y-6">
-                  {/* שדה הזנה עם Placeholder דינמי */}
-                  <input
-                    type="password"
-                    value={tempAdminKey}
-                    autoFocus
-                    onChange={(e) => setTempAdminKey(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && saveAdminKey()}
-                    placeholder={lang === 'he' ? 'הזן קוד סודי...' : 'ENTER SECRET KEY...'}
-                    className="w-full bg-black/50 border border-white/10 p-6 rounded-2xl text-2xl text-white outline-none focus:border-[#d4a373] text-center tracking-[0.4em]"
-                  />
-
-                  {/* כפתור אישור דינמי */}
-                  <button
-                    onClick={saveAdminKey}
-                    className="w-full bg-[#d4a373] text-black py-6 rounded-2xl font-black text-xl hover:bg-white transition-all active:scale-95 shadow-xl shadow-[#d4a373]/20 uppercase"
-                  >
-                    {lang === 'he' ? 'אישור כניסה' : 'AUTHORIZE'}
-                  </button>
-
-                  {/* כפתור ביטול דינמי */}
-                  <button
-                    onClick={() => setShowAdminPanel(false)}
-                    className="text-white/30 hover:text-white text-sm uppercase tracking-widest block mx-auto transition-colors"
-                  >
-                    {lang === 'he' ? 'ביטול' : 'CANCEL'}
-                  </button>
-                </div>
-              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -928,24 +847,6 @@ function HomePage() {
         onDelete={deleteEntry}
         lang={lang}
       />
-
-      {/* Dev tier preview toggle — only visible when admin key is configured */}
-      {mounted && !!tempAdminKey && (
-        <button
-          onClick={cycleDevTier}
-          title="Dev: cycle tier preview (free → pro → admin)"
-          className={`fixed bottom-6 left-6 z-[9999] flex items-center gap-1.5 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.18em] border backdrop-blur-md shadow-lg transition-all duration-200 select-none
-            ${devTier === 'free'
-              ? 'bg-sky-500/15 border-sky-500/35 text-sky-400 hover:bg-sky-500/25'
-              : devTier === 'pro'
-              ? 'bg-amber-500/15 border-amber-500/35 text-amber-400 hover:bg-amber-500/25'
-              : 'bg-white/[0.06] border-white/10 text-white/30 hover:bg-white/[0.10] hover:text-white/50'}`}
-        >
-          <span className="opacity-40 text-[7px] font-black">DEV</span>
-          <span className="opacity-20 mx-0.5">·</span>
-          <span>{devTier ? `AS ${devTier.toUpperCase()}` : 'ADMIN'}</span>
-        </button>
-      )}
 
       <Analytics />
     </div>

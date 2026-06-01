@@ -4,16 +4,17 @@ import { Film, Languages, Clapperboard, LogOut, Crown, ChevronDown, User, Credit
 import { useSession, signOut } from 'next-auth/react';
 import LaunchTicket from './LaunchTicket';
 
-// Fetches the current user's tier from the server. Runs only when a session exists.
-function useTier(authenticated) {
+// Fetches the current user's tier from the server.
+// refreshToken is an external counter; incrementing it triggers a re-fetch.
+function useTier(authenticated, refreshToken) {
   const [tier, setTier] = useState('free');
   useEffect(() => {
     if (!authenticated) { setTier('anonymous'); return; }
-    fetch('/api/me')
+    fetch('/api/me', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => setTier(d.tier || 'free'))
       .catch(() => setTier('free'));
-  }, [authenticated]);
+  }, [authenticated, refreshToken]);
   return tier;
 }
 
@@ -163,10 +164,10 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHistoryOpen, onOpenAuthModal }) {
+export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHistoryOpen, onOpenAuthModal, tierRefreshToken = 0 }) {
   const { data: session, status } = useSession();
   const isAuthenticated = status === 'authenticated';
-  const tier = useTier(isAuthenticated);
+  const tier = useTier(isAuthenticated, tierRefreshToken);
   const isHe = lang === 'he';
   const isPro = tier === 'pro';
 

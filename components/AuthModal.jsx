@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { signIn } from 'next-auth/react';
+import { signIn, getSession } from 'next-auth/react';
 import { X, Film, Shield, Mail, ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
 
 const CONTEXT_COPY = {
@@ -51,7 +51,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
   const safeContext = context in CONTEXT_COPY ? context : 'general';
   const contextMsg  = CONTEXT_COPY[safeContext][lang] || CONTEXT_COPY[safeContext].en;
 
-  // 'idle' | 'sending' | 'sent' | 'error'
+  // 'idle' | 'sending' | 'sent' | 'error' | 'authenticated'
   const [emailState, setEmailState] = useState('idle');
   const [email, setEmail]           = useState('');
   const [emailError, setEmailError] = useState('');
@@ -65,6 +65,59 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
     }
   }, [isOpen]);
 
+  // ── Cross-tab session watcher ─────────────────────────────────────────────
+  // Problem: user clicks the magic link in a new tab (Window B). Window B
+  // authenticates and sets a session cookie shared across all same-origin tabs.
+  // Window A (this modal, showing "check your inbox") has no idea auth happened.
+  //
+  // Solution: while on the 'sent' screen, poll GET /api/auth/session every 3s.
+  // Because all tabs share the cookie jar, getSession() returns the live session
+  // as soon as Window B completes auth — no cross-tab messaging needed.
+  // visibilitychange + focus fire an immediate check so the response is
+  // near-instant when the user switches back from their email client.
+  useEffect(() => {
+    if (emailState !== 'sent' || !isOpen) return;
+
+    let cancelled = false;
+
+    const check = async () => {
+      if (cancelled) return;
+      try {
+        const session = await getSession();
+        if (session && !cancelled) setEmailState('authenticated');
+      } catch {
+        // Network blip — silent, retry on next tick.
+      }
+    };
+
+    const poll            = setInterval(check, 3000);
+    const onFocus         = () => check();
+    const onVisibility    = () => { if (!document.hidden) check(); };
+    // Stop after 10 min — matches the magic link token maxAge in lib/auth.js.
+    const maxAgeTimer     = setTimeout(() => { cancelled = true; clearInterval(poll); }, 10 * 60 * 1000);
+
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      cancelled = true;
+      clearInterval(poll);
+      clearTimeout(maxAgeTimer);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [emailState, isOpen]);
+
+  // ── Post-authentication reload ────────────────────────────────────────────
+  // Once authenticated, show the confirmation screen briefly, then do a full
+  // page reload. This re-hydrates useSession in every component (Navbar tier
+  // badge, quota gates, etc.) cleanly without requiring prop drilling.
+  useEffect(() => {
+    if (emailState !== 'authenticated') return;
+    const t = setTimeout(() => window.location.reload(), 1500);
+    return () => clearTimeout(t);
+  }, [emailState]);
+
   // Scroll lock is handled by index.js's global anyOpen effect, which tracks
   // showAuthModal. A duplicate lock here causes a race: this cleanup runs
   // after index.js restores '', overwriting it back to 'hidden'. Removed.
@@ -75,6 +128,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
 
   const handleEmailSignIn = async (e) => {
     e?.preventDefault();
+    if (emailState === 'sending') return; // guard against rapid double-tap
     const trimmed = email.trim();
     if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setEmailError(isHe ? 'כתובת מייל לא תקינה' : 'Enter a valid email address');
@@ -85,7 +139,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
     try {
       // redirect: false returns {ok, error} without leaving the page so our
       // modal can display the confirmation state directly.
-      const result = await signIn('email', { email: trimmed, redirect: false, callbackUrl: window.location.href });
+      const result = await signIn('email', { email: trimmed, redirect: false, callbackUrl: `${window.location.origin}/auth-success` });
       if (result?.error) {
         setEmailState('error');
         setEmailError(isHe ? 'שגיאה בשליחת המייל. נסה שוב.' : 'Failed to send email. Please try again.');
@@ -145,9 +199,36 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                   <X size={18} />
                 </button>
 
-                {/* ── Sent confirmation state ── */}
+                {/* ── State panels ── */}
                 <AnimatePresence mode="wait">
-                  {emailState === 'sent' ? (
+                  {emailState === 'authenticated' ? (
+
+                    /* ── Authenticated: brief confirmation before reload ── */
+                    <motion.div
+                      key="authenticated"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="px-8 py-12 flex flex-col items-center text-center"
+                    >
+                      <div className="w-14 h-14 rounded-2xl bg-[#d4a373]/10 border border-[#d4a373]/20 flex items-center justify-center mb-5 shadow-[0_0_30px_rgba(212,163,115,0.15)]">
+                        <Film className="text-[#d4a373] w-7 h-7" />
+                      </div>
+                      <p className="text-[9px] font-black tracking-[0.35em] text-[#d4a373]/60 uppercase mb-3">
+                        {isHe ? 'מחובר בהצלחה' : 'SIGNED IN'}
+                      </p>
+                      <h2 className="text-[21px] font-black text-white leading-tight mb-3">
+                        {isHe ? 'ברוך הבא לאולפן!' : 'Welcome to the Studio!'}
+                      </h2>
+                      <p className="text-white/35 text-[12px] leading-relaxed mb-5">
+                        {isHe ? 'מכין את האולפן שלך...' : 'Setting up your studio…'}
+                      </p>
+                      <Loader2 size={18} className="text-[#d4a373]/40 animate-spin" />
+                    </motion.div>
+
+                  ) : emailState === 'sent' ? (
+
+                    /* ── Sent: waiting for magic link click ── */
                     <motion.div
                       key="sent"
                       initial={{ opacity: 0, y: 10 }}
@@ -176,6 +257,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                         {isHe ? 'שלח לכתובת אחרת' : 'Try a different email'}
                       </button>
                     </motion.div>
+
                   ) : (
                     <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                       {/* ── Body ── */}
@@ -248,9 +330,10 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                             </p>
                           )}
                           <button
-                            type="submit"
+                            type="button"
                             disabled={emailState === 'sending'}
-                            className="w-full flex items-center justify-center gap-2 bg-white/[0.06] hover:bg-white/[0.1] active:scale-[0.97] border border-white/10 hover:border-white/20 text-white/70 hover:text-white text-[13px] font-medium px-5 py-3 rounded-xl transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed select-none"
+                            onClick={handleEmailSignIn}
+                            className="w-full flex items-center justify-center gap-2 bg-white/[0.06] hover:bg-white/[0.1] active:scale-[0.97] border border-white/10 hover:border-white/20 text-white/70 hover:text-white text-[13px] font-medium px-5 py-3 rounded-xl transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed select-none touch-manipulation"
                           >
                             {emailState === 'sending' ? (
                               <>
