@@ -38,22 +38,27 @@ const FreeBadge = ({ isHe }) => (
 function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick }) {
   const ref = useRef(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [portalError,   setPortalError]   = useState(null);
 
   const handleManageSubscription = async () => {
     setPortalLoading(true);
+    setPortalError(null);
     try {
-      const res  = await fetch('/api/portal', { method: 'POST' });
+      const res  = await fetch('/api/portal', { method: 'POST', credentials: 'include' });
       const data = await res.json();
       if (!res.ok || !data.url) {
-        console.error('Portal error:', data.error);
+        setPortalError(
+          data.code === 'NO_CUSTOMER'
+            ? (isHe ? 'המנוי עדיין מסתנכרן — נסה שוב עוד רגע.' : 'Subscription syncing — try again in a moment.')
+            : (data.error || (isHe ? 'שגיאה בפתיחת הפורטל.' : 'Could not open billing portal.'))
+        );
         setPortalLoading(false);
         return;
       }
-      // Keep the loading spinner active through the navigation — same pattern
-      // as the checkout redirect so there's no janky button reset before leaving.
+      // Keep loading active through the navigation so there's no janky reset.
       window.location.href = data.url;
-    } catch (err) {
-      console.error('Portal request failed:', err.message);
+    } catch {
+      setPortalError(isHe ? 'שגיאת רשת — נסה שוב.' : 'Network error. Please try again.');
       setPortalLoading(false);
     }
   };
@@ -82,8 +87,10 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick }
     return () => document.removeEventListener('mousedown', handleOutside);
   }, [anchor, onClose]);
 
-  const isPro = tier === 'pro';
-  const name = session?.user?.name || '';
+  const isPro     = tier === 'pro';
+  const isAdmin   = tier === 'admin';
+  const isElevated = isPro || isAdmin; // hides "Upgrade" CTA for both pro and admin
+  const name  = session?.user?.name  || '';
   const email = session?.user?.email || '';
 
   const dropdown = (
@@ -99,7 +106,11 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick }
         <p className="text-white/35 text-[11px] truncate mt-0.5">{email}</p>
         {/* Current plan */}
         <div className="mt-2 flex items-center gap-1.5">
-          {isPro ? (
+          {isAdmin ? (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-500/15 border border-violet-500/25 text-violet-400 text-[9px] font-black tracking-wider uppercase">
+              ∞ {isHe ? 'אדמין' : 'Admin'}
+            </span>
+          ) : isPro ? (
             <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/25 text-amber-400 text-[9px] font-black tracking-wider uppercase">
               ✦ {isHe ? 'חבר פרו' : 'Pro Member'}
             </span>
@@ -113,8 +124,8 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick }
 
       {/* Actions */}
       <div className="py-1.5">
-        {/* Upgrade to Pro — only shown for free users */}
-        {!isPro && (
+        {/* Upgrade to Pro — hidden for pro and admin users */}
+        {!isElevated && (
           <button
             onClick={() => { onClose(); onUpgradeClick(); }}
             className="w-full flex items-center gap-2.5 px-4 py-2.5 text-amber-400 hover:bg-amber-500/10 transition-colors duration-150 group"
@@ -126,24 +137,31 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick }
           </button>
         )}
 
-        {/* Manage Subscription — only shown for Pro users */}
+        {/* Manage Subscription — only for paying Pro subscribers, not admin */}
         {isPro && (
-          <button
-            onClick={handleManageSubscription}
-            disabled={portalLoading}
-            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-amber-400/70 hover:text-amber-400 hover:bg-amber-500/[0.07] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 group"
-          >
-            {portalLoading ? (
-              <Loader2 size={13} className="shrink-0 animate-spin" />
-            ) : (
-              <CreditCard size={13} className="shrink-0 group-hover:scale-110 transition-transform" />
+          <>
+            <button
+              onClick={handleManageSubscription}
+              disabled={portalLoading}
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-amber-400/70 hover:text-amber-400 hover:bg-amber-500/[0.07] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 group"
+            >
+              {portalLoading ? (
+                <Loader2 size={13} className="shrink-0 animate-spin" />
+              ) : (
+                <CreditCard size={13} className="shrink-0 group-hover:scale-110 transition-transform" />
+              )}
+              <span className="text-[12px] font-semibold">
+                {portalLoading
+                  ? (isHe ? 'פותח...' : 'Opening…')
+                  : (isHe ? 'נהל מנוי' : 'Manage Subscription')}
+              </span>
+            </button>
+            {portalError && (
+              <p className={`px-4 pb-2 text-[10px] text-red-400/70 leading-snug ${isHe ? 'text-right' : ''}`}>
+                {portalError}
+              </p>
             )}
-            <span className="text-[12px] font-semibold">
-              {portalLoading
-                ? (isHe ? 'פותח...' : 'Opening…')
-                : (isHe ? 'נהל מנוי' : 'Manage Subscription')}
-            </span>
-          </button>
+          </>
         )}
 
         {/* Sign out */}
@@ -169,7 +187,7 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
   const isAuthenticated = status === 'authenticated';
   const tier = useTier(isAuthenticated, tierRefreshToken);
   const isHe = lang === 'he';
-  const isPro = tier === 'pro';
+  const isPro = tier === 'pro' || tier === 'admin';
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mounted, setMounted] = useState(false);

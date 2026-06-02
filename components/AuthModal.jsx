@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { flushSync } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signIn, getSession } from 'next-auth/react';
 import { X, Film, Shield, Mail, ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
@@ -228,7 +229,10 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
       return;
     }
     setEmailError('');
-    setEmailState('sending');
+    // flushSync forces React to commit this state update synchronously so the
+    // loading spinner paints to the screen before the first async network call.
+    // Without it, React may defer the re-render past the cold-start freeze.
+    flushSync(() => setEmailState('sending'));
     try {
       // In standalone PWA mode, embed the relay_token in the callbackUrl so
       // that /auth-relay-complete can write the verified entry to Redis after

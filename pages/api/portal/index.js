@@ -10,22 +10,37 @@ export default async function handler(req, res) {
   }
 
   // ── Auth gate ──────────────────────────────────────────────────────────────
-  const { userId } = await getSessionAndTier(req, res);
+  const { userId, email } = await getSessionAndTier(req, res);
 
   if (!userId) {
     return res.status(401).json({ success: false, error: 'Authentication required.' });
   }
 
   // ── Stripe Customer ID lookup ──────────────────────────────────────────────
-  // Stored by the webhook when checkout.session.completed fires. If absent the
-  // user either never completed a purchase or subscribed before this key was
-  // introduced — either way the portal cannot be opened without a customer ID.
-  const stripeCustomerId = await redis.get(`user:stripe_customer:${userId}`);
+  // Primary: Redis key written by the webhook on checkout.session.completed.
+  // Fallback: if the webhook hasn't fired yet (race condition in the seconds
+  // immediately after checkout), search Stripe by the user's email and cache
+  // the result so subsequent portal opens are instant.
+  let stripeCustomerId = await redis.get(`user:stripe_customer:${userId}`);
+
+  if (!stripeCustomerId && email) {
+    try {
+      const stripe     = getStripe();
+      const customers  = await stripe.customers.list({ email, limit: 1 });
+      if (customers.data.length > 0) {
+        stripeCustomerId = customers.data[0].id;
+        await redis.set(`user:stripe_customer:${userId}`, stripeCustomerId);
+        console.log(`📋 Portal: cached Stripe customer via email fallback → ${stripeCustomerId}`);
+      }
+    } catch (lookupErr) {
+      console.warn('Portal: Stripe customer fallback lookup failed:', lookupErr.message);
+    }
+  }
 
   if (!stripeCustomerId) {
     return res.status(404).json({
       success: false,
-      error:   'No billing record found. If you believe this is an error, please contact support.',
+      error:   'Billing record not ready yet. If you just upgraded, please wait a moment and try again.',
       code:    'NO_CUSTOMER',
     });
   }

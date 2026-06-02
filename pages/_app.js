@@ -17,6 +17,41 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
     }
   }, []);
 
+  // ── Auth API warmup ────────────────────────────────────────────────────────
+  // In iOS Standalone PWA mode, WKWebView kills the network process when
+  // backgrounded. Each foreground restore is a true cold start: TCP, TLS, and
+  // the Vercel serverless function all initialise from scratch.
+  //
+  // Strategy: fire /api/auth/csrf 2 s after mount/restore — AFTER useSession's
+  // /api/auth/session has already been dispatched by SessionProvider. The 2 s
+  // gap prevents the two requests from competing on the same unopened HTTP/2
+  // connection (iOS WKWebView serialises concurrent requests on a cold socket,
+  // doubling the perceived wait). By staggering, we boot a second serverless
+  // instance in parallel so the email sign-in path is warm before the user
+  // reaches the auth modal.
+  useEffect(() => {
+    let t = null;
+    const scheduleWarm = () => {
+      clearTimeout(t);
+      t = setTimeout(
+        () => fetch('/api/auth/csrf', { cache: 'no-store' }).catch(() => {}),
+        2000,
+      );
+    };
+
+    scheduleWarm(); // on every hard mount / PWA cold launch
+
+    // Re-warm each time the app returns from background — each foreground
+    // restore in iOS standalone mode may be a fresh cold start.
+    const onVisible = () => { if (!document.hidden) scheduleWarm(); };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
+
   return (
     <SessionProvider session={session}>
       <>
