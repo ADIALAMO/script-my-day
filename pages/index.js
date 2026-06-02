@@ -590,13 +590,18 @@ function HomePage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 }}
                         onClick={() => setSelectedPoster(poster)}
-                        className={`group relative aspect-[2/3] overflow-hidden rounded-[2rem] border transition-all duration-500 cursor-pointer
+                        className={`group relative ${poster.type === 'comic' ? 'aspect-square' : 'aspect-[2/3]'} overflow-hidden rounded-[2rem] border transition-all duration-500 cursor-pointer
         ${isSelected ? 'border-[#d4a373] shadow-[0_0_30px_rgba(212,163,115,0.2)]' : 'border-white/10 shadow-2xl hover:border-white/30'}`}
                       >
+                        {poster.type === 'comic' && (
+                          <div className="absolute top-2 left-2 z-10 bg-[#d4a373]/80 backdrop-blur-sm text-black text-[7px] md:text-[8px] font-black tracking-[0.15em] uppercase px-2 py-0.5 rounded-full">
+                            {lang === 'he' ? 'קומיקס' : 'COMIC'}
+                          </div>
+                        )}
                         <img
                           src={poster.src}
                           alt={lang === 'he' ? poster.titleHe : poster.titleEn}
-                          className={`w-full h-full object-cover transition-all duration-1000 
+                          className={`w-full h-full object-cover transition-all duration-1000
           ${isSelected ? 'scale-105 blur-[1px] brightness-[0.4]' : 'grayscale-[0.2] group-hover:grayscale-0'}`}
                         />
                         <div className={`absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent transition-all duration-500 flex flex-col justify-end p-4 md:p-6 text-right
@@ -605,7 +610,7 @@ function HomePage() {
                           {/* כותרת ז'אנר בתוך הגלריה */}
                           <div className="flex flex-col mb-1 md:mb-2">
                             <span className="text-[#d4a373] text-[7px] md:text-[9px] font-black tracking-[0.2em] md:tracking-[0.3em] uppercase italic block">
-                              {lang === 'he' ? "ז'אנר:" : 'GENRE:'}
+                              {lang === 'he' ? (poster.type === 'comic' ? 'פאנל:' : "ז'אנר:") : (poster.type === 'comic' ? 'PANEL:' : 'GENRE:')}
                             </span>
                             <span className="text-white text-[10px] md:text-xs font-bold tracking-widest uppercase">
                               {lang === 'he' ? poster.titleHe : poster.titleEn}

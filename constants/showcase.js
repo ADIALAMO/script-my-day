@@ -198,5 +198,98 @@ A roar shakes the skyscrapers. A massive T-Rex crushes the barriers. "Who would 
 אדים עולים מהצנרת. בני אדם וחצי-רובוטים מצטופפים בחושך. "אנחנו כבר לא בשר ודם," אומר אחד מהם ומביט בידו המכנית, "אבל אנחנו עדיין זוכרים איך להילחם."`,
     excerptEn: `INT. UNDERGROUND BUNKER - NIGHT
 Steam rises from futuristic pipes. Humans and cyborgs huddle in the dark. "We are no longer flesh and blood," one says, "but we still remember how to fight."`
+  },
+
+  // ─── Production Comics ─────────────────────────────────────────────────────
+  {
+    id: 19,
+    type: 'comic',
+    src: '/gallery/comics/panel-01.png',
+    titleHe: 'הרגע הפנימי',
+    titleEn: 'The Inner Moment',
+    excerptHe: `קלוז-אפ. פנים. בוקר מוקדם.
+דמות יושבת בשקט מוחלט, עיניים עצומות. הנשימה יורדת ועולה.
+"לפני שהעולם מתחיל — יש רגע קטן שרק שלי."`,
+    excerptEn: `CLOSE-UP. INT. EARLY MORNING.
+A figure sits in total silence, eyes closed. Breath rises and falls.
+"Before the world begins — there is one small moment that is only mine."`
+  },
+  {
+    id: 20,
+    type: 'comic',
+    src: '/gallery/comics/panel-02.png',
+    titleHe: 'קפה וסיגריה',
+    titleEn: 'Coffee & Cigarette',
+    excerptHe: `חוץ/פנים. חלון פתוח - בוקר.
+עשן מסתלסל לאוויר. ריח הקפה מתערבב עם ריח הבוקר.
+"יש אנשים שמתחילים יום עם מוטיבציה. אני מתחיל עם שניים אלה."`,
+    excerptEn: `EXT/INT. OPEN WINDOW - MORNING.
+Smoke curls into the air. The scent of coffee mingles with morning air.
+"Some people start the day with motivation. I start with these two."`
+  },
+  {
+    id: 21,
+    type: 'comic',
+    src: '/gallery/comics/panel-03.png',
+    titleHe: 'האימון',
+    titleEn: 'The Workout',
+    excerptHe: `פנים. שטח פתוח - בוקר מאוחר.
+פניים מלאים מאמץ. שרירים מתוחים. הכאב הוא הדלק.
+"הגוף זוכר מה שהמוח שכח. אני מזכיר לשניהם."`,
+    excerptEn: `INT. OPEN AREA - LATE MORNING.
+Face full of strain. Muscles taut. Pain is the fuel.
+"The body remembers what the mind forgot. I remind them both."`
+  },
+  {
+    id: 22,
+    type: 'comic',
+    src: '/gallery/comics/panel-04.png',
+    titleHe: 'הסיבוב בעיר',
+    titleEn: 'City Walk',
+    excerptHe: `חוץ. רחוב עירוני - צהריים.
+הדמות צועדת, מבטה נישא לאופק. העיר זזה סביבה.
+"אני לא הולך לשום מקום — אני הולך בתוך עצמי."`,
+    excerptEn: `EXT. URBAN STREET - MIDDAY.
+The figure walks, gaze lifted toward the horizon. The city moves around them.
+"I'm not going anywhere — I'm walking inside myself."`
+  },
+  {
+    id: 23,
+    type: 'comic',
+    src: '/gallery/comics/panel-05.png',
+    titleHe: 'הפגישה הבלתי-נמנעת',
+    titleEn: 'The Unavoidable Encounter',
+    excerptHe: `חוץ. מדרכה סואנת - אחר הצהריים.
+עין פוגשת עין לשנייה. חיוך מנומס, קצר, מחושב.
+"חייכתי כי זה היה יותר קל מלהסביר."`,
+    excerptEn: `EXT. BUSY SIDEWALK - AFTERNOON.
+Eye meets eye for a second. A polite smile — brief and calculated.
+"I smiled because it was easier than explaining."`
+  },
+  {
+    id: 24,
+    type: 'comic',
+    src: '/gallery/comics/panel-06.png',
+    titleHe: 'בירה עם חבר',
+    titleEn: 'Beer with a Friend',
+    excerptHe: `חוץ. בר עם שולחנות חוץ - אחר הצהריים.
+שתי כוסות. שני גברים. אוויר נינוח. דיבורים שאין צורך לסיים.
+"זה הסוג של שיחה שאתה מוצא רק עם מישהו שמכיר אותך מלפני שהפכת למי שאתה."`,
+    excerptEn: `EXT. OUTDOOR BAR - LATE AFTERNOON.
+Two glasses. Two men. Easy air. Conversations that don't need endings.
+"This is the kind of talk you only have with someone who knew you before you became who you are."`
+  },
+  {
+    id: 25,
+    type: 'comic',
+    src: '/gallery/comics/panel-07.png',
+    titleHe: 'הדרך הביתה',
+    titleEn: 'The Way Home',
+    excerptHe: `חוץ. רחוב שקט - לילה.
+אורות רחוב עמומים. צעדים ריתמיים על המדרכה. פתק עם מספר בכיס.
+"הלכתי הביתה עם מספר טלפון ויום שלם שמשהו בו הרגיש אחרת."`,
+    excerptEn: `EXT. QUIET STREET - NIGHT.
+Dim street lights. Rhythmic steps on the pavement. A note with a number in the pocket.
+"I walked home with a phone number and a day that somehow felt different."`
   }
 ];
