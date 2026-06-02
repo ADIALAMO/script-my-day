@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Head from 'next/head';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { Film, Copyright, AlertCircle, X, Download, Share2, MessageSquare, Send, Check } from 'lucide-react';
 import { getMsg, CODES, isQuotaError, inferCode } from '../lib/messages.js';
 import Navbar from '../components/Navbar';
@@ -12,11 +12,260 @@ import HeroSection from '../components/HeroSection';
 import ScriptForm from '../components/ScriptForm';
 import { Analytics } from '@vercel/analytics/react';
 import { track } from '@vercel/analytics';
-import { SHOWCASE_POSTERS } from '../constants/showcase';
+import { SHOWCASE_POSTERS, SHOWCASE_REELS } from '../constants/showcase';
 import { MODAL_DATA } from '../constants/modalData';
 import HistoryPanel from '../components/HistoryPanel';
 import CinematicLoader from '../components/CinematicLoader';
 import { useScriptHistory } from '../hooks/useScriptHistory';
+
+// ── Genre metadata for filmstrip grouping ────────────────────────────────────
+const GENRE_GROUPS = [
+  { key: 'action',  labelEn: 'Action',   labelHe: 'אקשן',     color: '#ef4444' },
+  { key: 'drama',   labelEn: 'Drama',    labelHe: 'דרמה',     color: '#d4a373' },
+  { key: 'sci-fi',  labelEn: 'Sci-Fi',   labelHe: 'מד"ב',     color: '#22d3ee' },
+  { key: 'horror',  labelEn: 'Horror',   labelHe: 'אימה',     color: '#818cf8' },
+  { key: 'romance', labelEn: 'Romance',  labelHe: 'רומנטיקה', color: '#f472b6' },
+  { key: 'comedy',  labelEn: 'Comedy',   labelHe: 'קומדיה',   color: '#84cc16' },
+  { key: 'comics',  labelEn: 'Comics',   labelHe: 'קומיקס',   color: '#fb923c' },
+  { key: 'shorts',  labelEn: 'Shorts',   labelHe: 'ציטוטים',  color: '#a78bfa' },
+];
+
+function inferPosterGenre(poster) {
+  if (poster.type === 'comic') return 'comics';
+  if (poster.type === 'text')  return 'shorts';
+  const t = (poster.titleEn || '').toLowerCase();
+  if (/action|war|adventure/.test(t))        return 'action';
+  if (/sci.fi|futuristic|dystopian/.test(t)) return 'sci-fi';
+  if (/horror|mystery|thriller/.test(t))     return 'horror';
+  if (/romantic|romance/.test(t))            return 'romance';
+  if (/comedy|wacky|urban/.test(t))          return 'comedy';
+  return 'drama';
+}
+
+// ── Shared card body renderer (used by both Grid and Filmstrip) ───────────────
+function PosterCardBody({ poster, lang, compact = false }) {
+  // ── Text panel ──────────────────────────────────────────────────────────────
+  if (poster.type === 'text') {
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center p-3" style={{ background: '#030712' }}>
+        <div className="absolute inset-0 opacity-[0.035]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: compact ? '8px 8px' : '10px 10px' }} />
+        <div className="absolute inset-0 opacity-10" style={{ background: `radial-gradient(ellipse at center, ${poster.accent}55 0%, transparent 70%)` }} />
+        <div className="relative z-10 text-center space-y-1">
+          {!compact && <p className="text-[7px] tracking-[0.4em] font-black uppercase" style={{ color: `${poster.accent}66` }}>{poster.textSub}</p>}
+          {poster.textDisplay.split('\n').map((line, i) => (
+            <p key={i} className="font-black leading-[0.9] select-none"
+              style={{ fontSize: compact ? '0.85rem' : 'clamp(1.5rem, 7.5vw, 2rem)', color: poster.accent, fontFamily: 'Impact, "Arial Black", sans-serif', textShadow: `0 0 32px ${poster.accent}55` }}>
+              {line}
+            </p>
+          ))}
+          {!compact && (
+            <>
+              <div className="w-6 h-0.5 mx-auto mt-1.5 rounded-full" style={{ background: `${poster.accent}50` }} />
+              <p className="text-[6px] tracking-[0.5em] font-black uppercase" style={{ color: `${poster.accent}35` }}>LIFESCRIPT</p>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Poster / Comic panel ─────────────────────────────────────────────────────
+  // The <img> is in normal flow (block + h-auto) so the card gets real height in
+  // CSS columns. aspect-ratio on the img pins the proportions; the gradient
+  // overlay is absolute on top of it. No flex tricks, no padding hacks.
+  const genreTag = lang === 'he'
+    ? (poster.type === 'comic' ? 'פאנל:' : "ז'אנר:")
+    : (poster.type === 'comic' ? 'PANEL:' : 'GENRE:');
+
+  const imgAspect = poster.type === 'comic' ? 'aspect-square' : 'aspect-[2/3]';
+
+  return (
+    <div className="relative w-full overflow-hidden">
+      <img
+        src={poster.src || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500'}
+        onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500'; }}
+        alt={lang === 'he' ? poster.titleHe : poster.titleEn}
+        className={`relative z-0 block w-full h-auto object-cover ${imgAspect}`}
+        loading="eager"
+        decoding="sync"
+        /* WebKit multicol paint fix: own backing store so Safari paints the
+           image instead of a black box (and survives fullscreen reflow). */
+        style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden', backfaceVisibility: 'hidden' }}
+      />
+      <div className={`absolute inset-0 z-10 flex flex-col justify-end bg-gradient-to-t from-black/92 via-black/45 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none ${compact ? 'p-2' : 'p-4'}`}>
+        <p className={`text-[#d4a373] font-black uppercase italic leading-none m-0 ${compact ? 'text-[6px] tracking-[0.14em] mb-[3px]' : 'text-[7px] tracking-[0.22em] mb-[5px]'}`}>
+          {genreTag}
+        </p>
+        <p className={`text-white font-bold uppercase leading-tight line-clamp-2 m-0 ${compact ? 'text-[7px] tracking-wide' : 'text-[10px] tracking-widest'}`}>
+          {lang === 'he' ? poster.titleHe : poster.titleEn}
+        </p>
+        {!compact && (
+          <div className="mt-[6px] h-[1.5px] bg-[#d4a373] w-0 group-hover:w-8 transition-[width] duration-500 rounded-full" />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Cinematic Lightbox — scale+opacity crossfade + parallax script scrub ──────
+function PosterLightbox({ poster, onClose, lang }) {
+  const scrollRef = useRef(null);
+  const { scrollYProgress } = useScroll({ container: scrollRef });
+  const textY    = useTransform(scrollYProgress, [0, 1], ['0%', '-12%']);
+  const imgScale = useTransform(scrollYProgress, [0, 0.65], [1, 1.1]);
+
+  return (
+    <motion.div
+      key="lb-root"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.22 }}
+      className="fixed inset-0 z-[1000]"
+    >
+      {/* Cinematic backdrop */}
+      <div className="absolute inset-0 bg-black/72 backdrop-blur-md" onClick={onClose} />
+
+      {/* Centered panel wrapper */}
+      <div className="absolute inset-0 flex items-end md:items-center justify-center p-5 pb-24 md:pb-8 pointer-events-none">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.92, y: 24 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.96, y: 12 }}
+          onClick={e => e.stopPropagation()}
+          transition={{ type: 'spring', stiffness: 300, damping: 30, mass: 0.85 }}
+          className="bg-[#0c0e18]/98 border border-[#d4a373]/28 rounded-[2.4rem] shadow-[0_32px_100px_rgba(0,0,0,0.94)] w-full max-w-md overflow-hidden flex flex-col relative pointer-events-auto"
+          style={{ maxHeight: '80dvh' }}
+        >
+          {/* Close */}
+          <button
+            onClick={e => { e.stopPropagation(); onClose(); }}
+            className="close-button absolute right-5 text-white/38 hover:text-[#d4a373] transition-all duration-300 z-[200] p-3.5 bg-black/25 backdrop-blur-md rounded-full group"
+            style={{ top: 'calc(var(--sat,0px) + 14px)', touchAction: 'manipulation' }}
+          >
+            <X size={20} className="group-hover:rotate-90 transition-transform duration-450" />
+          </button>
+
+          {/* Hero — parallax scale */}
+          <div className="w-full h-44 relative overflow-hidden shrink-0">
+            {poster.src ? (
+              <motion.img
+                src={poster.src}
+                alt={poster.titleEn}
+                className="w-full h-full object-cover opacity-55"
+                style={{ scale: imgScale }}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center" style={{ background: '#030712' }}>
+                <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '10px 10px' }} />
+                <div className="absolute inset-0 opacity-22" style={{ background: `radial-gradient(ellipse at center, ${poster.accent}44 0%, transparent 70%)` }} />
+                {poster.textDisplay?.split('\n').map((line, i) => (
+                  <p key={i} className="relative z-10 font-black leading-none opacity-55"
+                    style={{ fontSize: '2.2rem', color: poster.accent, fontFamily: 'Impact, "Arial Black", sans-serif' }}>
+                    {line}
+                  </p>
+                ))}
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0c0e18] via-[#0c0e18]/55 to-transparent" />
+          </div>
+
+          {/* Scrollable body — content fades in just behind the panel's scale-up */}
+          <div ref={scrollRef} className="overflow-y-auto custom-scrollbar flex-grow px-7 pt-5 pb-10">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.12, duration: 0.2 }}
+            >
+              <div className="mb-7 pb-2 border-b border-[#d4a373]/22">
+                <span className="text-[#d4a373] text-[9px] font-black tracking-[0.32em] uppercase italic">
+                  {lang === 'he' ? poster.titleHe : poster.titleEn}
+                </span>
+              </div>
+              <motion.div style={{ y: textY }}>
+                <p
+                  className="text-white/88 text-[1.05rem] md:text-[1.15rem] leading-relaxed font-light whitespace-pre-line"
+                  style={{ fontFamily: "'Courier Prime','Courier New',monospace", direction: lang === 'he' ? 'rtl' : 'ltr' }}
+                >
+                  {lang === 'he' ? poster.excerptHe : poster.excerptEn}
+                </p>
+              </motion.div>
+            </motion.div>
+          </div>
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Motion Reel Card — autoplay on hover, click to open lightbox ──────────────
+function ReelCard({ reel, lang, onClick }) {
+  const videoRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+
+  const handleEnter = useCallback(() => {
+    setPlaying(true);
+    const v = videoRef.current;
+    if (v) { v.currentTime = 0; v.play().catch(() => {}); }
+  }, []);
+
+  const handleLeave = useCallback(() => {
+    setPlaying(false);
+    const v = videoRef.current;
+    if (v) { v.pause(); v.currentTime = 0; }
+  }, []);
+
+  return (
+    <motion.div
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+      onClick={() => onClick(reel)}
+      whileHover={{ scale: 1.05, y: -6 }}
+      transition={{ type: 'spring', stiffness: 340, damping: 26 }}
+      className="relative shrink-0 w-[110px] md:w-[128px] rounded-2xl overflow-hidden cursor-pointer transition-colors duration-300 snap-start"
+      style={{
+        aspectRatio: '9/16',
+        border: playing ? `1.5px solid ${reel.color}88` : '1.5px solid rgba(255,255,255,0.08)',
+        boxShadow: playing ? `0 12px 40px ${reel.color}30` : 'none',
+      }}
+    >
+      <video
+        ref={videoRef}
+        src={reel.src}
+        muted
+        playsInline
+        loop
+        preload="none"
+        className="w-full h-full object-cover"
+      />
+      <div
+        className="absolute inset-0 transition-opacity duration-300 pointer-events-none"
+        style={{
+          background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.15) 40%, rgba(0,0,0,0.55) 100%)',
+          opacity: playing ? 0.7 : 0.9,
+        }}
+      />
+      {!playing && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-9 h-9 rounded-full flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,0.12)', border: '1.5px solid rgba(255,255,255,0.28)', backdropFilter: 'blur(4px)' }}>
+            <div className="w-0 h-0 ml-0.5"
+              style={{ borderTop: '6px solid transparent', borderBottom: '6px solid transparent', borderLeft: '11px solid rgba(255,255,255,0.85)' }} />
+          </div>
+        </div>
+      )}
+      <div className="absolute bottom-0 left-0 right-0 p-2.5 pointer-events-none">
+        <div className="inline-block px-1.5 py-[2px] rounded-md text-[6px] font-black tracking-[0.12em] uppercase mb-1.5"
+          style={{ background: `${reel.color}22`, color: reel.color, border: `1px solid ${reel.color}44` }}>
+          {reel.tagline}
+        </div>
+        <p className="text-white text-[9px] font-bold leading-tight">
+          {lang === 'he' ? reel.titleHe : reel.titleEn}
+        </p>
+      </div>
+    </motion.div>
+  );
+}
 
 function HomePage() {
   const { data: session, update: updateSession } = useSession();
@@ -34,6 +283,8 @@ function HomePage() {
   const [showTips, setShowTips] = useState(false);
   const [showGallery, setShowGallery] = useState(true);
   const [selectedPoster, setSelectedPoster] = useState(null);
+  const [selectedReel,   setSelectedReel]   = useState(null);
+  const [galleryMode,    setGalleryMode]    = useState('grid'); // 'grid' | 'filmstrip'
   const [producerName, setProducerName] = useState('');
 
   const abortControllerRef = useRef(null);
@@ -561,68 +812,163 @@ function HomePage() {
           />
         </motion.section>
 
-        {/* Gallery Section */}
+        {/* ════════════════════════════════════════════════════════════════
+            Gallery Section
+        ════════════════════════════════════════════════════════════════ */}
         <AnimatePresence>
           {showGallery && !script && (
             <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
               className="mt-16 mb-10"
             >
-              <div className="text-center mb-10">
-                <h3 className="text-[#d4a373] text-[10px] font-black tracking-[0.5em] uppercase mb-2 opacity-60">
-                  {lang === 'he' ? 'גלריית הפקות' : 'PRODUCTION SAMPLES'}
-                </h3>
-                <div className="h-[1px] w-20 bg-[#d4a373]/30 mx-auto" />
-              </div>
+              {/* ── Header + Segmented View Toggle ───────────────────────── */}
+              <div className="flex items-start justify-between mb-9 px-1">
+                <div className="flex-1 flex flex-col items-center gap-2 pt-0.5">
+                  <h3 className="text-[#d4a373] text-[10px] font-black tracking-[0.5em] uppercase opacity-60">
+                    {lang === 'he' ? 'גלריית הפקות' : 'PRODUCTION SAMPLES'}
+                  </h3>
+                  <div className="h-[1px] w-20 bg-[#d4a373]/30" />
+                </div>
 
-              {/* התיקון כאן: הגבלת גובה וגלילה פנימית */}
-              <div className="max-h-[500px] overflow-y-auto overflow-x-hidden px-2 custom-gallery-scroll pb-6">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-6 md:gap-8">
-                  {SHOWCASE_POSTERS.map((poster, index) => {
-                    const isSelected = selectedPoster && selectedPoster.id === poster.id;
-                    return (
-                      <motion.div
-                        key={poster.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        onClick={() => setSelectedPoster(poster)}
-                        className={`group relative ${poster.type === 'comic' ? 'aspect-square' : 'aspect-[2/3]'} overflow-hidden rounded-[2rem] border transition-all duration-500 cursor-pointer
-        ${isSelected ? 'border-[#d4a373] shadow-[0_0_30px_rgba(212,163,115,0.2)]' : 'border-white/10 shadow-2xl hover:border-white/30'}`}
-                      >
-                        {poster.type === 'comic' && (
-                          <div className="absolute top-2 left-2 z-10 bg-[#d4a373]/80 backdrop-blur-sm text-black text-[7px] md:text-[8px] font-black tracking-[0.15em] uppercase px-2 py-0.5 rounded-full">
-                            {lang === 'he' ? 'קומיקס' : 'COMIC'}
-                          </div>
-                        )}
-                        <img
-                          src={poster.src}
-                          alt={lang === 'he' ? poster.titleHe : poster.titleEn}
-                          className={`w-full h-full object-cover transition-all duration-1000
-          ${isSelected ? 'scale-105 blur-[1px] brightness-[0.4]' : 'grayscale-[0.2] group-hover:grayscale-0'}`}
-                        />
-                        <div className={`absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent transition-all duration-500 flex flex-col justify-end p-4 md:p-6 text-right
-        ${isSelected ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 md:group-hover:opacity-100 md:group-hover:translate-y-0'}`}>
-
-                          {/* כותרת ז'אנר בתוך הגלריה */}
-                          <div className="flex flex-col mb-1 md:mb-2">
-                            <span className="text-[#d4a373] text-[7px] md:text-[9px] font-black tracking-[0.2em] md:tracking-[0.3em] uppercase italic block">
-                              {lang === 'he' ? (poster.type === 'comic' ? 'פאנל:' : "ז'אנר:") : (poster.type === 'comic' ? 'PANEL:' : 'GENRE:')}
-                            </span>
-                            <span className="text-white text-[10px] md:text-xs font-bold tracking-widest uppercase">
-                              {lang === 'he' ? poster.titleHe : poster.titleEn}
-                            </span>
-                          </div>
-                          <div className={`h-[1px] md:h-[1.5px] bg-[#d4a373] transition-all duration-700 ${isSelected ? 'w-12 md:w-16' : 'w-0 group-hover:w-10'}`} />
-                        </div>
-                      </motion.div>
-                    );
-                  })}
+                {/* Segmented control */}
+                <div className="flex items-center gap-0.5 bg-white/[0.04] rounded-xl p-[3px] border border-white/[0.07] shrink-0 ml-4">
+                  {[
+                    { key: 'grid',      labelEn: '⊞ Grid',      labelHe: '⊞ גריד' },
+                    { key: 'filmstrip', labelEn: '▤ Reel',      labelHe: '▤ ריל'  },
+                  ].map(seg => (
+                    <button
+                      key={seg.key}
+                      onClick={() => setGalleryMode(seg.key)}
+                      className={`px-3 py-[5px] rounded-[9px] text-[7.5px] font-black uppercase tracking-wide transition-all duration-200 ${
+                        galleryMode === seg.key
+                          ? 'bg-[#d4a373] text-black shadow-sm'
+                          : 'text-white/32 hover:text-white/58'
+                      }`}
+                    >
+                      {lang === 'he' ? seg.labelHe : seg.labelEn}
+                    </button>
+                  ))}
                 </div>
               </div>
+
+              {/* ── Motion Reels Strip ────────────────────────────────────── */}
+              <div className="mb-8 px-1">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-px flex-1 bg-[#d4a373]/12" />
+                  <span className="text-[7px] font-black tracking-[0.45em] uppercase text-white/22 whitespace-nowrap">
+                    {lang === 'he' ? '▶  ריל קולנועי' : '▶  MOTION REELS'}
+                  </span>
+                  <div className="h-px flex-1 bg-[#d4a373]/12" />
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-3 custom-reel-scroll snap-x snap-mandatory">
+                  {SHOWCASE_REELS.map(reel => (
+                    <ReelCard key={reel.id} reel={reel} lang={lang} onClick={setSelectedReel} />
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Grid / Filmstrip view switcher ────────────────────────── */}
+              <AnimatePresence mode="wait" initial={false}>
+
+                {galleryMode === 'grid' ? (
+                  /* ══════════════════ MASONRY EDITORIAL GRID ═══════════════ */
+                  <motion.div
+                    key="gallery-grid"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="max-h-[560px] overflow-y-auto overflow-x-hidden px-2 custom-gallery-scroll pb-6"
+                  >
+                    <div className="columns-2 lg:columns-3 [column-gap:1.2rem]">
+                      {SHOWCASE_POSTERS.map((poster) => (
+                        /* ── Column-flow wrapper: PURE HTML, owns the masonry break.
+                           Keeping break-inside-avoid OFF the motion.div stops Framer
+                           Motion from snapshotting a collapsed first column child. ── */
+                        <div key={poster.id} className="break-inside-avoid mb-4 relative">
+                          <motion.div
+                            onClick={() => setSelectedPoster(poster)}
+                            className="group relative w-full overflow-hidden rounded-[1.8rem] border cursor-pointer transition-colors duration-500"
+                            style={{
+                              borderColor: poster.type === 'text'
+                                ? `${poster.accent}28`
+                                : 'rgba(255,255,255,0.09)',
+                              boxShadow: '0 8px 32px rgba(0,0,0,0.55)',
+                              // WebKit multicol fix: dedicated layer + isolated stacking
+                              // context so the rounded/clipped card paints correctly.
+                              transform: 'translateZ(0)',
+                              isolation: 'isolate',
+                            }}
+                          >
+                            {poster.type === 'comic' && (
+                              <div className="absolute top-2 left-2 z-20 bg-[#d4a373]/82 backdrop-blur-sm text-black text-[7px] font-black tracking-[0.15em] uppercase px-2 py-[3px] rounded-full">
+                                {lang === 'he' ? 'קומיקס' : 'COMIC'}
+                              </div>
+                            )}
+
+                            <PosterCardBody poster={poster} lang={lang} />
+                          </motion.div>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+
+                ) : (
+                  /* ══════════════════ FILMSTRIP TIMELINE MODE ══════════════ */
+                  <motion.div
+                    key="gallery-filmstrip"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-x-auto custom-reel-scroll pb-5 -mx-2 px-2"
+                  >
+                    <div className="flex gap-px min-w-max">
+                      {GENRE_GROUPS.map(({ key, labelEn, labelHe, color }) => {
+                        const group = SHOWCASE_POSTERS.filter(p => inferPosterGenre(p) === key);
+                        if (!group.length) return null;
+                        return (
+                          <div key={key} className="flex flex-col shrink-0" style={{ scrollSnapAlign: 'start' }}>
+                            {/* Sticky-top genre label */}
+                            <div className="flex items-center gap-1.5 px-4 pb-3">
+                              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: color }} />
+                              <span className="text-[7.5px] font-black tracking-[0.28em] uppercase whitespace-nowrap"
+                                style={{ color: `${color}bb` }}>
+                                {lang === 'he' ? labelHe : labelEn}
+                              </span>
+                              <span className="w-6 h-px ml-1 shrink-0" style={{ background: `${color}22` }} />
+                            </div>
+
+                            {/* Card row */}
+                            <div className="flex gap-3 px-3">
+                              {group.map(poster => (
+                                <motion.div
+                                  key={`fs-${poster.id}`}
+                                  onClick={() => setSelectedPoster(poster)}
+                                  whileHover={{ scale: 1.06, y: -5 }}
+                                  transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+                                  className={`group relative shrink-0 overflow-hidden rounded-[1.1rem] cursor-pointer ${(poster.type === 'comic' || poster.type === 'text') ? 'aspect-square' : 'aspect-[2/3]'}`}
+                                  style={{
+                                    width: (poster.type === 'comic' || poster.type === 'text') ? 90 : 76,
+                                    border: `1.5px solid ${poster.type === 'text' ? `${poster.accent}30` : 'rgba(255,255,255,0.09)'}`,
+                                    boxShadow: '0 4px 18px rgba(0,0,0,0.5)',
+                                  }}
+                                >
+                                  <PosterCardBody poster={poster} lang={lang} compact />
+                                </motion.div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+
+              </AnimatePresence>
             </motion.section>
           )}
         </AnimatePresence>
@@ -654,67 +1000,58 @@ function HomePage() {
           )}
         </AnimatePresence>
 
-        {/* מודל הרחבה קטן ויוקרתי (Expanded Panel) */}
+        {/* ── Cinematic Lightbox (scale+opacity crossfade + parallax scrub) ─ */}
         <AnimatePresence>
           {selectedPoster && (
+            <PosterLightbox
+              key={selectedPoster.id}
+              poster={selectedPoster}
+              onClose={() => setSelectedPoster(null)}
+              lang={lang}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* ── Reel Lightbox ────────────────────────────────────────────────── */}
+        <AnimatePresence>
+          {selectedReel && (
             <motion.div
+              key="reel-lightbox-bd"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setSelectedPoster(null)}
-              className="fixed inset-0 z-[1000] bg-black/40 backdrop-blur-sm flex items-end md:items-center justify-center p-6 pb-24 md:pb-10"
+              transition={{ duration: 0.22 }}
+              onClick={() => setSelectedReel(null)}
+              className="fixed inset-0 z-[1100] flex items-center justify-center p-6 bg-black/85 backdrop-blur-md"
             >
               <motion.div
-                initial={{ scale: 0.9, y: 40 }}
+                initial={{ scale: 0.88, y: 30 }}
                 animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 40 }}
-                onClick={(e) => e.stopPropagation()}
-                className="bg-[#0f1117]/95 border border-[#d4a373]/30 rounded-[2.5rem] shadow-[0_25px_100px_rgba(0,0,0,0.9)] w-full max-w-md overflow-hidden flex flex-col relative"
-                style={{ maxHeight: '70vh' }}
+                exit={{ scale: 0.88, y: 30 }}
+                transition={{ type: 'spring', stiffness: 340, damping: 28 }}
+                onClick={e => e.stopPropagation()}
+                className="relative bg-black rounded-3xl overflow-hidden shadow-[0_40px_120px_rgba(0,0,0,0.96)] border border-white/8"
+                style={{ width: 'min(300px, 88vw)', aspectRatio: '9/16', maxHeight: '88dvh' }}
               >
-                {/* כפתור סגירה (X) בלבד - אלמנט הניווט היחיד */}
+                <video
+                  src={selectedReel.src}
+                  autoPlay
+                  playsInline
+                  loop
+                  controls
+                  className="w-full h-full object-cover"
+                />
                 <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setSelectedPoster(null);
-                  }}
-                  className="close-button absolute right-6 text-white/40 hover:text-[#d4a373] transition-all duration-300 z-[9999] p-4 bg-black/20 backdrop-blur-md rounded-full group"
-                  style={{
-                    top: 'calc(var(--sat, 0px) + 16px)',
-                    touchAction: 'manipulation'
-                  }}
+                  onClick={() => setSelectedReel(null)}
+                  className="close-button absolute top-3.5 right-3.5 w-9 h-9 rounded-full flex items-center justify-center bg-black/65 border border-white/15 text-white/60 hover:text-white hover:bg-black/85 transition-all z-10"
+                  style={{ backdropFilter: 'blur(6px)' }}
                 >
-                  <X size={24} className="close-button group-hover:rotate-90 transition-transform duration-500" />
+                  <X size={14} />
                 </button>
-
-                {/* תמונה מוקטנת למעלה עם גרדיאנט עמוק */}
-                <div className="w-full h-40 relative">
-                  <img
-                    src={selectedPoster.src}
-                    className="w-full h-full object-cover opacity-50"
-                    alt={selectedPoster.titleEn}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0f1117] via-[#0f1117]/50 to-transparent" />
-                </div>
-
-                {/* תוכן הטקסט - מקסימום מקום לקריאה */}
-                <div className="p-8 pt-0 pb-10 flex flex-col flex-grow overflow-hidden">
-                  <div className="mb-6">
-                    <span className="text-[#d4a373] text-[9px] font-black tracking-[0.3em] uppercase italic border-b border-[#d4a373]/20 pb-1">
-                      {lang === 'he' ? selectedPoster.titleHe : selectedPoster.titleEn}
-                    </span>
-                  </div>
-
-                  {/* אזור הטקסט עם גלילה פנימית חלקה */}
-                  <div className="overflow-y-auto pr-3 custom-scrollbar flex-grow text-right">
-                    <p className="text-white/90 text-[1.1rem] md:text-xl leading-relaxed font-light whitespace-pre-line"
-                      style={{
-                        fontFamily: "'Courier Prime', 'Courier New', monospace",
-                        direction: lang === 'he' ? 'rtl' : 'ltr',
-                      }}>
-                      {lang === 'he' ? selectedPoster.excerptHe : selectedPoster.excerptEn}
-                    </p>
+                <div className="absolute top-3.5 left-3.5 z-10 pointer-events-none">
+                  <div className="px-2 py-1 rounded-lg text-[6.5px] font-black tracking-[0.14em] uppercase"
+                    style={{ background: `${selectedReel.color}28`, color: selectedReel.color, border: `1px solid ${selectedReel.color}50`, backdropFilter: 'blur(4px)' }}>
+                    {selectedReel.tagline}
                   </div>
                 </div>
               </motion.div>

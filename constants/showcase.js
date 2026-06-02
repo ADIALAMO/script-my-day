@@ -291,5 +291,98 @@ Two glasses. Two men. Easy air. Conversations that don't need endings.
     excerptEn: `EXT. QUIET STREET - NIGHT.
 Dim street lights. Rhythmic steps on the pavement. A note with a number in the pocket.
 "I walked home with a phone number and a day that somehow felt different."`
-  }
+  },
+
+  // ─── Cinematic Text Panels ─────────────────────────────────────────────────
+  {
+    id: 26,
+    type: 'text',
+    titleHe: 'ACTION!',
+    titleEn: 'ACTION!',
+    excerptHe: '"כל סצנה היא הזדמנות לחיות חיים שמעולם לא חיית."\n\n— LifeScript Studio',
+    excerptEn: '"Every scene is a chance to live a life you\'ve never lived."\n\n— LifeScript Studio',
+    textDisplay: 'ACTION!',
+    textSub: 'THE DIRECTOR CALLS',
+    accent: '#ef4444',
+  },
+  {
+    id: 27,
+    type: 'text',
+    titleHe: 'CUT TO: CLOSE-UP',
+    titleEn: 'CUT TO: CLOSE-UP',
+    excerptHe: 'פנים. היקום הפנימי שלך — עכשיו.\n\nהסצנה הזאת לא נכתבה עדיין.\nהיא מחכה לך.',
+    excerptEn: 'INT. YOUR INNER UNIVERSE — NOW.\n\nThis scene hasn\'t been written yet.\nIt\'s waiting for you.',
+    textDisplay: 'CUT TO:',
+    textSub: 'CLOSE-UP ON YOU',
+    accent: '#d4a373',
+  },
+  {
+    id: 28,
+    type: 'text',
+    titleHe: 'הסיפור שלך',
+    titleEn: 'YOUR STORY',
+    excerptHe: '"הסיפורים הגדולים ביותר\nלא הומצאו — הם התרחשו."',
+    excerptEn: '"The greatest stories\nweren\'t invented — they happened."',
+    textDisplay: 'YOUR\nSTORY.',
+    textSub: 'YOUR FILM.',
+    accent: '#22d3ee',
+  },
+];
+
+// ─── Motion Comic Reels ────────────────────────────────────────────────────────
+export const SHOWCASE_REELS = [
+  {
+    id: 'reel-action',
+    genre: 'action',
+    src: '/reels/lifescript-reel-action.mp4',
+    titleHe: 'אקשן',
+    titleEn: 'Action',
+    tagline: 'ADRENALINE RUSH',
+    color: '#ef4444',
+  },
+  {
+    id: 'reel-drama',
+    genre: 'drama',
+    src: '/reels/lifescript-reel-drama.mp4',
+    titleHe: 'דרמה',
+    titleEn: 'Drama',
+    tagline: 'HOLLYWOOD DRAMA',
+    color: '#d4a373',
+  },
+  {
+    id: 'reel-romance',
+    genre: 'romance',
+    src: '/reels/lifescript-reel-romance.mp4',
+    titleHe: 'רומנטיקה',
+    titleEn: 'Romance',
+    tagline: 'HEART & SOUL',
+    color: '#f472b6',
+  },
+  {
+    id: 'reel-horror',
+    genre: 'horror',
+    src: '/reels/lifescript-reel-horror.mp4',
+    titleHe: 'אימה',
+    titleEn: 'Horror',
+    tagline: 'PSYCH THRILLER',
+    color: '#818cf8',
+  },
+  {
+    id: 'reel-sci-fi',
+    genre: 'sci-fi',
+    src: '/reels/lifescript-reel-sci-fi.mp4',
+    titleHe: 'מד"ב',
+    titleEn: 'Sci-Fi',
+    tagline: 'BEYOND REALITY',
+    color: '#22d3ee',
+  },
+  {
+    id: 'reel-horror-2',
+    genre: 'horror',
+    src: '/reels/lifescript-reel-horror-2.mp4',
+    titleHe: 'אימה II',
+    titleEn: 'Horror II',
+    tagline: 'DARK TENSION',
+    color: '#a855f7',
+  },
 ];

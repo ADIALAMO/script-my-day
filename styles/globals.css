@@ -120,6 +120,12 @@ button {
 .custom-gallery-scroll::-webkit-scrollbar-thumb { background: var(--color-gold); border-radius: 20px; }
 .custom-gallery-scroll { scrollbar-width: thin; scrollbar-color: var(--color-gold) transparent; }
 
+/* Horizontal scroll strip for motion reels */
+.custom-reel-scroll { scrollbar-width: thin; scrollbar-color: var(--color-gold) transparent; }
+.custom-reel-scroll::-webkit-scrollbar       { height: 3px; }
+.custom-reel-scroll::-webkit-scrollbar-track { background: transparent; }
+.custom-reel-scroll::-webkit-scrollbar-thumb { background: var(--color-gold); border-radius: 20px; }
+
 /* ── Close Button (mobile hit-area expansion) ───────────────────────────────── */
 .close-button {
   position: relative;
