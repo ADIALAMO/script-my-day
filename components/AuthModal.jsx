@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signIn, getSession } from 'next-auth/react';
@@ -37,6 +37,29 @@ const GoogleLogo = () => (
   </svg>
 );
 
+// ── iOS PWA helpers ──────────────────────────────────────────────────────────
+
+// Returns true when the app is running as an installed standalone PWA.
+// In this context Safari opens magic links in an isolated process, so the
+// session cookie is never shared back with the WKWebView. The relay-exchange
+// flow is activated exclusively for this case.
+function isStandalonePWA() {
+  if (typeof window === 'undefined') return false;
+  return (
+    window.matchMedia?.('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true
+  );
+}
+
+// crypto.randomUUID is available on iOS ≥ 15.4. Fallback covers older devices.
+function generateRelayToken() {
+  if (typeof crypto?.randomUUID === 'function') return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 /**
  * High-trust sign-in gate. Renders via createPortal.
  *
@@ -56,12 +79,17 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
   const [email, setEmail]           = useState('');
   const [emailError, setEmailError] = useState('');
 
+  // One relay token per sign-in attempt — generated fresh each time the modal opens.
+  // Stored in a ref so it survives re-renders without causing extra renders itself.
+  const relayTokenRef = useRef(null);
+
   // Reset internal state whenever the modal opens.
   useEffect(() => {
     if (isOpen) {
       setEmailState('idle');
       setEmail('');
       setEmailError('');
+      relayTokenRef.current = generateRelayToken();
     }
   }, [isOpen]);
 
@@ -108,6 +136,71 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
     };
   }, [emailState, isOpen]);
 
+  // ── iOS PWA relay-exchange poll ───────────────────────────────────────────
+  // The getSession() poll above covers desktop / same-browser flows where all
+  // tabs share the same cookie jar.
+  //
+  // This effect covers the iOS PWA case: the magic link opens in external
+  // Safari (different WKWebView sandbox), authenticates there, and writes a
+  // verified relay entry to Redis via /auth-relay-complete. Once the entry is
+  // detected here, we call signIn('relay-exchange') to materialise a real
+  // NextAuth JWT session cookie inside this PWA's WKWebView — no cookie
+  // sharing or sandbox bypass required.
+  //
+  // Only activates when running as a standalone PWA (window.navigator.standalone
+  // or display-mode: standalone) to avoid conflicting with the desktop flow.
+  useEffect(() => {
+    if (emailState !== 'sent' || !isOpen) return;
+    if (!isStandalonePWA()) return;
+
+    const relayToken = relayTokenRef.current;
+    if (!relayToken) return;
+
+    let cancelled = false;
+
+    const attemptExchange = async () => {
+      if (cancelled) return;
+      try {
+        const result = await signIn('relay-exchange', {
+          relayToken,
+          redirect: false,
+        });
+        if (result?.ok && !cancelled) setEmailState('authenticated');
+      } catch {
+        // Exchange failed — relay entry not ready or already consumed. Safe to retry.
+      }
+    };
+
+    const checkRelay = async () => {
+      if (cancelled) return;
+      try {
+        const res = await fetch(
+          `/api/auth/relay-status?token=${encodeURIComponent(relayToken)}`,
+          { cache: 'no-store' }
+        );
+        if (!res.ok) return;
+        const { status } = await res.json();
+        if (status === 'verified' && !cancelled) await attemptExchange();
+      } catch {
+        // Network blip — retry on next interval tick.
+      }
+    };
+
+    const interval    = setInterval(checkRelay, 2500);
+    // Stop after 10 min — matches the magic link maxAge in lib/auth.js.
+    const maxAgeTimer = setTimeout(() => { cancelled = true; clearInterval(interval); }, 10 * 60 * 1000);
+    // Immediate check when user switches back from Safari to the PWA.
+    const onVisible   = () => { if (!document.hidden) checkRelay(); };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      clearTimeout(maxAgeTimer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [emailState, isOpen]);
+
   // ── Post-authentication reload ────────────────────────────────────────────
   // Once authenticated, show the confirmation screen briefly, then do a full
   // page reload. This re-hydrates useSession in every component (Navbar tier
@@ -137,9 +230,17 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
     setEmailError('');
     setEmailState('sending');
     try {
+      // In standalone PWA mode, embed the relay_token in the callbackUrl so
+      // that /auth-relay-complete can write the verified entry to Redis after
+      // the user authenticates in Safari. In all other contexts, keep the
+      // existing /auth-success flow (tab auto-close + getSession() polling).
+      const callbackUrl = isStandalonePWA()
+        ? `${window.location.origin}/auth-relay-complete?relay_token=${relayTokenRef.current}`
+        : `${window.location.origin}/auth-success`;
+
       // redirect: false returns {ok, error} without leaving the page so our
       // modal can display the confirmation state directly.
-      const result = await signIn('email', { email: trimmed, redirect: false, callbackUrl: `${window.location.origin}/auth-success` });
+      const result = await signIn('email', { email: trimmed, redirect: false, callbackUrl });
       if (result?.error) {
         setEmailState('error');
         setEmailError(isHe ? 'שגיאה בשליחת המייל. נסה שוב.' : 'Failed to send email. Please try again.');
@@ -245,11 +346,19 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                       <h2 className="text-[21px] font-black text-white leading-tight mb-3">
                         {isHe ? 'בדוק את תיבת המייל שלך' : 'Check your inbox'}
                       </h2>
-                      <p className="text-white/35 text-[12px] leading-relaxed mb-6">
+                      <p className="text-white/35 text-[12px] leading-relaxed mb-4">
                         {isHe
                           ? `שלחנו קישור כניסה לכתובת ${email}. הוא יפוג תוך 10 דקות.`
                           : `We sent a sign-in link to ${email}. It expires in 10 minutes.`}
                       </p>
+                      {isStandalonePWA() && (
+                        <p className="text-emerald-400/50 text-[11px] leading-relaxed mb-6 px-2">
+                          {isHe
+                            ? 'לחץ על הקישור במייל ואז חזור לאפליקציה — הכניסה תתבצע אוטומטית.'
+                            : 'Tap the link in your email, then return here — sign-in completes automatically.'}
+                        </p>
+                      )}
+                      {!isStandalonePWA() && <div className="mb-6" />}
                       <button
                         onClick={() => { setEmailState('idle'); setEmail(''); }}
                         className="text-white/25 hover:text-white/50 text-[11px] transition-colors"
