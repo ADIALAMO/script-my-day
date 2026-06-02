@@ -44,8 +44,8 @@ export default async function handler(req, res) {
   // ── Input validation ───────────────────────────────────────────────────────
   const { tier, targetEmail, targetUserId } = req.body ?? {};
 
-  if (!['free', 'pro'].includes(tier)) {
-    return res.status(400).json({ success: false, error: 'tier must be "free" or "pro".' });
+  if (!['free', 'pro', 'admin'].includes(tier)) {
+    return res.status(400).json({ success: false, error: 'tier must be "free", "pro", or "admin".' });
   }
 
   // ── Resolve target user ────────────────────────────────────────────────────

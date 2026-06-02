@@ -28,30 +28,59 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
     setTimeout(() => setAllCopied(false), 2000);
   };
 
-  const downloadFrame = (url, panelNum) => {
+  const fetchImageBlob = async (url) => {
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('direct fetch failed');
+      return await resp.blob();
+    } catch {
+      // Cross-origin or CORS blocked — fall back to server proxy
+      const resp = await fetch(`/api/proxy-image?url=${encodeURIComponent(url)}`);
+      if (!resp.ok) throw new Error('proxy fetch failed');
+      return await resp.blob();
+    }
+  };
+
+  const downloadFrame = async (url, panelNum) => {
     if (!url) return;
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `panel-${String(panelNum).padStart(2, '0')}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const filename = `panel-${String(panelNum).padStart(2, '0')}.png`;
+    try {
+      const blob = await fetchImageBlob(url);
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      window.open(url, '_blank');
+    }
   };
 
   const shareFrame = async (url, panelNum) => {
     if (!url) return;
-    if (navigator.share) {
-      try {
-        const resp = await fetch(url);
-        const blob = await resp.blob();
-        const file = new File([blob], `panel-${String(panelNum).padStart(2, '0')}.png`, { type: 'image/png' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: `Panel ${panelNum}` });
-          return;
-        }
-      } catch {}
+    const filename = `panel-${String(panelNum).padStart(2, '0')}.png`;
+    try {
+      const blob = await fetchImageBlob(url);
+      const file = new File([blob], filename, { type: 'image/png' });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: `Panel ${panelNum}` });
+        return;
+      }
+      // No native share API — fall back to download
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      window.open(url, '_blank');
     }
-    downloadFrame(url, panelNum);
   };
 
   const getImageState = (idx) => {

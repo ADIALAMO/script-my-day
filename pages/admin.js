@@ -186,7 +186,7 @@ export default function AdminDashboard({ adminEmail }) {
                   Target Tier
                 </label>
                 <div className="flex gap-2">
-                  {['free', 'pro'].map(t => (
+                  {['free', 'pro', 'admin'].map(t => (
                     <button
                       key={t}
                       type="button"
@@ -195,11 +195,13 @@ export default function AdminDashboard({ adminEmail }) {
                         selectedTier === t
                           ? t === 'pro'
                             ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
-                            : 'bg-sky-500/15 border-sky-500/40 text-sky-400'
+                            : t === 'admin'
+                              ? 'bg-violet-500/15 border-violet-500/40 text-violet-400'
+                              : 'bg-sky-500/15 border-sky-500/40 text-sky-400'
                           : 'bg-white/[0.03] border-white/8 text-white/25 hover:text-white/50 hover:border-white/15'
                       }`}
                     >
-                      {t}
+                      {t === 'admin' ? '∞ admin' : t}
                     </button>
                   ))}
                 </div>
@@ -213,7 +215,7 @@ export default function AdminDashboard({ adminEmail }) {
                 {tierStatus === 'loading' ? (
                   <><Loader2 size={13} className="animate-spin" /> Applying…</>
                 ) : (
-                  `Set ${selectedTier} tier`
+                  selectedTier === 'admin' ? 'Grant ∞ Admin Access' : `Set ${selectedTier} tier`
                 )}
               </button>
 
