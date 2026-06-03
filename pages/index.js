@@ -232,6 +232,7 @@ function ReelCard({ reel, lang, onClick }) {
       <video
         ref={videoRef}
         src={reel.src}
+        poster={reel.poster}
         muted
         playsInline
         loop
