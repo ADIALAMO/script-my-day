@@ -327,6 +327,99 @@ Dim street lights. Rhythmic steps on the pavement. A note with a number in the p
     textSub: 'YOUR FILM.',
     accent: '#22d3ee',
   },
+
+  // ─── New Comic Sets (2-8) ──────────────────────────────────────────────────
+  {
+    id: 29,
+    type: 'comic',
+    src: '/gallery/comics/panel-01-2.png',
+    titleHe: 'פעימה דיגיטלית',
+    titleEn: 'Digital Pulse',
+    excerptHe: `קלוז-אפ. פנים. לאונג' סייבר — לילה.
+פניהם סנטימטרים זה מזה. זרמי נתונים זורחים ביניהם כאילו הם חיים.
+"בעיר שזוכרת הכל, אתה הדבר היחיד שהייתי בוחרת לשכוח — רק כדי שאוכל למצוא אותך שוב."`,
+    excerptEn: `CLOSE-UP. INT. CYBER LOUNGE — NIGHT.
+Their faces centimetres apart. Data streams glow between them like something alive.
+"In a city that remembers everything, you're the one thing I'd choose to forget — just so I could find you again."`,
+  },
+  {
+    id: 30,
+    type: 'comic',
+    src: '/gallery/comics/panel-01-3.png',
+    titleHe: 'גשם ושכל',
+    titleEn: 'Rain & Reason',
+    excerptHe: `פנים. דירה במגדל — לילה. גשם.
+הוא מגיש לה כוס. העיר הניאונית מדממת צבעים מבעד לזכוכית.
+"תגיד משהו," היא לוחשת. הוא מביט בגשם. "כבר אמרתי. פשוט לא הקשבת."`,
+    excerptEn: `INT. HIGH-RISE APARTMENT — NIGHT. RAIN.
+He slides a cup toward her. The neon city bleeds colour through the glass behind them.
+"Say something," she whispers. He watches the rain. "I already did. You just weren't listening."`,
+  },
+  {
+    id: 31,
+    type: 'comic',
+    src: '/gallery/comics/panel-01-4.png',
+    titleHe: 'תוכנית הבריחה',
+    titleEn: 'The Getaway',
+    excerptHe: `פנים. מכונית נוסעת במהירות — יום.
+שלושה אנשים. רכב אחד. אפס תוכנית. הרדיו מצפצף — קול שאף אחד מהם לא ציפה לו.
+"זה לא היה אמור לקרות," היא צועקת מעל רעש המנוע. הוא מחייך: "שום דבר טוב אף פעם לא היה אמור."`,
+    excerptEn: `INT. SPEEDING CAR — DAY.
+Three people. One vehicle. Zero plan. The radio crackles with a voice none of them expected.
+"This wasn't supposed to happen," she shouts over the engine. He grins: "None of the good stuff ever is."`,
+  },
+  {
+    id: 32,
+    type: 'comic',
+    src: '/gallery/comics/panel-01-5.png',
+    titleHe: 'העונה שביניינו',
+    titleEn: 'The Season Between Us',
+    excerptHe: `חוץ. שביל ביער — אחר צהריים של סתיו.
+ארבעה חברים הולכים במקום שבו המפה נגמרת. אור זהוב נופל דרך עלים אדומים.
+"לאן זה מוביל?" היא שואלת. הוא לא מאט: "למקום שעוד לא היינו בו."`,
+    excerptEn: `EXT. FOREST PATH — AUTUMN AFTERNOON.
+Four friends walk where the map ends. Gold light falls through red leaves.
+"Where does this lead?" she asks. He doesn't slow down: "Somewhere we haven't been yet."`,
+  },
+  {
+    id: 33,
+    type: 'comic',
+    src: '/gallery/comics/panel-01-6.png',
+    titleHe: 'הצד השני',
+    titleEn: 'The Other Side',
+    excerptHe: `פנים. מסגרת דלת חשוכה — לילה.
+הוא פורץ את הדלת. הפנס חותך להב אור בחושך.
+"אמרו שהמקום ריק כבר שנים." הוא נכנס פנימה. "בואו נגלה מי שיקר."`,
+    excerptEn: `INT. DARKENED DOORWAY — NIGHT.
+He forces the door open. The torch cuts a blade of light through the dark.
+"They said this place has been empty for years." He steps inside. "Let's find out who's been lying."`,
+  },
+  {
+    id: 34,
+    type: 'comic',
+    src: '/gallery/comics/panel-01-7.png',
+    titleHe: 'חשודים מוכרים',
+    titleEn: 'Known Suspects',
+    excerptHe: `פנים. מושב אחורי ברכב נוסע — לילה.
+הוא לא מסתכל עליה. היא לא מסתכלת עליו. שניהם מביטים באותה נקודת חושך בחוץ.
+"אתה יודע מה שאני יודעת." היא סובבת לבסוף. "מה שאומר שאתה יודע שאני לא מי שאתה צריך לפחד ממנו."`,
+    excerptEn: `INT. BACK OF A MOVING CAR — NIGHT.
+He doesn't look at her. She doesn't look at him. Both watching the same darkness outside.
+"You know what I know." She finally turns. "Which means you know I'm not the one you should be afraid of."`,
+  },
+  {
+    id: 35,
+    type: 'comic',
+    src: '/gallery/comics/panel-01-8.png',
+    titleHe: 'הבוקר שאחרי',
+    titleEn: 'The Morning After',
+    excerptHe: `פנים. שולחן המטבח — בוקר מוקדם.
+אדים עולים מכוס שביניהם. בחוץ, העיר עוד לא התעוררה.
+"אתה עומד לומר משהו." הוא מביט בכוס. "אני חושב איך לנסח את זה מאז ארבע בבוקר."`,
+    excerptEn: `INT. KITCHEN TABLE — EARLY MORNING.
+Steam rises from a cup between them. Outside, the city hasn't woken up yet.
+"You're going to say something, aren't you." He looks at the cup. "I've been thinking about how to say it since 4am."`,
+  },
 ];
 
 // ─── Motion Comic Reels ────────────────────────────────────────────────────────
@@ -335,7 +428,7 @@ export const SHOWCASE_REELS = [
     id: 'reel-action',
     genre: 'action',
     src: '/reels/lifescript-reel-action.mp4',
-    poster: '/gallery/sample-4.png',
+    poster: '/gallery/comics/panel-01-4.png',
     titleHe: 'אקשן',
     titleEn: 'Action',
     tagline: 'ADRENALINE RUSH',
@@ -345,7 +438,7 @@ export const SHOWCASE_REELS = [
     id: 'reel-drama',
     genre: 'drama',
     src: '/reels/lifescript-reel-drama.mp4',
-    poster: '/gallery/sample-8.png',
+    poster: '/gallery/comics/panel-01-5.png',
     titleHe: 'דרמה',
     titleEn: 'Drama',
     tagline: 'HOLLYWOOD DRAMA',
@@ -355,7 +448,7 @@ export const SHOWCASE_REELS = [
     id: 'reel-romance',
     genre: 'romance',
     src: '/reels/lifescript-reel-romance.mp4',
-    poster: '/gallery/sample-12.png',
+    poster: '/gallery/comics/panel-01-3.png',
     titleHe: 'רומנטיקה',
     titleEn: 'Romance',
     tagline: 'HEART & SOUL',
@@ -365,7 +458,7 @@ export const SHOWCASE_REELS = [
     id: 'reel-horror',
     genre: 'horror',
     src: '/reels/lifescript-reel-horror.mp4',
-    poster: '/gallery/sample-7.png',
+    poster: '/gallery/comics/panel-01-6.png',
     titleHe: 'אימה',
     titleEn: 'Horror',
     tagline: 'PSYCH THRILLER',
@@ -375,7 +468,7 @@ export const SHOWCASE_REELS = [
     id: 'reel-sci-fi',
     genre: 'sci-fi',
     src: '/reels/lifescript-reel-sci-fi.mp4',
-    poster: '/gallery/sample-3.png',
+    poster: '/gallery/comics/panel-01-2.png',
     titleHe: 'מד"ב',
     titleEn: 'Sci-Fi',
     tagline: 'BEYOND REALITY',
@@ -385,10 +478,60 @@ export const SHOWCASE_REELS = [
     id: 'reel-horror-2',
     genre: 'horror',
     src: '/reels/lifescript-reel-horror-2.mp4',
-    poster: '/gallery/sample-10.png',
+    poster: '/gallery/comics/panel-01-7.png',
     titleHe: 'אימה II',
     titleEn: 'Horror II',
     tagline: 'DARK TENSION',
     color: '#a855f7',
+  },
+  {
+    id: 'reel-horror-3',
+    genre: 'horror',
+    src: '/reels/lifescript-reel-horror-3.mp4',
+    poster: '/gallery/comics/panel-02-6.png',
+    titleHe: 'אימה III',
+    titleEn: 'Horror III',
+    tagline: 'DARK PURSUIT',
+    color: '#6366f1',
+  },
+  {
+    id: 'reel-horror-4',
+    genre: 'horror',
+    src: '/reels/lifescript-reel-horror-4.mp4',
+    poster: '/gallery/comics/panel-03-6.png',
+    titleHe: 'אימה IV',
+    titleEn: 'Horror IV',
+    tagline: 'SILENT THREAT',
+    color: '#c084fc',
+  },
+  {
+    id: 'reel-romance-2',
+    genre: 'romance',
+    src: '/reels/lifescript-reel-romance-2.mp4',
+    poster: '/gallery/comics/panel-01-8.png',
+    titleHe: 'רומנטיקה II',
+    titleEn: 'Romance II',
+    tagline: 'MORNING LIGHT',
+    color: '#fb923c',
+  },
+  {
+    id: 'reel-romance-3',
+    genre: 'romance',
+    src: '/reels/lifescript-reel-romance-3.mp4',
+    poster: '/gallery/comics/panel-02-7.png',
+    titleHe: 'רומנטיקה III',
+    titleEn: 'Romance III',
+    tagline: 'MOONRISE',
+    color: '#e879f9',
+  },
+  {
+    id: 'reel-sci-fi-2',
+    genre: 'sci-fi',
+    src: '/reels/lifescript-reel-sci-fi-2.mp4',
+    poster: '/gallery/comics/panel-02-2.png',
+    titleHe: 'מד"ב II',
+    titleEn: 'Sci-Fi II',
+    tagline: 'NEURAL LINK',
+    color: '#06b6d4',
   },
 ];
