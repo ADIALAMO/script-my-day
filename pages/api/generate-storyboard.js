@@ -19,6 +19,7 @@ function extractPanels(rawText) {
   if (first !== -1 && last !== -1 && last > first) {
     try { const p = JSON.parse(rawText.slice(first, last + 1)); if (Array.isArray(p) && p.length) return p; } catch {}
   }
+  console.warn('⚠️ extractPanels: all JSON parse strategies failed — model returned unparseable output');
   return null;
 }
 
@@ -89,7 +90,7 @@ async function runGeminiModel(model, staticInstruction, script, apiKey, timeoutM
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) return null;
     const panels = extractPanels(text);
-    if (panels) { console.log(`✅ Storyboard via ${model}: ${panels.length} panels`); return panels; }
+    if (panels) return panels;
     return null;
   } catch (e) {
     clearTimeout(timeoutId);
@@ -151,7 +152,7 @@ async function tryOpenRouter(staticInstruction, script, apiKey) {
       const text = data?.choices?.[0]?.message?.content;
       if (!text) continue;
       const panels = extractPanels(text);
-      if (panels) { console.log(`✅ Storyboard via ${model}: ${panels.length} panels`); return panels; }
+      if (panels) return panels;
     } catch (e) {
       clearTimeout(timeoutId);
       if (e.name !== 'AbortError') console.warn(`⚠️ Storyboard ${model}: ${e.message}`);
@@ -198,7 +199,6 @@ export default async function handler(req, res) {
       try {
         const currentUsage = await redis.get(usageKey);
         const used = parseInt(currentUsage, 10) || 0;
-        console.log(`📊 Comic quota [${tier}]: ${usageKey} → ${used}/${comicLimit}`);
         if (comicLimit !== Infinity && used >= comicLimit) {
           return res.status(429).json({
             success: false,
@@ -227,11 +227,13 @@ export default async function handler(req, res) {
     const openrouterKey = process.env.OPENROUTER_API_KEY?.trim();
 
     let enrichedPanels = null;
+    let storyboardEngine = null;
 
     if (geminiKey) {
       const panels = await tryGemini(staticInstruction, cleanScript, geminiKey);
       if (panels) {
         enrichedPanels = panels.map(p => ({ ...p, visual: `${track.prefix} ${p.visual} ${track.suffix}` }));
+        storyboardEngine = 'Gemini';
       }
     }
 
@@ -239,6 +241,7 @@ export default async function handler(req, res) {
       const panels = await tryOpenRouter(staticInstruction, cleanScript, openrouterKey);
       if (panels) {
         enrichedPanels = panels.map(p => ({ ...p, visual: `${track.prefix} ${p.visual} ${track.suffix}` }));
+        storyboardEngine = 'OpenRouter';
       }
     }
 
@@ -253,8 +256,7 @@ export default async function handler(req, res) {
         const pipeline = redis.pipeline();
         pipeline.incr(usageKey);
         pipeline.expireat(usageKey, nextMidnightUTC());
-        const [newVal] = await pipeline.exec();
-        console.log(`✅ Comic quota: ${newVal}/${comicLimit} used`);
+        await pipeline.exec();
       } catch (err) {
         console.warn(`⚠️ Comic quota increment skipped (Redis unavailable): ${err.message}`);
       }
@@ -289,11 +291,10 @@ export default async function handler(req, res) {
       return p;
     });
 
-    const lockedCount = cappedPanels.length - unlockedCount;
-    console.log(`✅ Returning ${cappedPanels.length} panels — ${unlockedCount} unlocked, ${lockedCount} locked (tier=${unlockedPanels ?? 'admin'})`);
+    console.log(`🦸‍♂️ Comic Panel generated successfully via: ${storyboardEngine}`);
     return res.status(200).json({ success: true, panels: cappedPanels, unlockedPanels: unlockedCount });
   } catch (err) {
-    console.error('Storyboard API error:', err);
+    console.error('generate-storyboard unhandled error:', err.message, err.stack);
     return res.status(500).json({ success: false, code: CODES.SERVER_ERROR, message: 'Internal server error.' });
   }
 }

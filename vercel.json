@@ -6,9 +6,5 @@
     "pages/api/generate-script.js": { "maxDuration": 60 },
     "pages/api/generate-storyboard.js": { "maxDuration": 60 },
     "pages/api/generate-poster.js": { "maxDuration": 60 }
-  },
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/" }
-  ]
+  }
 }

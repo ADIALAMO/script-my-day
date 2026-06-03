@@ -30,7 +30,6 @@ export default async function handler(req, res) {
       if (customers.data.length > 0) {
         stripeCustomerId = customers.data[0].id;
         await redis.set(`user:stripe_customer:${userId}`, stripeCustomerId);
-        console.log(`📋 Portal: cached Stripe customer via email fallback → ${stripeCustomerId}`);
       }
     } catch (lookupErr) {
       console.warn('Portal: Stripe customer fallback lookup failed:', lookupErr.message);

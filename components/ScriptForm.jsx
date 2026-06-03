@@ -43,7 +43,6 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
 
     // Clapper snap — stop any prior instance before replaying so clicks never stack.
     // Triggered inside the user-gesture handler so autoplay policy is satisfied.
-    // Fails silently if /audio/clapper.mp3 is absent or the codec is unsupported.
     try {
       if (clapperRef.current) {
         clapperRef.current.pause();
@@ -53,7 +52,9 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
       clapper.volume = 0.65;
       clapper.play().catch(() => {});
       clapperRef.current = clapper;
-    } catch {}
+    } catch (e) {
+      console.warn('⚠️ Clapper audio init failed:', e.message);
+    }
 
     if (typeof window !== 'undefined' && window.gtag) {
       window.gtag('event', 'generate_script_start', { genre: activeGenre, word_count: currentWordCount });

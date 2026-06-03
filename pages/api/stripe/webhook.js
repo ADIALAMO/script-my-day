@@ -30,16 +30,14 @@ async function activatePro(userId, stripeCustomerId) {
     ops.push(redis.set(`user:stripe_customer:${userId}`, stripeCustomerId));
   }
   await Promise.all(ops);
-  console.log(
-    `✅ Stripe webhook: Pro activated → user:tier:${userId}` +
-    (stripeCustomerId ? `, customer=${stripeCustomerId}` : ' (⚠️  no customer ID — portal disabled for this user)')
-  );
+  if (!stripeCustomerId) {
+    console.warn(`⚠️ Stripe webhook: Pro activated for ${userId} — no customer ID, billing portal disabled`);
+  }
 }
 
 async function revokePro(userId) {
   // del removes the key entirely; getSessionAndTier defaults absent keys to 'free'.
   await redis.del(`user:tier:${userId}`);
-  console.log(`🔁 Stripe webhook: Pro revoked → user:tier:${userId} deleted`);
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -84,7 +82,6 @@ export default async function handler(req, res) {
         // Those fire a separate payment_intent.succeeded when funds actually clear.
         // For card payments (our only payment_method_type) this is always 'paid'.
         if (session.payment_status !== 'paid') {
-          console.log(`ℹ️  checkout.session.completed — payment_status=${session.payment_status}, skipping.`);
           break;
         }
 

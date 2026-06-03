@@ -553,7 +553,7 @@ function HomePage() {
             language: lang
           });
         }
-        console.log("✅ Script received successfully!");
+
       } else {
         throw new Error(CODES.EMPTY_RESPONSE);
       }

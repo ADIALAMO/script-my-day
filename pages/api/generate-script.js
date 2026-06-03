@@ -19,24 +19,13 @@ export default async function handler(req, res) {
       return res.status(405).json({ message: 'Method Not Allowed' });
     }
 
-    // ── Env-var audit (visible in Vercel → Project → Logs) ──────────────────
-    const keyAudit = REQUIRED_KEYS.reduce((acc, k) => {
-      acc[k] = process.env[k]?.trim() ? 'SET' : 'MISSING';
-      return acc;
-    }, {});
-    console.log('🔑 Key audit:', JSON.stringify(keyAudit));
-
     const missingKeys = REQUIRED_KEYS.filter(k => !process.env[k]?.trim());
     if (missingKeys.length === REQUIRED_KEYS.length) {
-      console.error('❌ No AI provider keys configured in environment:', missingKeys);
+      console.error('generate-script: no AI provider keys configured');
       return res.status(500).json({
         success: false,
         message: 'Server misconfiguration: no AI provider keys set.',
-        missingKeys,
       });
-    }
-    if (missingKeys.length > 0) {
-      console.warn('⚠️ Some provider keys missing — those stages will be skipped:', missingKeys);
     }
 
     // ── Parse body ────────────────────────────────────────────────────────────
@@ -56,7 +45,6 @@ export default async function handler(req, res) {
       try {
         const currentUsage = await redis.get(usageKey);
         const used = parseInt(currentUsage, 10) || 0;
-        console.log(`📊 Script quota [${tier}]: ${usageKey} → ${used}/${dailyLimit === Infinity ? '∞' : dailyLimit}`);
         if (dailyLimit !== Infinity && used >= dailyLimit) {
           return res.status(429).json({
             success: false,
@@ -82,7 +70,6 @@ export default async function handler(req, res) {
     const safeJournalEntry = sanitize(journalEntry);
 
     // ── AI generation ─────────────────────────────────────────────────────────
-    console.log('🎬 Starting generateScript...');
     const result = await generateScript(safeJournalEntry, cleanGenre);
 
     if (!result.success) {
@@ -100,8 +87,7 @@ export default async function handler(req, res) {
         const pipeline = redis.pipeline();
         pipeline.incr(usageKey);
         pipeline.expireat(usageKey, nextMidnightUTC());
-        const [newVal] = await pipeline.exec();
-        console.log(`✅ Script quota: ${newVal}/${dailyLimit} used`);
+        await pipeline.exec();
       } catch (err) {
         console.warn(`⚠️ Script quota increment skipped (Redis unavailable): ${err.message}`);
       }
@@ -114,12 +100,7 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    // Log the full error so it appears verbatim in Vercel → Project → Logs.
-    console.error('🔴 SERVER CRASH ——————————————————————————');
-    console.error('Name   :', error.name);
-    console.error('Message:', error.message);
-    console.error('Stack  :', error.stack);
-    console.error('————————————————————————————————————————————');
+    console.error('generate-script unhandled error:', error.message, error.stack);
 
     return res.status(500).json({
       success: false,

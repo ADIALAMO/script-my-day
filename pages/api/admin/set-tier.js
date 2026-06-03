@@ -90,6 +90,5 @@ export default async function handler(req, res) {
     await redis.set(key, tier);
   }
 
-  console.log(`🔧 Admin set-tier: ${resolvedEmail} (${userId}) → ${tier}`);
   return res.status(200).json({ success: true, userId, email: resolvedEmail, tier, redisKey: key });
 }

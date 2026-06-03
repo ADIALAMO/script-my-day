@@ -49,7 +49,6 @@ function makePlaceholderImage(label = 'Scene unavailable') {
 async function runHuggingFace(prompt, seed) {
   const token = process.env.HF_TOKEN;
   if (!token) throw new Error('HF_TOKEN not configured');
-  console.log('🤗 Trying: Hugging Face FLUX.1-schnell');
 
   const res = await fetch(
     'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell',
@@ -96,7 +95,6 @@ async function runCloudflareAI(prompt, seed) {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const token = process.env.CLOUDFLARE_API_TOKEN;
   if (!accountId || !token) throw new Error('CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN not configured');
-  console.log('☁️ Trying: Cloudflare Workers AI Flux-1-schnell');
 
   const res = await fetch(
     `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/black-forest-labs/flux-1-schnell`,
@@ -125,7 +123,6 @@ async function runCloudflareAI(prompt, seed) {
 async function runOpenRouterKlein(prompt, seed) {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) throw new Error('OPENROUTER_API_KEY not configured');
-  console.log('🔀 Trying: OpenRouter Flux 2 Klein');
 
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
@@ -160,7 +157,6 @@ async function runOpenRouterKlein(prompt, seed) {
 }
 
 async function runPollinationsFlux(prompt, seed) {
-  console.log('🌸 Trying: Pollinations Flux');
   const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&model=flux&nologo=true&seed=${seed}`;
   const imageUrl = await fetchImageAsBase64(url);
   return { imageUrl, provider: 'Pollinations-Flux' };
@@ -194,22 +190,11 @@ const COMIC_CASCADE = [
   runPollinationsFlux,
 ];
 
-// Poster limit is now tier-aware — see lib/quota.js TIER_LIMITS.
-
 // ─── Handler ─────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
   try {
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
-
-  // Diagnostic: log which cascade providers are actually configured.
-  // Missing entries explain why images fall through to placeholders.
-  console.log('🔍 Provider env check:', {
-    CLOUDFLARE_ACCOUNT_ID:  !!process.env.CLOUDFLARE_ACCOUNT_ID,
-    CLOUDFLARE_API_TOKEN:   !!process.env.CLOUDFLARE_API_TOKEN,
-    OPENROUTER_API_KEY:     !!process.env.OPENROUTER_API_KEY,
-    HF_TOKEN:               !!process.env.HF_TOKEN,
-  });
 
   const { prompt, visualPrompt, requestType, panelIndex } = req.body;
   const rawPrompt = prompt || visualPrompt || '';
@@ -238,14 +223,13 @@ export default async function handler(req, res) {
       const idx = Number.isFinite(panelIndex) ? panelIndex : parseInt(panelIndex, 10);
 
       if (!Number.isFinite(idx) || idx >= unlockedPanels) {
-        console.warn(`⛔ Panel blocked — index=${idx}, tier=[${tier}], unlockedPanels=${unlockedPanels}`);
+        console.warn(`⚠️ Panel request rejected — index=${idx} exceeds tier limit (${unlockedPanels})`);
         return res.status(403).json({
           success: false,
           code: CODES.NEEDS_ACCOUNT,
           message: 'Upgrade to Pro to generate images for all storyboard panels.',
         });
       }
-      console.log(`✅ Panel gate passed — index=${idx}/${unlockedPanels}, tier=[${tier}]`);
 
     } else {
       // ── Standalone movie poster quota ──────────────────────────────────────
@@ -265,7 +249,6 @@ export default async function handler(req, res) {
       try {
         const currentUsage = await redis.get(usageKey);
         const used = parseInt(currentUsage, 10) || 0;
-        console.log(`📊 Poster quota [${tier}]: ${usageKey} → ${used}/${posterLimit}`);
         if (posterLimit !== Infinity && used >= posterLimit) {
           return res.status(429).json({
             success: false,
@@ -285,8 +268,7 @@ export default async function handler(req, res) {
         const pipeline = redis.pipeline();
         pipeline.incr(usageKey);
         pipeline.expireat(usageKey, nextMidnightUTC());
-        const [newVal] = await pipeline.exec();
-        console.log(`✅ Poster quota: ${newVal}/${posterLimit} used`);
+        await pipeline.exec();
       } catch (e) {
         console.warn(`⚠️ Poster quota increment skipped (Redis unavailable): ${e.message}`);
       }
@@ -318,7 +300,6 @@ export default async function handler(req, res) {
 
   const cascade = isComic ? COMIC_CASCADE : POSTER_CASCADE;
   const trackLabel = isComic ? 'TRACK B (Comic)' : 'TRACK A (Poster)';
-  const panelLabel = isComic && typeof panelIndex !== 'undefined' ? ` [panel ${panelIndex}]` : '';
 
   // Filter the cascade to providers that are not currently circuit-open.
   // Falls back to the full cascade when Redis is unavailable (getOpenProviders returns empty Set).
@@ -326,32 +307,23 @@ export default async function handler(req, res) {
   const activeCascade  = cascade.filter((fn) => !openProviders.has(PROVIDER_KEY[fn.name]));
   const liveCascade    = activeCascade.length ? activeCascade : cascade;
 
-  if (openProviders.size > 0) {
-    console.log(`⚡ Circuit skip: [${[...openProviders].join(', ')}]`);
-  }
-  console.log(
-    `🎬 Image Generation: ${trackLabel}${panelLabel} → ` +
-      liveCascade.map((fn) => fn.name).join(' → ')
-  );
-
   for (const provider of liveCascade) {
     try {
       const result = await provider(finalPrompt, seed);
       await recordSuccess(redis, PROVIDER_KEY[provider.name]);
-      console.log(`✅ SUCCESS via ${result.provider}`);
       await trackUsage();
+      console.log(`🎨 Poster generated successfully by: ${result.provider}`);
       return res.status(200).json({ success: true, ...result });
     } catch (e) {
       const code = extractStatusCode(e.message);
       await recordFailure(redis, PROVIDER_KEY[provider.name], code);
-      console.warn(`⚠️ ${provider.name} failed (next): ${e.message}`);
+      console.warn(`⚠️ ${provider.name} failed: ${e.message}`);
     }
   }
 
-  // All cascade providers failed (typically: content moderation on the final provider).
-  // Return a placeholder image with HTTP 200 so the frontend always gets a renderable
-  // imageUrl rather than a JSON error that causes broken image icons.
-  console.error(`❌ Cascade exhausted for ${trackLabel} — returning placeholder`);
+  // All cascade providers failed. Return a placeholder so the frontend always
+  // gets a renderable imageUrl rather than a broken image icon.
+  console.error(`❌ Image cascade exhausted (${trackLabel}) — returning placeholder`);
   return res.status(200).json({
     success: true,
     code: CODES.PROVIDERS_BUSY,
@@ -361,11 +333,7 @@ export default async function handler(req, res) {
     details: `All providers exhausted (${trackLabel}).`,
   });
   } catch (error) {
-    console.error('🔴 SERVER CRASH ——————————————————————————');
-    console.error('Name   :', error.name);
-    console.error('Message:', error.message);
-    console.error('Stack  :', error.stack);
-    console.error('————————————————————————————————————————————');
+    console.error('generate-poster unhandled error:', error.message, error.stack);
     return res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',

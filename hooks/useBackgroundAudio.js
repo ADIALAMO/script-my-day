@@ -11,7 +11,7 @@ export function useBackgroundAudio(activeGenre, isMusicMuted) {
     // 1. פונקציה לשחרור החסימה של הדפדפן באינטראקציה ראשונה
     const handleInteraction = () => {
       if (audio.paused && !isMusicMuted) {
-        audio.play().catch(err => console.log("Still blocked:", err));
+        audio.play().catch(() => {});
       }
       // הסרת המאזינים ברגע שהצלחנו "להעיר" את הסאונד
       window.removeEventListener('click', handleInteraction);

@@ -122,7 +122,6 @@ export default async function handler(req, res) {
           .decr(storageKey)
           .catch(e => console.warn(`⚠️ upload gate decr failed (${storageKey}): ${e.message}`));
 
-        console.log(`🚫 Upload gated [${tier}/${assetType}]: ${identifier} reached ${limit} assets`);
         return res.status(200).json({ url: null, gated: true });
       }
     } catch (e) {
@@ -144,7 +143,6 @@ export default async function handler(req, res) {
     }));
 
     const url = `${publicUrl}/${key}`;
-    console.log(`☁️ R2 upload: ${key} (${imageBuffer.length} bytes) → ${url}`);
     return res.status(200).json({ url });
 
   } catch (err) {
