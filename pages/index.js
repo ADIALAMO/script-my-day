@@ -212,7 +212,7 @@ function ReelCard({ reel, lang, onClick }) {
   const handleLeave = useCallback(() => {
     setPlaying(false);
     const v = videoRef.current;
-    if (v) { v.pause(); v.currentTime = 0; }
+    if (v) { v.pause(); v.load(); }
   }, []);
 
   return (
