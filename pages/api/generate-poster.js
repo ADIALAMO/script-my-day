@@ -280,23 +280,23 @@ export default async function handler(req, res) {
       ? rawPrompt.replace(/\[image:\s*/i, '').replace(/\]$/, '').trim()
       : 'Cinematic movie poster, dramatic lighting';
 
-  const fidelityInstruction =
-    'distinct male and female characters, heterosexual couple, (same sex couple: -1.5), ' +
-    '(homoerotic: -1.5), (gay: -1.5), (text: -2.0), (title: -2.0), (letters: -2.0), ' +
-    '(watermark: -2.0), (typography: -2.0), (signature: -2.0), (writing: -2.0), (logo: -2.0)';
+  // FLUX-native natural language — SD weight syntax (term:1.4) is silently ignored by FLUX
+  // and causes prompt injection artifacts. Anatomy guard placed first for maximum token weight.
   const anatomyGuard =
-    ', (deformed iris, deformed pupils, semi-realistic, cgi, 3d, render, sketch, cartoon, ' +
-    'drawing, anime, mutated hands and fingers:1.4), (deformed, distorted, disfigured:1.3), ' +
-    'poorly drawn, bad anatomy, wrong anatomy, extra limb, missing limb, floating limbs, ' +
-    'disconnected limbs, mutation, mutated, ugly, disgusting, amputation';
+    'anatomically correct human body, exactly five fingers on each hand, ' +
+    'properly formed hands and wrists, correct limb proportions, ' +
+    'no extra fingers, no extra limbs, no missing limbs, no floating limbs, no mutated anatomy';
+  const fidelityInstruction =
+    'distinct characters, no text, no titles, no letters, no watermarks, ' +
+    'no typography, no signatures, no writing, no logos';
 
+  // Anatomy guard + fidelity injected FIRST so diffusion model attends to them at maximum weight.
   const finalPrompt = isComic
-    ? `${agentPrompt}. Cinematic comic panel, dramatic bold composition, vivid color, ` +
-      `clean lines, (Strictly NO text, NO titles). ${fidelityInstruction}${anatomyGuard}`
-    : `A high-end cinematic RAW 35mm film still of: ${agentPrompt}. Shot on IMAX, ` +
-      `perfect facial symmetry, realistic skin textures, sharp focus, 8k, masterpiece. ` +
-      `(Strictly NO text, NO distortion, NO blurry faces, NO extra fingers, NO titles). ` +
-      `${fidelityInstruction}${anatomyGuard}`;
+    ? `${anatomyGuard}, ${fidelityInstruction}. ` +
+      `${agentPrompt}. Cinematic comic panel, dramatic bold composition, vivid color, clean lines.`
+    : `${anatomyGuard}, ${fidelityInstruction}. ` +
+      `A high-end cinematic RAW 35mm film still of: ${agentPrompt}. ` +
+      `Shot on IMAX, perfect facial symmetry, realistic skin textures, sharp focus, 8k, masterpiece.`;
 
   const cascade = isComic ? COMIC_CASCADE : POSTER_CASCADE;
   const trackLabel = isComic ? 'TRACK B (Comic)' : 'TRACK A (Poster)';

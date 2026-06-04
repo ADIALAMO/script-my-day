@@ -61,7 +61,7 @@ Format:
 Field rules:
 - "panel": integer (1 to 7)
 - "scene": location and time context, match script language
-- "visual": ALWAYS ENGLISH. STRICT LIMIT: 15-25 words. Describe ONLY the key subject, action, and camera angle in comic shorthand. No style context. No photography jargon. Examples: "Hero leaping across rooftop gap, city far below, dynamic low angle" or "Two-shot confrontation in rain-soaked alley, villain raising weapon, extreme close-up eyes".
+- "visual": ALWAYS ENGLISH. STRICT LIMIT: 15-25 words. Describe ONLY the key subject, action, and camera angle in comic shorthand. No style context. No photography jargon. Avoid describing specific finger or hand positions in detail — write the broader action instead (e.g. "reaching for" not "fingers grasping"). Examples: "Hero leaping across rooftop gap, city far below, dynamic low angle" or "Two-shot confrontation in rain-soaked alley, villain raising weapon, extreme close-up eyes".
 - "dialogue": single most important line or caption, match script language
 
 Story arc required: opening → development → conflict peak → climax → resolution.`;

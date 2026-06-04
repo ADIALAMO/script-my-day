@@ -1,17 +1,5 @@
 export const SHOWCASE_POSTERS = [
   { 
-    id: 1, 
-    src: '/gallery/sample-1.png', 
-    titleHe: 'קומדיה של טעויות', 
-    titleEn: 'Comedy of Errors',
-    excerptHe: `פנים. בית קפה "המבוך" - בוקר
-איתי מחזיק כוס אספרסו ביד רועדת. מאחוריו, מלצר מועד ומפיל מגש עמוס קרואסונים על ראשה של אישה הדורה. 
-"אמרתי לך," איתי לוחש לזוגתו ההמומה, "אסור לי לשתות קפה לפני עשר. היקום פשוט קורס."`,
-    excerptEn: `INT. "THE MAZE" CAFE - MORNING
-Itay holds an espresso cup with a trembling hand. Behind him, a waiter trips, dropping a tray full of croissants onto an elegant woman's head.
-"I told you," Itay whispers to his shocked partner, "I can't drink coffee before ten. The universe just collapses."`
-  },
-  { 
     id: 2, 
     src: '/gallery/sample-2.png', 
     titleHe: 'פעולה ומלחמה', 
@@ -215,19 +203,6 @@ A figure sits in total silence, eyes closed. Breath rises and falls.
 "Before the world begins — there is one small moment that is only mine."`
   },
   {
-    id: 20,
-    type: 'comic',
-    src: '/gallery/comics/panel-02.png',
-    titleHe: 'קפה וסיגריה',
-    titleEn: 'Coffee & Cigarette',
-    excerptHe: `חוץ/פנים. חלון פתוח - בוקר.
-עשן מסתלסל לאוויר. ריח הקפה מתערבב עם ריח הבוקר.
-"יש אנשים שמתחילים יום עם מוטיבציה. אני מתחיל עם שניים אלה."`,
-    excerptEn: `EXT/INT. OPEN WINDOW - MORNING.
-Smoke curls into the air. The scent of coffee mingles with morning air.
-"Some people start the day with motivation. I start with these two."`
-  },
-  {
     id: 21,
     type: 'comic',
     src: '/gallery/comics/panel-03.png',
@@ -384,7 +359,7 @@ Four friends walk where the map ends. Gold light falls through red leaves.
   {
     id: 33,
     type: 'comic',
-    src: '/gallery/comics/panel-01-6.png',
+    src: '/gallery/comics/panel-06-6.png',
     titleHe: 'הצד השני',
     titleEn: 'The Other Side',
     excerptHe: `פנים. מסגרת דלת חשוכה — לילה.
@@ -425,16 +400,6 @@ Steam rises from a cup between them. Outside, the city hasn't woken up yet.
 // ─── Motion Comic Reels ────────────────────────────────────────────────────────
 export const SHOWCASE_REELS = [
   {
-    id: 'reel-action',
-    genre: 'action',
-    src: '/reels/lifescript-reel-action.mp4',
-    poster: '/gallery/comics/panel-01-4.png',
-    titleHe: 'אקשן',
-    titleEn: 'Action',
-    tagline: 'ADRENALINE RUSH',
-    color: '#ef4444',
-  },
-  {
     id: 'reel-drama',
     genre: 'drama',
     src: '/reels/lifescript-reel-drama.mp4',
@@ -458,7 +423,7 @@ export const SHOWCASE_REELS = [
     id: 'reel-horror',
     genre: 'horror',
     src: '/reels/lifescript-reel-horror.mp4',
-    poster: '/gallery/comics/panel-01-6.png',
+    poster: '/gallery/comics/panel-06-6.png',
     titleHe: 'אימה',
     titleEn: 'Horror',
     tagline: 'PSYCH THRILLER',
@@ -488,7 +453,7 @@ export const SHOWCASE_REELS = [
     id: 'reel-horror-3',
     genre: 'horror',
     src: '/reels/lifescript-reel-horror-3.mp4',
-    poster: '/gallery/comics/panel-02-6.png',
+    poster: '/gallery/comics/panel-06-7.png',
     titleHe: 'אימה III',
     titleEn: 'Horror III',
     tagline: 'DARK PURSUIT',
