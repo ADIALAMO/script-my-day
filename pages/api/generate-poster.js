@@ -280,23 +280,12 @@ export default async function handler(req, res) {
       ? rawPrompt.replace(/\[image:\s*/i, '').replace(/\]$/, '').trim()
       : 'Cinematic movie poster, dramatic lighting';
 
-  // FLUX-native natural language — SD weight syntax (term:1.4) is silently ignored by FLUX
-  // and causes prompt injection artifacts. Anatomy guard placed first for maximum token weight.
-  const anatomyGuard =
-    'anatomically correct human body, exactly five fingers on each hand, ' +
-    'properly formed hands and wrists, correct limb proportions, ' +
-    'no extra fingers, no extra limbs, no missing limbs, no floating limbs, no mutated anatomy';
-  const fidelityInstruction =
-    'distinct characters, no text, no titles, no letters, no watermarks, ' +
-    'no typography, no signatures, no writing, no logos';
-
-  // Anatomy guard + fidelity injected FIRST so diffusion model attends to them at maximum weight.
+  // FLUX.1 renders best on clean natural-language prose. No anatomy guards, no fidelity/negation
+  // lists, no SD-era quality tokens (8k, masterpiece, IMAX) — those only dilute the scene signal.
+  // The storyboard already supplies the style framing in agentPrompt; we add a light cinematic cue.
   const finalPrompt = isComic
-    ? `${anatomyGuard}, ${fidelityInstruction}. ` +
-      `${agentPrompt}. Cinematic comic panel, dramatic bold composition, vivid color, clean lines.`
-    : `${anatomyGuard}, ${fidelityInstruction}. ` +
-      `A high-end cinematic RAW 35mm film still of: ${agentPrompt}. ` +
-      `Shot on IMAX, perfect facial symmetry, realistic skin textures, sharp focus, 8k, masterpiece.`;
+    ? agentPrompt
+    : `A cinematic movie poster: ${agentPrompt}. Dramatic lighting, film still.`;
 
   const cascade = isComic ? COMIC_CASCADE : POSTER_CASCADE;
   const trackLabel = isComic ? 'TRACK B (Comic)' : 'TRACK A (Poster)';

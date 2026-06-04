@@ -23,18 +23,21 @@ function extractPanels(rawText) {
   return null;
 }
 
+// FLUX.1 performs best on clean natural-language prose, not SD-era keyword stacks. Each track is
+// just a style framing (prefix) and a palette/finish (suffix) — no anatomy guards, no negation
+// lists. The model renders most naturally when the scene description is the dominant signal.
 const STYLE_TRACKS = {
   anime: {
     prefix: 'Dynamic action anime style, flat cel-shading, vibrant dramatic lighting, bold ink outlines —',
-    suffix: '— vivid saturated colors, speed lines, expressive faces, no photorealism'
+    suffix: '— vivid saturated colors, speed lines, expressive faces'
   },
   marvel: {
     prefix: '90s X-Men animated series, classic comic book shading, sharp ink line art, retro animation —',
-    suffix: '— strong black ink outlines, halftone dots, dramatic heroic poses, no photorealism'
+    suffix: '— strong black ink outlines, halftone dots, dramatic heroic poses'
   },
   noir: {
     prefix: 'Gritty black and white comic noir, Sin City aesthetic, stark chiaroscuro shadows —',
-    suffix: '— high contrast black and white only, deep ink shadows, graphic novel style, no color, no photorealism'
+    suffix: '— high contrast black and white, deep ink shadows, graphic novel style'
   }
 };
 
@@ -61,7 +64,7 @@ Format:
 Field rules:
 - "panel": integer (1 to 7)
 - "scene": location and time context, match script language
-- "visual": ALWAYS ENGLISH. STRICT LIMIT: 15-25 words. Describe ONLY the key subject, action, and camera angle in comic shorthand. No style context. No photography jargon. Avoid describing specific finger or hand positions in detail — write the broader action instead (e.g. "reaching for" not "fingers grasping"). Examples: "Hero leaping across rooftop gap, city far below, dynamic low angle" or "Two-shot confrontation in rain-soaked alley, villain raising weapon, extreme close-up eyes".
+- "visual": ALWAYS ENGLISH. STRICT LIMIT: 15-25 words. Describe ONLY the key subject, action, and camera angle in clean natural language. No style context. No photography jargon. Examples: "Hero leaping across a rooftop gap, city far below, dynamic low angle" or "Two figures facing off in a rain-soaked alley, tense stand-off, wide shot".
 - "dialogue": single most important line or caption, match script language
 
 Story arc required: opening → development → conflict peak → climax → resolution.`;
