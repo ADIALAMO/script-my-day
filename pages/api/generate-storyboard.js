@@ -64,7 +64,12 @@ Format:
 Field rules:
 - "panel": integer (1 to 7)
 - "scene": location and time context, match script language
-- "visual": ALWAYS ENGLISH. STRICT LIMIT: 15-25 words. Describe ONLY the key subject, action, and camera angle in clean natural language. No style context. No photography jargon. Examples: "Hero leaping across a rooftop gap, city far below, dynamic low angle" or "Two figures facing off in a rain-soaked alley, tense stand-off, wide shot".
+- "visual": ALWAYS ENGLISH. STRICT LIMIT: 15-25 words. Describe ONLY the key subject, action, and camera angle in clean natural language. No style context. No photography jargon.
+  COMPOSITION GUIDANCE (frame the shot so the image renders cleanly — these are camera/framing choices, not content to spell out):
+  • Prefer medium-wide or full-body framing. Reserve close-ups for FACES only — never close-ups on hands.
+  • Convey action through the OBJECT or the GOAL, not body parts: write "reaching toward the door", "lantern glowing", "leaning on the railing" — describe the thing and the intent, the figure follows naturally.
+  • Keep the description free of body-part words (no "hand", "fingers", "arm", "wrist"); name the action, the object, and the camera angle instead.
+  Examples: "Hero leaping across a rooftop gap, full body silhouette, city far below, dynamic low angle" or "Two figures facing off in a rain-soaked alley, tense stand-off, wide shot".
 - "dialogue": single most important line or caption, match script language
 
 Story arc required: opening → development → conflict peak → climax → resolution.`;

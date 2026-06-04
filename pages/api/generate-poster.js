@@ -104,7 +104,10 @@ async function runCloudflareAI(prompt, seed) {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ prompt, seed, steps: 4 }),
+      // steps:6 (up from schnell's default 4, CF max is 8) — gives the model more refinement
+      // passes for fine details like hands/anatomy. Costs ~85 neurons/img vs ~58 (still ~115/day
+      // within the 10K free budget). Prompt is untouched, so this cannot regress prompt quality.
+      body: JSON.stringify({ prompt, seed, steps: 6 }),
       signal: AbortSignal.timeout(35000),
     }
   );
@@ -280,12 +283,17 @@ export default async function handler(req, res) {
       ? rawPrompt.replace(/\[image:\s*/i, '').replace(/\]$/, '').trim()
       : 'Cinematic movie poster, dramatic lighting';
 
-  // FLUX.1 renders best on clean natural-language prose. No anatomy guards, no fidelity/negation
-  // lists, no SD-era quality tokens (8k, masterpiece, IMAX) — those only dilute the scene signal.
-  // The storyboard already supplies the style framing in agentPrompt; we add a light cinematic cue.
+  // Two distinct rendering targets:
+  //  • COMIC — stays bare clean prose; the storyboard already supplies the style framing in
+  //    agentPrompt. Anatomy/fidelity guards proved to summon defects on FLUX, so none are added.
+  //  • POSTER — photorealistic film still. Here the rich cinematic descriptors genuinely help FLUX
+  //    produce a polished result, so we restore the original cinematic structure (positive prose
+  //    only — no SD-weight syntax and no negation lists, which FLUX cannot parse).
   const finalPrompt = isComic
     ? agentPrompt
-    : `A cinematic movie poster: ${agentPrompt}. Dramatic lighting, film still.`;
+    : `A high-end cinematic RAW 35mm film still of: ${agentPrompt}. ` +
+      `Shot on IMAX, dramatic cinematic lighting, realistic skin textures, ` +
+      `sharp focus, 8k, masterpiece.`;
 
   const cascade = isComic ? COMIC_CASCADE : POSTER_CASCADE;
   const trackLabel = isComic ? 'TRACK B (Comic)' : 'TRACK A (Poster)';
