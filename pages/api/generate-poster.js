@@ -12,6 +12,7 @@ import {
 } from '../../lib/circuit-breaker.js';
 import {
   grokImageFromReference,
+  geminiImageFromReference,
   resolveIdentityGate,
   consumeIdentityCredit,
 } from '../../lib/identity.js';
@@ -183,6 +184,20 @@ async function runGrokIdentity(prompt, seed, opts) {
   return { imageUrl, provider: 'Grok-Identity', faceApplied: true };
 }
 
+// Identity Track P2 — cheaper/faster fallback (Gemini 2.5 Flash Image). Same faceApplied
+// contract, so a credit is still consumed when it wins. Softer style than Grok but
+// benchmarked at identity parity — a graceful quality step-down, not a faceless drop.
+async function runGeminiIdentity(prompt, seed, opts) {
+  const faceUrl = opts?.characterImageUrl;
+  if (!faceUrl) throw new Error('runGeminiIdentity requires a characterImageUrl');
+  const imageUrl = await geminiImageFromReference(prompt, faceUrl);
+  return { imageUrl, provider: 'Gemini-Identity', faceApplied: true };
+}
+
+// Two-tier identity cascade: Grok (quality default) → Gemini (cheaper fallback).
+// On exhaustion the handler degrades further to the free faceless cascade.
+const IDENTITY_CASCADE = [runGrokIdentity, runGeminiIdentity];
+
 // ─── Cascade definitions ─────────────────────────────────────────────────────
 //
 // TRACK A — Standalone Poster
@@ -324,9 +339,9 @@ export default async function handler(req, res) {
   const useIdentity = gate.mode === 'identity';
 
   const baseCascade = isComic ? COMIC_CASCADE : POSTER_CASCADE;
-  // Identity provider runs FIRST; if it fails the loop continues into the existing
-  // faceless cascade — the user still gets an image, just without their face.
-  const cascade = useIdentity ? [runGrokIdentity, ...baseCascade] : baseCascade;
+  // Identity providers run FIRST (Grok → Gemini); if both fail the loop continues into
+  // the existing faceless cascade — the user still gets an image, just without their face.
+  const cascade = useIdentity ? [...IDENTITY_CASCADE, ...baseCascade] : baseCascade;
   const trackLabel = isComic ? 'TRACK B (Comic)' : 'TRACK A (Poster)';
 
   // Filter the cascade to providers that are not currently circuit-open.

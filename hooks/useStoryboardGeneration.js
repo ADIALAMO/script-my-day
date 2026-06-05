@@ -150,7 +150,10 @@ export function useStoryboardGeneration({
               lang,
               requestType: 'comic',
               panelIndex:  idx,
-              characterImageUrl: characterImageUrlRef.current || undefined,
+              // Selective Framing: only HERO panels carry the identity reference.
+              // Non-hero panels send no reference → the server degrades them to the
+              // free faceless cascade automatically (objects/locations/secondaries).
+              characterImageUrl: (panel.hero && characterImageUrlRef.current) ? characterImageUrlRef.current : undefined,
             }),
           });
           const data = await resp.json();

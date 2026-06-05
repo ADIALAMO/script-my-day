@@ -26,6 +26,24 @@ function extractPanels(rawText) {
 // FLUX.1 performs best on clean natural-language prose, not SD-era keyword stacks. Each track is
 // just a style framing (prefix) and a palette/finish (suffix) — no anatomy guards, no negation
 // lists. The model renders most naturally when the scene description is the dominant signal.
+// Selective Framing cost control: cap the number of panels that carry the user's
+// identity (each costs ~$0.06 via the Identity Track). If Gemini marks more than
+// MAX_HERO panels, keep only the three narrative anchors — opening, climax (middle),
+// resolution — and demote the rest to the free faceless cascade. A no-op when the
+// model marked <= MAX_HERO, and harmless for non-identity comics (hero is ignored
+// downstream when no character reference is present).
+const MAX_HERO = 3;
+function applyHeroCap(panels, maxHero = MAX_HERO) {
+  const flagged = panels.map((p, i) => (p.hero === true ? i : -1)).filter(i => i >= 0);
+  if (flagged.length <= maxHero) return panels;
+  const keep = new Set([
+    flagged[0],
+    flagged[Math.floor(flagged.length / 2)],
+    flagged[flagged.length - 1],
+  ]);
+  return panels.map((p, i) => ({ ...p, hero: keep.has(i) }));
+}
+
 const STYLE_TRACKS = {
   anime: {
     prefix: 'Dynamic action anime style, flat cel-shading, vibrant dramatic lighting, bold ink outlines —',
@@ -62,6 +80,7 @@ HERO IDENTITY — READ FIRST (a reference photo of the ${heroDescriptor} will be
 - In EVERY panel where the protagonist appears, the "visual" MUST name them FIRST and explicitly as "the ${heroDescriptor}" — e.g. "The ${heroDescriptor} steps into the dark hall, wide shot".
 - Describe any OTHER people as clearly SEPARATE, distinct secondary characters, mentioned AFTER the protagonist, and never in a way that could be mistaken for them. Example: "The ${heroDescriptor} looks at a woman across the room, while she smiles back at him, medium two-shot".
 - If the protagonist is NOT present in a panel, describe the scene normally and do NOT force them in.
+- SELECTIVE FRAMING (image budget): set "hero": true ONLY for panels where the ${heroDescriptor} is the visible focal subject. Set "hero": false for panels centered on objects, locations, or secondary characters. Mark AT MOST 3 panels as hero — prioritize the opening, the climax, and the resolution.
 ` : '';
 
   return `You are a comic book storyboard artist.
@@ -73,7 +92,7 @@ Break down the screenplay into ${panelRange} sequential panels covering the full
 Return ONLY a valid JSON array. No markdown, no backticks, no explanation — just the JSON.
 
 Format:
-[{"panel":1,"scene":"INT. LOCATION - DAY","visual":"...","dialogue":"Key line here"}]
+[{"panel":1,"scene":"INT. LOCATION - DAY","visual":"...","dialogue":"Key line here","hero":true}]
 ${heroBlock}
 Field rules:
 - "panel": integer (1 to 7)
@@ -85,6 +104,7 @@ Field rules:
   • Keep the description free of body-part words (no "hand", "fingers", "arm", "wrist"); name the action, the object, and the camera angle instead.
   Examples: "Hero leaping across a rooftop gap, full body silhouette, city far below, dynamic low angle" or "Two figures facing off in a rain-soaked alley, tense stand-off, wide shot".
 - "dialogue": single most important line or caption, match script language
+- "hero": boolean — true only when the main character is the focal subject of the panel (used for image budgeting); when in doubt, false.
 
 Story arc required: opening → development → conflict peak → climax → resolution.`;
 }
@@ -276,6 +296,10 @@ export default async function handler(req, res) {
     if (!enrichedPanels) {
       return res.status(500).json({ success: false, code: CODES.STORYBOARD_FAIL, message: 'All storyboard engines offline.' });
     }
+
+    // Selective Framing: enforce the hard hero cap server-side so a model overshoot
+    // (or a tampered client) can never push more than MAX_HERO paid identity panels.
+    enrichedPanels = applyHeroCap(enrichedPanels);
 
     // Increment comic quota only after a successful storyboard generation.
     // This is the single consumption point for the entire comic flow (panel image calls are unrestricted).
