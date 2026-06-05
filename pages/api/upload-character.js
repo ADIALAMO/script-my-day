@@ -21,7 +21,7 @@ import { CODES } from '../../lib/messages.js';
 import { isAdminRequest } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { limitFor } from '../../lib/quota.js';
-import { moderateImage, grokImageFromReference } from '../../lib/identity.js';
+import { moderateImage, grokImageFromReference, geminiImageFromReference, identityQuotaExceeded } from '../../lib/identity.js';
 import { blobConfigured, putImage, decodeDataUri } from '../../lib/blob-store.js';
 
 export const maxDuration = 60;
@@ -40,15 +40,29 @@ export default async function handler(req, res) {
     const isAdmin = isAdminRequest(req);
     const { selfieBase64 } = req.body || {};
 
-    // (1) Tier gate — identity is paid-only.
+    // (1) Tier gate — identity requires at least the free lifetime allowance (anonymous = 0).
     let identifier = 'admin';
+    let tier = 'admin';
     if (!isAdmin) {
       const ctx = await getSessionAndTier(req, res);
       identifier = ctx.identifier;
+      tier = ctx.tier;
       if (limitFor(ctx.tier, 'identity') === 0) {
         return res.status(403).json({ success: false, code: CODES.NEEDS_PRO });
       }
+
+      // Cost guard: don't burn a (paid) Character Sheet generation if the user has no
+      // identity credit left to spend on a poster anyway. For free users this is their
+      // one-time lifetime allowance — once spent, block re-upload and nudge to Pro.
+      if (await identityQuotaExceeded(tier, identifier)) {
+        const code = tier === 'free' ? CODES.IDENTITY_LIFETIME_USED : CODES.QUOTA_IDENTITY;
+        return res.status(429).json({ success: false, code });
+      }
     }
+
+    // Option C cost control: Free's one-time sheet is generated with the cheaper Gemini
+    // ($0.039) to cap the lifetime taste; Pro+/admin keep the signature Grok sheet ($0.06).
+    const sheetGenerator = tier === 'free' ? geminiImageFromReference : grokImageFromReference;
 
     // (2) Input validation.
     if (typeof selfieBase64 !== 'string'
@@ -78,7 +92,7 @@ export default async function handler(req, res) {
     // selfie as the reference so the feature still works (degraded consistency).
     let styledUrl = rawUrl;
     try {
-      const sheetDataUri = await grokImageFromReference(CHARACTER_SHEET_PROMPT, rawUrl);
+      const sheetDataUri = await sheetGenerator(CHARACTER_SHEET_PROMPT, rawUrl);
       const sheet = decodeDataUri(sheetDataUri);
       styledUrl = await putImage(`characters/${identifier}-sheet-${stamp}.jpg`, sheet.bytes, sheet.contentType);
     } catch (e) {

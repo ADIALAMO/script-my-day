@@ -194,9 +194,13 @@ async function runGeminiIdentity(prompt, seed, opts) {
   return { imageUrl, provider: 'Gemini-Identity', faceApplied: true };
 }
 
-// Two-tier identity cascade: Grok (quality default) → Gemini (cheaper fallback).
-// On exhaustion the handler degrades further to the free faceless cascade.
-const IDENTITY_CASCADE = [runGrokIdentity, runGeminiIdentity];
+// Two-tier identity cascades, ordered by tier (Option C cost control):
+//   QUALITY (Pro+/admin): Grok first ($0.06, the app's signature inked look) → Gemini fallback.
+//   VALUE   (Free taste): Gemini first ($0.039, identity-parity) to cap the cost of the
+//                         one-time free poster → Grok only if Gemini fails.
+// On exhaustion either cascade degrades further to the free faceless cascade.
+const IDENTITY_CASCADE_QUALITY = [runGrokIdentity, runGeminiIdentity];
+const IDENTITY_CASCADE_VALUE   = [runGeminiIdentity, runGrokIdentity];
 
 // ─── Cascade definitions ─────────────────────────────────────────────────────
 //
@@ -332,16 +336,18 @@ export default async function handler(req, res) {
   // Decides whether this request may inject the user's character reference.
   // 'reject' → paid gate / monthly quota; 'identity' → prepend the Grok provider;
   // 'standard' → no/invalid face, normal generation (degradation, not an error).
-  const gate = await resolveIdentityGate(req, res, { isAdmin, characterImageUrl });
+  const gate = await resolveIdentityGate(req, res, { isAdmin, characterImageUrl, isComic });
   if (gate.mode === 'reject') {
     return res.status(gate.status).json({ success: false, code: gate.code });
   }
   const useIdentity = gate.mode === 'identity';
 
   const baseCascade = isComic ? COMIC_CASCADE : POSTER_CASCADE;
-  // Identity providers run FIRST (Grok → Gemini); if both fail the loop continues into
-  // the existing faceless cascade — the user still gets an image, just without their face.
-  const cascade = useIdentity ? [...IDENTITY_CASCADE, ...baseCascade] : baseCascade;
+  // Free taste (gate.isLifetime) runs the VALUE cascade (Gemini first) to cap cost;
+  // Pro+/admin run QUALITY (Grok first). Identity providers run FIRST — if both fail the
+  // loop continues into the faceless cascade so the user still gets an image sans face.
+  const identityCascade = gate.isLifetime ? IDENTITY_CASCADE_VALUE : IDENTITY_CASCADE_QUALITY;
+  const cascade = useIdentity ? [...identityCascade, ...baseCascade] : baseCascade;
   const trackLabel = isComic ? 'TRACK B (Comic)' : 'TRACK A (Poster)';
 
   // Filter the cascade to providers that are not currently circuit-open.
@@ -358,7 +364,7 @@ export default async function handler(req, res) {
       // Consume an identity credit ONLY when the winning provider actually applied
       // the face — a degraded (faceless) result must not cost the user a credit.
       if (useIdentity && result.faceApplied) {
-        await consumeIdentityCredit(gate.usageKey, gate.limit);
+        await consumeIdentityCredit(gate.usageKey, gate.limit, { isLifetime: gate.isLifetime });
       }
       console.log(`🎨 Poster generated successfully by: ${result.provider}`);
       return res.status(200).json({ success: true, ...result });
