@@ -4,7 +4,7 @@ import { track } from '@vercel/analytics';
 import { getMsg, CODES } from '../lib/messages.js';
 import { getGenreLabel } from '../constants/genres.js';
 import { useRotatingMessages } from './useRotatingMessages.js';
-import { shareBlob } from '../utils/export-image.js';
+import { shareBlob, downloadBlob, exportCapabilities } from '../utils/export-image.js';
 
 const POSTER_MESSAGES_HE = [
   'מנתח את האסתטיקה של התסריט...',
@@ -153,12 +153,17 @@ export function usePosterGeneration({
 
   // ── Capture (share only) ────────────────────────────────────────────────────
 
-  const handleCapturePoster = useCallback(async () => {
+  // mode: 'auto' (desktop ⇒ download, mobile ⇒ share) | 'download' | 'share'.
+  const handleCapturePoster = useCallback(async (mode = 'auto') => {
     if (!posterRef.current || !posterUrl) return;
 
-    track('Poster Shared', { genre, language: lang, title: posterTitle });
+    const { isDesktop } = exportCapabilities();
+    const wantDownload = mode === 'download' || (mode === 'auto' && isDesktop);
+    const method = wantDownload ? 'download' : 'share';
+
+    track('Poster Shared', { genre, language: lang, title: posterTitle, method });
     if (typeof window !== 'undefined' && window.gtag) {
-      window.gtag('event', 'content_export', { method: 'share', genre, title: posterTitle });
+      window.gtag('event', 'content_export', { method, genre, title: posterTitle });
     }
 
     try {
@@ -190,12 +195,18 @@ export function usePosterGeneration({
       await htmlToImage.toPng(posterRef.current, { ...sharedOptions, quality: 0.1 });
       const dataUrl = await htmlToImage.toPng(posterRef.current, sharedOptions);
 
-      // Convert to a blob once, then hand off to the Web Share API ("Save Image" /
-      // social sheet). It never navigates the page — fixes the iOS "share then refresh,
-      // lose all state" bug. On platforms without file-share support, fall back to
-      // opening the poster in a new tab so the user can still save it.
+      // Convert to a blob once. Desktop ⇒ clean `<a download>` of the composited poster
+      // (never navigates the SPA). Mobile ⇒ Web Share API ("Save Image" / social sheet),
+      // which is the platform-native save path and also never navigates — fixing the iOS
+      // "share then refresh, lose all state" bug. If file-share is unsupported, fall back
+      // to opening the poster in a new tab so the user can still save it.
       const blob = await (await fetch(dataUrl)).blob();
       const filename = `poster-${(posterTitle || 'movie-poster').replace(/\s+/g, '-')}.png`;
+      if (wantDownload) {
+        const ok = downloadBlob(blob, filename);
+        if (!ok && posterUrl) window.open(posterUrl, '_blank');
+        return;
+      }
       const shared = await shareBlob(blob, filename, posterTitle || 'My Poster');
       if (!shared && posterUrl) window.open(posterUrl, '_blank');
     } catch (err) {

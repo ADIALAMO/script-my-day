@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, VolumeX, Share2 } from 'lucide-react'; // וודא שאייקונים אלה מיובאים
+import { Loader2, VolumeX, Share2, Download } from 'lucide-react'; // וודא שאייקונים אלה מיובאים
 import * as htmlToImage from 'html-to-image'; // וודא שזה מיובא אם handleCapturePoster מועבר
+import { exportCapabilities } from '../utils/export-image.js';
 
 function PosterRenderer({
   posterUrl,
@@ -24,6 +25,13 @@ function PosterRenderer({
 }) {
   const isHebrew = lang === 'he'; // Assuming lang is passed correctly
 
+  // Desktop ⇒ download is the primary action (clean blob download, no SPA navigation);
+  // mobile ⇒ share only (the native sheet's "Save Image" is the download). Detected after
+  // mount to avoid an SSR/hydration mismatch — defaults to the mobile/share affordance.
+  const [isDesktop, setIsDesktop] = React.useState(false);
+  React.useEffect(() => {
+    setIsDesktop(exportCapabilities().isDesktop);
+  }, []);
 
   return (
     <motion.div 
@@ -172,34 +180,55 @@ function PosterRenderer({
         )}
       </div>
 
-      {/* כפתור השיתוף היוקרתי (Web Share API — שמירה/שיתוף נייטיב) */}
+      {/* פעולת הייצוא — דסקטופ: הורדה ראשית + שיתוף משני · מובייל: שיתוף נייטיב בלבד */}
       {!posterLoading && posterUrl && (
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-center mt-8 pb-10 w-full max-w-[380px] mx-auto px-4"
+          className="flex items-center justify-center gap-2.5 mt-8 pb-10 w-full max-w-[380px] mx-auto px-4"
         >
           <motion.button
             type="button"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => {
-                handleCapturePoster();
-                // מדידת לחיצה על שיתוף
+                // דסקטופ → הורדה · מובייל → שיתוף נייטיב
+                handleCapturePoster(isDesktop ? 'download' : 'share');
+                // מדידת לחיצה על הפעולה הראשית
                 if (typeof window !== 'undefined' && window.gtag) {
                   window.gtag('event', 'poster_share_click', {
                     title: posterTitle,
-                    genre: genre
+                    genre: genre,
+                    method: isDesktop ? 'download' : 'share',
                   });
                 }
               }}
-            className="relative w-full flex items-center justify-center gap-2.5 h-12 bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black rounded-xl font-black transition-all duration-300 overflow-hidden shadow-[0_8px_28px_rgba(212,163,115,0.3)]"
+            className="relative flex-1 flex items-center justify-center gap-2.5 h-12 bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black rounded-xl font-black transition-all duration-300 overflow-hidden shadow-[0_8px_28px_rgba(212,163,115,0.3)]"
           >
             {/* אפקט הברק (Shiny Sweep) */}
             <motion.div animate={{ left: ['-100%', '200%'] }} transition={{ repeat: Infinity, duration: 3, ease: "linear" }} className="absolute top-0 bottom-0 w-12 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[35deg]" />
-            <Share2 size={16} strokeWidth={2.5} />
-            <span className="text-[11px] tracking-[0.2em] uppercase">{isHebrew ? 'שתף פוסטר' : 'SHARE POSTER'}</span>
+            {isDesktop ? <Download size={16} strokeWidth={2.5} /> : <Share2 size={16} strokeWidth={2.5} />}
+            <span className="text-[11px] tracking-[0.2em] uppercase">
+              {isDesktop
+                ? (isHebrew ? 'הורד פוסטר' : 'DOWNLOAD POSTER')
+                : (isHebrew ? 'שתף פוסטר' : 'SHARE POSTER')}
+            </span>
           </motion.button>
+
+          {/* שיתוף משני — דסקטופ בלבד (העתקה/שיתוף ישיר לרשתות) */}
+          {isDesktop && (
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => handleCapturePoster('share')}
+              aria-label={isHebrew ? 'שתף פוסטר' : 'Share poster'}
+              className="flex items-center justify-center gap-2 h-12 px-4 bg-[#d4a373]/10 border border-[#d4a373]/30 text-[#d4a373] rounded-xl font-black hover:bg-[#d4a373]/18 hover:border-[#d4a373]/50 transition-all duration-300"
+            >
+              <Share2 size={16} strokeWidth={2.5} />
+              <span className="text-[11px] tracking-[0.2em] uppercase">{isHebrew ? 'שתף' : 'SHARE'}</span>
+            </motion.button>
+          )}
         </motion.div>
       )}
     </motion.div>

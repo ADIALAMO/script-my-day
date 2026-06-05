@@ -134,7 +134,7 @@ export default function CharacterModal({
               </span>
             </div>
             <p className="text-white font-black text-[17px] leading-tight pr-8">
-              {isHebrew ? 'כיכב בסיפור שלך' : 'Star in your own story'}
+              {isHebrew ? 'לככב בסיפור שלך' : 'Star in your own story'}
             </p>
             <button
               onClick={onClose}
@@ -231,7 +231,7 @@ export default function CharacterModal({
                   <Loader2 size={32} className="animate-spin text-[#d4a373] absolute inset-0 m-auto" />
                 </div>
                 <p className="text-[#d4a373] font-bold text-[13px]">
-                  {isHebrew ? 'מליהק אותך לסיפור...' : 'Casting you into the story...'}
+                  {isHebrew ? 'מלהק אותך לתפקיד...' : 'Casting you into the story...'}
                 </p>
                 <p className="text-gray-600 text-[10px]">
                   {isHebrew ? 'בדיקת בטיחות · יצירת גיליון דמות' : 'Safety check · Generating character sheet'}

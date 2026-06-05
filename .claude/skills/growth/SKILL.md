@@ -41,7 +41,7 @@ ready-to-ship deliverables, not generic advice.
   screenplay*, then into a **movie poster**, a **comic book**, and **reels**.
   Tagline in product: *"הפוך את היום שלך לתסריט קולנועי מרתק"* / "Turn your day
   into a captivating cinematic script."
-- **Signature differentiator — "כיכב את עצמך" (Star Yourself / Identity):** the
+- **Signature differentiator — "לככב בסיפור" (Star Yourself / Identity):** the
   user uploads their face and becomes the character in their own poster (two-stage
   Character Sheet pipeline). This is the emotional hook and the most shareable
   moment — lean on it in marketing.
@@ -84,7 +84,7 @@ At this stage the bottleneck is **distribution + proof of pull**, so:
 Deliverables you produce on demand:
 - **Landing/hero copy** — 3 headline+subhead variants (HE + EN), each with a
   different angle: *emotional* ("הפוך את החיים שלך לסרט"), *outcome* ("פוסטר
-  קולנועי עם הפנים שלך ב-30 שניות"), *novelty* ("ה-AI שמכיכב אותך"). Include the
+  קולנועי עם הפנים שלך ב-30 שניות"), *novelty* ("ה-AI שמלהק אותך לתפקיד הראשי"). Include the
   CTA button text.
 - **Social posts** — short, native to each platform. For TikTok/Reels/Instagram,
   write a **15–30s video script** (hook in first 2s, the "star yourself" reveal,

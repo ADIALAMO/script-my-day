@@ -8,7 +8,7 @@ description: >-
   cascade or face injection in pages/api/generate-poster.js, the CharacterModal/
   useCharacter hook, or anything touching faces, Grok/Gemini image-from-reference,
   selective framing, or identity quota. Triggers on: identity, character sheet,
-  star yourself, "כיכב את עצמך", face, selfie, Grok, reference image.
+  star yourself, "לככב בסיפור", "להיכנס לדמות", "ליהוק עצמי", face, selfie, Grok, reference image.
 ---
 
 # LIFESCRIPT — "Star Yourself" Identity Pipeline
