@@ -97,7 +97,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
     posterUrl, setPosterUrl, posterLoading, setPosterLoading,
     posterError, setPosterError, showPoster, setShowPoster,
     triggerFlash, setTriggerFlash, posterRef,
-    currentPosterMessage, generatePoster, handleCapturePoster, resetPoster,
+    currentPosterMessage, generatePoster, handleCapturePoster, resetPoster, cancelPoster,
   } = usePosterGeneration({ lang, genre, visualPrompt, posterTitle, isHebrew, finalProducerName, onPosterGenerated, onAuthRequired, characterImageUrl: activeCharacterUrl });
 
   const {
@@ -105,7 +105,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
     storyboardError, storyboardErrorCode, panelImages,
     unlockedPanels,
     comicStyle, setComicStyle, currentStoryboardMessage,
-    generateStoryboard, closeStoryboard,
+    generateStoryboard, closeStoryboard, cancelStoryboard,
   } = useStoryboardGeneration({
     lang, genre, cleanScript, script, onAuthRequired, onPanelsGenerated, initialPanels,
     characterImageUrl: activeCharacterUrl,
@@ -564,99 +564,53 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
         </AnimatePresence>
       </div>
 
-      {/* ── Action buttons ────────────────────────────────────────────── */}
-      {!isTyping && currentDisplayText.length > 0 && (!showPoster || !showStoryboard) && (
-        <div className="py-6 px-4 space-y-3">
+      {/* ── Poster controls — rendered ABOVE the poster, hidden once it exists ── */}
+      {/* Character chip + poster CTA live here; the comic CTA was moved BELOW the   */}
+      {/* PosterRenderer so it never jumps above the generated poster (next step).   */}
+      {!isTyping && currentDisplayText.length > 0 && !showPoster && !showStoryboard && (
+        <div className="pt-6 px-4 pb-2 space-y-3">
 
           {/* ── CHARACTER CHIP — governs both poster & comic (Identity Track) ── */}
-          {!showPoster && !showStoryboard && (
-            <div className="flex items-center justify-center pb-1">
-              {characterStatus === 'ready' && characterImageUrl ? (
-                <div className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#d4a373]/[0.06] border border-[#d4a373]/25">
-                  <button onClick={() => setShowCharacterModal(true)} className="relative shrink-0" title={isHebrew ? 'החלף דמות' : 'Change character'}>
-                    <img src={characterImageUrl} alt="character" className="w-9 h-9 rounded-xl object-cover border border-[#d4a373]/40" />
-                    <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#d4a373] text-black flex items-center justify-center"><Check size={9} /></span>
-                  </button>
-                  <button onClick={() => setStarring(s => !s)} className="flex items-center gap-1.5" title={isHebrew ? 'הצג/הסתר אותי' : 'Toggle starring'}>
-                    <span className={`relative w-8 h-[18px] rounded-full transition-colors duration-200 ${starring ? 'bg-[#d4a373]' : 'bg-white/15'}`}>
-                      <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-black transition-all duration-200 ${starring ? 'left-[16px]' : 'left-[2px]'}`} />
-                    </span>
-                    <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${starring ? 'text-[#d4a373]' : 'text-gray-500'}`}>
-                      {isHebrew ? 'בכיכובי' : 'Starring me'}
-                    </span>
-                  </button>
-                  <button onClick={clearCharacter} className="text-gray-600 hover:text-red-400 transition-colors" title={isHebrew ? 'הסר' : 'Remove'}>
-                    <X size={13} />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowCharacterModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/[0.03] border border-white/10 text-gray-400 hover:text-[#d4a373] hover:border-[#d4a373]/30 transition-all duration-200 text-[10px] font-black uppercase tracking-wider"
-                >
-                  🎭 {isHebrew ? 'ביים את עצמך בסיפור' : 'Cast yourself in the story'}
+          <div className="flex items-center justify-center pb-1">
+            {characterStatus === 'ready' && characterImageUrl ? (
+              <div className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#d4a373]/[0.06] border border-[#d4a373]/25">
+                <button onClick={() => setShowCharacterModal(true)} className="relative shrink-0" title={isHebrew ? 'החלף דמות' : 'Change character'}>
+                  <img src={characterImageUrl} alt="character" className="w-9 h-9 rounded-xl object-cover border border-[#d4a373]/40" />
+                  <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#d4a373] text-black flex items-center justify-center"><Check size={9} /></span>
                 </button>
-              )}
-            </div>
-          )}
+                <button onClick={() => setStarring(s => !s)} className="flex items-center gap-1.5" title={isHebrew ? 'הצג/הסתר אותי' : 'Toggle starring'}>
+                  <span className={`relative w-8 h-[18px] rounded-full transition-colors duration-200 ${starring ? 'bg-[#d4a373]' : 'bg-white/15'}`}>
+                    <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-black transition-all duration-200 ${starring ? 'left-[16px]' : 'left-[2px]'}`} />
+                  </span>
+                  <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${starring ? 'text-[#d4a373]' : 'text-gray-500'}`}>
+                    {isHebrew ? 'בכיכובי' : 'Starring me'}
+                  </span>
+                </button>
+                <button onClick={clearCharacter} className="text-gray-600 hover:text-red-400 transition-colors" title={isHebrew ? 'הסר' : 'Remove'}>
+                  <X size={13} />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowCharacterModal(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/[0.03] border border-white/10 text-gray-400 hover:text-[#d4a373] hover:border-[#d4a373]/30 transition-all duration-200 text-[10px] font-black uppercase tracking-wider"
+              >
+                🎭 {isHebrew ? 'ביים את עצמך בסיפור' : 'Cast yourself in the story'}
+              </button>
+            )}
+          </div>
 
           {/* ── POSTER SECTION ── */}
-          {!showPoster && (
-            <button
-              onClick={generatePoster}
-              disabled={posterLoading}
-              className="w-full bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black font-black py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-60 transition-opacity"
-            >
-              {posterLoading
-                ? <Loader2 size={18} className="animate-spin" />
-                : <span>{isHebrew ? 'צור פוסטר קולנועי' : 'GENERATE MOVIE POSTER'}</span>
-              }
-            </button>
-          )}
-
-          {/* Divider — only shown when both sections are visible */}
-          {!showPoster && !showStoryboard && (
-            <div className="flex items-center gap-3 py-1">
-              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-              <span className="text-[7.5px] font-black uppercase tracking-[0.28em]" style={{ color: 'rgba(255,255,255,0.18)' }}>
-                {isHebrew ? 'קומיקס' : 'COMIC STORYBOARD'}
-              </span>
-              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-            </div>
-          )}
-
-          {/* ── COMIC SECTION — style selector grouped directly above its generate button ── */}
-          {!showStoryboard && (
-            <div className="space-y-2">
-              {!storyboardLoading && (
-                <div className="flex items-center justify-center gap-2 flex-wrap">
-                  {comicStyleOptions.map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setComicStyle(opt.value)}
-                      className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all duration-200
-                        ${comicStyle === opt.value
-                          ? 'bg-[#d4a373]/20 border border-[#d4a373]/60 text-[#d4a373]'
-                          : 'bg-white/[0.04] border border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20'
-                        }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <button
-                onClick={generateStoryboard}
-                disabled={storyboardLoading}
-                className="w-full border border-[#d4a373]/40 bg-[#050710] text-[#d4a373] font-black py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-[#d4a373]/10 hover:border-[#d4a373]/70 transition-all duration-300 disabled:opacity-60"
-              >
-                {storyboardLoading
-                  ? <Clapperboard size={18} className="animate-spin text-[#d4a373]/60" />
-                  : <><Clapperboard size={18} /><span>{isHebrew ? 'צור קומיקס' : 'GENERATE COMIC STORYBOARD'}</span></>
-                }
-              </button>
-            </div>
-          )}
+          <button
+            onClick={generatePoster}
+            disabled={posterLoading}
+            className="w-full bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black font-black py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-60 transition-opacity"
+          >
+            {posterLoading
+              ? <Loader2 size={18} className="animate-spin" />
+              : <span>{isHebrew ? 'צור פוסטר קולנועי' : 'GENERATE MOVIE POSTER'}</span>
+            }
+          </button>
 
         </div>
       )}
@@ -712,12 +666,79 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
         )}
       </AnimatePresence>
 
+      {/* ── Poster cancel — sits BELOW the card so the loading overlay never ── */}
+      {/* covers it. Lets the user back out while the poster is still rendering. ── */}
+      <AnimatePresence>
+        {showPoster && posterLoading && (
+          <motion.div
+            key="poster-cancel"
+            initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.2 }}
+            className="relative z-[60] flex justify-center mt-3 mb-1 px-4"
+          >
+            <button
+              onClick={cancelPoster}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest border border-red-500/25 bg-red-500/[0.06] text-red-400/70 hover:text-red-400 hover:border-red-500/45 hover:bg-red-500/10 transition-all duration-200"
+            >
+              <X size={11} /> {isHebrew ? 'בטל יצירת פוסטר' : 'CANCEL POSTER'}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Comic controls — rendered BELOW the poster so it reads as the next ── */}
+      {/* logical step and never jumps above the generated poster. ────────────── */}
+      {!isTyping && currentDisplayText.length > 0 && !showStoryboard && (
+        <div className="px-4 pt-3 pb-6 space-y-3">
+
+          {/* Divider / section header */}
+          <div className="flex items-center gap-3 py-1">
+            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+            <span className="text-[7.5px] font-black uppercase tracking-[0.28em]" style={{ color: 'rgba(255,255,255,0.18)' }}>
+              {isHebrew ? 'קומיקס' : 'COMIC STORYBOARD'}
+            </span>
+            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+          </div>
+
+          {/* Style selector grouped directly above its generate button */}
+          {!storyboardLoading && (
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              {comicStyleOptions.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setComicStyle(opt.value)}
+                  className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all duration-200
+                    ${comicStyle === opt.value
+                      ? 'bg-[#d4a373]/20 border border-[#d4a373]/60 text-[#d4a373]'
+                      : 'bg-white/[0.04] border border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20'
+                    }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            onClick={generateStoryboard}
+            disabled={storyboardLoading}
+            className="w-full border border-[#d4a373]/40 bg-[#050710] text-[#d4a373] font-black py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-[#d4a373]/10 hover:border-[#d4a373]/70 transition-all duration-300 disabled:opacity-60"
+          >
+            {storyboardLoading
+              ? <Clapperboard size={18} className="animate-spin text-[#d4a373]/60" />
+              : <><Clapperboard size={18} /><span>{isHebrew ? 'צור קומיקס' : 'GENERATE COMIC STORYBOARD'}</span></>
+            }
+          </button>
+
+        </div>
+      )}
+
       {/* ── Storyboard cinematic loader ───────────────────────────────── */}
       <CinematicLoader
         isVisible={storyboardLoading && !showStoryboard}
         lang={lang}
         producerName={finalProducerName}
         phase="storyboard"
+        onCancel={cancelStoryboard}
       />
 
       {/* ── Storyboard view ───────────────────────────────────────────── */}
@@ -822,7 +843,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.88, y: 24 }}
               transition={{ type: 'spring', stiffness: 400, damping: 36, mass: 0.75 }}
-              className="fixed inset-0 z-[2001] flex items-center justify-center p-4 md:p-6 pointer-events-none"
+              className="fixed inset-0 z-[2001] flex items-center justify-center p-4 md:p-6 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none"
             >
               <div className="w-full max-w-[340px] pointer-events-auto rounded-[2rem] overflow-hidden bg-[#07070f]/98 backdrop-blur-3xl border border-[#d4a373]/12 shadow-[0_48px_120px_rgba(0,0,0,0.9),0_0_0_1px_rgba(212,163,115,0.07)]">
                 <div className="relative px-6 pt-6 pb-5 border-b border-white/[0.05]">

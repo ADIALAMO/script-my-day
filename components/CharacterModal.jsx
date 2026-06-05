@@ -120,7 +120,7 @@ export default function CharacterModal({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.88, y: 24 }}
         transition={{ type: 'spring', stiffness: 400, damping: 36, mass: 0.75 }}
-        className="fixed inset-0 z-[2001] flex items-center justify-center p-4 md:p-6 pointer-events-none"
+        className="fixed inset-0 z-[2001] flex items-center justify-center p-4 md:p-6 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none"
         dir={isHebrew ? 'rtl' : 'ltr'}
       >
         <div className="w-full max-w-[360px] pointer-events-auto rounded-[2rem] overflow-hidden bg-[#07070f]/98 backdrop-blur-3xl border border-[#d4a373]/12 shadow-[0_48px_120px_rgba(0,0,0,0.9),0_0_0_1px_rgba(212,163,115,0.07)]">

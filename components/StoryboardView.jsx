@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Copy, Check, X, Clapperboard, Film, Loader2, ChevronDown, Download, Share2, Lock, Crown } from 'lucide-react';
-import { exportImageBlob } from '../utils/export-image.js';
+import { Copy, Check, X, Clapperboard, Film, Loader2, ChevronDown, Share2, Lock, Crown } from 'lucide-react';
+import { shareBlob, shareBlobs } from '../utils/export-image.js';
 
 export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade }) {
   const isHebrew = lang === 'he';
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [allCopied, setAllCopied] = useState(false);
   const [expandedPrompts, setExpandedPrompts] = useState({});
+  const [sharingAll, setSharingAll] = useState(false);
 
   const togglePrompt = (idx) => setExpandedPrompts(prev => ({ ...prev, [idx]: !prev[idx] }));
 
@@ -42,28 +43,47 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
     }
   };
 
-  // Both actions go through the shared exporter: mobile uses the Web Share API
-  // ("Save Image"), desktop anchor-downloads — and neither navigates the page, which
-  // is what previously refreshed the SPA and wiped the user's state on iOS.
-  const downloadFrame = async (url, panelNum) => {
-    if (!url) return;
-    const filename = `panel-${String(panelNum).padStart(2, '0')}.png`;
-    try {
-      const blob = await fetchImageBlob(url);
-      await exportImageBlob(blob, filename, { action: 'download', title: `Panel ${panelNum}` });
-    } catch {
-      window.open(url, '_blank');
-    }
-  };
-
+  // Share a single panel via the Web Share API. Never navigates the page (which
+  // previously refreshed the SPA and wiped state on iOS); falls back to opening the
+  // image in a new tab where file-sharing is unsupported.
   const shareFrame = async (url, panelNum) => {
     if (!url) return;
     const filename = `panel-${String(panelNum).padStart(2, '0')}.png`;
     try {
       const blob = await fetchImageBlob(url);
-      await exportImageBlob(blob, filename, { action: 'share', title: `Panel ${panelNum}` });
+      const ok = await shareBlob(blob, filename, `Panel ${panelNum}`);
+      if (!ok) window.open(url, '_blank');
     } catch {
       window.open(url, '_blank');
+    }
+  };
+
+  // Tier-aware list of panel indices eligible for "Share all": unlocked by the user's
+  // tier AND with a finished image. Locked / still-loading / errored panels are
+  // excluded so the Share API never receives an empty or missing file.
+  const shareableIdxs = panels.reduce((acc, p, idx) => {
+    const locked = p.isLocked === true || idx >= unlockedPanels;
+    const st = panelImages?.[idx];
+    if (!locked && st && !st.loading && st.url) acc.push(idx);
+    return acc;
+  }, []);
+
+  const shareAllFrames = async () => {
+    if (sharingAll || shareableIdxs.length === 0) return;
+    setSharingAll(true);
+    try {
+      const items = [];
+      for (const idx of shareableIdxs) {
+        const blob = await fetchImageBlob(panelImages[idx].url);
+        items.push({ blob, filename: `panel-${String(panels[idx].panel).padStart(2, '0')}.png` });
+      }
+      const ok = await shareBlobs(items, isHebrew ? 'הסטוריבורד שלי' : 'My Comic Storyboard');
+      // Fallback when multi-file share is unsupported: open the first available panel.
+      if (!ok && items.length) window.open(panelImages[shareableIdxs[0]].url, '_blank');
+    } catch {
+      /* user dismissed the sheet or a fetch failed — no-op, state restored below */
+    } finally {
+      setSharingAll(false);
     }
   };
 
@@ -261,13 +281,9 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                     <div className="absolute inset-0 bg-gradient-to-t from-[#050710]/85 via-transparent to-black/15 pointer-events-none z-10" />
                   )}
 
-                  {/* Save & Share action bar */}
+                  {/* Share action bar */}
                   {imgState === 'loaded' && imgUrl && (
                     <div className="absolute bottom-0 inset-x-0 z-20 flex items-center justify-center gap-2 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out">
-                      <button type="button" onClick={() => downloadFrame(imgUrl, panel.panel)} className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200">
-                        <Download size={10} />
-                        <span>{isHebrew ? 'הורד' : 'Download'}</span>
-                      </button>
                       <button type="button" onClick={() => shareFrame(imgUrl, panel.panel)} className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200">
                         <Share2 size={10} />
                         <span>{isHebrew ? 'שתף' : 'Share'}</span>
@@ -393,8 +409,24 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
           </motion.div>
         )}
 
-        {/* ── Copy All Prompts ───────────────────────────────── */}
-        <div className="mt-6 flex justify-center">
+        {/* ── Share All + Copy All Prompts ───────────────────── */}
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+          {/* Share All — tier-aware: only the panels the user actually owns & that
+              finished rendering. Hidden until at least one image is shareable. */}
+          {shareableIdxs.length > 0 && (
+            <button
+              onClick={shareAllFrames}
+              disabled={sharingAll}
+              className="flex items-center gap-2.5 px-7 py-3.5 bg-[#d4a373] text-black rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white active:scale-[0.98] transition-all duration-300 disabled:opacity-60 shadow-[0_8px_28px_rgba(212,163,115,0.3)]"
+            >
+              {sharingAll ? (
+                <><Loader2 size={13} className="animate-spin" /><span>{isHebrew ? 'מכין שיתוף...' : 'PREPARING...'}</span></>
+              ) : (
+                <><Share2 size={13} /><span>{isHebrew ? `שתף ${shareableIdxs.length} תמונות` : `SHARE ${shareableIdxs.length} IMAGE${shareableIdxs.length > 1 ? 'S' : ''}`}</span></>
+              )}
+            </button>
+          )}
+
           <button onClick={copyAll} className="flex items-center gap-2.5 px-7 py-3.5 bg-[#d4a373]/8 border border-[#d4a373]/22 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-[#d4a373]/14 hover:border-[#d4a373]/42 transition-all duration-300">
             {allCopied ? (
               <><Check size={13} className="text-green-400" /><span className="text-green-400">{isHebrew ? 'הועתק!' : 'COPIED!'}</span></>

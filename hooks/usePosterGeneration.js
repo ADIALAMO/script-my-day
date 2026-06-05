@@ -4,7 +4,7 @@ import { track } from '@vercel/analytics';
 import { getMsg, CODES } from '../lib/messages.js';
 import { getGenreLabel } from '../constants/genres.js';
 import { useRotatingMessages } from './useRotatingMessages.js';
-import { exportImageBlob } from '../utils/export-image.js';
+import { shareBlob } from '../utils/export-image.js';
 
 const POSTER_MESSAGES_HE = [
   'מנתח את האסתטיקה של התסריט...',
@@ -57,6 +57,10 @@ export function usePosterGeneration({
   const [triggerFlash,  setTriggerFlash]  = useState(false);
 
   const posterRef = useRef(null);
+  // Tracks whether the current generation run is still active.
+  // cancelPoster() flips it to false so an in-flight response self-aborts
+  // and never writes stale state back after the user has backed out.
+  const posterActiveRef = useRef(false);
 
   const messages      = isHebrew ? POSTER_MESSAGES_HE : POSTER_MESSAGES_EN;
   const currentMessage = useRotatingMessages(messages, 2800, posterLoading);
@@ -64,6 +68,7 @@ export function usePosterGeneration({
   // ── Generation ──────────────────────────────────────────────────────────────
 
   const generatePoster = useCallback(async () => {
+    posterActiveRef.current = true;
     setPosterLoading(true);
     setPosterError('');
     setShowPoster(true);
@@ -82,6 +87,9 @@ export function usePosterGeneration({
         body: JSON.stringify({ prompt, genre, lang, deviceId, characterImageUrl: characterImageUrl || undefined }),
       });
       const data = await response.json();
+
+      // User cancelled while the request was in flight — drop the result.
+      if (!posterActiveRef.current) return;
 
       if (response.status === 403) {
         setPosterLoading(false);
@@ -120,7 +128,7 @@ export function usePosterGeneration({
         })
           .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
           .then(({ url: cdnUrl }) => {
-            if (!cdnUrl) return;
+            if (!cdnUrl || !posterActiveRef.current) return;
             // Only persist the CDN URL to history — do NOT swap the displayed
             // posterUrl.  Replacing the src mid-render causes the browser to blank
             // the <img> element immediately while the proxy fetch is in flight
@@ -143,16 +151,14 @@ export function usePosterGeneration({
     }
   }, [lang, genre, visualPrompt, onPosterGenerated, characterImageUrl]);
 
-  // ── Capture (download / share) ──────────────────────────────────────────────
+  // ── Capture (share only) ────────────────────────────────────────────────────
 
-  const handleCapturePoster = useCallback(async (action) => {
+  const handleCapturePoster = useCallback(async () => {
     if (!posterRef.current || !posterUrl) return;
 
-    track(action === 'download' ? 'Poster Downloaded' : 'Poster Shared', {
-      genre, language: lang, title: posterTitle,
-    });
+    track('Poster Shared', { genre, language: lang, title: posterTitle });
     if (typeof window !== 'undefined' && window.gtag) {
-      window.gtag('event', 'content_export', { method: action, genre, title: posterTitle });
+      window.gtag('event', 'content_export', { method: 'share', genre, title: posterTitle });
     }
 
     try {
@@ -184,13 +190,14 @@ export function usePosterGeneration({
       await htmlToImage.toPng(posterRef.current, { ...sharedOptions, quality: 0.1 });
       const dataUrl = await htmlToImage.toPng(posterRef.current, sharedOptions);
 
-      // Convert to a blob once, then hand off to the shared exporter. On mobile this
-      // routes through the Web Share API ("Save Image"); on desktop it anchor-downloads.
-      // Critically it never navigates the page — fixes the iOS "download then refresh,
-      // lose all state" bug caused by clicking an <a> pointing at a data: URL.
+      // Convert to a blob once, then hand off to the Web Share API ("Save Image" /
+      // social sheet). It never navigates the page — fixes the iOS "share then refresh,
+      // lose all state" bug. On platforms without file-share support, fall back to
+      // opening the poster in a new tab so the user can still save it.
       const blob = await (await fetch(dataUrl)).blob();
       const filename = `poster-${(posterTitle || 'movie-poster').replace(/\s+/g, '-')}.png`;
-      await exportImageBlob(blob, filename, { action, title: posterTitle || 'My Poster' });
+      const shared = await shareBlob(blob, filename, posterTitle || 'My Poster');
+      if (!shared && posterUrl) window.open(posterUrl, '_blank');
     } catch (err) {
       console.error('Poster capture error:', err);
       if (posterUrl) window.open(posterUrl, '_blank');
@@ -200,12 +207,20 @@ export function usePosterGeneration({
   // ── Reset (called by ScriptOutput when a new script arrives) ────────────────
 
   const resetPoster = useCallback(() => {
+    posterActiveRef.current = false;
     setShowPoster(false);
     setPosterUrl('');
     setPosterError('');
     setPosterLoading(false);
     setTriggerFlash(false);
   }, []);
+
+  // Cancel an in-flight poster generation and restore the pre-poster UI.
+  // posterActiveRef is flipped first so any pending fetch resolution self-aborts.
+  const cancelPoster = useCallback(() => {
+    track('Poster Cancelled', { genre, language: lang });
+    resetPoster();
+  }, [resetPoster, genre, lang]);
 
   return {
     posterUrl,    setPosterUrl,
@@ -218,5 +233,6 @@ export function usePosterGeneration({
     generatePoster,
     handleCapturePoster,
     resetPoster,
+    cancelPoster,
   };
 }

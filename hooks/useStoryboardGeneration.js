@@ -83,6 +83,11 @@ export function useStoryboardGeneration({
   // Set to false on reset / close so in-flight callbacks self-abort.
   const storyboardActiveRef = useRef(false);
 
+  // Set to true by cancelStoryboard() so an in-flight TEXT response
+  // (the phase before storyboardActiveRef goes true) is dropped instead
+  // of re-opening the storyboard after the user has backed out.
+  const storyboardCancelledRef = useRef(false);
+
   // Accumulates R2 CDN URLs as each panel upload completes.
   // Reset at the start of every new generation run.
   const panelCdnUrlsRef = useRef({});
@@ -223,6 +228,7 @@ export function useStoryboardGeneration({
 
   const generateStoryboard = useCallback(async () => {
     storyboardActiveRef.current = false;
+    storyboardCancelledRef.current = false;
     panelCdnUrlsRef.current     = {};
     dispatchPanelImages({ type: 'RESET' });
     setStoryboardLoading(true);
@@ -241,6 +247,9 @@ export function useStoryboardGeneration({
         body: JSON.stringify({ script: cleanScript, lang, genre, comicStyle, deviceId, heroDescriptor: heroDescriptor || undefined }),
       });
       const data = await response.json();
+
+      // User cancelled while the text request was in flight — drop the result.
+      if (storyboardCancelledRef.current) return;
 
       if (response.status === 403) {
         onAuthRequired?.('comic');
@@ -292,6 +301,23 @@ export function useStoryboardGeneration({
     dispatchPanelImages({ type: 'RESET' });
   }, []);
 
+  // ── Cancel (during the loading phase, before panels are shown) ──────────────
+  // Aborts both the in-flight text fetch (via storyboardCancelledRef) and any
+  // panel-image fan-out (via storyboardActiveRef), then restores the idle UI so
+  // the GENERATE COMIC button reappears.
+  const cancelStoryboard = useCallback(() => {
+    storyboardCancelledRef.current = true;
+    storyboardActiveRef.current    = false;
+    setStoryboardLoading(false);
+    setShowStoryboard(false);
+    setStoryboardPanels([]);
+    setUnlockedPanels(0);
+    setStoryboardError('');
+    setStoryboardErrorCode('');
+    dispatchPanelImages({ type: 'RESET' });
+    track('Storyboard Cancelled', { genre, language: lang });
+  }, [genre, lang]);
+
   return {
     showStoryboard,
     storyboardPanels,
@@ -305,6 +331,7 @@ export function useStoryboardGeneration({
     currentStoryboardMessage: currentMessage,
     generateStoryboard,
     closeStoryboard,
+    cancelStoryboard,
     isQuotaError,
   };
 }

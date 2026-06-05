@@ -121,7 +121,7 @@ export default function UpgradeModal({ isOpen, onClose, lang = 'en' }) {
           />
 
           {/* Panel */}
-          <div className="fixed inset-0 z-[8001] flex items-center justify-center p-4 pointer-events-none">
+          <div className="fixed inset-0 z-[8001] flex items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none">
             <motion.div
               key="upgrade-modal"
               initial={{ opacity: 0, scale: 0.93, y: 24 }}

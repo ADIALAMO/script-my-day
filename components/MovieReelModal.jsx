@@ -1,8 +1,8 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Download, Loader2, AlertCircle, Video, VolumeX, Volume2 } from 'lucide-react';
+import { X, Share2, Loader2, AlertCircle, Video, VolumeX, Volume2 } from 'lucide-react';
 import { track } from '@vercel/analytics';
-import { exportImageBlob } from '../utils/export-image.js';
+import { shareBlob } from '../utils/export-image.js';
 
 // ── Canvas dimensions ────────────────────────────────────────────────────────
 const CANVAS_W      = 720;
@@ -590,17 +590,18 @@ export default function MovieReelModal({
   // marked "Phase 4 hook" below needs to be updated.
   const useServerPipeline = false; // eslint-disable-line no-unused-vars
 
-  // ── Download ─────────────────────────────────────────────────────────────
-  // Goes through the shared exporter so mobile uses the Web Share API instead of an
-  // <a download> pointing at a blob: URL — which iOS Safari NAVIGATES to, tearing down
-  // the SPA (the "download refreshes the page and loses state" bug). The .mp4 filename
-  // is preserved: QuickTime / mobile players codec-detect from the container.
-  const handleDownload = useCallback(async () => {
+  // ── Share ────────────────────────────────────────────────────────────────
+  // Web Share API only — lets mobile users "Save to Photos" or post to IG/TikTok.
+  // Never navigates the page (an <a download> at a blob: URL makes iOS Safari NAVIGATE,
+  // tearing down the SPA). Falls back to opening the video where sharing is unsupported.
+  // The .mp4 filename is preserved: QuickTime / mobile players codec-detect from it.
+  const handleShare = useCallback(async () => {
     if (!videoUrl) return;
     const filename = `lifescript-reel-${genre || 'film'}.mp4`;
     try {
       const blob = await (await fetch(videoUrl)).blob();
-      await exportImageBlob(blob, filename, { action: 'download', title: 'LifeScript Reel' });
+      const ok = await shareBlob(blob, filename, 'LifeScript Reel');
+      if (!ok) window.open(videoUrl, '_blank');
     } catch {
       window.open(videoUrl, '_blank');
     }
@@ -899,8 +900,8 @@ export default function MovieReelModal({
                           dir={isHebrew ? 'rtl' : 'ltr'}
                         >
                           {isHebrew
-                            ? 'מוריד באייפון או מק? מומלץ לנגן באמצעות כרום, וואטסאפ או נגן VLC במידה והקובץ לא נפתח אוטומטית.'
-                            : "Downloading on iOS or Mac? If the file doesn’t play natively, open it via Chrome, WhatsApp, or VLC Player."}
+                            ? 'משתף באייפון או מק? מומלץ לנגן באמצעות כרום, וואטסאפ או נגן VLC במידה והקובץ לא נפתח אוטומטית.'
+                            : "Sharing on iOS or Mac? If the file doesn’t play natively, open it via Chrome, WhatsApp, or VLC Player."}
                         </p>
                       </motion.div>
                     </div>
@@ -948,11 +949,11 @@ export default function MovieReelModal({
                 ) : (
                   <>
                     <button
-                      onClick={handleDownload}
+                      onClick={handleShare}
                       className="w-full py-[14px] sm:py-[15px] rounded-2xl font-black text-[12px] sm:text-[12.5px] uppercase tracking-widest bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black hover:from-white hover:to-white active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 shadow-[0_8px_28px_rgba(212,163,115,0.35)]"
                     >
-                      <Download size={15} />
-                      {isHebrew ? 'הורד ריל' : 'Download Reel'}
+                      <Share2 size={15} />
+                      {isHebrew ? 'שתף ריל' : 'Share Reel'}
                     </button>
                     <button
                       onClick={handleReset}

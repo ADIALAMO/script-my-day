@@ -287,7 +287,10 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             onClick={onCancel}
-            className="w-full mt-3 py-3 rounded-[1.5rem] border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-black uppercase tracking-widest transition-all"
+            // relative z-[95] keeps the cancel button above the floating
+            // CinematicLoader status pill (z-[90]) so the loading bar can never
+            // cover it — the user can always abort the production.
+            className="relative z-[95] w-full mt-3 py-3 rounded-[1.5rem] border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-black uppercase tracking-widest transition-all"
           >
             {lang === 'he' ? '✕ בטל הפקה' : '✕ CANCEL'}
           </motion.button>

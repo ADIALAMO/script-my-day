@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, VolumeX, Download, Share2 } from 'lucide-react'; // וודא שאייקונים אלה מיובאים
+import { Loader2, VolumeX, Share2 } from 'lucide-react'; // וודא שאייקונים אלה מיובאים
 import * as htmlToImage from 'html-to-image'; // וודא שזה מיובא אם handleCapturePoster מועבר
 
 function PosterRenderer({
@@ -172,57 +172,33 @@ function PosterRenderer({
         )}
       </div>
 
-      {/* כפתורי הפעולה היוקרתיים (זה הזהב שביקשת לשמור) */}
+      {/* כפתור השיתוף היוקרתי (Web Share API — שמירה/שיתוף נייטיב) */}
       {!posterLoading && posterUrl && (
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          className="flex flex-row items-center justify-center gap-3 mt-8 pb-10 w-full max-w-[380px] mx-auto px-4"
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-center mt-8 pb-10 w-full max-w-[380px] mx-auto px-4"
         >
           <motion.button
             type="button"
-            whileHover={{ scale: 1.02, backgroundColor: "#d4a373", color: "#000" }}
+            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => {
-                handleCapturePoster('download');
-                // הוספה: מדידת הורדה בפועל
-                if (typeof window !== 'undefined' && window.gtag) {
-                  window.gtag('event', 'poster_download_click', {
-                    title: posterTitle,
-                    genre: genre
-                  });
-                }
-              }}                  
-            className="relative flex-[2] flex items-center justify-center gap-2 h-11 bg-[#1a1c20] border border-white/20 text-gray-300 rounded-lg transition-all duration-500 overflow-hidden"
-          >
-            {/* אפקט הברק (Shiny Sweep) */}
-            <motion.div animate={{ left: ['-100%', '200%'] }} transition={{ repeat: Infinity, duration: 3, ease: "linear" }} className="absolute top-0 bottom-0 w-12 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[35deg]" />
-            <Download size={16} strokeWidth={2.5} />
-            <span className="font-bold text-[10px] tracking-[0.2em] uppercase">{isHebrew ? 'שמור פוסטר' : 'SAVE POSTER'}</span>
-          </motion.button>
-
-          <motion.button
-            type="button"
-            whileHover={{ scale: 1.05, borderColor: "#d4a373", color: "#d4a373" }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => {
-                handleCapturePoster('share');
-                // הוספה: מדידת לחיצה על שיתוף
+                handleCapturePoster();
+                // מדידת לחיצה על שיתוף
                 if (typeof window !== 'undefined' && window.gtag) {
                   window.gtag('event', 'poster_share_click', {
                     title: posterTitle,
                     genre: genre
                   });
                 }
-              }}                  
-            className="relative w-11 h-11 flex items-center justify-center bg-[#1a1c20] border border-white/10 text-gray-400 rounded-lg transition-all duration-500"
+              }}
+            className="relative w-full flex items-center justify-center gap-2.5 h-12 bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black rounded-xl font-black transition-all duration-300 overflow-hidden shadow-[0_8px_28px_rgba(212,163,115,0.3)]"
           >
-            <div className="relative">
-              <Share2 size={18} strokeWidth={2} />
-              <motion.div animate={{ opacity: [0.3, 0.6, 0.3] }} transition={{ duration: 2, repeat: Infinity }} className="absolute inset-0 blur-[4px] text-[#d4a373]">
-                <Share2 size={18} strokeWidth={2} />
-              </motion.div>
-            </div>
+            {/* אפקט הברק (Shiny Sweep) */}
+            <motion.div animate={{ left: ['-100%', '200%'] }} transition={{ repeat: Infinity, duration: 3, ease: "linear" }} className="absolute top-0 bottom-0 w-12 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[35deg]" />
+            <Share2 size={16} strokeWidth={2.5} />
+            <span className="text-[11px] tracking-[0.2em] uppercase">{isHebrew ? 'שתף פוסטר' : 'SHARE POSTER'}</span>
           </motion.button>
         </motion.div>
       )}

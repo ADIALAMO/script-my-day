@@ -209,7 +209,7 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
 
   return (
     <nav className={`sticky top-0 left-0 right-0 z-[100] w-full border-b border-white/10 bg-black/80 backdrop-blur-md overflow-hidden touch-none
-      px-3 pt-14 pb-3
+      px-3 pt-[max(3.5rem,calc(env(safe-area-inset-top)+0.75rem))] pb-3
       md:pt-4 md:pb-4 md:px-6
       flex justify-between items-end md:items-center`}
       dir={isHe ? 'rtl' : 'ltr'}
