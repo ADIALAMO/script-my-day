@@ -47,6 +47,7 @@ export function usePosterGeneration({
   finalProducerName,
   onPosterGenerated,
   onAuthRequired,
+  characterImageUrl, // Identity Track — null/undefined → standard generation
 }) {
   const [posterUrl,     setPosterUrl]     = useState('');
   const [posterLoading, setPosterLoading] = useState(false);
@@ -77,7 +78,7 @@ export function usePosterGeneration({
           'Content-Type': 'application/json',
           'x-device-id':  deviceId,
         },
-        body: JSON.stringify({ prompt, genre, lang, deviceId }),
+        body: JSON.stringify({ prompt, genre, lang, deviceId, characterImageUrl: characterImageUrl || undefined }),
       });
       const data = await response.json();
 
@@ -139,7 +140,7 @@ export function usePosterGeneration({
       ));
       setPosterLoading(false);
     }
-  }, [lang, genre, visualPrompt, onPosterGenerated]);
+  }, [lang, genre, visualPrompt, onPosterGenerated, characterImageUrl]);
 
   // ── Capture (download / share) ──────────────────────────────────────────────
 

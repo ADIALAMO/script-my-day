@@ -10,6 +10,11 @@ import {
   recordFailure,
   recordSuccess,
 } from '../../lib/circuit-breaker.js';
+import {
+  grokImageFromReference,
+  resolveIdentityGate,
+  consumeIdentityCredit,
+} from '../../lib/identity.js';
 
 // ─── Shared utility ───────────────────────────────────────────────────────────
 
@@ -165,6 +170,19 @@ async function runPollinationsFlux(prompt, seed) {
   return { imageUrl, provider: 'Pollinations-Flux' };
 }
 
+// Identity Track — Grok Imagine Image Quality via OpenRouter, conditioned on the
+// user's stored character reference (opts.characterImageUrl). Verified response is a
+// base64 JPEG data URI → passed through as-is. `faceApplied: true` signals the handler
+// to consume an identity credit; if this throws, the cascade degrades to a faceless
+// provider and NO credit is spent. `seed` is kept for signature parity (unused — the
+// verified Grok call does not take a seed).
+async function runGrokIdentity(prompt, seed, opts) {
+  const faceUrl = opts?.characterImageUrl;
+  if (!faceUrl) throw new Error('runGrokIdentity requires a characterImageUrl');
+  const imageUrl = await grokImageFromReference(prompt, faceUrl);
+  return { imageUrl, provider: 'Grok-Identity', faceApplied: true };
+}
+
 // ─── Cascade definitions ─────────────────────────────────────────────────────
 //
 // TRACK A — Standalone Poster
@@ -199,7 +217,7 @@ export default async function handler(req, res) {
   try {
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
 
-  const { prompt, visualPrompt, requestType, panelIndex } = req.body;
+  const { prompt, visualPrompt, requestType, panelIndex, characterImageUrl } = req.body;
   const rawPrompt = prompt || visualPrompt || '';
   const seed      = Math.floor(Math.random() * 999999);
 
@@ -295,7 +313,20 @@ export default async function handler(req, res) {
       `Shot on IMAX, dramatic cinematic lighting, realistic skin textures, ` +
       `sharp focus, 8k, masterpiece.`;
 
-  const cascade = isComic ? COMIC_CASCADE : POSTER_CASCADE;
+  // ── Identity Track gate ─────────────────────────────────────────────────────
+  // Decides whether this request may inject the user's character reference.
+  // 'reject' → paid gate / monthly quota; 'identity' → prepend the Grok provider;
+  // 'standard' → no/invalid face, normal generation (degradation, not an error).
+  const gate = await resolveIdentityGate(req, res, { isAdmin, characterImageUrl });
+  if (gate.mode === 'reject') {
+    return res.status(gate.status).json({ success: false, code: gate.code });
+  }
+  const useIdentity = gate.mode === 'identity';
+
+  const baseCascade = isComic ? COMIC_CASCADE : POSTER_CASCADE;
+  // Identity provider runs FIRST; if it fails the loop continues into the existing
+  // faceless cascade — the user still gets an image, just without their face.
+  const cascade = useIdentity ? [runGrokIdentity, ...baseCascade] : baseCascade;
   const trackLabel = isComic ? 'TRACK B (Comic)' : 'TRACK A (Poster)';
 
   // Filter the cascade to providers that are not currently circuit-open.
@@ -306,9 +337,14 @@ export default async function handler(req, res) {
 
   for (const provider of liveCascade) {
     try {
-      const result = await provider(finalPrompt, seed);
+      const result = await provider(finalPrompt, seed, { characterImageUrl });
       await recordSuccess(redis, PROVIDER_KEY[provider.name]);
       await trackUsage();
+      // Consume an identity credit ONLY when the winning provider actually applied
+      // the face — a degraded (faceless) result must not cost the user a credit.
+      if (useIdentity && result.faceApplied) {
+        await consumeIdentityCredit(gate.usageKey, gate.limit);
+      }
       console.log(`🎨 Poster generated successfully by: ${result.provider}`);
       return res.status(200).json({ success: true, ...result });
     } catch (e) {

@@ -65,6 +65,8 @@ export function useStoryboardGeneration({
   onAuthRequired,
   onPanelsGenerated,
   initialPanels,
+  characterImageUrl, // Identity Track — null/undefined → standard generation
+  heroDescriptor,    // e.g. 'male hero' — only set when Identity Track is active
 }) {
   const isHebrew = lang === 'he';
 
@@ -90,6 +92,11 @@ export function useStoryboardGeneration({
   // which would recreate generateStoryboardImages on every parent render.
   const onPanelsGeneratedRef = useRef(onPanelsGenerated);
   useEffect(() => { onPanelsGeneratedRef.current = onPanelsGenerated; }, [onPanelsGenerated]);
+
+  // Same ref pattern for the Identity Track reference URL: read at fetch time
+  // inside the fire-and-forget panel loop without churning the callback.
+  const characterImageUrlRef = useRef(characterImageUrl);
+  useEffect(() => { characterImageUrlRef.current = characterImageUrl; }, [characterImageUrl]);
 
   const messages       = isHebrew ? STORYBOARD_MESSAGES_HE : STORYBOARD_MESSAGES_EN;
   const currentMessage = useRotatingMessages(messages, 2200, storyboardLoading);
@@ -143,6 +150,7 @@ export function useStoryboardGeneration({
               lang,
               requestType: 'comic',
               panelIndex:  idx,
+              characterImageUrl: characterImageUrlRef.current || undefined,
             }),
           });
           const data = await resp.json();
@@ -227,7 +235,7 @@ export function useStoryboardGeneration({
           'Content-Type': 'application/json',
           'x-device-id':  deviceId,
         },
-        body: JSON.stringify({ script: cleanScript, lang, genre, comicStyle, deviceId }),
+        body: JSON.stringify({ script: cleanScript, lang, genre, comicStyle, deviceId, heroDescriptor: heroDescriptor || undefined }),
       });
       const data = await response.json();
 
@@ -269,7 +277,7 @@ export function useStoryboardGeneration({
     } finally {
       setStoryboardLoading(false);
     }
-  }, [lang, genre, cleanScript, comicStyle, generateStoryboardImages]);
+  }, [lang, genre, cleanScript, comicStyle, heroDescriptor, generateStoryboardImages]);
 
   // ── Close ─────────────────────────────────────────────────────────────────
 

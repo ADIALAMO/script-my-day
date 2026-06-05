@@ -43,12 +43,26 @@ const STYLE_TRACKS = {
 
 // Opt 2: Static instruction separated from dynamic payload to enable Gemini context caching.
 // Opt 1: No prefix/suffix in the visual field — LLM outputs only the core description.
-function buildStaticInstruction(lang, maxPanels = 7) {
+// heroDescriptor is non-null ONLY when the Identity Track is active for this request
+// (a user character reference will be injected downstream). When present, Gemini must
+// disambiguate WHO the focal hero is in every panel so Grok applies the face to the
+// protagonist — never to a secondary character (e.g. a woman) in the same scene.
+// When null, no hero block is injected: stories without a character keep their own
+// protagonists (any gender), unchanged.
+function buildStaticInstruction(lang, maxPanels = 7, heroDescriptor = null) {
   const langNote = lang === 'he'
     ? 'The screenplay is in Hebrew. Write "scene" and "dialogue" fields in Hebrew. The "visual" field MUST always be written in English.'
     : 'Write all fields in English.';
 
   const panelRange = maxPanels <= 2 ? `exactly ${maxPanels}` : '5-7';
+
+  const heroBlock = heroDescriptor ? `
+HERO IDENTITY — READ FIRST (a reference photo of the ${heroDescriptor} will be applied to this comic):
+- The protagonist of this story is ${heroDescriptor}. This is the ONLY character whose likeness comes from the uploaded photo.
+- In EVERY panel where the protagonist appears, the "visual" MUST name them FIRST and explicitly as "the ${heroDescriptor}" — e.g. "The ${heroDescriptor} steps into the dark hall, wide shot".
+- Describe any OTHER people as clearly SEPARATE, distinct secondary characters, mentioned AFTER the protagonist, and never in a way that could be mistaken for them. Example: "The ${heroDescriptor} looks at a woman across the room, while she smiles back at him, medium two-shot".
+- If the protagonist is NOT present in a panel, describe the scene normally and do NOT force them in.
+` : '';
 
   return `You are a comic book storyboard artist.
 
@@ -60,7 +74,7 @@ Return ONLY a valid JSON array. No markdown, no backticks, no explanation — ju
 
 Format:
 [{"panel":1,"scene":"INT. LOCATION - DAY","visual":"...","dialogue":"Key line here"}]
-
+${heroBlock}
 Field rules:
 - "panel": integer (1 to 7)
 - "scene": location and time context, match script language
@@ -173,7 +187,13 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
 
   try {
-    const { script, lang, genre, comicStyle } = req.body;
+    const { script, lang, genre, comicStyle, heroDescriptor: rawHeroDescriptor } = req.body;
+
+    // Hero descriptor is only honoured when the client signals an active Identity Track.
+    // Sanitized + length-capped; never trusted as free text into the prompt.
+    const heroDescriptor = rawHeroDescriptor
+      ? sanitize(String(rawHeroDescriptor), 40) || null
+      : null;
 
     const isAdmin = isAdminRequest(req);
     // Dev-tier preview: admin can pass x-dev-tier: free|pro to simulate a
@@ -227,7 +247,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, code: CODES.INPUT_TOO_SHORT, message: 'Script text too short.' });
     }
 
-    const staticInstruction = buildStaticInstruction(lang || 'en', maxPanels);
+    const staticInstruction = buildStaticInstruction(lang || 'en', maxPanels, heroDescriptor);
     // Opt 1: track is resolved here so prefix/suffix are injected server-side after parsing,
     // not included in the LLM prompt — saves ~140-175 output tokens per generation.
     const track = STYLE_TRACKS[comicStyle || 'anime'];

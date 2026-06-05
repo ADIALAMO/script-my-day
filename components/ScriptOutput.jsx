@@ -13,10 +13,12 @@ import PosterRenderer from './PosterRenderer';
 import StoryboardView from './StoryboardView';
 import MovieReelModal from './MovieReelModal';
 import CinematicLoader from './CinematicLoader';
+import CharacterModal from './CharacterModal';
 import { useTypewriter } from '../hooks/useTypewriter.js';
 import { useCinematicAudio } from '../hooks/useCinematicAudio.js';
 import { usePosterGeneration } from '../hooks/usePosterGeneration.js';
 import { useStoryboardGeneration } from '../hooks/useStoryboardGeneration.js';
+import { useCharacter } from '../hooks/useCharacter.js';
 
 // ── Brand SVG icons ──────────────────────────────────────────────────────────
 const WhatsAppIcon = () => (
@@ -84,12 +86,19 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
     };
   }, [isHebrew, finalProducerName]);
 
+  // ── Identity Track (character consistency) ──────────────────────────────────
+  const {
+    characterImageUrl, activeCharacterUrl, heroDescriptor, starring, setStarring,
+    gender, setGender, status: characterStatus, uploadCharacter, clearCharacter,
+  } = useCharacter();
+  const [showCharacterModal, setShowCharacterModal] = useState(false);
+
   const {
     posterUrl, setPosterUrl, posterLoading, setPosterLoading,
     posterError, setPosterError, showPoster, setShowPoster,
     triggerFlash, setTriggerFlash, posterRef,
     currentPosterMessage, generatePoster, handleCapturePoster, resetPoster,
-  } = usePosterGeneration({ lang, genre, visualPrompt, posterTitle, isHebrew, finalProducerName, onPosterGenerated, onAuthRequired });
+  } = usePosterGeneration({ lang, genre, visualPrompt, posterTitle, isHebrew, finalProducerName, onPosterGenerated, onAuthRequired, characterImageUrl: activeCharacterUrl });
 
   const {
     showStoryboard, storyboardPanels, storyboardLoading,
@@ -97,7 +106,14 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
     unlockedPanels,
     comicStyle, setComicStyle, currentStoryboardMessage,
     generateStoryboard, closeStoryboard,
-  } = useStoryboardGeneration({ lang, genre, cleanScript, script, onAuthRequired, onPanelsGenerated, initialPanels });
+  } = useStoryboardGeneration({
+    lang, genre, cleanScript, script, onAuthRequired, onPanelsGenerated, initialPanels,
+    characterImageUrl: activeCharacterUrl,
+    // Dynamic protagonist descriptor from the user's gender choice (useCharacter).
+    // Non-null only when the Identity Track is active → tells Gemini who the
+    // face-injected hero is so it leads each panel with them and separates secondaries.
+    heroDescriptor,
+  });
 
   // ── Script processing effect ───────────────────────────────────────────────
   useEffect(() => {
@@ -552,6 +568,38 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
       {!isTyping && currentDisplayText.length > 0 && (!showPoster || !showStoryboard) && (
         <div className="py-6 px-4 space-y-3">
 
+          {/* ── CHARACTER CHIP — governs both poster & comic (Identity Track) ── */}
+          {!showPoster && !showStoryboard && (
+            <div className="flex items-center justify-center pb-1">
+              {characterStatus === 'ready' && characterImageUrl ? (
+                <div className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#d4a373]/[0.06] border border-[#d4a373]/25">
+                  <button onClick={() => setShowCharacterModal(true)} className="relative shrink-0" title={isHebrew ? 'החלף דמות' : 'Change character'}>
+                    <img src={characterImageUrl} alt="character" className="w-9 h-9 rounded-xl object-cover border border-[#d4a373]/40" />
+                    <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#d4a373] text-black flex items-center justify-center"><Check size={9} /></span>
+                  </button>
+                  <button onClick={() => setStarring(s => !s)} className="flex items-center gap-1.5" title={isHebrew ? 'הצג/הסתר אותי' : 'Toggle starring'}>
+                    <span className={`relative w-8 h-[18px] rounded-full transition-colors duration-200 ${starring ? 'bg-[#d4a373]' : 'bg-white/15'}`}>
+                      <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-black transition-all duration-200 ${starring ? 'left-[16px]' : 'left-[2px]'}`} />
+                    </span>
+                    <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${starring ? 'text-[#d4a373]' : 'text-gray-500'}`}>
+                      {isHebrew ? 'בכיכובי' : 'Starring me'}
+                    </span>
+                  </button>
+                  <button onClick={clearCharacter} className="text-gray-600 hover:text-red-400 transition-colors" title={isHebrew ? 'הסר' : 'Remove'}>
+                    <X size={13} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowCharacterModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/[0.03] border border-white/10 text-gray-400 hover:text-[#d4a373] hover:border-[#d4a373]/30 transition-all duration-200 text-[10px] font-black uppercase tracking-wider"
+                >
+                  🎭 {isHebrew ? 'ביים את עצמך בסיפור' : 'Cast yourself in the story'}
+                </button>
+              )}
+            </div>
+          )}
+
           {/* ── POSTER SECTION ── */}
           {!showPoster && (
             <button
@@ -741,6 +789,20 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
         lang={lang}
         genre={genre}
         producerName={finalProducerName}
+      />
+
+      {/* ── Character modal (Identity Track) ──────────────────────────── */}
+      <CharacterModal
+        isOpen={showCharacterModal}
+        onClose={() => setShowCharacterModal(false)}
+        lang={lang}
+        status={characterStatus}
+        characterImageUrl={characterImageUrl}
+        uploadCharacter={uploadCharacter}
+        clearCharacter={clearCharacter}
+        gender={gender}
+        setGender={setGender}
+        onUpgrade={() => onAuthRequired?.('upgrade')}
       />
 
       {/* ── Distribution Hub modal ────────────────────────────────────── */}
