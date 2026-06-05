@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Check, X, Clapperboard, Film, Loader2, ChevronDown, Download, Share2, Lock, Crown } from 'lucide-react';
+import { exportImageBlob } from '../utils/export-image.js';
 
 export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade }) {
   const isHebrew = lang === 'he';
@@ -41,19 +42,15 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
     }
   };
 
+  // Both actions go through the shared exporter: mobile uses the Web Share API
+  // ("Save Image"), desktop anchor-downloads — and neither navigates the page, which
+  // is what previously refreshed the SPA and wiped the user's state on iOS.
   const downloadFrame = async (url, panelNum) => {
     if (!url) return;
     const filename = `panel-${String(panelNum).padStart(2, '0')}.png`;
     try {
       const blob = await fetchImageBlob(url);
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(objectUrl);
+      await exportImageBlob(blob, filename, { action: 'download', title: `Panel ${panelNum}` });
     } catch {
       window.open(url, '_blank');
     }
@@ -64,20 +61,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
     const filename = `panel-${String(panelNum).padStart(2, '0')}.png`;
     try {
       const blob = await fetchImageBlob(url);
-      const file = new File([blob], filename, { type: 'image/png' });
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: `Panel ${panelNum}` });
-        return;
-      }
-      // No native share API — fall back to download
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(objectUrl);
+      await exportImageBlob(blob, filename, { action: 'share', title: `Panel ${panelNum}` });
     } catch {
       window.open(url, '_blank');
     }
@@ -280,11 +264,11 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                   {/* Save & Share action bar */}
                   {imgState === 'loaded' && imgUrl && (
                     <div className="absolute bottom-0 inset-x-0 z-20 flex items-center justify-center gap-2 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out">
-                      <button onClick={() => downloadFrame(imgUrl, panel.panel)} className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200">
+                      <button type="button" onClick={() => downloadFrame(imgUrl, panel.panel)} className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200">
                         <Download size={10} />
                         <span>{isHebrew ? 'הורד' : 'Download'}</span>
                       </button>
-                      <button onClick={() => shareFrame(imgUrl, panel.panel)} className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200">
+                      <button type="button" onClick={() => shareFrame(imgUrl, panel.panel)} className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200">
                         <Share2 size={10} />
                         <span>{isHebrew ? 'שתף' : 'Share'}</span>
                       </button>

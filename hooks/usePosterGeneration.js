@@ -4,6 +4,7 @@ import { track } from '@vercel/analytics';
 import { getMsg, CODES } from '../lib/messages.js';
 import { getGenreLabel } from '../constants/genres.js';
 import { useRotatingMessages } from './useRotatingMessages.js';
+import { exportImageBlob } from '../utils/export-image.js';
 
 const POSTER_MESSAGES_HE = [
   'מנתח את האסתטיקה של התסריט...',
@@ -183,31 +184,13 @@ export function usePosterGeneration({
       await htmlToImage.toPng(posterRef.current, { ...sharedOptions, quality: 0.1 });
       const dataUrl = await htmlToImage.toPng(posterRef.current, sharedOptions);
 
-      if (action === 'download') {
-        const link      = document.createElement('a');
-        link.href       = dataUrl;
-        link.download   = `poster-${(posterTitle || 'movie-poster').replace(/\s+/g, '-')}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else if (action === 'share') {
-        const res  = await fetch(dataUrl);
-        const blob = await res.blob();
-        const file = new File([blob], 'movie-poster.png', { type: 'image/png' });
-
-        if (navigator.share && navigator.canShare?.({ files: [file] })) {
-          try {
-            await navigator.share({ files: [file], title: posterTitle || 'My Poster' });
-          } catch (err) {
-            if (err.name !== 'AbortError') throw err;
-          }
-        } else {
-          const link    = document.createElement('a');
-          link.href     = dataUrl;
-          link.download = 'poster.png';
-          link.click();
-        }
-      }
+      // Convert to a blob once, then hand off to the shared exporter. On mobile this
+      // routes through the Web Share API ("Save Image"); on desktop it anchor-downloads.
+      // Critically it never navigates the page — fixes the iOS "download then refresh,
+      // lose all state" bug caused by clicking an <a> pointing at a data: URL.
+      const blob = await (await fetch(dataUrl)).blob();
+      const filename = `poster-${(posterTitle || 'movie-poster').replace(/\s+/g, '-')}.png`;
+      await exportImageBlob(blob, filename, { action, title: posterTitle || 'My Poster' });
     } catch (err) {
       console.error('Poster capture error:', err);
       if (posterUrl) window.open(posterUrl, '_blank');

@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, Loader2, AlertCircle, Video, VolumeX, Volume2 } from 'lucide-react';
 import { track } from '@vercel/analytics';
+import { exportImageBlob } from '../utils/export-image.js';
 
 // ── Canvas dimensions ────────────────────────────────────────────────────────
 const CANVAS_W      = 720;
@@ -590,15 +591,19 @@ export default function MovieReelModal({
   const useServerPipeline = false; // eslint-disable-line no-unused-vars
 
   // ── Download ─────────────────────────────────────────────────────────────
-  const handleDownload = useCallback(() => {
+  // Goes through the shared exporter so mobile uses the Web Share API instead of an
+  // <a download> pointing at a blob: URL — which iOS Safari NAVIGATES to, tearing down
+  // the SPA (the "download refreshes the page and loses state" bug). The .mp4 filename
+  // is preserved: QuickTime / mobile players codec-detect from the container.
+  const handleDownload = useCallback(async () => {
     if (!videoUrl) return;
-    const a = document.createElement('a');
-    a.href = videoUrl;
-    // Always use .mp4 extension: Apple QuickTime and most mobile players
-    // auto-detect the codec from the container, so the .mp4 wrapper
-    // substantially reduces "unsupported format" errors on iOS and macOS.
-    a.download = `lifescript-reel-${genre || 'film'}.mp4`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    const filename = `lifescript-reel-${genre || 'film'}.mp4`;
+    try {
+      const blob = await (await fetch(videoUrl)).blob();
+      await exportImageBlob(blob, filename, { action: 'download', title: 'LifeScript Reel' });
+    } catch {
+      window.open(videoUrl, '_blank');
+    }
   }, [videoUrl, genre]);
 
   const handleReset = useCallback(() => {

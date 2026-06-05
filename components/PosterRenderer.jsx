@@ -179,7 +179,8 @@ function PosterRenderer({
           animate={{ opacity: 1, y: 0 }} 
           className="flex flex-row items-center justify-center gap-3 mt-8 pb-10 w-full max-w-[380px] mx-auto px-4"
         >
-          <motion.button 
+          <motion.button
+            type="button"
             whileHover={{ scale: 1.02, backgroundColor: "#d4a373", color: "#000" }}
             whileTap={{ scale: 0.95 }}
             onClick={() => {
@@ -200,7 +201,8 @@ function PosterRenderer({
             <span className="font-bold text-[10px] tracking-[0.2em] uppercase">{isHebrew ? 'שמור פוסטר' : 'SAVE POSTER'}</span>
           </motion.button>
 
-          <motion.button 
+          <motion.button
+            type="button"
             whileHover={{ scale: 1.05, borderColor: "#d4a373", color: "#d4a373" }}
             whileTap={{ scale: 0.9 }}
             onClick={() => {
