@@ -14,11 +14,26 @@ export default function LaunchTicket({ lang = 'he' }) {
 
   const content = {
     badge: isHe ? "סטטוס הפקה" : "Production Status",
-    title: isHe ? "עדכון מהסט" : "Production Update",
-    desc: isHe 
-      ? "בונוס ההשקה הסתיים, אך אנחנו כבר בחדר העריכה עובדים על הפתעות חדשות."
-      : "The launch bonus has ended, but we're already in the editing room working on new surprises.",
-    benefit: isHe ? "🎬 נצלו את המכסה היומית בתבונה" : "🎬 Use your daily quota wisely",
+    title: isHe ? "מבצעי הפקה פעילים" : "Active Production Deals",
+    desc: isHe
+      ? "שני בונוסים פתוחים על הסט עכשיו — נצל אותם לפני שהמצלמות מפסיקות לצלם."
+      : "Two bonuses are live on set right now — grab them before the cameras stop rolling.",
+    deals: [
+      {
+        icon: "🎁",
+        title: isHe ? "הזמן חבר, קבל פוסטר חינם" : "Invite a friend, get a free poster",
+        body: isHe
+          ? "על כל חבר שנרשם ויוצר פוסטר ראשון — אתה מקבל פוסטר \"לככב בסיפור\" חינם. דרך תפריט החשבון ← הזמן חברים."
+          : "For every friend who signs up and makes their first poster, you earn a free \"Star Yourself\" poster. Account menu → Invite friends.",
+      },
+      {
+        icon: "👑",
+        title: isHe ? "מסלול Pro — 9$ לחודש" : "Pro plan — $9/month",
+        body: isHe
+          ? "תסריטים ללא הגבלה, עד 3 פוסטרים ו-2 קומיקסים ביום, רילז ותור מועדף. ביטול בכל עת."
+          : "Unlimited scripts, up to 3 posters & 2 comics a day, reels, and a priority queue. Cancel anytime.",
+      },
+    ],
     button: isHe ? "חזרה לצילומים" : "Back to Set"
   };
 
@@ -52,8 +67,8 @@ export default function LaunchTicket({ lang = 'he' }) {
       />
       
       {/* גוף החלונית - קטנה וקרובה לאינפוט */}
-      <div 
-        className="relative bg-[#0a0a0a] border border-amber-500/30 rounded-2xl p-5 max-w-[280px] w-full shadow-[0_0_50px_rgba(0,0,0,1)] text-center animate-in slide-in-from-bottom-8 duration-300 pointer-events-auto"
+      <div
+        className="relative bg-[#0a0a0a] border border-amber-500/30 rounded-2xl p-5 max-w-[320px] w-full shadow-[0_0_50px_rgba(0,0,0,1)] text-center animate-in slide-in-from-bottom-8 duration-300 pointer-events-auto"
         dir={isHe ? 'rtl' : 'ltr'}
       >
         <button 
@@ -77,11 +92,26 @@ export default function LaunchTicket({ lang = 'he' }) {
           {content.desc}
         </p>
         
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg py-1.5 mb-4 text-amber-500 text-[9px] font-black uppercase tracking-widest font-heebo">
-          {content.benefit}
+        <div className="space-y-2 mb-4 text-start">
+          {content.deals.map((deal, i) => (
+            <div
+              key={i}
+              className="bg-amber-500/[0.07] border border-amber-500/20 rounded-xl p-3 flex gap-2.5 items-start"
+            >
+              <span className="text-base leading-none mt-0.5 shrink-0">{deal.icon}</span>
+              <div className="min-w-0">
+                <p className="text-amber-400 text-[11px] font-black leading-tight font-heebo mb-1">
+                  {deal.title}
+                </p>
+                <p className="text-zinc-400 text-[10px] font-light leading-snug font-heebo">
+                  {deal.body}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
 
-        <button 
+        <button
           onClick={() => setIsOpen(false)} 
           className="w-full py-2.5 bg-zinc-100 hover:bg-white text-black text-[11px] font-black rounded-lg uppercase active:scale-95 transition-transform font-heebo shadow-lg"
         >

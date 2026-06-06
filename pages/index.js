@@ -16,6 +16,7 @@ import { SHOWCASE_POSTERS, SHOWCASE_REELS } from '../constants/showcase';
 import { MODAL_DATA } from '../constants/modalData';
 import HistoryPanel from '../components/HistoryPanel';
 import CinematicLoader from '../components/CinematicLoader';
+import CookieConsent from '../components/CookieConsent';
 import { useScriptHistory } from '../hooks/useScriptHistory';
 
 // ── Genre metadata for filmstrip grouping ────────────────────────────────────
@@ -1213,6 +1214,9 @@ function HomePage() {
         onDelete={deleteEntry}
         lang={lang}
       />
+
+      {/* Notice-only cookie banner — links to the Privacy modal */}
+      <CookieConsent lang={lang} onPolicyClick={() => setModalContent('privacy')} />
 
       <Analytics />
     </div>

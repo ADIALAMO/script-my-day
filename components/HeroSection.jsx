@@ -45,6 +45,21 @@ function HeroSection({ lang }) {
       <p className="text-gray-400 text-lg md:text-xl font-light max-w-xl mx-auto leading-tight px-4 opacity-80">
         {lang === 'he' ? 'הפוך את היום שלך לתסריט קולנועי מרתק' : 'Turn your day into a captivating cinematic script'}
       </p>
+
+      {/* Capability hints — the three acts of a LIFESCRIPT production */}
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-2 px-4">
+        {(lang === 'he'
+          ? ['✍️ כתוב תסריט', '🎭 לככב בפוסטר', '🎬 קומיקס + ריל']
+          : ['✍️ Write a script', '🎭 Star in the poster', '🎬 Comic + reel']
+        ).map((chip) => (
+          <span
+            key={chip}
+            className="px-3 py-1 rounded-full border border-[#d4a373]/15 bg-[#d4a373]/[0.04] text-[#d4a373]/70 text-[10px] md:text-[11px] font-bold tracking-wide whitespace-nowrap"
+          >
+            {chip}
+          </span>
+        ))}
+      </div>
     </motion.header>
   );
 }
