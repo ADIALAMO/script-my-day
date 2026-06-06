@@ -92,6 +92,12 @@ still applies on top of any bonus. The grant is fail-safe (skipped, never blind/
 idempotent (one attribution per referee via `set(..., {nx:true})`).
 
 ## Stripe ↔ tier sync
+> **Beta status:** Stripe runs in **TEST MODE** in production (intentional — Israeli
+> founder has no Live payout path yet; see [TODO.md](TODO.md)). Pro "purchases" use test
+> card `4242…` ("free Beta for friends"). All Stripe code is **env-driven** (test vs live
+> = which keys are set in Vercel), so this is a config state, not a code branch. Going Live
+> is a Phase-2.0 swap of keys + the Live webhook secret — no code change.
+
 - `$9/mo` Pro via inline `price_data` in [checkout](pages/api/checkout/index.js)
   (no dashboard Price ID dependency). `userId` is in **both** session metadata and
   `subscription_data.metadata` so the webhook can read it from any lifecycle event.
