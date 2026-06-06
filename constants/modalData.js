@@ -181,7 +181,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'נתקלתם במכשול? ספרו לנו',
-          p: 'אם נתקלתם בקושי או במגבלת נגישות באתר, נשמח שתעדכנו אותנו כדי שנוכל לתקן. רכז הנגישות: צוות LIFESCRIPT · אימייל: adialamo@gmail.com. נשתדל להגיב לכל פנייה בתוך זמן סביר.',
+          p: 'אם נתקלתם בקושי או במגבלת נגישות באתר, נשמח שתעדכנו אותנו כדי שנוכל לתקן. ניתן לפנות אלינו דרך "יומן הבמאי" באתר (כפתור המשוב), וצוות LIFESCRIPT ישתדל להגיב לכל פנייה בתוך זמן סביר.',
         },
       ],
     },
@@ -203,7 +203,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'Hit a Barrier? Tell Us',
-          p: 'If you encounter any difficulty or accessibility limitation on the site, we’d be glad to hear from you so we can fix it. Accessibility coordinator: the LIFESCRIPT team · Email: adialamo@gmail.com. We will do our best to respond to every request within a reasonable time.',
+          p: 'If you encounter any difficulty or accessibility limitation on the site, we’d be glad to hear from you so we can fix it. You can reach us through the "Director\'s Log" on the site (the feedback button), and the LIFESCRIPT team will do its best to respond to every request within a reasonable time.',
         },
       ],
     },
