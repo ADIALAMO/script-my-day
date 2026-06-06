@@ -75,9 +75,14 @@ export default function InviteLanding({ code, name, lang, ogImage, inviteUrl }) 
       </Head>
 
       <div dir={isHe ? 'rtl' : 'ltr'} className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-[#030712] font-heebo">
-        {/* Ambient cinematic glow */}
+        {/* Full-bleed brand backdrop — the studio title card behind everything */}
+        <img src="/og-image.png" alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
+        {/* ~80% cinematic scrim — gradient lets the gold film-strip peek through the middle
+            while keeping the floating card crisp and legible (darker top/bottom). */}
+        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-b from-[#030712]/90 via-[#030712]/[0.76] to-[#030712]/95" />
+        {/* Ambient amber glow for depth */}
         <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[560px] h-[560px] rounded-full bg-[#d4a373]/8 blur-[120px]" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[560px] h-[560px] rounded-full bg-[#d4a373]/10 blur-[120px]" />
         </div>
 
         <motion.div
