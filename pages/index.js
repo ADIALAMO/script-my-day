@@ -348,6 +348,15 @@ function HomePage() {
   const [feedbackStatus, setFeedbackStatus] = useState('idle');
   const [feedbackError, setFeedbackError] = useState('');
 
+  // Footer "Contact" entry point — opens the Director's Log and scrolls to it,
+  // so the legal/support copy that points users here has a real destination.
+  const openDirectorLog = useCallback(() => {
+    setShowFeedback(true);
+    setTimeout(() => {
+      document.getElementById('director-log')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 60);
+  }, []);
+
   const handleSendFeedback = async () => {
     if (!feedbackText.trim()) return;
     setFeedbackStatus('sending');
@@ -1103,7 +1112,7 @@ function HomePage() {
         </AnimatePresence>
 
         {/* Director's Log (Feedback Section) */}
-        <div className="mt-2 mb-0 w-full max-w-xl mx-auto px-6 relative z-50">
+        <div id="director-log" className="mt-2 mb-0 w-full max-w-xl mx-auto px-6 relative z-50">
           <AnimatePresence mode='wait'>
             {!showFeedback ? (
               <motion.button
@@ -1123,7 +1132,7 @@ function HomePage() {
                     {lang === 'he' ? 'יומן הבמאי' : "DIRECTOR'S LOG"}
                   </span>
                   <p className="text-gray-500 text-[10px] font-light tracking-wide">
-                    {lang === 'he' ? 'יש לך הערות על ההפקה? שתף אותנו' : 'Notes on the production? Share with us'}
+                    {lang === 'he' ? 'משוב, תמיכה ודיווח תקלות — דברו איתנו' : 'Feedback, support & issues — talk to us'}
                   </p>
                 </div>
               </motion.button>
@@ -1210,6 +1219,12 @@ function HomePage() {
                   {MODAL_DATA[item][lang].title.split(' - ')[0]}
                 </button>
               ))}
+              <button
+                onClick={openDirectorLog}
+                className="text-[9px] font-black text-gray-500 hover:text-[#d4a373] transition-colors uppercase tracking-[0.2em]"
+              >
+                {lang === 'he' ? 'צור קשר' : 'Contact'}
+              </button>
             </div>
           </div>
         </div>
