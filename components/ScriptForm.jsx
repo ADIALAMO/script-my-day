@@ -123,6 +123,11 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
                       },
                       {
                         id: "03",
+                        title: lang === 'he' ? 'דייק את התסריט' : 'Refine the Script',
+                        desc: lang === 'he' ? 'כל שורה ניתנת לעריכה — שכתב לפני שתפיק פוסטר.' : 'Every line is editable — tweak it before you generate a poster.'
+                      },
+                      {
+                        id: "04",
                         title: lang === 'he' ? 'שמור את הפוסטר' : 'Save the Poster',
                         desc: lang === 'he' ? 'בנה ארכיון ויזואלי של מסע החיים שלך.' : 'Build a visual archive of your journey.'
                       }

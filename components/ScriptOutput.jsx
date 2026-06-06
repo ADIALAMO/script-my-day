@@ -401,14 +401,10 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
                   exit={{ opacity: 0, scale: 0.92 }} transition={{ duration: 0.15 }}
                   onClick={() => { setEditedText(currentDisplayText); setIsEditing(true); }}
                   title={isHebrew ? 'ערוך תסריט' : 'Edit script'}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 border rounded-xl text-[9px] font-black uppercase tracking-wider transition-all duration-200
-                    ${isEdited
-                      ? 'border-[#d4a373]/40 bg-[#d4a373]/10 text-[#d4a373] hover:bg-[#d4a373]/20'
-                      : 'border-white/10 bg-white/5 text-gray-500 hover:text-[#d4a373] hover:border-[#d4a373]/30 hover:bg-[#d4a373]/8'
-                    }`}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-[#d4a373]/40 bg-[#d4a373]/10 text-[#d4a373] rounded-xl text-[9px] font-black uppercase tracking-wider hover:bg-[#d4a373]/20 hover:border-[#d4a373]/60 transition-all duration-200"
                 >
                   <Pencil size={12} />
-                  <span className="hidden sm:inline">
+                  <span>
                     {isEdited ? (isHebrew ? 'ערוך שוב' : 'Re-edit') : (isHebrew ? 'עריכה' : 'Edit')}
                   </span>
                 </motion.button>
@@ -569,6 +565,27 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
       {/* PosterRenderer so it never jumps above the generated poster (next step).   */}
       {!isTyping && currentDisplayText.length > 0 && !showPoster && !showStoryboard && (
         <div className="pt-6 px-4 pb-2 space-y-3">
+
+          {/* ── REVIEW BEAT — frames editing as a stage before locking the poster ── */}
+          {!isEditing && (
+            <div className="flex flex-col items-center gap-2 pb-1 text-center">
+              <p className="text-white/45 text-[11px] md:text-[12px] font-light leading-snug">
+                {isHebrew ? 'מרוצה מהתסריט?' : 'Happy with your script?'}
+              </p>
+              <div className="flex items-center gap-2.5">
+                <button
+                  onClick={() => { setEditedText(currentDisplayText); setIsEditing(true); }}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[#d4a373]/35 bg-[#d4a373]/[0.07] text-[#d4a373] text-[10px] font-black uppercase tracking-wider hover:bg-[#d4a373]/15 hover:border-[#d4a373]/60 transition-all duration-200"
+                >
+                  <Pencil size={11} />
+                  {isHebrew ? 'ערוך כל שורה' : 'Edit any line'}
+                </button>
+                <span className="text-white/20 text-[10px] font-bold uppercase tracking-wider">
+                  {isHebrew ? 'או צור פוסטר ↓' : 'or generate poster ↓'}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* ── CHARACTER CHIP — governs both poster & comic (Identity Track) ── */}
           <div className="flex items-center justify-center pb-1">
