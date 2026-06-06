@@ -104,10 +104,18 @@ cinematic poster you can share.*
   yours →"), composited onto every exported poster/panel in
   [utils/export-image.js](utils/export-image.js) (`compositeWatermark`, threaded `lang`,
   RTL-aware; videos/reels pass through untouched). **Done — do not re-pitch adding a
-  watermark.** Next levers on the loop: a **referral hook** ("your friend gets a free
-  Star-Yourself poster"), and **instrumenting share-rate / k-factor** (the share/download
-  events already fire `track('Poster Shared', …)` + gtag `content_export` in
-  [hooks/usePosterGeneration.js](hooks/usePosterGeneration.js) — build the funnel on those).
+  watermark.**
+- **Referral loop — SHIPPED (don't re-pitch building it):** invite link `?ref=CODE`
+  (Navbar → `ReferralModal`), reward = **+1 "Star Yourself" credit to the referrer**,
+  granted when the invited friend makes their **first poster**. Server logic in
+  [lib/referral.js](lib/referral.js) + the gate in [lib/identity.js](lib/identity.js)
+  (bonus credits raise the effective identity limit); every poster share also carries the
+  user's ref link in the share text. Cost-bounded: per-referrer cap (`REFERRAL_REWARD_CAP`)
+  + the global `DAILY_IDENTITY_BUDGET` kill-switch. **Next levers:** instrument
+  **share-rate / k-factor** (share/download already fire `track('Poster Shared', …)` +
+  gtag `content_export` in [hooks/usePosterGeneration.js](hooks/usePosterGeneration.js));
+  consider a referrer reward notification (email/Telegram) and broadening the activation
+  trigger to comics. Growth-copy work (invite-flow A/B, share captions) is still open.
 - **Product Hunt launch kit:** tagline (≤60 chars), description, first comment,
   maker comment, gallery shot list, and a hunter/upvote outreach DM. Provide a
   day-of timeline (PST).

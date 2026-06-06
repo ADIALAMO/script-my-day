@@ -156,12 +156,13 @@ export async function downloadBlobs(items, { lang = 'en' } = {}) {
   return count > 0;
 }
 
-// Core: hand an array of Files to the OS share sheet.
-async function shareFiles(files, title) {
+// Core: hand an array of Files to the OS share sheet. Optional `text` rides along in the
+// share payload (used to carry the referral link so every poster share seeds the loop).
+async function shareFiles(files, title, text) {
   if (typeof navigator === 'undefined' || !navigator.share || !navigator.canShare) return false;
   if (!files.length || !navigator.canShare({ files })) return false;
   try {
-    await navigator.share({ files, title });
+    await navigator.share({ files, title, ...(text ? { text } : {}) });
     return true;
   } catch (err) {
     // User dismissed the sheet — treat as handled; never fall through to navigation.
@@ -170,11 +171,12 @@ async function shareFiles(files, title) {
 }
 
 // Share a single blob (poster, comic panel, reel video…). Images get the bilingual
-// share-loop watermark; videos pass through compositeWatermark untouched.
-export async function shareBlob(blob, filename, title, { lang = 'en' } = {}) {
+// share-loop watermark; videos pass through compositeWatermark untouched. `text` (e.g. a
+// localized caption + referral link) is forwarded to the OS share sheet when provided.
+export async function shareBlob(blob, filename, title, { lang = 'en', text } = {}) {
   const stamped = await compositeWatermark(blob, { lang });
   const file = new File([stamped], filename, { type: stamped.type || blob.type || 'image/png' });
-  return shareFiles([file], title);
+  return shareFiles([file], title, text);
 }
 
 // Share many blobs at once (the tier-aware "Share all panels" action).

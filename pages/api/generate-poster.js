@@ -16,6 +16,7 @@ import {
   resolveIdentityGate,
   consumeIdentityCredit,
 } from '../../lib/identity.js';
+import { maybeRedeemReferral } from '../../lib/referral.js';
 
 // ─── Shared utility ───────────────────────────────────────────────────────────
 
@@ -246,8 +247,9 @@ export default async function handler(req, res) {
   // Comic quota accounting is owned by generate-storyboard.js — panel image calls do
   // not increment the poster counter.  However, each panel request must still be gated
   // against the tier's unlock limit so that direct API calls cannot bypass the paywall.
-  let usageKey    = null;
-  let posterLimit = 0;
+  let usageKey       = null;
+  let posterLimit    = 0;
+  let refereeUserId  = null; // set for an authed standalone-poster request → referral activation
 
   if (!isAdmin) {
     if (isComic) {
@@ -273,7 +275,8 @@ export default async function handler(req, res) {
 
     } else {
       // ── Standalone movie poster quota ──────────────────────────────────────
-      const { tier, identifier } = await getSessionAndTier(req, res);
+      const { tier, identifier, userId } = await getSessionAndTier(req, res);
+      refereeUserId = userId; // authed → eligible to activate a pending referral on success
       posterLimit = limitFor(tier, 'poster');
       const today = new Date().toISOString().split('T')[0];
       usageKey    = `usage:poster:${identifier}:${today}`;
@@ -365,6 +368,13 @@ export default async function handler(req, res) {
       // the face — a degraded (faceless) result must not cost the user a credit.
       if (useIdentity && result.faceApplied) {
         await consumeIdentityCredit(gate.usageKey, gate.limit, { isLifetime: gate.isLifetime });
+      }
+      // Referral activation: this user's FIRST successful poster redeems any pending invite
+      // (rewards the REFERRER). No-ops instantly (no Redis traffic) when no ls_ref cookie is
+      // present, and is idempotent + fail-safe — see lib/referral.js.
+      if (refereeUserId) {
+        const granted = await maybeRedeemReferral(req, res, refereeUserId);
+        if (granted) console.log(`🎁 Referral reward granted (referee=${refereeUserId})`);
       }
       console.log(`🎨 Poster generated successfully by: ${result.provider}`);
       return res.status(200).json({ success: true, ...result });

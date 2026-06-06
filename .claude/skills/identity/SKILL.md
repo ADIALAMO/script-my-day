@@ -80,6 +80,12 @@ Gate order (memorize — subtle):
   TTL to the lifetime key.
 - `limitFor(tier, 'identity')`: anonymous 0 · free 1 (lifetime) · pro 30 (monthly) ·
   admin Infinity. (See the `quota` skill + [lib/quota.js](lib/quota.js).)
+- **Referral bonus** raises the EFFECTIVE limit: the gate compares `used` against
+  `limit + identityBonus(identifier)` (key `usage:identity:bonus:<id>`, no expiry, granted
+  by [lib/referral.js](lib/referral.js)), and returns that effective value as `gate.limit`.
+  `identityBonus` is fail-OPEN to 0 (an unreadable bonus must never inflate the paid
+  allowance). Keep `resolveIdentityGate` and `identityQuotaExceeded` in sync. The
+  `DAILY_IDENTITY_BUDGET` kill-switch still applies on top of any bonus.
 
 ## Face validation & storage
 - `validFaceUrl(u)`: must be `https://` or `data:image/`, and < 2,000,000 chars.

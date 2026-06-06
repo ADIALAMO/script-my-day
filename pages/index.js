@@ -405,6 +405,24 @@ function HomePage() {
       return checkoutParam === 'success';
     }
 
+    // ── Referral capture ─────────────────────────────────────────────────────
+    // A friend arriving via lifescript.app/?ref=CODE: persist the code in a same-origin
+    // cookie (survives the OAuth redirect round-trip) so it can be redeemed server-side
+    // when they later sign in and generate their first poster. Strip ref from the URL.
+    function applyRefParam() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const ref = urlParams.get('ref');
+      if (!ref) return;
+      if (/^[a-z0-9]{1,16}$/i.test(ref)) {
+        const maxAge = 60 * 60 * 24 * 30; // 30 days
+        document.cookie = `ls_ref=${encodeURIComponent(ref)}; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
+      }
+      urlParams.delete('ref');
+      const cleanUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+      window.history.replaceState(null, '', cleanUrl);
+    }
+    applyRefParam();
+
     const wasCheckoutSuccess = applyCheckoutParam();
 
     // Stripe webhooks are async — tier may not be 'pro' in Redis the instant

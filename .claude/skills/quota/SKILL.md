@@ -38,8 +38,11 @@ credits.** Don't generate images for panels ≥ `unlockedPanels`.
 - Comic (daily): owned by **generate-storyboard.js**, not generate-poster.
 - Identity: monthly `usage:identity:<id>:<YYYY-MM>` / lifetime
   `usage:identity:lifetime:<id>` (no expiry) / **global daily spend**
-  `usage:identity:global:<YYYY-MM-DD>` (powers the budget kill-switch) — see the
+  `usage:identity:global:<YYYY-MM-DD>` (powers the budget kill-switch) / **referral bonus**
+  `usage:identity:bonus:<id>` (no expiry — raises the effective identity limit) — see the
   `identity` skill.
+- Referral loop: `referral:codeof:<id>` / `referral:code:<code>` / `referral:by:<refereeId>`
+  / `referral:count:<referrerId>` — owned by [lib/referral.js](lib/referral.js).
 - Circuit breaker uses a separate `circuit:img:*` namespace — never mix the two.
 
 `<identifier>` comes from `getSessionAndTier(req, res)` (userId for signed-in, else
@@ -77,6 +80,16 @@ is a hard ceiling on aggregate identity spend per UTC day via the global counter
 just without faces — until midnight UTC. Worst-case cost/call assumed `$0.06` (Grok)
 so the dollar cap is a true upper bound. Unset = no cap. This is the primary defense
 for a small prepaid AI balance; any new per-call paid feature should get a similar one.
+
+## Referral bonus credits (effective identity limit)
+The referral loop ([lib/referral.js](lib/referral.js)) grants the **referrer** +1 identity
+credit per activated friend, stored as `usage:identity:bonus:<id>` (no expiry). The identity
+gate compares `used` against **`base limit + bonus`** (not the raw `limitFor`), so a rewarded
+free user can make extra Star-Yourself posters. Keep `resolveIdentityGate` and
+`identityQuotaExceeded` in sync on this. Cost is bounded by the per-referrer cap
+(`REFERRAL_REWARD_CAP`, default 10) AND the global `DAILY_IDENTITY_BUDGET` kill-switch, which
+still applies on top of any bonus. The grant is fail-safe (skipped, never blind/double) and
+idempotent (one attribution per referee via `set(..., {nx:true})`).
 
 ## Stripe ↔ tier sync
 - `$9/mo` Pro via inline `price_data` in [checkout](pages/api/checkout/index.js)

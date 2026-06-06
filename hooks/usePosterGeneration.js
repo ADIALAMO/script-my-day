@@ -62,6 +62,19 @@ export function usePosterGeneration({
   // and never writes stale state back after the user has backed out.
   const posterActiveRef = useRef(false);
 
+  // The signed-in user's referral link, prefetched so it's ready synchronously at share
+  // time (navigator.share needs the user gesture — we can't await a fetch inside it).
+  // undefined = not yet fetched; null = anonymous / in-flight; string = ready.
+  const referralLinkRef = useRef(undefined);
+  const ensureReferralLink = useCallback(() => {
+    if (referralLinkRef.current !== undefined) return; // already fetched or in-flight
+    referralLinkRef.current = null;                    // mark in-flight (also anon fallback)
+    fetch('/api/referral', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.link) referralLinkRef.current = d.link; })
+      .catch(() => {});
+  }, []);
+
   const messages      = isHebrew ? POSTER_MESSAGES_HE : POSTER_MESSAGES_EN;
   const currentMessage = useRotatingMessages(messages, 2800, posterLoading);
 
@@ -72,6 +85,9 @@ export function usePosterGeneration({
     setPosterLoading(true);
     setPosterError('');
     setShowPoster(true);
+    ensureReferralLink(); // warm the referral link in the background for share-time
+
+
 
     const genreTag = getGenreLabel(genre, 'en');
     const prompt   = `A textless movie poster style, depicting: ${visualPrompt}. Genre: ${genreTag}. High budget Hollywood production, epic scale, 8k, ultra-detailed, sharp focus. (NO TEXT)`;
@@ -207,7 +223,10 @@ export function usePosterGeneration({
         if (!ok && posterUrl) window.open(posterUrl, '_blank');
         return;
       }
-      const shared = await shareBlob(blob, filename, posterTitle || 'My Poster', { lang });
+      const link = referralLinkRef.current;
+      const caption = isHebrew ? 'נוצר ב-LIFESCRIPT 🎬 צרו את שלכם:' : 'Made with LIFESCRIPT 🎬 Create yours:';
+      const text = link ? `${caption} ${link}` : (isHebrew ? 'נוצר ב-LIFESCRIPT 🎬' : 'Made with LIFESCRIPT 🎬');
+      const shared = await shareBlob(blob, filename, posterTitle || 'My Poster', { lang, text });
       if (!shared && posterUrl) window.open(posterUrl, '_blank');
     } catch (err) {
       console.error('Poster capture error:', err);

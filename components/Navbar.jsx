@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Film, Languages, Clapperboard, LogOut, Crown, ChevronDown, User, CreditCard, Loader2 } from 'lucide-react';
+import { Film, Languages, Clapperboard, LogOut, Crown, ChevronDown, User, CreditCard, Loader2, Gift } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import LaunchTicket from './LaunchTicket';
+import ReferralModal from './ReferralModal';
 
 // Fetches the current user's tier from the server.
 // refreshToken is an external counter; incrementing it triggers a re-fetch.
@@ -35,7 +36,7 @@ const FreeBadge = ({ isHe }) => (
 );
 
 // Dropdown menu rendered via portal so it escapes the navbar's overflow:hidden.
-function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick }) {
+function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, onInviteClick }) {
   const ref = useRef(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [portalError,   setPortalError]   = useState(null);
@@ -164,6 +165,17 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick }
           </>
         )}
 
+        {/* Invite friends — referral loop, available to every signed-in user */}
+        <button
+          onClick={() => { onClose(); onInviteClick(); }}
+          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[#d4a373] hover:bg-[#d4a373]/10 transition-colors duration-150 group"
+        >
+          <Gift size={13} className="shrink-0 group-hover:scale-110 transition-transform" />
+          <span className="text-[12px] font-bold">
+            {isHe ? 'הזמן חברים 🎁' : 'Invite friends 🎁'}
+          </span>
+        </button>
+
         {/* Sign out */}
         <button
           onClick={() => { onClose(); signOut({ callbackUrl: '/' }); }}
@@ -190,6 +202,7 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
   const isPro = tier === 'pro' || tier === 'admin';
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [referralOpen, setReferralOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const avatarBtnRef = useRef(null);
 
@@ -325,11 +338,14 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
                 anchor={avatarBtnRef.current}
                 onClose={() => setDropdownOpen(false)}
                 onUpgradeClick={() => handleOpenAuthModal('upgrade')}
+                onInviteClick={() => setReferralOpen(true)}
               />
             )}
           </div>
         )}
       </div>
+
+      <ReferralModal isOpen={referralOpen} onClose={() => setReferralOpen(false)} lang={lang} />
     </nav>
   );
 }
