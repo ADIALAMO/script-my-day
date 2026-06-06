@@ -13,7 +13,15 @@ function useTier(authenticated, refreshToken) {
     if (!authenticated) { setTier('anonymous'); return; }
     fetch('/api/me', { cache: 'no-store' })
       .then(r => r.json())
-      .then(d => setTier(d.tier || 'free'))
+      .then(d => {
+        setTier(d.tier || 'free');
+        // GA4 sign_up — fires once per new account (server-flagged), in the browser so the
+        // _ga client_id attributes it correctly. `referred` = arrived via an invite link.
+        if (d.justSignedUp && typeof window !== 'undefined' && window.gtag) {
+          const referred = typeof document !== 'undefined' && document.cookie.includes('ls_ref=');
+          window.gtag('event', 'sign_up', { method: d.signupMethod || 'unknown', referred });
+        }
+      })
       .catch(() => setTier('free'));
   }, [authenticated, refreshToken]);
   return tier;

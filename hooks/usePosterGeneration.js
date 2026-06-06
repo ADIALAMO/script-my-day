@@ -5,6 +5,7 @@ import { getMsg, CODES } from '../lib/messages.js';
 import { getGenreLabel } from '../constants/genres.js';
 import { useRotatingMessages } from './useRotatingMessages.js';
 import { shareBlob, downloadBlob, exportCapabilities } from '../utils/export-image.js';
+import { withUtmMedium } from '../utils/referral-link.js';
 
 const POSTER_MESSAGES_HE = [
   'מנתח את האסתטיקה של התסריט...',
@@ -131,6 +132,11 @@ export function usePosterGeneration({
         setPosterUrl(data.imageUrl);
         onPosterGenerated?.(data.imageUrl);
 
+        // GA4 viral-funnel: this poster activated a pending referral (rewarded the inviter).
+        if (data.referralGranted && typeof window !== 'undefined' && window.gtag) {
+          window.gtag('event', 'referral_activated', { genre });
+        }
+
         // Phase 2: upload to R2 in the background — same hot-swap pattern as panels.
         // On success, replace the data URI with the permanent CDN URL in both
         // local state and the history entry so the thumbnail and future reel
@@ -223,7 +229,7 @@ export function usePosterGeneration({
         if (!ok && posterUrl) window.open(posterUrl, '_blank');
         return;
       }
-      const link = referralLinkRef.current;
+      const link = referralLinkRef.current ? withUtmMedium(referralLinkRef.current, 'poster_share') : null;
       const caption = isHebrew ? 'נוצר ב-LIFESCRIPT 🎬 צרו את שלכם:' : 'Made with LIFESCRIPT 🎬 Create yours:';
       const text = link ? `${caption} ${link}` : (isHebrew ? 'נוצר ב-LIFESCRIPT 🎬' : 'Made with LIFESCRIPT 🎬');
       const shared = await shareBlob(blob, filename, posterTitle || 'My Poster', { lang, text });

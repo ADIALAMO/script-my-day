@@ -371,13 +371,15 @@ export default async function handler(req, res) {
       }
       // Referral activation: this user's FIRST successful poster redeems any pending invite
       // (rewards the REFERRER). No-ops instantly (no Redis traffic) when no ls_ref cookie is
-      // present, and is idempotent + fail-safe — see lib/referral.js.
+      // present, and is idempotent + fail-safe — see lib/referral.js. The returned flag lets
+      // the client fire the GA4 `referral_activated` funnel event.
+      let referralGranted = false;
       if (refereeUserId) {
-        const granted = await maybeRedeemReferral(req, res, refereeUserId);
-        if (granted) console.log(`🎁 Referral reward granted (referee=${refereeUserId})`);
+        referralGranted = await maybeRedeemReferral(req, res, refereeUserId);
+        if (referralGranted) console.log(`🎁 Referral reward granted (referee=${refereeUserId})`);
       }
       console.log(`🎨 Poster generated successfully by: ${result.provider}`);
-      return res.status(200).json({ success: true, ...result });
+      return res.status(200).json({ success: true, ...result, referralGranted });
     } catch (e) {
       const code = extractStatusCode(e.message);
       await recordFailure(redis, PROVIDER_KEY[provider.name], code);

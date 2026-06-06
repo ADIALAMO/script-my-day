@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Gift, Copy, Check, Share2, Loader2, AlertCircle } from 'lucide-react';
+import { withUtmMedium } from '../utils/referral-link.js';
 
 /**
  * "Invite friends" modal — the referral loop entry point for signed-in users.
@@ -35,11 +36,19 @@ export default function ReferralModal({ isOpen, onClose, lang = 'en' }) {
     return () => { alive = false; };
   }, [isOpen]);
 
+  // GA4 viral-funnel: the "send" side of the loop. method = the share channel used.
+  const trackShare = (method) => {
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('event', 'referral_link_shared', { method });
+    }
+  };
+
   const copyLink = async () => {
     if (!data?.link) return;
     try {
-      await navigator.clipboard.writeText(data.link);
+      await navigator.clipboard.writeText(withUtmMedium(data.link, 'copy'));
       setCopied(true);
+      trackShare('copy');
       setTimeout(() => setCopied(false), 1800);
     } catch { /* clipboard blocked — user can still select the link manually */ }
   };
@@ -48,7 +57,8 @@ export default function ReferralModal({ isOpen, onClose, lang = 'en' }) {
     if (!data?.link) return;
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
-        await navigator.share({ title: 'LIFESCRIPT', text: shareText, url: data.link });
+        await navigator.share({ title: 'LIFESCRIPT', text: shareText, url: withUtmMedium(data.link, 'native') });
+        trackShare('native');
         return;
       } catch { /* dismissed — fall through to copy */ }
     }
@@ -57,7 +67,8 @@ export default function ReferralModal({ isOpen, onClose, lang = 'en' }) {
 
   const shareWhatsApp = () => {
     if (!data?.link) return;
-    const msg = `${shareText} ${data.link}`;
+    const msg = `${shareText} ${withUtmMedium(data.link, 'whatsapp')}`;
+    trackShare('whatsapp');
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
   };
 

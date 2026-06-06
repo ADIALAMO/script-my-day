@@ -1,5 +1,5 @@
 import { getSessionAndTier } from '../../lib/auth.js';
-import { getReferralStats } from '../../lib/referral.js';
+import { getReferralStats, rememberReferrerName } from '../../lib/referral.js';
 
 /**
  * GET /api/referral — the signed-in user's invite link + live stats
@@ -10,10 +10,12 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ message: 'Method Not Allowed' });
   res.setHeader('Cache-Control', 'no-store');
 
-  const { userId } = await getSessionAndTier(req, res);
+  const { userId, name } = await getSessionAndTier(req, res);
   if (!userId) return res.status(401).json({ authenticated: false });
 
   try {
+    // Persist the referrer's first name (best-effort) so /i/<code> can greet invitees.
+    await rememberReferrerName(userId, name);
     const stats = await getReferralStats(userId);
     return res.status(200).json({ authenticated: true, ...stats });
   } catch (e) {

@@ -395,6 +395,11 @@ function HomePage() {
         setCheckoutNotice('success');
         updateSession?.(); // force NextAuth to re-fetch session JWT
         setTierVersion(v => v + 1); // immediate tier re-fetch in Navbar
+        // GA4 paid-conversion event (the "Pro signup"). sign_up tracks free accounts;
+        // this tracks the upgrade to Pro on Stripe return.
+        if (typeof window !== 'undefined' && window.gtag) {
+          window.gtag('event', 'subscribe', { method: 'stripe', plan: 'pro' });
+        }
       } else if (checkoutParam === 'cancelled') {
         setCheckoutNotice('cancelled');
       }
