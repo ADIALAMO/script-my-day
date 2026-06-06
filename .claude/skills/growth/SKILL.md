@@ -111,11 +111,29 @@ cinematic poster you can share.*
   [lib/referral.js](lib/referral.js) + the gate in [lib/identity.js](lib/identity.js)
   (bonus credits raise the effective identity limit); every poster share also carries the
   user's ref link in the share text. Cost-bounded: per-referrer cap (`REFERRAL_REWARD_CAP`)
-  + the global `DAILY_IDENTITY_BUDGET` kill-switch. **Next levers:** instrument
-  **share-rate / k-factor** (share/download already fire `track('Poster Shared', …)` +
-  gtag `content_export` in [hooks/usePosterGeneration.js](hooks/usePosterGeneration.js));
-  consider a referrer reward notification (email/Telegram) and broadening the activation
-  trigger to comics. Growth-copy work (invite-flow A/B, share captions) is still open.
+  + the global `DAILY_IDENTITY_BUDGET` kill-switch.
+- **K-factor funnel + cinematic invite link — SHIPPED (don't re-pitch building these):**
+  - **GA4 viral funnel** (ID `G-YL145XYBD3`, gtag in [_app.js](pages/_app.js)):
+    `referral_link_shared` (ReferralModal, per channel) → `referral_link_visit`
+    (`/i/[code]`) → `sign_up` `{referred}` → `referral_activated` (first poster). Plus
+    `subscribe` on Stripe `checkout=success` (paid conversion). **`sign_up` is new** — there
+    was zero signup tracking before; it fires client-side via a one-time `signup:fresh:<id>`
+    Redis flag surfaced by `/api/me` (correct `_ga` attribution). The viral funnel lives in
+    GA4; Vercel `track()` events still coexist for product analytics.
+  - **`/i/[code]` SSR landing** ([pages/i/[code].jsx](pages/i/[code].jsx)): injects the
+    `ls_ref` cookie server-side and renders a personalized cinematic OG preview so links
+    unfurl in WhatsApp/social. **Dynamic OG image** is [pages/api/og.js](pages/api/og.js)
+    (edge `next/og`, Heebo font, **zero AI cost**). Invite links are `/i/<code>` with UTMs
+    (`utm_source=lifescript&utm_medium=referral&utm_campaign=share_loop`, medium swapped per
+    channel). Canonical domain is **https://lifescript.app** (`NEXTAUTH_URL`).
+  - **Still-open levers:** referrer reward notification (email/Telegram); broaden activation
+    to comics; build the GA4 funnel exploration/dashboard; invite-flow A/B + share captions.
+- **Distribution reality (learned):** a prior Product Hunt / Indie Hackers launch (months
+  ago, pre-identity/loop) flopped — **channel mismatch** (maker/B2B audience for a consumer
+  emotional product). Do NOT burn a second PH "launch moment" yet. The engine is
+  **TikTok/Reels** (the Star-Yourself reveal) for the consumer audience; communities get a
+  **"build in public"** narrative (leverage the prior flop as the hook), not a recycled
+  relaunch. A PH relaunch is gated on a content win + referral data to show traction.
 - **Product Hunt launch kit:** tagline (≤60 chars), description, first comment,
   maker comment, gallery shot list, and a hunter/upvote outreach DM. Provide a
   day-of timeline (PST).
