@@ -160,6 +160,55 @@ export const MODAL_DATA = {
     },
   },
 
+  // ─── Accessibility Statement ───────────────────────────────────────────────
+
+  accessibility: {
+    he: {
+      title: 'נגישות',
+      summary: 'הצהרת הנגישות עודכנה לאחרונה ביוני 2026.',
+      sections: [
+        {
+          h: 'המחויבות שלנו',
+          p: 'LIFESCRIPT Studio רואה חשיבות עליונה במתן שירות נגיש ושוויוני לכלל המשתמשים, לרבות אנשים עם מוגבלות. אנו פועלים להנגיש את האתר ולשפרו באופן מתמשך, מתוך אמונה שהחוויה הקולנועית צריכה להיות פתוחה לכולם.',
+        },
+        {
+          h: 'תקן ורמת ההתאמה',
+          p: 'האתר נבנה בהשראת המלצות התקן הישראלי ת"י 5568 והנחיות הנגישות הבינלאומיות WCAG 2.0 ברמה AA, ככל שהדבר ניתן בפלטפורמה. אנו נעזרים בניגודיות צבעים גבוהה, טקסט קריא, ותמיכה בהתאמות תצוגה במכשירים שונים.',
+        },
+        {
+          h: 'התאמות חלקיות',
+          p: 'ייתכן שחלקים מסוימים באתר טרם הונגשו במלואם או נמצאים עדיין בתהליך התאמה. אנו ממשיכים לפעול לשיפור מתמיד ומתחייבים לטפל בכל פנייה בנושא בהקדם האפשרי.',
+        },
+        {
+          h: 'נתקלתם במכשול? ספרו לנו',
+          p: 'אם נתקלתם בקושי או במגבלת נגישות באתר, נשמח שתעדכנו אותנו כדי שנוכל לתקן. רכז הנגישות: צוות LIFESCRIPT · אימייל: adialamo@gmail.com. נשתדל להגיב לכל פנייה בתוך זמן סביר.',
+        },
+      ],
+    },
+    en: {
+      title: 'ACCESSIBILITY',
+      summary: 'This accessibility statement was last updated in June 2026.',
+      sections: [
+        {
+          h: 'Our Commitment',
+          p: 'LIFESCRIPT Studio places great importance on providing an accessible, equitable service to all users, including people with disabilities. We work to make the site accessible and to improve it continuously, in the belief that the cinematic experience should be open to everyone.',
+        },
+        {
+          h: 'Standard & Conformance Level',
+          p: 'The site is built following the recommendations of Israeli Standard SI 5568 and the international WCAG 2.0 Level AA accessibility guidelines, to the extent feasible on the platform. We rely on high color contrast, readable text, and support for display adaptations across devices.',
+        },
+        {
+          h: 'Partial Conformance',
+          p: 'Some parts of the site may not yet be fully accessible or may still be undergoing adaptation. We continue working toward ongoing improvement and are committed to addressing any accessibility request as soon as possible.',
+        },
+        {
+          h: 'Hit a Barrier? Tell Us',
+          p: 'If you encounter any difficulty or accessibility limitation on the site, we’d be glad to hear from you so we can fix it. Accessibility coordinator: the LIFESCRIPT team · Email: adialamo@gmail.com. We will do our best to respond to every request within a reasonable time.',
+        },
+      ],
+    },
+  },
+
   // ─── Support / Help Center ─────────────────────────────────────────────────
 
   support: {

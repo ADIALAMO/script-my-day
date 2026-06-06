@@ -6,6 +6,8 @@ import { getMsg, CODES, isQuotaError, inferCode } from '../lib/messages.js';
 import Navbar from '../components/Navbar';
 import AuthModal from '../components/AuthModal';
 import UpgradeModal from '../components/UpgradeModal';
+import WaitlistModal from '../components/WaitlistModal';
+import { BILLING_ENABLED } from '../constants/billing';
 import { useSession } from 'next-auth/react';
 import ScriptOutput from '../components/ScriptOutput';
 import HeroSection from '../components/HeroSection';
@@ -304,14 +306,22 @@ function HomePage() {
 
   // ── Upgrade modal (authenticated free users) ───────────────────────────────
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  // ── Waitlist modal (shown instead of checkout while billing is gated) ───────
+  const [showWaitlistModal, setShowWaitlistModal] = useState(false);
   // Stripe checkout return — 'success' | 'cancelled' | null
   const [checkoutNotice, setCheckoutNotice] = useState(null);
   // Incremented to trigger Navbar's useTier to re-fetch
   const [tierVersion, setTierVersion] = useState(0);
 
-  // Smart router: authenticated users hitting 'upgrade' see the Pro plan modal,
-  // not the sign-in modal. All other contexts go to the auth gate.
+  // Smart router for 'upgrade' intent:
+  //   billing gated  → Pro waitlist (everyone; no checkout exposed to the public)
+  //   billing live   → authed users get the Pro checkout modal; guests sign in first
+  // All other contexts go to the auth gate.
   const openAuthModal = useCallback((context = 'general') => {
+    if (context === 'upgrade' && !BILLING_ENABLED) {
+      setShowWaitlistModal(true);
+      return;
+    }
     if (context === 'upgrade' && session) {
       setShowUpgradeModal(true);
       return;
@@ -465,12 +475,12 @@ function HomePage() {
   // Prevents background scroll bleed whenever any page-level overlay is open.
   // HistoryPanel owns its own lock internally; this covers all other modals.
   useEffect(() => {
-    const anyOpen = !!modalContent || !!selectedPoster || showAuthModal || showUpgradeModal;
+    const anyOpen = !!modalContent || !!selectedPoster || showAuthModal || showUpgradeModal || showWaitlistModal;
     if (!anyOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
-  }, [modalContent, selectedPoster, showAuthModal, showUpgradeModal]);
+  }, [modalContent, selectedPoster, showAuthModal, showUpgradeModal, showWaitlistModal]);
 
   const toggleLanguage = () => setLang(prev => prev === 'he' ? 'en' : 'he');
 
@@ -701,11 +711,19 @@ function HomePage() {
           context={authModalContext}
         />
 
-        {/* Upgrade modal — Pro plan for authenticated free users */}
+        {/* Upgrade modal — Pro plan for authenticated free users (billing live) */}
         <UpgradeModal
           isOpen={showUpgradeModal}
           onClose={() => setShowUpgradeModal(false)}
           lang={lang}
+        />
+
+        {/* Waitlist modal — shown instead of checkout while billing is gated */}
+        <WaitlistModal
+          isOpen={showWaitlistModal}
+          onClose={() => setShowWaitlistModal(false)}
+          lang={lang}
+          defaultEmail={session?.user?.email || ''}
         />
 
         {/* Modals (Terms, Privacy, Support, About) */}
@@ -1183,7 +1201,7 @@ function HomePage() {
 
             {/* כפתורי הניווט שמשתמשים ב-MODAL_DATA החדש */}
             <div className="flex flex-wrap justify-center gap-x-8 gap-y-4">
-              {['about', 'support', 'terms', 'privacy'].map((item) => (
+              {['about', 'support', 'terms', 'privacy', 'accessibility'].map((item) => (
                 <button
                   key={item}
                   onClick={() => setModalContent(item)}

@@ -4,6 +4,7 @@ import { Film, Languages, Clapperboard, LogOut, Crown, ChevronDown, User, Credit
 import { useSession, signOut } from 'next-auth/react';
 import LaunchTicket from './LaunchTicket';
 import ReferralModal from './ReferralModal';
+import { BILLING_ENABLED } from '../constants/billing';
 
 // Fetches the current user's tier from the server.
 // refreshToken is an external counter; incrementing it triggers a re-fetch.
@@ -141,7 +142,9 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, 
           >
             <Crown size={13} className="shrink-0 group-hover:scale-110 transition-transform" />
             <span className="text-[12px] font-bold">
-              {isHe ? 'שדרג לפרו 👑' : 'Upgrade to Pro 👑'}
+              {BILLING_ENABLED
+                ? (isHe ? 'שדרג לפרו 👑' : 'Upgrade to Pro 👑')
+                : (isHe ? 'Pro — רשימת המתנה 🎬' : 'Pro — Join waitlist 🎬')}
             </span>
           </button>
         )}
@@ -300,7 +303,9 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
                 className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 hover:border-amber-500/45 text-amber-400 text-[10px] font-black tracking-wide transition-all duration-200 whitespace-nowrap active:scale-95"
               >
                 <Crown size={11} />
-                {isHe ? 'שדרג לפרו' : 'Go Pro'}
+                {BILLING_ENABLED
+                  ? (isHe ? 'שדרג לפרו' : 'Go Pro')
+                  : (isHe ? 'Pro · בקרוב' : 'Pro · Soon')}
               </button>
             )}
 
