@@ -37,7 +37,9 @@ credits.** Don't generate images for panels ≥ `unlockedPanels`.
 - Script (daily): `usage:script:<identifier>:<YYYY-MM-DD>`
 - Comic (daily): owned by **generate-storyboard.js**, not generate-poster.
 - Identity: monthly `usage:identity:<id>:<YYYY-MM>` / lifetime
-  `usage:identity:lifetime:<id>` (no expiry) — see the `identity` skill.
+  `usage:identity:lifetime:<id>` (no expiry) / **global daily spend**
+  `usage:identity:global:<YYYY-MM-DD>` (powers the budget kill-switch) — see the
+  `identity` skill.
 - Circuit breaker uses a separate `circuit:img:*` namespace — never mix the two.
 
 `<identifier>` comes from `getSessionAndTier(req, res)` (userId for signed-in, else
@@ -62,6 +64,19 @@ the poster route.
    pipeline), and skip increment when `Infinity` or admin.
 6. **Fail-open on Redis errors** in the *check* (log a warning, proceed) — a Redis
    outage must not block paying users. The increment is best-effort too.
+   **EXCEPTION — identity is FAIL-CLOSED.** It's the only feature that spends real $
+   per call, so when its quota can't be verified (Redis down) it degrades to the
+   faceless cascade instead of proceeding. Don't apply the fail-open rule there.
+
+## Aggregate cost ceiling — the identity budget kill-switch
+Per-user quota stops one abuser; it does **not** cap TOTAL spend during a traffic
+spike or a flood of fresh free signups. `DAILY_IDENTITY_BUDGET` (USD, optional env)
+is a hard ceiling on aggregate identity spend per UTC day via the global counter
+`usage:identity:global:<YYYY-MM-DD>`. Once hit, `identityBudgetReached()` (in
+[lib/identity.js](lib/identity.js)) degrades identity to faceless — the app stays up,
+just without faces — until midnight UTC. Worst-case cost/call assumed `$0.06` (Grok)
+so the dollar cap is a true upper bound. Unset = no cap. This is the primary defense
+for a small prepaid AI balance; any new per-call paid feature should get a similar one.
 
 ## Stripe ↔ tier sync
 - `$9/mo` Pro via inline `price_data` in [checkout](pages/api/checkout/index.js)

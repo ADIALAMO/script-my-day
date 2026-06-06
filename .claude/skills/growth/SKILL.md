@@ -99,11 +99,15 @@ Always tie copy back to the real value moment: *seeing yourself star in a
 cinematic poster you can share.*
 
 ### B. Growth channels & launch
-- **Built-in viral loop:** specify exactly how the share artifact should look —
-  watermark/handle, "Made with LIFESCRIPT" tag, a referral hook ("your friend
-  gets a free Star-Yourself poster"). Recommend instrumenting share-rate and
-  k-factor. (You can read the codebase to propose the concrete change, and offer
-  to implement it.)
+- **Built-in viral loop:** the share artifact now carries a burned-in **bilingual
+  watermark + CTA** (brand `LIFESCRIPT` + `lifescript.app` + "צור את שלך ←" / "Create
+  yours →"), composited onto every exported poster/panel in
+  [utils/export-image.js](utils/export-image.js) (`compositeWatermark`, threaded `lang`,
+  RTL-aware; videos/reels pass through untouched). **Done — do not re-pitch adding a
+  watermark.** Next levers on the loop: a **referral hook** ("your friend gets a free
+  Star-Yourself poster"), and **instrumenting share-rate / k-factor** (the share/download
+  events already fire `track('Poster Shared', …)` + gtag `content_export` in
+  [hooks/usePosterGeneration.js](hooks/usePosterGeneration.js) — build the funnel on those).
 - **Product Hunt launch kit:** tagline (≤60 chars), description, first comment,
   maker comment, gallery shot list, and a hunter/upvote outreach DM. Provide a
   day-of timeline (PST).

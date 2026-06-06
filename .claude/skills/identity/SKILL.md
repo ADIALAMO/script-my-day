@@ -52,7 +52,24 @@ Gate order (memorize — subtle):
    only**; it must NOT be burned inside a comic, so it degrades to faceless instead
    of erroring mid-comic.
 5. **Quota check happens BEFORE the OpenRouter call** so we never spend $ on an
-   over-limit user → `reject 429 QUOTA_IDENTITY` when used ≥ limit.
+   over-limit user → `reject 429 QUOTA_IDENTITY` when used ≥ limit. This check is
+   **FAIL-CLOSED**: if Redis is unavailable we cannot verify the remaining quota, so
+   we degrade to `standard` (faceless) rather than risk an unbounded paid call. This
+   deliberately **diverges from the app-wide fail-OPEN convention** because identity
+   is the only per-call paid feature — see the `quota` skill.
+6. **Global daily budget kill-switch** → after the per-user gate, `identityBudgetReached()`
+   degrades to `standard` once aggregate spend hits `DAILY_IDENTITY_BUDGET` (USD) for
+   the UTC day. Keeps the app up (faceless) instead of draining the prepaid balance.
+
+## Cost-safety guardrails (the two non-negotiables)
+- **Fail-closed quota** (gate step 5): identity NEVER spends on an unverifiable quota.
+- **`identityBudgetReached()`** (gate step 6): a global ceiling on TOTAL daily spend,
+  independent of any single user. `DAILY_IDENTITY_BUDGET` is USD; worst-case cost per
+  call is assumed `$0.06` (Grok) so the dollar cap is a true upper bound. Unset → no cap.
+  Counter: `usage:identity:global:<YYYY-MM-DD>` (daily, `expireat(nextMidnightUTC())`),
+  incremented inside `consumeIdentityCredit` on every real spend (all tiers). Admin
+  bypasses both guards (returns early, `usageKey: null`) — owner testing must never be
+  blocked, and admin volume is negligible.
 
 ## Monthly vs lifetime keys (the critical distinction)
 - Paid tiers: **monthly** key `usage:identity:<identifier>:<YYYY-MM>`, reset via
@@ -78,6 +95,9 @@ Gate order (memorize — subtle):
 
 ## Common pitfalls
 - Don't consume a credit unless `result.faceApplied === true`.
+- Don't "fix" the fail-CLOSED quota catch back to fail-open to match the rest of the app —
+  that divergence is intentional and protects the prepaid balance. Same for
+  `identityBudgetReached()` returning `true` on a Redis error.
 - Don't let a free user's lifetime credit leak into the comic flow.
 - Don't add an expiry to the lifetime key, and don't reset it on tier change.
 - Don't move the quota check to *after* the paid OpenRouter call.

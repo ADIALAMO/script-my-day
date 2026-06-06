@@ -203,11 +203,11 @@ export function usePosterGeneration({
       const blob = await (await fetch(dataUrl)).blob();
       const filename = `poster-${(posterTitle || 'movie-poster').replace(/\s+/g, '-')}.png`;
       if (wantDownload) {
-        const ok = downloadBlob(blob, filename);
+        const ok = await downloadBlob(blob, filename, { lang });
         if (!ok && posterUrl) window.open(posterUrl, '_blank');
         return;
       }
-      const shared = await shareBlob(blob, filename, posterTitle || 'My Poster');
+      const shared = await shareBlob(blob, filename, posterTitle || 'My Poster', { lang });
       if (!shared && posterUrl) window.open(posterUrl, '_blank');
     } catch (err) {
       console.error('Poster capture error:', err);

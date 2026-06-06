@@ -34,14 +34,102 @@ export function exportCapabilities() {
   return { isDesktop, canShareFiles };
 }
 
-// Desktop-only: download a blob via a temporary `<a download>`. Uses an object URL so
-// the composited (overlaid) poster/panel is saved, not the raw source image. Returns a
-// boolean so callers can fall back. Do NOT call this on touch devices — see the iOS note
-// at the top of this file.
-export function downloadBlob(blob, filename) {
+// ─── Share-loop watermark (compositing) ─────────────────────────────────────────
+// Every shared poster/panel is a free ad: we burn a small bilingual brand + CTA into the
+// bottom of the image so re-shares carry attribution back to lifescript.app and pull new
+// users into the loop. Compositing runs on a canvas seeded from the blob's OWN object URL,
+// so the canvas is same-origin and never tainted — toBlob always succeeds. Videos (reels)
+// and non-image blobs are returned untouched (canvas can't composite a video frame here).
+
+const WATERMARK_COPY = {
+  he: { brand: 'LIFESCRIPT', cta: 'צור את שלך', url: 'lifescript.app' },
+  en: { brand: 'LIFESCRIPT', cta: 'Create yours', url: 'lifescript.app' },
+};
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+// Burn the bilingual brand + CTA strip onto an image blob. Returns a NEW image/png blob,
+// or the ORIGINAL blob unchanged on any failure / non-image input (never throws).
+export async function compositeWatermark(blob, { lang = 'en' } = {}) {
+  if (typeof document === 'undefined' || !blob || !blob.type?.startsWith('image/')) {
+    return blob; // SSR, missing blob, or a video (reel) → pass through untouched.
+  }
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await loadImage(url);
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    if (!w || !h) return blob;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return blob;
+    ctx.drawImage(img, 0, 0, w, h);
+
+    const isHe = lang === 'he';
+    const copy = WATERMARK_COPY[isHe ? 'he' : 'en'];
+
+    // Everything scales off image width so the mark looks identical at any resolution.
+    const pad       = Math.round(w * 0.035);
+    const brandSize = Math.max(18, Math.round(w * 0.040));
+    const subSize   = Math.max(12, Math.round(w * 0.023));
+    const stripH    = Math.round(brandSize + subSize + pad * 1.6);
+
+    // Legibility scrim: transparent → dark gradient along the bottom edge.
+    const grad = ctx.createLinearGradient(0, h - stripH, 0, h);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.70)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, h - stripH, w, stripH);
+
+    // RTL Hebrew anchors to the right edge; LTR English to the left.
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = isHe ? 'right' : 'left';
+    ctx.direction = isHe ? 'rtl' : 'ltr';
+    const x = isHe ? w - pad : pad;
+    const fontStack = '"Heebo", system-ui, -apple-system, "Segoe UI", sans-serif';
+    ctx.shadowColor = 'rgba(0,0,0,0.55)';
+
+    // Brand wordmark (top line of the strip).
+    ctx.font = `700 ${brandSize}px ${fontStack}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.96)';
+    ctx.shadowBlur = Math.round(brandSize * 0.25);
+    ctx.fillText(copy.brand, x, h - pad - subSize * 1.25);
+
+    // CTA + url (bottom line). Arrow points "forward" per reading direction.
+    const arrow = isHe ? '←' : '→';
+    ctx.font = `500 ${subSize}px ${fontStack}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.82)';
+    ctx.shadowBlur = Math.round(subSize * 0.2);
+    ctx.fillText(`${copy.cta} ${arrow}  ·  ${copy.url}`, x, h - pad);
+
+    const out = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png', 0.95));
+    return out || blob;
+  } catch {
+    return blob; // decode error / unexpected failure → original, unwatermarked, still shareable.
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+// Desktop-only: download a blob via a temporary `<a download>`. Stamps the share-loop
+// watermark onto images first (videos pass through). Uses an object URL so the composited
+// poster/panel is saved, not the raw source image. Returns a boolean so callers can fall
+// back. Do NOT call this on touch devices — see the iOS note at the top of this file.
+export async function downloadBlob(blob, filename, { lang = 'en' } = {}) {
   if (typeof document === 'undefined') return false;
   try {
-    const url = URL.createObjectURL(blob);
+    const stamped = await compositeWatermark(blob, { lang });
+    const url = URL.createObjectURL(stamped);
     const a = document.createElement('a');
     a.href = url;
     a.download = filename || 'lifescript.png';
@@ -59,10 +147,10 @@ export function downloadBlob(blob, filename) {
 // Download several blobs in sequence (the desktop "Download comic" action). A short gap
 // lets the browser queue each file instead of dropping all but the first.
 // items: Array<{ blob, filename }>.
-export async function downloadBlobs(items) {
+export async function downloadBlobs(items, { lang = 'en' } = {}) {
   let count = 0;
   for (const { blob, filename } of items) {
-    if (downloadBlob(blob, filename)) count++;
+    if (await downloadBlob(blob, filename, { lang })) count++;
     await new Promise((r) => setTimeout(r, 250));
   }
   return count > 0;
@@ -81,16 +169,20 @@ async function shareFiles(files, title) {
   }
 }
 
-// Share a single blob (poster, comic panel, reel video…).
-export async function shareBlob(blob, filename, title) {
-  const file = new File([blob], filename, { type: blob.type || 'image/png' });
+// Share a single blob (poster, comic panel, reel video…). Images get the bilingual
+// share-loop watermark; videos pass through compositeWatermark untouched.
+export async function shareBlob(blob, filename, title, { lang = 'en' } = {}) {
+  const stamped = await compositeWatermark(blob, { lang });
+  const file = new File([stamped], filename, { type: stamped.type || blob.type || 'image/png' });
   return shareFiles([file], title);
 }
 
 // Share many blobs at once (the tier-aware "Share all panels" action).
 // items: Array<{ blob, filename }> — the caller passes ONLY the assets the user owns.
-export async function shareBlobs(items, title) {
-  const files = items.map(({ blob, filename }) =>
-    new File([blob], filename, { type: blob.type || 'image/png' }));
+export async function shareBlobs(items, title, { lang = 'en' } = {}) {
+  const files = await Promise.all(items.map(async ({ blob, filename }) => {
+    const stamped = await compositeWatermark(blob, { lang });
+    return new File([stamped], filename, { type: stamped.type || blob.type || 'image/png' });
+  }));
   return shareFiles(files, title);
 }

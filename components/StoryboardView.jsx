@@ -59,8 +59,8 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
     try {
       const blob = await fetchImageBlob(url);
       const ok = mode === 'download'
-        ? downloadBlob(blob, filename)
-        : await shareBlob(blob, filename, `Panel ${panelNum}`);
+        ? await downloadBlob(blob, filename, { lang })
+        : await shareBlob(blob, filename, `Panel ${panelNum}`, { lang });
       if (!ok) window.open(url, '_blank');
     } catch {
       window.open(url, '_blank');
@@ -89,8 +89,8 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
         items.push({ blob, filename: `panel-${String(panels[idx].panel).padStart(2, '0')}.png` });
       }
       const ok = mode === 'download'
-        ? await downloadBlobs(items)
-        : await shareBlobs(items, isHebrew ? 'הסטוריבורד שלי' : 'My Comic Storyboard');
+        ? await downloadBlobs(items, { lang })
+        : await shareBlobs(items, isHebrew ? 'הסטוריבורד שלי' : 'My Comic Storyboard', { lang });
       // Fallback when neither path is supported: open the first available panel.
       if (!ok && items.length) window.open(panelImages[shareableIdxs[0]].url, '_blank');
     } catch {
