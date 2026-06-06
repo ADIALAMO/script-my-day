@@ -5,6 +5,7 @@ import '../styles/globals.css';
 import Head from 'next/head';
 import Script from 'next/script';
 import { useEffect } from 'react';
+import { SITE_URL } from '../lib/site.js';
 
 function MyApp({ Component, pageProps: { session, ...pageProps } }) {
 
@@ -66,16 +67,16 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
           <meta key="og:description" property="og:description" content="החיים שלך הם סרט, הגיע הזמן לכתוב אותם. יומן תסריטים קולנועי בבימוי Adialamo Production." />
           <meta property="og:type" content="website" />
           <meta property="og:site_name" content="LifeScript Studio" />
-          <meta key="og:url" property="og:url" content="https://lifescript.app/" />
-          <meta key="og:image" property="og:image" content="https://lifescript.app/og-image.png" />
-          <meta key="og:image:secure_url" property="og:image:secure_url" content="https://lifescript.app/og-image.png" />
+          <meta key="og:url" property="og:url" content={`${SITE_URL}/`} />
+          <meta key="og:image" property="og:image" content={`${SITE_URL}/og-image.png`} />
+          <meta key="og:image:secure_url" property="og:image:secure_url" content={`${SITE_URL}/og-image.png`} />
           <meta property="og:image:width" content="1200" />
           <meta property="og:image:height" content="630" />
           <meta property="og:image:type" content="image/png" />
           <meta name="twitter:card" content="summary_large_image" />
           <meta key="twitter:title" name="twitter:title" content="LIFESCRIPT | Your Life, Directed" />
           <meta key="twitter:description" name="twitter:description" content="הפוך את רגעי היום-יום שלך לתסריט הוליוודי. יומן תסריטים קולנועי אישי." />
-          <meta key="twitter:image" name="twitter:image" content="https://lifescript.app/og-image.png" />
+          <meta key="twitter:image" name="twitter:image" content={`${SITE_URL}/og-image.png`} />
           <link rel="icon" href="/icon.png" />
           <link rel="shortcut icon" href="/favicon.ico" />
           <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

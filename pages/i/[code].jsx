@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { motion } from 'framer-motion';
 import { Film, Sparkles } from 'lucide-react';
 import { lookupReferrer } from '../../lib/referral.js';
+import { SITE_URL } from '../../lib/site.js';
 
 /**
  * Referral landing page — /i/<code>.
@@ -14,7 +15,7 @@ import { lookupReferrer } from '../../lib/referral.js';
  */
 export async function getServerSideProps(context) {
   const { code } = context.params;
-  const base = (process.env.NEXTAUTH_URL || 'https://lifescript.app').replace(/\/$/, '');
+  const base = SITE_URL;
 
   // Hebrew-first; fall back to English only when the browser clearly prefers it.
   const accept = (context.req.headers['accept-language'] || '').toLowerCase();
