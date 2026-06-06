@@ -21,17 +21,63 @@ async function loadFonts() {
   return fonts;
 }
 
+// satori lays text out left-to-right and does NOT apply the Unicode bidi algorithm, so raw
+// Hebrew renders visually reversed. We reshape into VISUAL order ourselves: split into Hebrew
+// vs non-Hebrew runs, reverse the run order, and reverse the characters inside Hebrew runs only
+// (Latin/digits/brand names stay intact). Correct for our short, mostly-Hebrew labels.
+function reshapeHebrew(text) {
+  const isHeb = (ch) => /[֐-׿]/.test(ch);
+  const runs = [];
+  let buf = '';
+  let bufHeb = null;
+  for (const ch of text) {
+    const h = isHeb(ch);
+    if (bufHeb === null) { buf = ch; bufHeb = h; }
+    else if (h === bufHeb) { buf += ch; }
+    else { runs.push({ t: buf, heb: bufHeb }); buf = ch; bufHeb = h; }
+  }
+  if (buf) runs.push({ t: buf, heb: bufHeb });
+  return runs.reverse().map((r) => (r.heb ? [...r.t].reverse().join('') : r.t)).join('');
+}
+
+// Embed the project logo as a data URI (robust: a failed fetch degrades to no-logo instead of
+// breaking the whole card, which a bare <img> remote-fetch would do on a 404).
+function bufToBase64(buf) {
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+async function loadLogo(origin) {
+  try {
+    const res = await fetch(`${origin}/icon.png`);
+    if (!res.ok) return null;
+    return `data:image/png;base64,${bufToBase64(await res.arrayBuffer())}`;
+  } catch {
+    return null;
+  }
+}
+
 export default async function handler(req) {
-  const { searchParams } = new URL(req.url);
+  const { searchParams, origin } = new URL(req.url);
   const name = (searchParams.get('name') || '').slice(0, 40);
   const isHe = (searchParams.get('lang') || 'he') !== 'en';
 
-  const headline = isHe
-    ? (name ? `הוזמנת על ידי ${name}` : 'הוזמנת ל-LIFESCRIPT')
+  const rawHeadline = isHe
+    ? (name ? `הוזמנת על ידי ${name}` : 'קיבלת הזמנה מיוחדת')
     : (name ? `${name} invited you` : "You're invited");
-  const sub = isHe ? 'לככב בפוסטר קולנועי משלך' : 'Star in your own movie poster';
+  const rawSub = isHe ? 'לככב בפוסטר קולנועי משלך' : 'Star in your own movie poster';
+  const rawChip = isHe ? 'פוסטר Star-Yourself חינם מחכה לך' : 'A free Star-Yourself poster awaits';
 
-  const fonts = await loadFonts();
+  const headline = isHe ? reshapeHebrew(rawHeadline) : rawHeadline;
+  const sub      = isHe ? reshapeHebrew(rawSub)      : rawSub;
+  const chip     = isHe ? reshapeHebrew(rawChip)     : rawChip;
+
+  const [fonts, logo] = await Promise.all([loadFonts(), loadLogo(origin)]);
 
   return new ImageResponse(
     (
@@ -44,27 +90,31 @@ export default async function handler(req) {
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: '#030712',
-          backgroundImage: 'radial-gradient(circle at 50% 38%, rgba(212,163,115,0.16), rgba(3,7,18,0) 60%)',
-          direction: isHe ? 'rtl' : 'ltr',
+          backgroundImage: 'radial-gradient(circle at 50% 34%, rgba(212,163,115,0.18), rgba(3,7,18,0) 62%)',
           fontFamily: 'Heebo',
-          padding: '80px',
+          padding: '72px',
         }}
       >
         {/* Top accent line */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '8px', backgroundColor: '#d4a373' }} />
 
-        {/* Brand eyebrow */}
-        <div style={{ display: 'flex', fontSize: 26, letterSpacing: 14, color: 'rgba(212,163,115,0.75)', fontWeight: 700, marginBottom: 28 }}>
-          LIFESCRIPT
+        {/* Brand lockup: logo + wordmark */}
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 44 }}>
+          {logo ? (
+            <img src={logo} width={72} height={72} style={{ borderRadius: 18, marginRight: 22 }} />
+          ) : null}
+          <div style={{ display: 'flex', fontSize: 34, letterSpacing: 12, color: '#ffffff', fontWeight: 700 }}>
+            LIFESCRIPT
+          </div>
         </div>
 
         {/* Headline */}
-        <div style={{ display: 'flex', textAlign: 'center', fontSize: 72, color: '#ffffff', fontWeight: 700, lineHeight: 1.1, maxWidth: 960 }}>
+        <div style={{ display: 'flex', textAlign: 'center', fontSize: 72, color: '#ffffff', fontWeight: 700, lineHeight: 1.1, maxWidth: 1000 }}>
           {headline}
         </div>
 
         {/* Sub-headline */}
-        <div style={{ display: 'flex', textAlign: 'center', fontSize: 40, color: 'rgba(255,255,255,0.62)', fontWeight: 700, marginTop: 24, maxWidth: 900 }}>
+        <div style={{ display: 'flex', textAlign: 'center', fontSize: 40, color: 'rgba(255,255,255,0.62)', fontWeight: 700, marginTop: 22, maxWidth: 940 }}>
           {sub}
         </div>
 
@@ -72,17 +122,17 @@ export default async function handler(req) {
         <div
           style={{
             display: 'flex',
-            marginTop: 52,
-            padding: '14px 30px',
+            marginTop: 50,
+            padding: '14px 32px',
             borderRadius: 999,
-            border: '2px solid rgba(212,163,115,0.4)',
-            backgroundColor: 'rgba(212,163,115,0.1)',
+            border: '2px solid rgba(212,163,115,0.42)',
+            backgroundColor: 'rgba(212,163,115,0.12)',
             color: '#d4a373',
             fontSize: 28,
             fontWeight: 700,
           }}
         >
-          {isHe ? 'פוסטר Star-Yourself חינם מחכה לך' : 'A free Star-Yourself poster awaits'}
+          {chip}
         </div>
       </div>
     ),
