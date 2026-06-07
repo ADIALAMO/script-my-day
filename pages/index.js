@@ -1104,7 +1104,7 @@ function HomePage() {
 
         {/* Director's Log (Feedback Section) */}
         <div className="mt-2 mb-0 w-full max-w-xl mx-auto px-6 relative z-50">
-          <AnimatePresence mode='wait'>
+          <AnimatePresence mode="popLayout" initial={false}>
             {!showFeedback ? (
               <motion.button
                 key="feedback-trigger"
@@ -1134,7 +1134,8 @@ function HomePage() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-[#0f1117] border border-[#d4a373]/30 p-8 rounded-3xl shadow-2xl relative overflow-hidden text-right"
+                transition={{ duration: 0.2 }}
+                className="w-full bg-[#0f1117] border border-[#d4a373]/30 p-8 rounded-3xl shadow-2xl relative overflow-hidden text-right"
                 dir={lang === 'he' ? 'rtl' : 'ltr'}
               >
                 <button 
