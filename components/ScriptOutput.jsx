@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Copy, Download, Share2, Check, CheckCheck, Film, Volume2, VolumeX,
   Loader2, FastForward, Pencil, RotateCcw, FileText, ChevronDown,
-  Printer, X, Mail, NotebookPen, Clapperboard,
+  Printer, X, Mail, NotebookPen, Clapperboard, Star,
 } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { getMsg, CODES, isQuotaError } from '../lib/messages.js';
@@ -651,9 +651,10 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
             ) : (
               <button
                 onClick={() => setShowCharacterModal(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/[0.03] border border-white/10 text-gray-400 hover:text-[#d4a373] hover:border-[#d4a373]/30 transition-all duration-200 text-[10px] font-black uppercase tracking-wider"
+                className="group flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-br from-[#d4a373]/20 to-[#d4a373]/[0.06] border border-[#d4a373]/40 text-[#d4a373] hover:from-[#d4a373]/30 hover:to-[#d4a373]/10 hover:border-[#d4a373]/60 hover:shadow-[0_0_22px_-4px_rgba(212,163,115,0.45)] active:scale-95 transition-all duration-200 text-[11px] font-black uppercase tracking-wider"
               >
-                🎭 {isHebrew ? 'ביים את עצמך בסיפור' : 'Cast yourself in the story'}
+                <Star size={14} className="fill-[#d4a373] text-[#d4a373] transition-transform duration-200 group-hover:scale-110 group-hover:rotate-12" />
+                {isHebrew ? 'ביים את עצמך בסיפור' : 'Cast yourself in the story'}
               </button>
             )}
           </div>
