@@ -325,6 +325,7 @@ function HomePage() {
   const [showHistory, setShowHistory] = useState(false);
   const [initialPanels,    setInitialPanels]    = useState(null);
   const [initialPosterUrl, setInitialPosterUrl] = useState(null);
+  const [journalText,      setJournalText]      = useState(''); // raw diary behind the script → journal/script toggle
 
   // ── Auth modal (unauthenticated flows) ────────────────────────────────────
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -530,6 +531,7 @@ function HomePage() {
     setSelectedGenre(genre);
     setInitialPanels(null);
     setInitialPosterUrl(null);
+    setJournalText(journalEntry);
 
     try {
       const deviceId = localStorage.getItem('lifescript_device_id') || 'unknown';
@@ -1058,6 +1060,7 @@ function HomePage() {
                 genre={selectedGenre}
                 setIsTypingGlobal={setIsTyping}
                 producerName={producerName}
+                journalEntry={journalText}
                 onPosterGenerated={(url) => updateEntry(currentEntryIdRef.current, { posterUrl: url })}
                 onScriptEdited={(text) => updateEntry(currentEntryIdRef.current, { script: text })}
                 onPanelsGenerated={(panels) => updateEntry(currentEntryIdRef.current, { panels })}
@@ -1248,6 +1251,7 @@ function HomePage() {
           currentEntryIdRef.current = entry.id;
           setInitialPanels(entry.panels?.length > 0 ? entry.panels : null);
           setInitialPosterUrl(entry.posterUrl || null);
+          setJournalText(entry.journalEntry || '');
         }}
         onDelete={deleteEntry}
         lang={lang}

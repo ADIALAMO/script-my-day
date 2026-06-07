@@ -49,14 +49,17 @@ const getCinematicTitle = (text) => {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, onPosterGenerated, onScriptEdited, onAuthRequired, onPanelsGenerated, initialPanels, initialPosterUrl }) {
+function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, onPosterGenerated, onScriptEdited, onAuthRequired, onPanelsGenerated, initialPanels, initialPosterUrl, journalEntry }) {
   const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST');
 
   // ── Script parsing ─────────────────────────────────────────────────────────
   const [cleanScript,   setCleanScript]   = useState('');
   const [visualPrompt,  setVisualPrompt]  = useState('');
+  const [viewMode,      setViewMode]      = useState('script'); // 'script' | 'journal'
 
-  const isHebrew    = useMemo(() => isTextHebrew(script || ''), [script]);
+  const isHebrew        = useMemo(() => isTextHebrew(script || ''), [script]);
+  const isJournalHebrew = useMemo(() => isTextHebrew(journalEntry || ''), [journalEntry]);
+  const showJournal     = Boolean(journalEntry) && viewMode === 'journal';
 
   // ── Custom hooks ───────────────────────────────────────────────────────────
   const { isMuted, setIsMuted, playSound, playFlashSound } = useCinematicAudio();
@@ -142,6 +145,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
     setIsEdited(false);
     setEditedText('');
     setSaveStatus('idle');
+    setViewMode('script');
     clearTimeout(saveDebounceRef.current);
   }, [script, initialPosterUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -370,7 +374,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
 
           {/* Edit-mode controls */}
           <AnimatePresence mode="wait">
-            {!isTyping && currentDisplayText.length > 0 && (
+            {!isTyping && currentDisplayText.length > 0 && viewMode === 'script' && (
               isEditing ? (
                 <motion.div
                   key="edit-active"
@@ -483,6 +487,35 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
         </div>
       </div>
 
+      {/* ── Journal ↔ Script toggle — reveals the raw diary behind the screenplay ── */}
+      {journalEntry && !isTyping && (
+        <div className="flex justify-center px-6">
+          <div
+            className="inline-flex items-center gap-1 p-1 rounded-2xl bg-white/[0.03] border border-white/10"
+            dir={isHebrew ? 'rtl' : 'ltr'}
+          >
+            <button
+              onClick={() => setViewMode('journal')}
+              className={`px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200
+                ${viewMode === 'journal'
+                  ? 'bg-[#d4a373]/20 border border-[#d4a373]/60 text-[#d4a373]'
+                  : 'border border-transparent text-gray-500 hover:text-gray-300'}`}
+            >
+              📓 {isHebrew ? 'היומן המקורי שלי' : 'My Original Journal'}
+            </button>
+            <button
+              onClick={() => setViewMode('script')}
+              className={`px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200
+                ${viewMode === 'script'
+                  ? 'bg-[#d4a373]/20 border border-[#d4a373]/60 text-[#d4a373]'
+                  : 'border border-transparent text-gray-500 hover:text-gray-300'}`}
+            >
+              🎬 {isHebrew ? 'התסריט שנוצר' : 'The Screenplay'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Script View ──────────────────────────────────────────────────── */}
       <div
         className={`relative rounded-[3.5rem] overflow-hidden bg-[#030712]/90 mx-2 md:mx-4 transition-all duration-500
@@ -497,7 +530,15 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
           style={{ scrollBehavior: 'smooth' }}
           onWheel={handleScroll}
         >
-          {isEditing ? (
+          {showJournal ? (
+            <div
+              dir={isJournalHebrew ? 'rtl' : 'ltr'}
+              className={`text-lg md:text-2xl leading-[2.2] font-light text-gray-300/85 whitespace-pre-wrap pb-40
+                ${isJournalHebrew ? 'text-right' : 'text-left'}`}
+            >
+              {journalEntry}
+            </div>
+          ) : isEditing ? (
             <textarea
               ref={textareaRef}
               value={editedText}
@@ -529,7 +570,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
 
         {/* Status badge */}
         <AnimatePresence mode="wait">
-          {!isTyping && !isEditing && currentDisplayText.length > 0 && (
+          {!isTyping && !isEditing && currentDisplayText.length > 0 && viewMode === 'script' && (
             <motion.div
               key={isEdited ? 'edited' : 'complete'}
               initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}

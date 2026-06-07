@@ -189,6 +189,16 @@ const HistoryItem = memo(function HistoryItem({ entry, onReload, onDelete, lang,
             {title}
           </p>
 
+          {/* Original journal preview — the raw diary this script was born from */}
+          {entry.journalEntry && (
+            <p
+              className={`text-[8.5px] text-gray-600/70 italic truncate leading-snug ${isRtl ? 'text-right' : 'text-left'}`}
+              title={entry.journalEntry}
+            >
+              📓 {entry.journalEntry}
+            </p>
+          )}
+
           {/* Producer credit */}
           {entry.producerName && (
             <p className={`text-[8px] text-[#d4a373]/28 uppercase tracking-widest truncate ${isRtl ? 'text-right' : ''}`}>
