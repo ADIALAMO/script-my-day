@@ -1113,7 +1113,11 @@ function HomePage() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25 }}
                 onClick={() => setShowFeedback(true)}
-                className="w-full group relative overflow-hidden rounded-2xl bg-[#0f1117]/80 backdrop-blur-md border border-[#d4a373]/10 hover:border-[#d4a373]/40 transition-all duration-500 py-6 px-4 text-center cursor-pointer shadow-lg"
+                /* Solid bg (was bg/80 + backdrop-blur): WebKit repaints
+                   backdrop-filter on opacity-fade mount, which made the button
+                   visibly jump in Safari/mobile. translateZ(0) pins its layer. */
+                style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden' }}
+                className="w-full group relative overflow-hidden rounded-2xl bg-[#0f1117] border border-[#d4a373]/10 hover:border-[#d4a373]/40 transition-all duration-500 py-6 px-4 text-center cursor-pointer shadow-lg"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#d4a373]/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
                 <div className="flex flex-col items-center justify-center gap-2">
