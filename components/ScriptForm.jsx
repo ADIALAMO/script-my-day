@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Copy, Download, Check, Volume2, VolumeX, Film, Users } from 'lucide-react';
+import { Sparkles, Copy, Download, Check, Volume2, VolumeX, Film, Users, X } from 'lucide-react';
 import { GenreSelector } from './GenreSelector';
 import { InspirationModal } from './InspirationModal';
 import { detectGender } from '../lib/gender-detect';
@@ -25,6 +25,17 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
   const [isCopied, setIsCopied] = useState(false);
   const [isMusicMuted, setIsMusicMuted] = useState(false);
   const clapperRef = useRef(null); // ref so we can stop a prior clapper before replaying
+
+  // First-run "how it works" strip — shown once until dismissed, so visitors
+  // arriving from a viral video instantly grasp the journal → script → poster flow.
+  const [showHowTo, setShowHowTo] = useState(false);
+  useEffect(() => {
+    try { if (!localStorage.getItem('ls_howto_dismissed')) setShowHowTo(true); } catch {}
+  }, []);
+  const dismissHowTo = () => {
+    try { localStorage.setItem('ls_howto_dismissed', '1'); } catch {}
+    setShowHowTo(false);
+  };
 
   useBackgroundAudio(activeGenre, isMusicMuted);
   const { playSound: playTypewriterSound } = useCinematicAudio();
@@ -84,6 +95,53 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
 
   return (
     <form onSubmit={handleSubmit} className="space-y-10 md:space-y-12">
+      {/* ── First-run "How it works" — bridges viral visitors into the real first
+            action (write your day) so they don't land confused on an empty box ── */}
+      <AnimatePresence>
+        {showHowTo && (
+          <motion.div
+            key="howitworks"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }}
+            dir={lang === 'he' ? 'rtl' : 'ltr'}
+            className="relative rounded-[1.75rem] border border-[#d4a373]/25 bg-[#0b0d12]/80 backdrop-blur-sm p-5 md:p-6 overflow-hidden"
+          >
+            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#d4a373]/50 to-transparent" />
+            <button
+              type="button"
+              onClick={dismissHowTo}
+              aria-label={lang === 'he' ? 'סגור' : 'Dismiss'}
+              className={`absolute top-3 ${lang === 'he' ? 'left-3' : 'right-3'} text-white/25 hover:text-[#d4a373] transition-colors p-1`}
+            >
+              <X size={16} />
+            </button>
+
+            <p className="text-center text-[#d4a373] text-[10px] font-black tracking-[0.35em] uppercase mb-4">
+              🎬 {lang === 'he' ? 'ככה זה עובד' : 'How it works'}
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-2">
+              {[
+                { n: '1', icon: '✍️', he: 'ספר מה עבר עליך היום (משפט-שניים מספיקים)', en: 'Tell us about your day (a sentence or two is enough)' },
+                { n: '2', icon: '🎬', he: 'ה-AI הופך את זה לתסריט קולנועי', en: 'AI turns it into a cinematic script' },
+                { n: '3', icon: '⭐', he: 'הפוך לפוסטר וקומיקס — עם הפנים שלך', en: 'Make it a poster & comic — starring you' },
+              ].map((s) => (
+                <div key={s.n} className="flex-1 flex sm:flex-col items-center gap-3 sm:gap-2 sm:text-center">
+                  <div className="shrink-0 w-9 h-9 rounded-full bg-[#d4a373]/10 border border-[#d4a373]/30 flex items-center justify-center text-base">
+                    {s.icon}
+                  </div>
+                  <p className="text-[12px] leading-snug text-gray-300">
+                    <span className="text-[#d4a373] font-black">{s.n}. </span>
+                    {lang === 'he' ? s.he : s.en}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* כפתור הטיפים - ממוקם מעל המסגרת, צמוד למרכז */}
       <div className="w-full flex justify-center mb-2 mt-4 relative z-[100]">
         <div className="flex flex-col items-center">
@@ -184,14 +242,21 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
           </AnimatePresence>
         </div>
         
-        <div className="relative mb-6 px-2 w-fit"> 
+        <div className="relative mb-6 px-2 flex items-center gap-3 flex-wrap">
           <motion.button
             type="button"
             disabled={isLocked}
             onClick={() => !isLocked && setIsModalOpen(!isModalOpen)}
             whileHover={!isLocked ? { scale: 1.02 } : {}}
             whileTap={!isLocked ? { scale: 0.98 } : {}}
-            className={`flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:border-[#d4a373]/40 transition-all duration-500 group shadow-lg ${isLocked ? 'opacity-40 cursor-not-allowed' : ''}`}
+            // Empty journal = new/blank-page user → pulse the button so they have an obvious first move.
+            animate={(!journalEntry.trim() && !isLocked) ? { boxShadow: ['0 0 0 0 rgba(212,163,115,0)', '0 0 22px 2px rgba(212,163,115,0.4)', '0 0 0 0 rgba(212,163,115,0)'] } : { boxShadow: '0 0 0 0 rgba(212,163,115,0)' }}
+            transition={(!journalEntry.trim() && !isLocked) ? { duration: 2, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.3 }}
+            className={`flex items-center gap-2.5 px-4 py-2 rounded-full transition-colors duration-500 group shadow-lg border ${
+              (!journalEntry.trim() && !isLocked)
+                ? 'bg-[#d4a373]/12 border-[#d4a373]/50'
+                : 'bg-white/5 border-white/10 hover:border-[#d4a373]/40'
+            } ${isLocked ? 'opacity-40 cursor-not-allowed' : ''}`}
           >
             <Sparkles size={14} className="text-[#d4a373] group-hover:rotate-12 transition-transform" />
             <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white/70 group-hover:text-white">
@@ -199,11 +264,22 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
             </span>
           </motion.button>
 
-          <InspirationModal 
-            isOpen={isModalOpen} 
-            onClose={() => setIsModalOpen(false)} 
-            onSelect={setJournalEntry} 
-            lang={lang} 
+          <AnimatePresence>
+            {!journalEntry.trim() && !isLocked && (
+              <motion.span
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="text-[10px] font-bold text-[#d4a373]/60 tracking-wide"
+              >
+                {lang === 'he' ? 'אין לך מה לכתוב? התחילו עם רעיון מוכן' : 'No idea what to write? Start with a ready prompt'}
+              </motion.span>
+            )}
+          </AnimatePresence>
+
+          <InspirationModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            onSelect={setJournalEntry}
+            lang={lang}
             isLocked={isLocked}
           />
         </div>
