@@ -1104,20 +1104,14 @@ function HomePage() {
 
         {/* Director's Log (Feedback Section) */}
         <div className="mt-2 mb-0 w-full max-w-xl mx-auto px-6 relative z-50">
-          <AnimatePresence mode="popLayout" initial={false}>
+            {/* Plain conditional render — deliberately NO AnimatePresence/motion.
+               WebKit (Safari/iOS) jumped the trigger on every framer enter/exit
+               (backdrop-filter repaint + transform/opacity transitions). A static
+               swap is bulletproof cross-browser; the form keeps a CSS-only fade. */}
             {!showFeedback ? (
-              <motion.button
-                key="feedback-trigger"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
+              <button
                 onClick={() => setShowFeedback(true)}
-                /* Solid bg (was bg/80 + backdrop-blur): WebKit repaints
-                   backdrop-filter on opacity-fade mount, which made the button
-                   visibly jump in Safari/mobile. translateZ(0) pins its layer. */
-                style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden' }}
-                className="w-full group relative overflow-hidden rounded-2xl bg-[#0f1117] border border-[#d4a373]/10 hover:border-[#d4a373]/40 transition-all duration-500 py-6 px-4 text-center cursor-pointer shadow-lg"
+                className="w-full group relative overflow-hidden rounded-2xl bg-[#0f1117] border border-[#d4a373]/10 hover:border-[#d4a373]/40 transition-colors duration-500 py-6 px-4 text-center cursor-pointer shadow-lg"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#d4a373]/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
                 <div className="flex flex-col items-center justify-center gap-2">
@@ -1131,15 +1125,10 @@ function HomePage() {
                     {lang === 'he' ? 'משוב, תמיכה ודיווח תקלות — דברו איתנו' : 'Feedback, support & issues — talk to us'}
                   </p>
                 </div>
-              </motion.button>
+              </button>
             ) : (
-              <motion.div
-                key="feedback-form"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2 }}
-                className="w-full bg-[#0f1117] border border-[#d4a373]/30 p-8 rounded-3xl shadow-2xl relative overflow-hidden text-right"
+              <div
+                className="w-full bg-[#0f1117] border border-[#d4a373]/30 p-8 rounded-3xl shadow-2xl relative overflow-hidden text-right animate-in fade-in zoom-in-95 duration-200"
                 dir={lang === 'he' ? 'rtl' : 'ltr'}
               >
                 <button 
@@ -1185,9 +1174,8 @@ function HomePage() {
                     <> <Send size={16} /> {lang === 'he' ? 'שלח משוב' : 'SEND FEEDBACK'} </>
                   )}
                 </button>
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
         </div>
       </main>
 
