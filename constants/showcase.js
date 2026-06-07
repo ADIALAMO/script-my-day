@@ -1,6 +1,172 @@
 export const SHOWCASE_POSTERS = [
-  { 
-    id: 2, 
+  // ─── ⭐ "Star Yourself" Posters — real uploaded face, cast as the lead ───────
+  // These are produced by the flagship feature: the user uploads a selfie and
+  // becomes the hero of a cinematic poster. `starYourself: true` surfaces the
+  // "You're the Star" badge on the card so browsers grasp the offer instantly.
+  {
+    id: 36,
+    starYourself: true,
+    src: '/gallery/sample-19.png',
+    titleHe: 'שמיים דוממים',
+    titleEn: 'Silent Sky — Sci-Fi',
+    excerptHe: `חוץ. גג בעיר תחת מצור — בין הערביים.
+ספינת-אם ענקית נפרשת מעליך כמו ברק קפוא. אתה מגונן על הילד מאחורי גבך.
+"אם השמיים שותקים," אתה לוחש, "אז אנחנו נהיה הרעש האחרון שהם יזכרו." — והפנים שעל הפוסטר? הן שלך.`,
+    excerptEn: `EXT. CITY UNDER SIEGE — TWILIGHT.
+A colossal mothership unfurls overhead like frozen lightning. You shield the child behind you.
+"If the sky stays silent," you whisper, "then we'll be the last noise it remembers." — and that face on the poster? It's yours.`,
+  },
+  {
+    id: 37,
+    starYourself: true,
+    src: '/gallery/sample-20.png',
+    titleHe: 'שמי התהום',
+    titleEn: 'Void Sky — Sci-Fi',
+    excerptHe: `חוץ. גגות עיר הניאון — לילה.
+צלחת מעופפת בגודל של שכונה שלמה מאפילה על הירח. אתה מביט בה ישר, בלי למצמץ.
+"באתם לכבוש עולם," אתה אומר, "אבל פגשתם אותי קודם." הכוכב של הסרט הזה — הוא אתה.`,
+    excerptEn: `EXT. NEON CITY ROOFTOPS — NIGHT.
+A saucer the size of a district eclipses the moon. You stare straight at it, unblinking.
+"You came to take a world," you say, "but you met me first." The star of this one is you.`,
+  },
+  {
+    id: 38,
+    starYourself: true,
+    src: '/gallery/sample-21.png',
+    titleHe: 'עשן סמיך',
+    titleEn: 'Thick Smoke — Action War',
+    excerptHe: `חוץ. קו החזית — אחרי ההפצצה.
+אתה כורע בין שרידי הקרב, אפר נושר כמו שלג שחור. מאחוריך, היחידה ממתינה לאות שלך.
+"הם חשבו שכיבו אותנו," אתה נושם בכבדות, "הם רק ליבו את האש." הגיבור בפוסטר נראה מוכר? זה אתה.`,
+    excerptEn: `EXT. THE FRONT LINE — AFTER THE STRIKE.
+You crouch amid the wreckage, ash falling like black snow. Behind you, the unit waits for your signal.
+"They thought they put us out," you breathe heavily, "they only fanned the flame." That hero look familiar? It's you.`,
+  },
+  {
+    id: 39,
+    starYourself: true,
+    src: '/gallery/sample-22.png',
+    titleHe: 'צללים של אמש',
+    titleEn: "Yesterday's Shadows — Horror",
+    excerptHe: `פנים. מסדרון הבית הנטוש — לילה.
+אלומת הפנס מרצדת על קירות מתקלפים. מאחוריך, צל שלא שייך לאיש מתחיל לזוז.
+"הריח הזה הוא לא אבק," אתה לוחש, "זה זיכרון." ובתפקיד הראשי — אתה.`,
+    excerptEn: `INT. THE ABANDONED HOUSE HALLWAY — NIGHT.
+Your flashlight flickers across peeling walls. Behind you, a shadow that belongs to no one begins to move.
+"That smell isn't dust," you whisper, "it's a memory." And in the leading role — you.`,
+  },
+  {
+    id: 40,
+    starYourself: true,
+    src: '/gallery/sample-23.png',
+    titleHe: 'שמיים ירוקים',
+    titleEn: 'Green Skies — Sci-Fi',
+    excerptHe: `חוץ. גג מעל העיר — לילה ירוק.
+אור חייזרי רעיל זולג בין גורדי השחקים. מכונות קרב מרחפות סורקות את הרחובות שמתחתיך.
+"הם צבעו את השמיים בצבע של רעל," אתה אומר בשקט, "אני אחזיר להם אותם כחולים." הכוכב? אתה, כמובן.`,
+    excerptEn: `EXT. ROOFTOP ABOVE THE CITY — GREEN NIGHT.
+Toxic alien light bleeds between the skyscrapers. War-drones sweep the streets below you.
+"They painted the sky the colour of poison," you say quietly, "I'll give it back blue." The star? You, of course.`,
+  },
+  {
+    id: 41,
+    starYourself: true,
+    src: '/gallery/sample-24.png',
+    titleHe: 'שתיקה קטלנית',
+    titleEn: 'Deadly Silence — Action',
+    excerptHe: `פנים. מחסן עולה באש — שיא הקרב.
+אתה ושותפתך פורצים קדימה, גב אל גב, כדור אש מתפוצץ מאחוריכם.
+"אמרת שיהיה שקט," היא צועקת מעל הפיצוץ. אתה דורך את הנשק: "שיקרתי." ובמרכז התמונה — אתה.`,
+    excerptEn: `INT. A WAREHOUSE IN FLAMES — THE CLIMAX.
+You and your partner burst forward, back to back, a fireball erupting behind you.
+"You said it'd be quiet," she yells over the blast. You cock your weapon: "I lied." And dead centre — you.`,
+  },
+  {
+    id: 42,
+    starYourself: true,
+    src: '/gallery/sample-25.png',
+    titleHe: 'שתיקות שבורות',
+    titleEn: 'Broken Silences — Romantic Drama',
+    excerptHe: `פנים. בר אפלולי — שעת לילה מאוחרת.
+שתי כוסות יין, נר אחד, ושתיקה שנמשכה שנה שלמה.
+"חיכיתי לך הרבה זמן," היא אומרת. אתה מחייך: "אז בוא נפסיק לשתוק." והפרצוף הרומנטי הזה — שלך.`,
+    excerptEn: `INT. A DIM-LIT BAR — LATE NIGHT.
+Two glasses of wine, one candle, and a silence a whole year long.
+"I waited a long time for you," she says. You smile: "Then let's stop being quiet." And that romantic lead — that's you.`,
+  },
+  // ─── ⭐ "Star Yourself" Comic Panels — one hero, one horror arc ──────────────
+  {
+    id: 43,
+    starYourself: true,
+    type: 'comic',
+    src: '/gallery/comics/panel-01-13.png',
+    titleHe: 'הסף',
+    titleEn: 'The Threshold',
+    excerptHe: `קלוז-אפ. פנים. דלת עץ עתיקה — לילה.
+אתה אוחז במפתח ברזל מול דלת שלא נפתחה חמישים שנה.
+"כל סיפור מתחיל ברגע שבו אתה בוחר להיכנס." — והדמות המצוירת? זה אתה.`,
+    excerptEn: `CLOSE-UP. INT. ANCIENT WOODEN DOOR — NIGHT.
+You grip an iron key before a door sealed for fifty years.
+"Every story begins the moment you choose to step inside." — and that drawn hero? It's you.`,
+  },
+  {
+    id: 44,
+    starYourself: true,
+    type: 'comic',
+    src: '/gallery/comics/panel-02-13.png',
+    titleHe: 'פריצה פנימה',
+    titleEn: 'Breaking In',
+    excerptHe: `פנים. מסגרת דלת — לילה.
+אתה פורץ פנימה, אלומת הפנס חותכת את החושך, הלב הולם.
+"מאוחר מדי לסגת — מה שבפנים כבר יודע שאתה כאן." הכוכב של הקומיקס: אתה.`,
+    excerptEn: `INT. A DOORWAY — NIGHT.
+You burst through, your flashlight slicing the dark, heart pounding.
+"Too late to back out — whatever's inside already knows you're here." The comic's star: you.`,
+  },
+  {
+    id: 45,
+    starYourself: true,
+    type: 'comic',
+    src: '/gallery/comics/panel-03-12.png',
+    titleHe: 'הם צפו בך',
+    titleEn: 'They Were Watching',
+    excerptHe: `פנים. חדר נטוש — לילה.
+*נקישה... נקישה...* על הקיר תלויות תמונות שעיניהן נמחקו בסכין.
+"כל הפרצופים פה מחוקים," אתה לוחש, "חוץ מאחד." הפרצוף הזה — שלך.`,
+    excerptEn: `INT. A DECAYED ROOM — NIGHT.
+*click... click...* On the wall hang portraits with their eyes scratched out.
+"Every face here is erased," you whisper, "except one." That face — it's yours.`,
+  },
+  {
+    id: 46,
+    starYourself: true,
+    type: 'comic',
+    src: '/gallery/comics/panel-04-11.png',
+    titleHe: 'המנוסה',
+    titleEn: 'The Descent',
+    excerptHe: `פנים. גרם מדרגות מתפורר — לילה.
+אתה גורר את חברתך במורד המדרגות בזמן שקול חנוק קורא מאחור: "...תַּעַזְרוּ... לִי..."
+"אל תסתכלי אחורה — פשוט רוצי." הגיבור שבורח קדימה? אתה.`,
+    excerptEn: `INT. A CRUMBLING STAIRCASE — NIGHT.
+You drag your friend down the steps as a choked voice calls behind you: "...help... me..."
+"Don't look back — just run." The hero charging forward? You.`,
+  },
+  {
+    id: 47,
+    starYourself: true,
+    type: 'comic',
+    src: '/gallery/comics/panel-05-12.png',
+    titleHe: 'מול החושך',
+    titleEn: 'Face the Dark',
+    excerptHe: `פנים. מסדרון תת-קרקעי — לילה.
+אלומת הפנס שלך נועלת על יצור צללים שמתרומם מקצה המסדרון.
+"רצית להפחיד אותי?" אתה שואג, "באת לבן אדם הלא נכון." ובחזית — אתה.`,
+    excerptEn: `INT. AN UNDERGROUND CORRIDOR — NIGHT.
+Your flashlight locks onto a shadow-creature rising at the end of the hall.
+"You wanted to scare me?" you roar, "you came to the wrong human." And front and centre — you.`,
+  },
+  {
+    id: 2,
     src: '/gallery/sample-2.png', 
     titleHe: 'פעולה ומלחמה', 
     titleEn: 'Action & War',
@@ -399,6 +565,51 @@ Steam rises from a cup between them. Outside, the city hasn't woken up yet.
 
 // ─── Motion Comic Reels ────────────────────────────────────────────────────────
 export const SHOWCASE_REELS = [
+  // ─── ⭐ "Star Yourself" Motion Reels — your face, in motion, on screen ───────
+  {
+    id: 'reel-action-2',
+    starYourself: true,
+    genre: 'action',
+    src: '/reels/lifescript-reel-action-2.mp4',
+    poster: '/gallery/comics/panel-03-12.png',
+    titleHe: 'אקשן',
+    titleEn: 'Action',
+    tagline: 'FRONTLINE FURY',
+    color: '#ef4444',
+  },
+  {
+    id: 'reel-sci-fi-3',
+    starYourself: true,
+    genre: 'sci-fi',
+    src: '/reels/lifescript-reel-sci-fi-3.mp4',
+    poster: '/gallery/comics/panel-02-13.png',
+    titleHe: 'מד"ב III',
+    titleEn: 'Sci-Fi III',
+    tagline: 'VOID RISING',
+    color: '#22d3ee',
+  },
+  {
+    id: 'reel-horror-5',
+    starYourself: true,
+    genre: 'horror',
+    src: '/reels/lifescript-reel-horror-5.mp4',
+    poster: '/gallery/comics/panel-05-12.png',
+    titleHe: 'אימה V',
+    titleEn: 'Horror V',
+    tagline: 'INTO THE DARK',
+    color: '#a855f7',
+  },
+  {
+    id: 'reel-romance-4',
+    starYourself: true,
+    genre: 'romance',
+    src: '/reels/lifescript-reel-romance-4.mp4',
+    poster: '/gallery/comics/panel-01-13.png',
+    titleHe: 'רומנטיקה IV',
+    titleEn: 'Romance IV',
+    tagline: 'LAST CALL',
+    color: '#f472b6',
+  },
   {
     id: 'reel-drama',
     genre: 'drama',

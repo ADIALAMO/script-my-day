@@ -84,6 +84,19 @@ function PosterCardBody({ poster, lang, compact = false }) {
 
   return (
     <div className="relative w-full overflow-hidden">
+      {poster.starYourself && (
+        <div
+          className={`absolute z-20 top-1.5 left-1.5 rounded-md font-black uppercase pointer-events-none leading-none ${compact ? 'px-1 py-[2px] tracking-wide' : 'px-1.5 py-[3px] tracking-[0.12em]'}`}
+          style={{
+            background: 'linear-gradient(135deg, #f5c97a 0%, #d4a373 100%)',
+            color: '#0b0b0f',
+            fontSize: compact ? '6px' : '7px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.45)',
+          }}
+        >
+          {compact ? '★' : (lang === 'he' ? '★ אתה הכוכב' : '★ YOU\'RE THE STAR')}
+        </div>
+      )}
       <img
         src={poster.src || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500'}
         onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500'; }}
@@ -242,6 +255,19 @@ function ReelCard({ reel, lang, onClick }) {
         preload="none"
         className="w-full h-full object-cover"
       />
+      {reel.starYourself && (
+        <div
+          className="absolute z-20 top-1.5 left-1.5 rounded-md font-black uppercase pointer-events-none leading-none px-1 py-[2px] tracking-wide"
+          style={{
+            background: 'linear-gradient(135deg, #f5c97a 0%, #d4a373 100%)',
+            color: '#0b0b0f',
+            fontSize: '6px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.45)',
+          }}
+        >
+          {lang === 'he' ? '★ אתה הכוכב' : '★ YOU\'RE THE STAR'}
+        </div>
+      )}
       <div
         className="absolute inset-0 transition-opacity duration-300 pointer-events-none"
         style={{
