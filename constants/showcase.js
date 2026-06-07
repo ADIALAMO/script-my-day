@@ -1,4 +1,285 @@
 export const SHOWCASE_POSTERS = [
+  // ─── ⭐ "Star Yourself" Posters (batch 2) — real uploaded face as the lead ───
+  {
+    id: 49,
+    starYourself: true,
+    src: '/gallery/sample-26.png',
+    titleHe: 'קור אדום',
+    titleEn: 'Cold Fury — Action',
+    excerptHe: `חוץ. שדה הקרב הבוער — שקיעה אדומה.
+אתה מסתער קדימה עם הרובה, ספינות אויב חורצות את השמיים מאחוריך.
+"הם הביאו צבא," אתה נושם, "אני הבאתי סיבה." והלוחם שעל הפוסטר — זה אתה.`,
+    excerptEn: `EXT. THE BURNING BATTLEFIELD — RED SUNSET.
+You charge forward, rifle up, enemy ships carving the sky behind you.
+"They brought an army," you breathe, "I brought a reason." And that soldier on the poster — it's you.`,
+  },
+  {
+    id: 50,
+    starYourself: true,
+    src: '/gallery/sample-27.png',
+    titleHe: 'תזוזת תהום',
+    titleEn: 'Void Shift — Sci-Fi',
+    excerptHe: `פנים. תחנת חלל נטושה — אזור הדמדומים.
+מאחוריך, דמות זוהרת מרצדת בין הממדים. אתה היחיד שרואה אותה.
+"המציאות נסדקה," אתה לוחש, "ואני זה שעבר דרך הסדק." הכוכב של הסרט הזה — אתה.`,
+    excerptEn: `INT. AN ABANDONED SPACE STATION — THE TWILIGHT ZONE.
+Behind you, a glowing figure flickers between dimensions. You're the only one who sees it.
+"Reality cracked," you whisper, "and I'm the one who slipped through." The star of this one — you.`,
+  },
+  {
+    id: 51,
+    starYourself: true,
+    src: '/gallery/sample-28.png',
+    titleHe: 'קוד שתיקה',
+    titleEn: 'Code of Silence — Action',
+    excerptHe: `חוץ. מתחם תחת אש — רגע הבריחה.
+אתה ושותפתך מזנקים מבעד לפיצוץ, רסיסים עפים לכל עבר.
+"חשבת שזה נגמר?" היא צועקת. אתה לא מאט: "זה אפילו לא התחיל." ובמרכז הכרזה — אתה.`,
+    excerptEn: `EXT. A COMPOUND UNDER FIRE — THE ESCAPE.
+You and your partner leap through the blast, shrapnel flying everywhere.
+"Thought it was over?" she yells. You don't slow down: "It hasn't even started." And dead centre of the poster — you.`,
+  },
+  {
+    id: 52,
+    starYourself: true,
+    src: '/gallery/sample-29.png',
+    titleHe: 'נפילת שמיים',
+    titleEn: 'Skyfall — Sci-Fi',
+    excerptHe: `חוץ. גג מעל העיר — לילה סגול.
+צבא מכונות קרב יורד מהעננים כמו גשם של מתכת. אתה ניצב לבדך מולם.
+"השמיים נופלים," אתה אומר בשקט, "אז אתפוס אותם." והגיבור היחיד שעומד שם — אתה.`,
+    excerptEn: `EXT. ROOFTOP ABOVE THE CITY — PURPLE NIGHT.
+An army of war-machines descends from the clouds like a rain of metal. You stand alone against them.
+"The sky is falling," you say quietly, "so I'll catch it." And the only hero standing there — you.`,
+  },
+  // ─── ⭐ "Star Yourself" Comics (batch 2) — real uploaded face ────────────────
+  {
+    id: 53,
+    starYourself: true,
+    type: 'comic',
+    src: '/gallery/comics/sy-scifi-01.png',
+    titleHe: 'יריית הפתיחה',
+    titleEn: 'Opening Shot',
+    excerptHe: `פנים. שדה קרב חייזרי — סופה של אור.
+אתה יורה למעלה, אקדח הפלזמה בוער, מכונות קרב צוללות מכל עבר.
+"שלחתם צבא שלם בשבילי?" אתה מחייך. "החמאתם לי." הדמות שמחזיקה את הנשק — זה אתה.`,
+    excerptEn: `INT. AN ALIEN BATTLEFIELD — A STORM OF LIGHT.
+You fire upward, plasma pistol blazing, war-mechs diving from every angle.
+"You sent a whole army for me?" you grin. "I'm flattered." The hero holding that gun — it's you.`,
+  },
+  {
+    id: 54,
+    starYourself: true,
+    type: 'comic',
+    src: '/gallery/comics/sy-scifi-02.png',
+    titleHe: 'גב אל גב',
+    titleEn: 'Back to Back',
+    excerptHe: `חוץ. חורבות תחת שמיים סגולים — קרב.
+אתה ושותפתך נלחמים גב אל גב, רובה הפלזמה חורך רובוט קרב.
+"כמה עוד?" היא שואלת. אתה טוען מחדש: "עד שייגמרו להם." והלוחם שבחזית — אתה.`,
+    excerptEn: `EXT. RUINS UNDER A PURPLE SKY — COMBAT.
+You and your partner fight back to back, your plasma rifle searing a battle-droid.
+"How many more?" she asks. You reload: "Until they run out." And the fighter up front — you.`,
+  },
+  {
+    id: 55,
+    starYourself: true,
+    type: 'comic',
+    src: '/gallery/comics/sy-thriller-01.png',
+    titleHe: 'הספירה לאחור',
+    titleEn: 'The Countdown',
+    excerptHe: `פנים. חדר חקירות — חצות.
+שעון סדוק מתקתק מאחוריכם. אתה והיא נועצים מבטים מעבר לשולחן.
+"נשארו לנו שתי דקות," היא אומרת. אתה לא ממצמץ: "אז אל תבזבזי אותן." הדמות הנועצת מבט — אתה.`,
+    excerptEn: `INT. AN INTERROGATION ROOM — MIDNIGHT.
+A cracked clock ticks behind you. You and she lock eyes across the table.
+"We've got two minutes," she says. You don't blink: "Then don't waste them." That character staring back — you.`,
+  },
+  {
+    id: 56,
+    starYourself: true,
+    type: 'comic',
+    src: '/gallery/comics/sy-action-01.png',
+    titleHe: 'במסדרון',
+    titleEn: 'In the Corridor',
+    excerptHe: `פנים. מסדרון ספינת קרב — קרב יריות.
+אתה כורע ויורה, ניצוצות וקליעים מתעופפים סביבך.
+"אמרו שאי אפשר לעבור פה לבד," אתה שואג. "הם לא הכירו אותי." הגיבור שמחזיק מעמד — זה אתה.`,
+    excerptEn: `INT. A WARSHIP CORRIDOR — A FIREFIGHT.
+You drop to a knee and fire, sparks and shells flying around you.
+"They said no one gets through here alone," you roar. "They didn't know me." The hero holding the line — it's you.`,
+  },
+  {
+    id: 57,
+    starYourself: true,
+    type: 'comic',
+    src: '/gallery/comics/sy-action-02.png',
+    titleHe: 'קרב בר',
+    titleEn: 'Bar Brawl',
+    excerptHe: `פנים. בר ניאון מתפרק — לילה.
+אתה מניף כיסא עץ, חברתך מתכופפת מאחוריך כשהקיר מתנפץ.
+"אמרת שזה מקום שקט!" היא צועקת. אתה מחייך: "היה." והבחור שמחזיק את הכיסא — אתה.`,
+    excerptEn: `INT. A CRUMBLING NEON BAR — NIGHT.
+You swing a wooden chair as your friend ducks behind you and the wall shatters.
+"You said this place was quiet!" she yells. You grin: "It was." And the guy holding the chair — you.`,
+  },
+  // ─── Comic Reel Stills — classic comic generations (no face / no badge) ──────
+  {
+    id: 58,
+    type: 'comic',
+    src: '/gallery/comics/toon-01.png',
+    titleHe: 'אקדחים תאומים',
+    titleEn: 'Twin Guns',
+    excerptHe: `פנים. בית מהמרים נטוש — רגע השיא.
+שני אקדחים, חיוך פראי אחד. הקליעים כבר באוויר.
+"אף פעם לא נכנסתי לחדר בלי דרך החוצה."`,
+    excerptEn: `INT. AN ABANDONED CASINO — THE CLIMAX.
+Two pistols, one wild grin. The bullets are already in the air.
+"I never walk into a room without a way out."`,
+  },
+  {
+    id: 59,
+    type: 'comic',
+    src: '/gallery/comics/toon-02.png',
+    titleHe: 'קפיצת אמונה',
+    titleEn: 'Leap of Faith',
+    excerptHe: `חוץ. גג מעל העיר — לילה.
+הלהב מנצנץ באור הירח. הם קופצים יחד אל הלא-נודע.
+"אם אנחנו נופלים," הוא צוחק, "לפחות נופלים מהר."`,
+    excerptEn: `EXT. A ROOFTOP ABOVE THE CITY — NIGHT.
+The blade glints in the moonlight. They leap together into the unknown.
+"If we're going down," he laughs, "at least we go down fast."`,
+  },
+  {
+    id: 60,
+    type: 'comic',
+    src: '/gallery/comics/toon-03.png',
+    titleHe: 'ארוחת ערב גורלית',
+    titleEn: 'A Fateful Dinner',
+    excerptHe: `פנים. מטבח ביתי — ערב.
+המתכון התפוצץ. תרתי משמע. עמוד עשן עולה מבין שניהם.
+"אמרתי לך לא להוסיף את זה!" — "אמרת שזה הסוד של סבתא!"`,
+    excerptEn: `INT. A HOME KITCHEN — EVENING.
+The recipe exploded. Literally. A column of smoke rises between them.
+"I told you not to add that!" — "You said it was Grandma's secret!"`,
+  },
+  {
+    id: 61,
+    type: 'comic',
+    src: '/gallery/comics/toon-04.png',
+    titleHe: 'הירייה האחרונה',
+    titleEn: 'The Last Shot',
+    excerptHe: `פנים. סמטה אפלה — לילה גשום.
+כובע מצחייה, מעיל ארוך, אקדח אחד יורק אש בחושך.
+"בעיר הזאת," הוא לוחש, "כל אחד משלם בסוף."`,
+    excerptEn: `INT. A DARK ALLEY — RAINY NIGHT.
+A fedora, a long coat, one pistol spitting fire in the dark.
+"In this city," he whispers, "everyone pays in the end."`,
+  },
+  {
+    id: 62,
+    type: 'comic',
+    src: '/gallery/comics/toon-05.png',
+    titleHe: 'יום הנחיתה',
+    titleEn: 'Landing Day',
+    excerptHe: `חוץ. שדה קרח קפוא — שחר.
+ספינת-אם ענקית פותחת את בטנה. מכונת קרב צועדת החוצה.
+"חיכינו להם שנים," היא לוחשת, "ועכשיו הלוואי שלא היו באים."`,
+    excerptEn: `EXT. A FROZEN ICE FIELD — DAWN.
+A colossal mothership opens its belly. A war-mech strides out.
+"We waited years for them," she whispers, "and now I wish they'd never come."`,
+  },
+  {
+    id: 63,
+    type: 'comic',
+    src: '/gallery/comics/toon-06.png',
+    titleHe: 'מתחת לצל',
+    titleEn: 'Beneath the Shadow',
+    excerptHe: `חוץ. עיר הריסות — בין הערביים.
+צלחת מעופפת אדירה חוסמת את השמש. היא דורכת את הרובה ולא מורידה מבט.
+"אם זה היום האחרון," היא אומרת, "הם יזכרו אותו."`,
+    excerptEn: `EXT. A CITY IN RUINS — TWILIGHT.
+A massive saucer blots out the sun. She cocks her rifle and never looks away.
+"If this is the last day," she says, "they'll remember it."`,
+  },
+  {
+    id: 64,
+    type: 'comic',
+    src: '/gallery/comics/toon-07.png',
+    titleHe: 'הקצה הראשון',
+    titleEn: 'The First Lead',
+    excerptHe: `פנים. סמטת אבן — אחר חצות.
+היא מצביעה על המסך, הוא קורא בריכוז. התעלומה רק מתחילה להיפרם.
+"זה לא צירוף מקרים," הוא אומר, "אף פעם לא."`,
+    excerptEn: `INT. A STONE ALLEY — PAST MIDNIGHT.
+She points at the screen, he reads intently. The mystery is just starting to unravel.
+"This isn't a coincidence," he says, "it never is."`,
+  },
+  {
+    id: 65,
+    type: 'comic',
+    src: '/gallery/comics/toon-08.png',
+    titleHe: 'מה שמחכה למטה',
+    titleEn: 'What Waits Below',
+    excerptHe: `פנים. מנהרת ביוב — חושך מוחלט.
+שתי עיניים אדומות נדלקות בקצה המנהרה. משהו מתכתי מתעורר.
+"שמעתם את זה?" — "אל תזוזו. זה עוד לא ראה אותנו."`,
+    excerptEn: `INT. A SEWER TUNNEL — TOTAL DARKNESS.
+Two red eyes flare at the end of the tunnel. Something metallic awakens.
+"Did you hear that?" — "Don't move. It hasn't seen us yet."`,
+  },
+  {
+    id: 66,
+    type: 'comic',
+    src: '/gallery/comics/toon-09.png',
+    titleHe: 'בנות הברק',
+    titleEn: 'Daughters of Lightning',
+    excerptHe: `חוץ. כיכר העיר ההרוסה — ליל מלחמה.
+שתיהן זינקו קדימה אל תוך שורת רובוטים. אין דרך חזרה.
+"את מימין," היא קוראת, "אני לוקחת את כל השאר."`,
+    excerptEn: `EXT. THE RUINED CITY SQUARE — A NIGHT OF WAR.
+The two of them charge straight into a line of robots. No turning back.
+"You take the right," she calls, "I've got everything else."`,
+  },
+  {
+    id: 67,
+    type: 'comic',
+    src: '/gallery/comics/toon-10.png',
+    titleHe: 'הגיבור של אתמול',
+    titleEn: "Yesterday's Hero",
+    excerptHe: `חוץ. שולי העיירה — דמדומים.
+בסגנון של פעם: לפיד, פוזה הרואית, ועולם שמחכה להצלה.
+"כל דור מקבל את הגיבור שמגיע לו — תורי."`,
+    excerptEn: `EXT. THE EDGE OF TOWN — DUSK.
+Classic vintage style: a torch, a heroic pose, and a world waiting to be saved.
+"Every era gets the hero it deserves — it's my turn."`,
+  },
+  {
+    id: 68,
+    type: 'comic',
+    src: '/gallery/comics/toon-11.png',
+    titleHe: 'שניים נגד צבא',
+    titleEn: 'Two Against an Army',
+    excerptHe: `חוץ. שדה סלעים — תחת שמש זרה.
+היא מכוונת את הרובה, הוא מזנק קדימה. מאחור, מכונת קרב פותחת באש.
+"מוכן?" היא שואלת. "תמיד," הוא עונה, וכבר באוויר.`,
+    excerptEn: `EXT. A ROCKY FIELD — UNDER AN ALIEN SUN.
+She aims the rifle, he springs forward. Behind them, a war-mech opens fire.
+"Ready?" she asks. "Always," he answers — already airborne.`,
+  },
+  {
+    id: 69,
+    type: 'comic',
+    src: '/gallery/comics/toon-12.png',
+    titleHe: 'הכספת',
+    titleEn: 'The Vault',
+    excerptHe: `פנים. כספת תת-קרקעית — אזעקה דוממת.
+הדלת נפרצה. שניהם עומדים בפתח, מוכנים לכל דבר מלבד מה שמחכה בפנים.
+"שלושים שניות," הוא אומר. "אז תפסיק לדבר," היא עונה.`,
+    excerptEn: `INT. AN UNDERGROUND VAULT — A SILENT ALARM.
+The door is breached. They stand in the doorway, ready for anything but what waits inside.
+"Thirty seconds," he says. "Then stop talking," she replies.`,
+  },
   // ─── ⭐ "Star Yourself" Posters — real uploaded face, cast as the lead ───────
   // These are produced by the flagship feature: the user uploads a selfie and
   // becomes the hero of a cinematic poster. `starYourself: true` surfaces the
@@ -565,6 +846,40 @@ Steam rises from a cup between them. Outside, the city hasn't woken up yet.
 
 // ─── Motion Comic Reels ────────────────────────────────────────────────────────
 export const SHOWCASE_REELS = [
+  // ─── ⭐ "Star Yourself" Motion Reels (batch 2) — your face, in motion ────────
+  {
+    id: 'reel-action-3',
+    starYourself: true,
+    genre: 'action',
+    src: '/reels/lifescript-reel-action-3.mp4',
+    poster: '/gallery/comics/sy-action-01.png',
+    titleHe: 'אקשן II',
+    titleEn: 'Action II',
+    tagline: 'NO SURRENDER',
+    color: '#ef4444',
+  },
+  {
+    id: 'reel-action-4',
+    starYourself: true,
+    genre: 'action',
+    src: '/reels/lifescript-reel-action-4.mp4',
+    poster: '/gallery/comics/sy-action-02.png',
+    titleHe: 'אקשן III',
+    titleEn: 'Action III',
+    tagline: 'LAST STAND',
+    color: '#f97316',
+  },
+  // ─── Comic Motion Reel — classic comic generation (no face / no badge) ───────
+  {
+    id: 'reel-action-comic',
+    genre: 'action',
+    src: '/reels/lifescript-reel-action-comic.mp4',
+    poster: '/gallery/comics/toon-01.png',
+    titleHe: 'קומיקס אקשן',
+    titleEn: 'Action Comic',
+    tagline: 'MOTION COMIC',
+    color: '#fb923c',
+  },
   // ─── ⭐ "Star Yourself" Motion Reels — your face, in motion, on screen ───────
   {
     id: 'reel-action-2',
