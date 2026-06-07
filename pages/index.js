@@ -348,15 +348,6 @@ function HomePage() {
   const [feedbackStatus, setFeedbackStatus] = useState('idle');
   const [feedbackError, setFeedbackError] = useState('');
 
-  // Footer "Contact" entry point — opens the Director's Log and scrolls to it,
-  // so the legal/support copy that points users here has a real destination.
-  const openDirectorLog = useCallback(() => {
-    setShowFeedback(true);
-    setTimeout(() => {
-      document.getElementById('director-log')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 60);
-  }, []);
-
   const handleSendFeedback = async () => {
     if (!feedbackText.trim()) return;
     setFeedbackStatus('sending');
@@ -1112,14 +1103,15 @@ function HomePage() {
         </AnimatePresence>
 
         {/* Director's Log (Feedback Section) */}
-        <div id="director-log" className="mt-2 mb-0 w-full max-w-xl mx-auto px-6 relative z-50">
+        <div className="mt-2 mb-0 w-full max-w-xl mx-auto px-6 relative z-50">
           <AnimatePresence mode='wait'>
             {!showFeedback ? (
               <motion.button
                 key="feedback-trigger"
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
                 onClick={() => setShowFeedback(true)}
                 className="w-full group relative overflow-hidden rounded-2xl bg-[#0f1117]/80 backdrop-blur-md border border-[#d4a373]/10 hover:border-[#d4a373]/40 transition-all duration-500 py-6 px-4 text-center cursor-pointer shadow-lg"
               >
@@ -1219,12 +1211,6 @@ function HomePage() {
                   {MODAL_DATA[item][lang].title.split(' - ')[0]}
                 </button>
               ))}
-              <button
-                onClick={openDirectorLog}
-                className="text-[9px] font-black text-gray-500 hover:text-[#d4a373] transition-colors uppercase tracking-[0.2em]"
-              >
-                {lang === 'he' ? 'צור קשר' : 'Contact'}
-              </button>
             </div>
           </div>
         </div>
