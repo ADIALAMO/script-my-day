@@ -1,8 +1,9 @@
-import React, { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Copy, Download, Check, Volume2, VolumeX, Film } from 'lucide-react';
+import { Sparkles, Copy, Download, Check, Volume2, VolumeX, Film, Users } from 'lucide-react';
 import { GenreSelector } from './GenreSelector';
 import { InspirationModal } from './InspirationModal';
+import { detectGender } from '../lib/gender-detect';
 import { useBackgroundAudio } from '../hooks/useBackgroundAudio';
 import { useRotatingMessages } from '../hooks/useRotatingMessages';
 import { useCinematicAudio } from '../hooks/useCinematicAudio';
@@ -10,7 +11,14 @@ import { useCinematicAudio } from '../hooks/useCinematicAudio';
 const LOADING_MESSAGES_HE = ["סורק זכרונות...", "מנתח DNA סיפורי...", "בונה מתח דרמטי...", "מלטש דיאלוגים...", "מעבה דמויות...", "פורש קווי עלילה...", "מדפיס עותקים..."];
 const LOADING_MESSAGES_EN = ["Scanning memories...", "Analyzing story DNA...", "Building tension...", "Polishing dialogue...", "Developing characters...", "Plotting twists...", "Printing scripts..."];
 
-const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProducerName, isTypingGlobal, onInputChange, showTips, setShowTips }) => {
+// Bilingual labels for the "Cast the Hero/ine" pill trio. neutral == group / they.
+const GENDER_PILLS = [
+  { value: 'male',    he: 'הוא', en: 'He' },
+  { value: 'female',  he: 'היא', en: 'She' },
+  { value: 'neutral', he: 'הם',  en: 'They' },
+];
+
+const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProducerName, gender, setGender, suggestGender, genderTouched, isTypingGlobal, onInputChange, showTips, setShowTips }) => {
   const [journalEntry, setJournalEntry] = useState('');
   const [activeGenre, setActiveGenre] = useState('drama');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,6 +34,18 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
 
   const loadingMessages  = lang === 'he' ? LOADING_MESSAGES_HE : LOADING_MESSAGES_EN;
   const currentLoadingMsg = useRotatingMessages(loadingMessages, 2800, loading);
+
+  // ── Auto-cast the protagonist's gender ──────────────────────────────────────
+  // Debounced, zero-cost morphology read of the journal + creator name. Only ever
+  // *suggests*; suggestGender is a no-op once the user taps a pill (genderTouched).
+  useEffect(() => {
+    if (genderTouched) return;
+    const id = setTimeout(() => {
+      const { gender: g, confidence } = detectGender(journalEntry, producerName, lang);
+      if (confidence > 0) suggestGender?.(g);
+    }, 600);
+    return () => clearTimeout(id);
+  }, [journalEntry, producerName, lang, genderTouched, suggestGender]);
 
   const handleDownloadJournal = () => {
     const blob = new Blob([journalEntry], { type: 'text/plain' });
@@ -238,7 +258,53 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
         
         <GenreSelector activeGenre={activeGenre} onGenreChange={setActiveGenre} isLocked={isLocked} lang={lang} />
       </div>
-      
+
+      {/* Cast the Hero/ine — the single gender source of truth for script + poster +
+          comic. Auto-highlighted from Hebrew morphology + the creator name; the user
+          confirms at a glance or overrides with one tap. */}
+      <div className="mb-2">
+        <div className="flex items-center gap-2 mb-4 px-2">
+          <Users size={14} className="text-[#d4a373]" />
+          <label className="text-[#d4a373] text-[10px] md:text-xs font-black uppercase tracking-[0.3em] italic">
+            {lang === 'he' ? 'מי הגיבור/ה?' : "WHO'S THE LEAD?"}
+          </label>
+          <AnimatePresence>
+            {!genderTouched && gender !== 'neutral' && (
+              <motion.span
+                initial={{ opacity: 0, x: lang === 'he' ? 6 : -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0 }}
+                className="text-[9px] font-bold tracking-widest text-[#d4a373]/50 normal-case not-italic"
+              >
+                {lang === 'he' ? '✦ זוהה מהטקסט' : '✦ Detected'}
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </div>
+        <div className="flex gap-2 md:gap-3 px-2">
+          {GENDER_PILLS.map((pill) => {
+            const active = gender === pill.value;
+            return (
+              <motion.button
+                key={pill.value}
+                type="button"
+                disabled={isLocked}
+                onClick={() => !isLocked && setGender?.(pill.value)}
+                whileHover={!isLocked ? { scale: 1.03 } : {}}
+                whileTap={!isLocked ? { scale: 0.97 } : {}}
+                className={`flex-1 py-3 rounded-2xl text-sm font-black uppercase tracking-[0.2em] transition-all duration-300 border ${
+                  active
+                    ? 'bg-[#d4a373] text-black border-[#d4a373] shadow-[0_8px_30px_rgba(212,163,115,0.35)]'
+                    : 'bg-white/5 text-white/50 border-white/10 hover:border-[#d4a373]/40 hover:text-white/80'
+                } ${isLocked ? 'opacity-40 cursor-not-allowed' : ''}`}
+              >
+                {lang === 'he' ? pill.he : pill.en}
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="mb-6 relative group max-w-[320px]">
         <label className="block text-[#d4a373] text-[10px] uppercase tracking-[0.4em] mb-3 font-black italic">{lang === 'he' ? 'קרדיט ליוצר/ת:' : 'CREATOR CREDIT:'}</label>
         <input 

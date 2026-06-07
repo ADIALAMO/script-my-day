@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     }
 
     // ── Parse body ────────────────────────────────────────────────────────────
-    const { journalEntry, genre } = req.body;
+    const { journalEntry, genre, gender } = req.body;
 
     const isAdmin = isAdminRequest(req);
     let usageKey  = null;
@@ -69,8 +69,11 @@ export default async function handler(req, res) {
 
     const safeJournalEntry = sanitize(journalEntry);
 
+    // Never trust the client blindly — coerce to the only three values we speak.
+    const cleanGender = ['male', 'female', 'neutral'].includes(gender) ? gender : 'neutral';
+
     // ── AI generation ─────────────────────────────────────────────────────────
-    const result = await generateScript(safeJournalEntry, cleanGenre);
+    const result = await generateScript(safeJournalEntry, cleanGenre, cleanGender);
 
     if (!result.success) {
       console.error('❌ generateScript failed:', result.error);

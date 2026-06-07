@@ -49,7 +49,7 @@ const getCinematicTitle = (text) => {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, onPosterGenerated, onScriptEdited, onAuthRequired, onPanelsGenerated, initialPanels, initialPosterUrl, journalEntry }) {
+function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, gender, setGender, onPosterGenerated, onScriptEdited, onAuthRequired, onPanelsGenerated, initialPanels, initialPosterUrl, journalEntry }) {
   const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST');
 
   // ── Language: UI chrome vs generated content ────────────────────────────────
@@ -100,8 +100,8 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, on
   // ── Identity Track (character consistency) ──────────────────────────────────
   const {
     characterImageUrl, activeCharacterUrl, heroDescriptor, starring, setStarring,
-    gender, setGender, status: characterStatus, uploadCharacter, clearCharacter,
-  } = useCharacter();
+    status: characterStatus, uploadCharacter, clearCharacter,
+  } = useCharacter(gender);
   const [showCharacterModal, setShowCharacterModal] = useState(false);
 
   const {

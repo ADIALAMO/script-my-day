@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
-// localStorage keys — mirror the existing `lifescript_device_id` convention.
-const LS_KEY        = 'lifescript_character_url';
-const LS_GENDER_KEY = 'lifescript_character_gender';
+// localStorage key — mirrors the existing `lifescript_device_id` convention.
+const LS_KEY = 'lifescript_character_url';
 
 // Maps the user's gender choice → the protagonist descriptor injected into the
 // storyboard prompt so Gemini leads every panel with the right hero and Grok
@@ -26,26 +25,20 @@ const GENDER_DESCRIPTOR = {
  * `starring` is the per-session toggle. `activeCharacterUrl` is the value the
  * generation hooks should actually send: the URL only when a character exists
  * AND starring is on — otherwise null (→ cheap standard generation path).
+ *
+ * `gender` is no longer owned here — it is the lifted single source of truth from
+ * `useGender` (set in ScriptForm before the script is even generated) and is
+ * passed in so the storyboard's HERO IDENTITY block matches the script's hero.
  */
-export function useCharacter() {
+export function useCharacter(gender = 'neutral') {
   const [characterImageUrl, setCharacterImageUrl] = useState('');
   const [starring, setStarring] = useState(true);
   const [status, setStatus]     = useState('idle'); // idle | loading | ready | error
   const [error, setError]       = useState('');
-  const [gender, setGenderState] = useState('neutral'); // 'male' | 'female' | 'neutral'
-
-  // Persist the gender choice so the disambiguation descriptor survives reloads.
-  const setGender = useCallback((g) => {
-    setGenderState(g);
-    if (typeof window !== 'undefined') localStorage.setItem(LS_GENDER_KEY, g);
-  }, []);
 
   // ── Restore on mount ────────────────────────────────────────────────────────
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
-    const cachedGender = localStorage.getItem(LS_GENDER_KEY);
-    if (cachedGender && GENDER_DESCRIPTOR[cachedGender]) setGenderState(cachedGender);
 
     const cached = localStorage.getItem(LS_KEY);
     if (cached) { setCharacterImageUrl(cached); setStatus('ready'); }
@@ -123,8 +116,6 @@ export function useCharacter() {
     heroDescriptor,
     starring,
     setStarring,
-    gender,
-    setGender,
     status,
     error,
     uploadCharacter,

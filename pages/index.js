@@ -20,6 +20,7 @@ import HistoryPanel from '../components/HistoryPanel';
 import CinematicLoader from '../components/CinematicLoader';
 import CookieConsent from '../components/CookieConsent';
 import { useScriptHistory } from '../hooks/useScriptHistory';
+import { useGender } from '../hooks/useGender';
 
 // ── Genre metadata for filmstrip grouping ────────────────────────────────────
 const GENRE_GROUPS = [
@@ -322,6 +323,11 @@ function HomePage() {
   const currentEntryIdRef = useRef(null);
 
   const { history, addEntry, updateEntry, deleteEntry } = useScriptHistory();
+
+  // Protagonist gender — single source of truth shared by the script (ScriptForm,
+  // below) and the poster/comic Identity Track (ScriptOutput). Auto-detected in
+  // ScriptForm, confirmable with one tap, persisted across sessions.
+  const { gender, setGender, suggestGender, genderTouched } = useGender();
   const [showHistory, setShowHistory] = useState(false);
   const [initialPanels,    setInitialPanels]    = useState(null);
   const [initialPosterUrl, setInitialPosterUrl] = useState(null);
@@ -546,6 +552,7 @@ function HomePage() {
         body: JSON.stringify({
           journalEntry,
           genre,
+          gender,
           producerName: producerName || (lang === 'he' ? 'אורח' : 'Guest'),
           deviceId: deviceId,
         }),
@@ -840,6 +847,10 @@ function HomePage() {
               lang={lang}
               producerName={producerName}
               setProducerName={setProducerName}
+              gender={gender}
+              setGender={setGender}
+              suggestGender={suggestGender}
+              genderTouched={genderTouched}
               onInputChange={(val) => setIsTyping(val)}
               showTips={showTips}
               setShowTips={setShowTips}
@@ -1060,6 +1071,8 @@ function HomePage() {
                 genre={selectedGenre}
                 setIsTypingGlobal={setIsTyping}
                 producerName={producerName}
+                gender={gender}
+                setGender={setGender}
                 journalEntry={journalText}
                 onPosterGenerated={(url) => updateEntry(currentEntryIdRef.current, { posterUrl: url })}
                 onScriptEdited={(text) => updateEntry(currentEntryIdRef.current, { script: text })}
