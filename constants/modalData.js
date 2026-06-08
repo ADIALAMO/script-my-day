@@ -16,15 +16,15 @@ export const MODAL_DATA = {
         },
         {
           h: '3. חיוב, חידוש וביטול מנוי',
-          p: 'מנוי Pro מחויב 9$ לחודש דרך Stripe ומתחדש אוטומטית מדי חודש עד לביטול. ניתן לבטל בכל עת דרך "נהל מנוי" בתפריט החשבון; הביטול נכנס לתוקף בתום תקופת החיוב הנוכחית, ולא יתבצע חיוב נוסף לאחריו. אנחנו לא רואים ולא שומרים את פרטי כרטיס האשראי שלך — כל נתוני התשלום מנוהלים ומאובטחים על ידי Stripe. בכל שאלה בנושא חיוב או החזר ניתן לפנות אלינו דרך התמיכה.',
+          p: 'מנוי Pro מחויב 9$ לחודש דרך Stripe ומתחדש אוטומטית מדי חודש עד לביטול. ניתן לבטל בכל עת דרך "נהל מנוי" בתפריט החשבון; הביטול נכנס לתוקף בתום תקופת החיוב הנוכחית, ולא יתבצע חיוב נוסף לאחריו. התשלום עבור תקופת חיוב שכבר החלה אינו מוחזר, ואינך מחויב בגין תקופות עתידיות לאחר הביטול — הכול בכפוף לזכות ביטול סטטוטורית לפי הדין החל עליך (לרבות זכות ביטול עסקה לפי חוק הגנת הצרכן). אנחנו לא רואים ולא שומרים את פרטי כרטיס האשראי שלך — כל נתוני התשלום מנוהלים ומאובטחים על ידי Stripe. בכל שאלה בנושא חיוב או החזר ניתן לפנות אלינו במייל adialamo@gmail.com.',
         },
         {
           h: '4. הגנת תוכן וניקוי קלטים אוטומטי',
           p: 'כל טקסט שנשלח למערכת עובר ניקוי אוטומטי לסינון HTML, תגיות זדוניות והזרקות קוד. חל איסור מוחלט לנסות לעקוף מנגנונים אלו, להשתמש בטכניקות Prompt Injection לשינוי התנהגות ה-AI, או להזין תוכן פוגעני, אלים, פורנוגרפי, גזעני או תוכן המופנה כלפי קטינים.',
         },
         {
-          h: '5. "לככב בסיפור" — העלאת תמונות פנים',
-          p: 'בעת שימוש בפיצ\'ר "לככב בסיפור" עליך להעלות אך ורק תמונה של עצמך, או של אדם שנתן לכך את הסכמתו המפורשת. חל איסור מוחלט להעלות תמונות של קטינים או של אדם ללא הסכמתו. התמונה מעובדת ליצירת "גיליון דמות" ונשמרת באחסון מוצפן למשך עד 90 יום לצורך שימוש חוזר, ולאחר מכן נמחקת אוטומטית. פירוט מלא במדיניות הפרטיות.',
+          h: '5. "לככב בסיפור" — תמונות פנים ומידע ביומטרי',
+          p: 'פיצ\'ר "לככב בסיפור" מעבד תמונת פנים, שעשויה להיחשב מידע ביומטרי לפי דינים מסוימים. בעת ההעלאה תתבקש לאשר אקטיבית כי (א) זו תמונה שלך או של אדם שנתן הסכמה מפורשת ומדעת, (ב) אינה של קטין, ו-(ג) אתה מבין שהיא תעובד ל"גיליון דמות". התמונה נשמרת מוצפנת באחסון ענן (Cloudflare R2) למשך עד 90 יום ואז נמחקת אוטומטית; היא לעולם אינה משמשת לאימון מודלים, אינה נמכרת ואינה משותפת. תוכל לבקש מחיקה מיידית בכל עת. העלאה ללא ההרשאות הללו אסורה ועלולה להוביל לחסימת חשבון. פירוט מלא במדיניות הפרטיות.',
         },
         {
           h: '6. ביצועי השירות ואדפטציה דינמית',
@@ -34,7 +34,16 @@ export const MODAL_DATA = {
           h: '7. הגבלת גיל, AI ושירותי צד שלישי',
           p: 'השירות מיועד למשתמשים מגיל 13 ומעלה; רכישת מנוי בתשלום מחייבת גיל 18 ומעלה או אישור אפוטרופוס. LIFESCRIPT משתמשת בשירותי AI חיצוניים (Google AI, OpenRouter ואחרים). אנחנו לא אחראים לשינויים במדיניות ספקים אלו. התוכן שנוצר מבוסס על בינה מלאכותית ועשוי להכיל אי-דיוקים; האחריות על השימוש בו חלה על המשתמש בלבד.',
         },
+        {
+          h: '8. אחריות, אחריות על תוכן המשתמש ושיפוי',
+          p: 'השירות מסופק "כמות שהוא" (AS IS) וללא אחריות מכל סוג. במידה המרבית המותרת בדין, LIFESCRIPT לא תישא באחריות לנזק עקיף, תוצאתי או מיוחד, וחבותה הכוללת לא תעלה על הסכום ששילמת בפועל ב-12 החודשים שקדמו לאירוע. אתה האחראי הבלעדי לכל טקסט וכל תוכן שאתה מזין למערכת, ומצהיר כי יש לך את מלוא הזכויות להזינו וכי אינו מפר זכויות צד שלישי, חוק או צו. אתה מתחייב לשפות את LIFESCRIPT בגין כל תביעה, נזק או הוצאה (לרבות שכ"ט עו"ד) הנובעים מהתוכן שהזנת או מהפרת תנאים אלו.',
+        },
+        {
+          h: '9. דין חל, שינויים ויצירת קשר',
+          p: 'על תנאים אלו יחולו דיני מדינת ישראל, ומקום השיפוט הבלעדי יהיה בתל אביב. אנו רשאים לעדכן תנאים אלו מעת לעת; המשך השימוש לאחר עדכון מהווה הסכמה. השירות מופעל תחת השם LIFESCRIPT. בכל שאלה, בקשת מחיקה או פנייה בנושא פרטיות ניתן לפנות אל adialamo@gmail.com.',
+        },
       ],
+      summary: 'עודכן לאחרונה: יוני 2026',
     },
     en: {
       title: 'TERMS',
@@ -49,15 +58,15 @@ export const MODAL_DATA = {
         },
         {
           h: '3. Billing, Renewal & Cancellation',
-          p: 'The Pro subscription is billed at $9/month via Stripe and renews automatically each month until cancelled. You can cancel anytime via "Manage Subscription" in the account menu; cancellation takes effect at the end of the current billing period, with no further charges afterward. We never see or store your card details — all payment data is handled and secured by Stripe. For any billing or refund question, contact us via support.',
+          p: 'The Pro subscription is billed at $9/month via Stripe and renews automatically each month until cancelled. You can cancel anytime via "Manage Subscription" in the account menu; cancellation takes effect at the end of the current billing period, with no further charges afterward. Payment for a billing period already begun is non-refundable, and you are not charged for future periods after cancellation — all subject to any statutory cancellation right under the law applicable to you (including consumer-protection withdrawal rights). We never see or store your card details — all payment data is handled and secured by Stripe. For any billing or refund question, contact us at adialamo@gmail.com.',
         },
         {
           h: '4. Content Protection & Automatic Input Sanitization',
           p: 'All text submitted to the system is automatically sanitized to filter HTML, malicious tags, and injection attempts. It is strictly forbidden to bypass these mechanisms, use prompt-injection techniques to alter AI behavior, or submit offensive, violent, pornographic, racist, or minors-targeted content.',
         },
         {
-          h: '5. "Star Yourself" — Uploading Face Photos',
-          p: 'When using the "Star Yourself" feature, you must upload only a photo of yourself, or of a person who has given explicit consent. Uploading photos of minors or of any person without their consent is strictly forbidden. The image is processed into a "Character Sheet" and stored in encrypted storage for up to 90 days for reuse, after which it is automatically deleted. See the Privacy Policy for full details.',
+          h: '5. "Star Yourself" — Face Photos & Biometric Data',
+          p: 'The "Star Yourself" feature processes a face photo, which may constitute biometric data under certain laws. At upload you will be asked to actively confirm that (a) it is a photo of yourself or of a person who gave explicit, informed consent, (b) it is not of a minor, and (c) you understand it will be processed into a "Character Sheet." The image is stored encrypted in cloud storage (Cloudflare R2) for up to 90 days and then automatically deleted; it is never used to train models, never sold, and never shared. You may request immediate deletion at any time. Uploading without these permissions is forbidden and may result in account suspension. See the Privacy Policy for full details.',
         },
         {
           h: '6. Service Performance & Dynamic Adaptation',
@@ -67,7 +76,16 @@ export const MODAL_DATA = {
           h: '7. Age Restriction, AI & Third-Party Services',
           p: 'This service is intended for users aged 13 and above; purchasing a paid subscription requires you to be 18 or older, or to have guardian approval. LIFESCRIPT uses third-party AI services (Google AI, OpenRouter, and others). We are not responsible for changes in their policies. AI-generated content may contain inaccuracies; the user bears sole responsibility for how it is used.',
         },
+        {
+          h: '8. Warranty, Responsibility for Your Content & Indemnification',
+          p: 'The service is provided "AS IS," without warranty of any kind. To the maximum extent permitted by law, LIFESCRIPT shall not be liable for any indirect, consequential, or special damages, and its total liability shall not exceed the amount you actually paid in the 12 months preceding the event. You are solely responsible for any text or content you submit, and you represent that you have full rights to submit it and that it infringes no third-party right, law, or order. You agree to indemnify LIFESCRIPT against any claim, damage, or expense (including legal fees) arising from your content or your breach of these terms.',
+        },
+        {
+          h: '9. Governing Law, Changes & Contact',
+          p: 'These terms are governed by the laws of the State of Israel, with exclusive jurisdiction in Tel Aviv. We may update these terms from time to time; continued use after an update constitutes acceptance. The service operates under the name LIFESCRIPT. For any question, deletion request, or privacy matter, contact adialamo@gmail.com.',
+        },
       ],
+      summary: 'Last updated: June 2026',
     },
   },
 
@@ -76,7 +94,7 @@ export const MODAL_DATA = {
   privacy: {
     he: {
       title: 'פרטיות',
-      summary: '"הפרטיות שלך היא התסריט הכי חשוב שאנחנו מגנים עליו."',
+      summary: '"הפרטיות שלך היא התסריט הכי חשוב שאנחנו מגנים עליו." · עודכן יוני 2026',
       sections: [
         {
           h: '1. התוכן שאתה יוצר נשאר אצלך',
@@ -111,14 +129,14 @@ export const MODAL_DATA = {
           p: 'אנחנו לא מוכרים, לא משתפים ולא מעבדים את הקלטים שלך לשום מטרה פרסומית או מסחרית. LIFESCRIPT מרוויחה מהיכולת לייצר עבורך — לא ממה שאתה כותב.',
         },
         {
-          h: '9. הזכויות שלך',
-          p: 'אתה יכול לבקש בכל עת למחוק את חשבונך, את תמונות הפנים שהעלית או כל מידע אחר שאנחנו מחזיקים. פנה אלינו דרך "יומן הבמאי" או התמיכה, ונטפל בבקשתך.',
+          h: '9. הזכויות שלך ובעל המאגר',
+          p: 'אתה יכול לבקש בכל עת לעיין במידע שלך, לתקנו או למחוק את חשבונך, את תמונות הפנים שהעלית או כל מידע אחר שאנחנו מחזיקים. השירות מופעל תחת השם LIFESCRIPT, והאחראי לפניות בנושא המידע זמין במייל adialamo@gmail.com — נטפל בכל בקשה בהקדם.',
         },
       ],
     },
     en: {
       title: 'PRIVACY',
-      summary: '"Your privacy is the most important script we protect."',
+      summary: '"Your privacy is the most important script we protect." · Updated June 2026',
       sections: [
         {
           h: '1. The Content You Create Stays Yours',
@@ -153,8 +171,8 @@ export const MODAL_DATA = {
           p: "We do not sell, share, or repurpose your inputs for any advertising or commercial purpose. LIFESCRIPT profits from the ability to generate for you — not from what you write.",
         },
         {
-          h: '9. Your Rights',
-          p: 'You can request at any time to delete your account, the face photos you uploaded, or any other data we hold. Contact us via the "Director\'s Log" or support, and we will handle your request.',
+          h: '9. Your Rights & Data Controller',
+          p: 'You can request at any time to access your data, correct it, or delete your account, the face photos you uploaded, or any other data we hold. The service operates under the name LIFESCRIPT, and the person responsible for data requests is reachable at adialamo@gmail.com — we will handle every request promptly.',
         },
       ],
     },

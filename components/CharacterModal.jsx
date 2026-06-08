@@ -55,6 +55,7 @@ export default function CharacterModal({
   const [changing,  setChanging]  = useState(false); // "change photo" override
   const [fileError, setFileError] = useState('');
   const [gated,     setGated]     = useState(false); // free-tier 403
+  const [consented, setConsented] = useState(false); // biometric consent gate (pre-create)
   const fileInputRef = useRef(null);
 
   // Body scroll lock — same pattern as the Distribution Hub modal.
@@ -67,7 +68,7 @@ export default function CharacterModal({
 
   // Reset transient state whenever the modal opens.
   useEffect(() => {
-    if (isOpen) { setPicked(''); setChanging(false); setFileError(''); setGated(false); }
+    if (isOpen) { setPicked(''); setChanging(false); setFileError(''); setGated(false); setConsented(false); }
   }, [isOpen]);
 
   const handleFile = useCallback(async (file) => {
@@ -81,12 +82,14 @@ export default function CharacterModal({
       const dataUri = await fileToDownscaledDataUri(file);
       setPicked(dataUri);
       setChanging(false);
+      setConsented(false); // require fresh consent for each uploaded photo
     } catch {
       setFileError(isHebrew ? 'לא ניתן לקרוא את התמונה' : 'Could not read that image');
     }
   }, [isHebrew]);
 
   const handleCreate = useCallback(async () => {
+    if (!consented) return; // biometric consent is mandatory
     const result = await uploadCharacter(picked);
     if (result.ok) {
       setPicked(''); // fall through to the result view (shows the new sheet)
@@ -95,7 +98,7 @@ export default function CharacterModal({
     } else {
       setFileError(isHebrew ? 'משהו השתבש. נסה שוב.' : 'Something went wrong. Try again.');
     }
-  }, [picked, uploadCharacter, isHebrew]);
+  }, [picked, uploadCharacter, isHebrew, consented]);
 
   // ── View resolution ──────────────────────────────────────────────────────────
   const showLoading = status === 'loading';
@@ -206,6 +209,25 @@ export default function CharacterModal({
                     ? 'ניצור גיליון דמות מסוגנן מהתמונה (לוקח כ-15 שניות).'
                     : "We'll craft a stylized character sheet from this (~15s)."}
                 </p>
+
+                {/* Biometric consent gate — required before any face upload */}
+                <button
+                  type="button"
+                  onClick={() => setConsented(v => !v)}
+                  aria-pressed={consented}
+                  className="w-full flex items-start gap-2.5 text-right rtl:text-right ltr:text-left p-3 rounded-xl bg-white/[0.03] border border-white/[0.07] hover:border-[#d4a373]/30 transition-colors"
+                >
+                  <span className={`mt-[1px] shrink-0 w-4 h-4 rounded-[5px] border flex items-center justify-center transition-all duration-150
+                    ${consented ? 'bg-[#d4a373] border-[#d4a373]' : 'bg-transparent border-white/25'}`}>
+                    {consented && <Check size={11} className="text-black" />}
+                  </span>
+                  <span className="text-gray-400 text-[10px] leading-relaxed">
+                    {isHebrew
+                      ? 'אני מאשר/ת שזו תמונה שלי או של אדם שנתן הסכמה מפורשת, שאינה של קטין, ושהיא תעובד כמידע ביומטרי ליצירת גיליון דמות בהתאם לתנאי השימוש ומדיניות הפרטיות.'
+                      : 'I confirm this is a photo of me or of someone who gave explicit consent, that it is not of a minor, and that it will be processed as biometric data to create a character sheet per the Terms and Privacy Policy.'}
+                  </span>
+                </button>
+
                 <div className="flex gap-2 w-full">
                   <button
                     onClick={() => setPicked('')}
@@ -215,7 +237,8 @@ export default function CharacterModal({
                   </button>
                   <button
                     onClick={handleCreate}
-                    className="flex-[1.5] py-3 rounded-2xl bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2"
+                    disabled={!consented}
+                    className="flex-[1.5] py-3 rounded-2xl bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Sparkles size={14} /> {isHebrew ? 'צור דמות' : 'Create character'}
                   </button>
