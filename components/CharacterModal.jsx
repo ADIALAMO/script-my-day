@@ -90,7 +90,7 @@ export default function CharacterModal({
 
   const handleCreate = useCallback(async () => {
     if (!consented) return; // biometric consent is mandatory
-    const result = await uploadCharacter(picked);
+    const result = await uploadCharacter(picked, consented);
     if (result.ok) {
       setPicked(''); // fall through to the result view (shows the new sheet)
     } else if (result.code === 'NEEDS_PRO') {
