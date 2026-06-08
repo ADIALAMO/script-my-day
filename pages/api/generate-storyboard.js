@@ -314,6 +314,21 @@ export default async function handler(req, res) {
       }
     }
 
+    // ── Global activity counters (all tiers) — powers /api/admin/stats ─────────
+    // Outside the quota guard so Pro/admin comics are counted too. One storyboard
+    // = one comic (the single consumption point for the whole comic flow).
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const dayKey = `stats:comic:global:${today}`;
+      const pipeline = redis.pipeline();
+      pipeline.incr(dayKey);
+      pipeline.expireat(dayKey, nextMidnightUTC());
+      pipeline.incr('stats:comic:total');
+      await pipeline.exec();
+    } catch (err) {
+      console.warn(`⚠️ Comic stats counter skipped (Redis unavailable): ${err.message}`);
+    }
+
     // Resolve the effective unlock count.
     // devTier lets an admin preview the free/pro experience without affecting real quotas.
     const effectiveUnlocked = devTier

@@ -90,5 +90,17 @@ export default async function handler(req, res) {
     await redis.set(key, tier);
   }
 
+  // ── Maintain the Pro member set for the dashboard (/api/admin/stats) ────────
+  // SADD/SREM are idempotent so SCARD stays accurate no matter how often a tier
+  // is re-applied. 'admin' counts as Pro for the paying-users headline. VIPs lifted
+  // via PRO_ALLOWLIST aren't stored here (resolved at session time) — known caveat.
+  // Best-effort: a counter hiccup must never fail the actual tier write above.
+  try {
+    if (tier === 'free') await redis.srem('stats:pro:members', userId);
+    else                 await redis.sadd('stats:pro:members', userId);
+  } catch (e) {
+    console.warn(`⚠️ Pro member set update skipped (Redis): ${e.message}`);
+  }
+
   return res.status(200).json({ success: true, userId, email: resolvedEmail, tier, redisKey: key });
 }

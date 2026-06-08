@@ -6,6 +6,7 @@ import Link from 'next/link';
 import {
   Shield, Users, Activity, Check, AlertCircle,
   Loader2, ArrowLeft, RefreshCw, Film,
+  FileText, Image as ImageIcon, BookOpen, Gauge, Crown, Wallet,
 } from 'lucide-react';
 
 // ── Server-side auth gate ──────────────────────────────────────────────────────
@@ -58,8 +59,61 @@ function CircuitBadge({ status, remainingMs }) {
   );
 }
 
+// ── Big-number metric tile ──────────────────────────────────────────────────────
+function Metric({ icon: Icon, label, value, sub, accent = 'text-[#d4a373]' }) {
+  return (
+    <div className="bg-black/30 border border-white/8 rounded-xl px-4 py-4">
+      <div className="flex items-center gap-1.5 mb-2">
+        <Icon size={12} className={accent} />
+        <span className="text-[9px] uppercase tracking-[0.2em] text-white/30">{label}</span>
+      </div>
+      <div className="text-2xl font-black text-white tabular-nums leading-none">
+        {value ?? '—'}
+      </div>
+      {sub != null && <div className="text-[10px] text-white/30 font-mono mt-1.5">{sub}</div>}
+    </div>
+  );
+}
+
+// ── Budget utilisation bar (green → amber → RED as it fills) ──────────────────────
+function BudgetBar({ label, block }) {
+  const pct      = block?.pct;          // null when no budget env is configured
+  const capped   = pct != null;
+  const isHot    = capped && pct >= 90;
+  const isWarm   = capped && pct >= 70 && pct < 90;
+  const barColor = isHot ? 'bg-red-500' : isWarm ? 'bg-amber-400' : 'bg-emerald-500';
+  const txtColor = isHot ? 'text-red-400' : isWarm ? 'text-amber-400' : 'text-emerald-400';
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-widest text-white/40">{label}</span>
+        <span className={`text-[11px] font-mono font-black ${capped ? txtColor : 'text-white/30'}`}>
+          {capped ? `${pct}%` : 'no cap'}
+        </span>
+      </div>
+      <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+        {capped && (
+          <div
+            className={`h-full rounded-full transition-all ${barColor}`}
+            style={{ width: `${Math.max(2, pct)}%` }}
+          />
+        )}
+      </div>
+      <div className="flex items-center justify-between text-[10px] font-mono text-white/30">
+        <span>{block?.used ?? 0}{capped ? ` / ${block.max}` : ''} calls</span>
+        <span>${block?.usd ?? 0}{capped ? ` / $${block.budgetUsd}` : ' spent'}</span>
+      </div>
+    </div>
+  );
+}
+
 // ── Page component ─────────────────────────────────────────────────────────────
 export default function AdminDashboard({ adminEmail }) {
+  // Live stats (users / activity / budget)
+  const [stats, setStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
   // Provider health
   const [health, setHealth] = useState(null);
   const [healthLoading, setHealthLoading] = useState(true);
@@ -80,7 +134,23 @@ export default function AdminDashboard({ adminEmail }) {
       });
   }, []);
 
-  useEffect(() => { fetchHealth(); }, [fetchHealth]);
+  const fetchStats = useCallback(() => {
+    setStatsLoading(true);
+    fetch('/api/admin/stats')
+      .then(r => r.json())
+      .then(data => { setStats(data); setStatsLoading(false); })
+      .catch(err => { setStats({ _error: err.message }); setStatsLoading(false); });
+  }, []);
+
+  const refreshAll = useCallback(() => { fetchHealth(); fetchStats(); }, [fetchHealth, fetchStats]);
+
+  // Initial load + 30s auto-refresh for a live, real-time feel. The stats endpoint
+  // is O(1) (one mget + one scard + one OpenRouter ping) so polling is cheap.
+  useEffect(() => {
+    refreshAll();
+    const id = setInterval(refreshAll, 30_000);
+    return () => clearInterval(id);
+  }, [refreshAll]);
 
   const handleSetTier = async (e) => {
     e.preventDefault();
@@ -155,6 +225,104 @@ export default function AdminDashboard({ adminEmail }) {
         </header>
 
         <main className="max-w-3xl mx-auto px-6 py-10 space-y-6">
+
+          {/* ── Live toolbar ─────────────────────────────────────────────── */}
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-black">
+                Live · auto-refresh 30s
+              </span>
+              {stats?.timestamp && (
+                <span className="text-[10px] text-white/20 font-mono hidden sm:block">
+                  {new Date(stats.timestamp).toLocaleTimeString()}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={refreshAll}
+              disabled={statsLoading || healthLoading}
+              className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-white/25 hover:text-[#d4a373] transition-colors disabled:opacity-30"
+            >
+              <RefreshCw size={11} className={(statsLoading || healthLoading) ? 'animate-spin' : ''} />
+              Refresh
+            </button>
+          </div>
+
+          {stats?._error && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/8 border border-red-500/20 text-red-400 text-[11px] font-mono">
+              <AlertCircle size={12} className="shrink-0" /> stats: {stats._error}
+            </div>
+          )}
+          {stats && !stats._error && stats.redisOk === false && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/8 border border-amber-500/20 text-amber-400 text-[11px] font-mono">
+              <AlertCircle size={12} className="shrink-0" /> Redis unreachable — counters shown as 0.
+            </div>
+          )}
+
+          {/* ── Users ────────────────────────────────────────────────────── */}
+          <section className="bg-[#0f1117] border border-white/8 rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-2.5 px-6 py-4 border-b border-white/5">
+              <Users size={14} className="text-[#d4a373]" />
+              <h2 className="font-black text-[11px] uppercase tracking-[0.3em] text-white/70">Users</h2>
+            </div>
+            <div className="p-6 grid grid-cols-3 gap-3">
+              <Metric icon={Users} label="Total" value={stats?.users?.total} />
+              <Metric icon={Crown} label="Pro"  value={stats?.users?.pro}  accent="text-amber-400" sub="paying / VIP" />
+              <Metric icon={Users} label="Free" value={stats?.users?.free} accent="text-sky-400" />
+            </div>
+          </section>
+
+          {/* ── Activity (creations) ─────────────────────────────────────── */}
+          <section className="bg-[#0f1117] border border-white/8 rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-2.5 px-6 py-4 border-b border-white/5">
+              <Activity size={14} className="text-[#d4a373]" />
+              <h2 className="font-black text-[11px] uppercase tracking-[0.3em] text-white/70">
+                Creations <span className="text-white/25 normal-case tracking-normal">· today / all-time</span>
+              </h2>
+            </div>
+            <div className="p-6 grid grid-cols-3 gap-3">
+              <Metric icon={FileText}  label="Scripts" value={stats?.activity?.script?.today}
+                      sub={`${stats?.activity?.script?.total ?? 0} total`} />
+              <Metric icon={ImageIcon} label="Posters" value={stats?.activity?.poster?.today}
+                      sub={`${stats?.activity?.poster?.total ?? 0} total`} accent="text-fuchsia-400" />
+              <Metric icon={BookOpen}  label="Comics"  value={stats?.activity?.comic?.today}
+                      sub={`${stats?.activity?.comic?.total ?? 0} total`} accent="text-violet-400" />
+            </div>
+          </section>
+
+          {/* ── Budget & resources ───────────────────────────────────────── */}
+          <section className="bg-[#0f1117] border border-white/8 rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-2.5 px-6 py-4 border-b border-white/5">
+              <Gauge size={14} className="text-[#d4a373]" />
+              <h2 className="font-black text-[11px] uppercase tracking-[0.3em] text-white/70">
+                Daily Budget <span className="text-white/25 normal-case tracking-normal">· resets midnight UTC</span>
+              </h2>
+            </div>
+            <div className="p-6 space-y-6">
+              <BudgetBar label="Paid image spend"  block={stats?.budget?.image} />
+              <BudgetBar label="Identity spend"    block={stats?.budget?.identity} />
+
+              {/* Live OpenRouter prepaid balance */}
+              <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                <div className="flex items-center gap-2">
+                  <Wallet size={13} className="text-[#d4a373]" />
+                  <span className="text-[10px] uppercase tracking-widest text-white/40">OpenRouter balance</span>
+                </div>
+                {stats?.budget?.openrouter ? (
+                  <span className="text-sm font-mono font-black text-emerald-400 tabular-nums">
+                    ${stats.budget.openrouter.remaining}
+                    <span className="text-white/25 font-normal"> / ${stats.budget.openrouter.totalCredits}</span>
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-mono text-white/25">unavailable</span>
+                )}
+              </div>
+            </div>
+          </section>
 
           {/* ── User Tier Management ─────────────────────────────────────── */}
           <section className="bg-[#0f1117] border border-white/8 rounded-2xl overflow-hidden">

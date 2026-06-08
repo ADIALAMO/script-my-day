@@ -30,6 +30,9 @@ async function activatePro(userId, stripeCustomerId) {
     ops.push(redis.set(`user:stripe_customer:${userId}`, stripeCustomerId));
   }
   await Promise.all(ops);
+  // Keep the dashboard Pro member set (/api/admin/stats) in sync. Idempotent.
+  try { await redis.sadd('stats:pro:members', userId); }
+  catch (e) { console.warn(`⚠️ Pro member set add skipped (Redis): ${e.message}`); }
   if (!stripeCustomerId) {
     console.warn(`⚠️ Stripe webhook: Pro activated for ${userId} — no customer ID, billing portal disabled`);
   }
@@ -38,6 +41,8 @@ async function activatePro(userId, stripeCustomerId) {
 async function revokePro(userId) {
   // del removes the key entirely; getSessionAndTier defaults absent keys to 'free'.
   await redis.del(`user:tier:${userId}`);
+  try { await redis.srem('stats:pro:members', userId); }
+  catch (e) { console.warn(`⚠️ Pro member set remove skipped (Redis): ${e.message}`); }
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────

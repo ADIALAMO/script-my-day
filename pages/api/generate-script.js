@@ -96,6 +96,21 @@ export default async function handler(req, res) {
       }
     }
 
+    // ── Global activity counters (all tiers) — powers /api/admin/stats ─────────
+    // Outside the quota guard so Pro/admin creations are counted too. Daily key
+    // expires at midnight UTC; the :total key is cumulative. Best-effort.
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const dayKey = `stats:script:global:${today}`;
+      const pipeline = redis.pipeline();
+      pipeline.incr(dayKey);
+      pipeline.expireat(dayKey, nextMidnightUTC());
+      pipeline.incr('stats:script:total');
+      await pipeline.exec();
+    } catch (err) {
+      console.warn(`⚠️ Script stats counter skipped (Redis unavailable): ${err.message}`);
+    }
+
     return res.status(200).json({
       success: true,
       script: result.output,

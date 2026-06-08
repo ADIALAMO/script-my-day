@@ -9,6 +9,8 @@ import {
   getOpenProviders,
   recordFailure,
   recordSuccess,
+  paidImageBudgetReached,
+  recordPaidImage,
 } from '../../lib/circuit-breaker.js';
 import {
   grokImageFromReference,
@@ -306,7 +308,11 @@ export default async function handler(req, res) {
   }
 
   const trackUsage = async () => {
-    if (!isAdmin && !isComic && usageKey && posterLimit !== Infinity) {
+    if (isComic) return; // comic panels are counted by generate-storyboard.js — never here
+    const today = new Date().toISOString().split('T')[0];
+
+    // Per-user daily quota — only finite-quota non-admin tiers consume a credit.
+    if (!isAdmin && usageKey && posterLimit !== Infinity) {
       try {
         const pipeline = redis.pipeline();
         pipeline.incr(usageKey);
@@ -315,6 +321,18 @@ export default async function handler(req, res) {
       } catch (e) {
         console.warn(`⚠️ Poster quota increment skipped (Redis unavailable): ${e.message}`);
       }
+    }
+
+    // ── Global activity counters (all tiers) — powers /api/admin/stats ─────────
+    try {
+      const dayKey = `stats:poster:global:${today}`;
+      const pipeline = redis.pipeline();
+      pipeline.incr(dayKey);
+      pipeline.expireat(dayKey, nextMidnightUTC());
+      pipeline.incr('stats:poster:total');
+      await pipeline.exec();
+    } catch (e) {
+      console.warn(`⚠️ Poster stats counter skipped (Redis unavailable): ${e.message}`);
     }
   };
 
@@ -355,14 +373,27 @@ export default async function handler(req, res) {
 
   // Filter the cascade to providers that are not currently circuit-open.
   // Falls back to the full cascade when Redis is unavailable (getOpenProviders returns empty Set).
+  // Additionally drop the ONLY paid faceless provider (OpenRouter Klein) once the global daily
+  // image budget is hit — overflow then falls straight through to the free providers so a viral
+  // day can never produce an OpenRouter billing surprise. Identity providers are governed
+  // separately by DAILY_IDENTITY_BUDGET (lib/identity.js).
+  const paidImageCapped = await paidImageBudgetReached(redis);
   const openProviders  = await getOpenProviders(redis);
-  const activeCascade  = cascade.filter((fn) => !openProviders.has(PROVIDER_KEY[fn.name]));
+  const activeCascade  = cascade.filter((fn) => {
+    if (openProviders.has(PROVIDER_KEY[fn.name])) return false;
+    if (paidImageCapped && fn.name === 'runOpenRouterKlein') return false;
+    return true;
+  });
   const liveCascade    = activeCascade.length ? activeCascade : cascade;
 
   for (const provider of liveCascade) {
     try {
       const result = await provider(finalPrompt, seed, { characterImageUrl });
       await recordSuccess(redis, PROVIDER_KEY[provider.name]);
+      // Count every successful PAID faceless call toward the daily image budget so the
+      // kill-switch above can trip once DAILY_IMAGE_BUDGET is reached. Klein is the only
+      // paid provider in the faceless cascade (identity spend is metered separately).
+      if (provider.name === 'runOpenRouterKlein') await recordPaidImage(redis);
       await trackUsage();
       // Consume an identity credit ONLY when the winning provider actually applied
       // the face — a degraded (faceless) result must not cost the user a credit.
