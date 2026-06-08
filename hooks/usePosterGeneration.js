@@ -5,7 +5,6 @@ import { getMsg, CODES } from '../lib/messages.js';
 import { getGenreLabel } from '../constants/genres.js';
 import { useRotatingMessages } from './useRotatingMessages.js';
 import { shareBlob, downloadBlob, exportCapabilities } from '../utils/export-image.js';
-import { withUtmMedium } from '../utils/referral-link.js';
 
 const POSTER_MESSAGES_HE = [
   'מנתח את האסתטיקה של התסריט...',
@@ -229,10 +228,14 @@ export function usePosterGeneration({
         if (!ok && posterUrl) window.open(posterUrl, '_blank');
         return;
       }
-      const link = referralLinkRef.current ? withUtmMedium(referralLinkRef.current, 'poster_share') : null;
-      const caption = isHebrew ? 'נוצר ב-LIFESCRIPT 🎬 צרו את שלכם:' : 'Made with LIFESCRIPT 🎬 Create yours:';
-      const text = link ? `${caption} ${link}` : (isHebrew ? 'נוצר ב-LIFESCRIPT 🎬' : 'Made with LIFESCRIPT 🎬');
-      const shared = await shareBlob(blob, filename, posterTitle || 'My Poster', { lang, text });
+      // CRITICAL (iOS share behaviour): WhatsApp / iMessage downgrade a file share to a
+      // *link card* — dropping the image entirely — the instant the share text contains a
+      // URL. The poster image is the whole point of the share, so we send a clean caption
+      // with NO URL. Share-loop attribution is preserved by the bilingual `lifescript.app`
+      // watermark burned into the image (see compositeWatermark in utils/export-image.js);
+      // the clickable, coded referral link has its own dedicated path in ReferralModal.
+      const caption = isHebrew ? 'נוצר ב-LIFESCRIPT 🎬' : 'Made with LIFESCRIPT 🎬';
+      const shared = await shareBlob(blob, filename, posterTitle || 'My Poster', { lang, text: caption });
       if (!shared && posterUrl) window.open(posterUrl, '_blank');
     } catch (err) {
       console.error('Poster capture error:', err);

@@ -90,6 +90,11 @@ export default function UpgradeModal({ isOpen, onClose, lang = 'en' }) {
       // Show a brief "Redirecting…" state so the user knows something is
       // happening before the page navigates away.
       setCheckoutState('redirecting');
+      // Mark this as a billing round-trip so index.js's pageshow guard knows to
+      // force a clean reload when the user returns from Stripe (the bfcache restore
+      // would otherwise leave this modal stuck on 'redirecting'). Scoped to billing
+      // so it never fires on an ordinary PWA background→foreground restore.
+      try { sessionStorage.setItem('ls_checkout_pending', '1'); } catch {}
       window.location.href = data.url;
 
     } catch (err) {

@@ -66,6 +66,10 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, 
         return;
       }
       // Keep loading active through the navigation so there's no janky reset.
+      // Flag the billing round-trip so index.js's pageshow guard reloads cleanly
+      // on return from the Stripe portal (and only then — never on a bare PWA
+      // foreground restore, which would read as a session loss).
+      try { sessionStorage.setItem('ls_checkout_pending', '1'); } catch {}
       window.location.href = data.url;
     } catch {
       setPortalError(isHe ? 'שגיאת רשת — נסה שוב.' : 'Network error. Please try again.');

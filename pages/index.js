@@ -483,17 +483,28 @@ function HomePage() {
         ]
       : [];
 
-    // ── bfcache (Back-Forward Cache) guard ───────────────────────────────────
+    // ── bfcache (Back-Forward Cache) guard — Stripe round-trip ONLY ───────────
     // When the user leaves for Stripe, modern browsers freeze this page in
-    // bfcache. Stripe then redirects back — some browsers restore the frozen
-    // page instead of doing a fresh load, preserving React state exactly as it
-    // was: UpgradeModal open, checkoutState='redirecting', close button hidden,
-    // backdrop click disabled. The result is a fully blocked UI.
+    // bfcache. On return (Stripe redirect OR the browser Back button) some
+    // browsers restore the frozen page instead of doing a fresh load, preserving
+    // React state exactly as it was: UpgradeModal open, checkoutState='redirecting',
+    // close button hidden, backdrop click disabled. The result is a blocked UI.
     //
-    // The fix: when pageshow fires with persisted=true (bfcache restore),
-    // force a clean reload so all state resets and URL params are processed.
+    // The fix is to force a clean reload on that restore — BUT it must be scoped
+    // to the billing round-trip. In an iOS standalone PWA the WKWebView freezes
+    // the page on background and fires `pageshow` with persisted=true on EVERY
+    // foreground restore (app-switch, keyboard, returning to the Waitlist modal…).
+    // A blanket reload there triggers a cold-start WKWebView session fetch that
+    // reads as a logout — the "joining the waitlist logs me out" bug. We therefore
+    // only reload when a billing navigation actually set the pending flag below.
     function handlePageShow(event) {
-      if (event.persisted) window.location.reload();
+      if (!event.persisted) return;
+      try {
+        if (sessionStorage.getItem('ls_checkout_pending')) {
+          sessionStorage.removeItem('ls_checkout_pending');
+          window.location.reload();
+        }
+      } catch { /* sessionStorage unavailable — never reload on a bare restore */ }
     }
 
     window.addEventListener('pageshow', handlePageShow);
