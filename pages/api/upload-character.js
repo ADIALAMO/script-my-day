@@ -38,7 +38,14 @@ export default async function handler(req, res) {
 
   try {
     const isAdmin = isAdminRequest(req);
-    const { selfieBase64 } = req.body || {};
+    const { selfieBase64, consent } = req.body || {};
+
+    // (0) Biometric consent — mandatory before any face is processed/stored.
+    // The client gates this in CharacterModal; enforce it server-side too so a
+    // face is never persisted without a recorded affirmative consent.
+    if (consent !== true) {
+      return res.status(400).json({ success: false, code: CODES.CONSENT_REQUIRED });
+    }
 
     // (1) Tier gate — identity requires at least the free lifetime allowance (anonymous = 0).
     let identifier = 'admin';
@@ -105,6 +112,7 @@ export default async function handler(req, res) {
       const pipe = redis.pipeline();
       pipe.set(`character:${identifier}`, JSON.stringify({
         url: rawUrl, styledUrl, createdAt: Math.floor(stamp / 1000), status: 'ready',
+        consentAt: Math.floor(stamp / 1000), // biometric consent recorded with the asset (BIPA/GDPR audit trail)
       }));
       pipe.expireat(`character:${identifier}`, ninetyDays);
       await pipe.exec();
