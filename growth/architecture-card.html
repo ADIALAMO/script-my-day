@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LIFESCRIPT · Architecture Card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;800;900&family=Secular+One&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --gold:#d4a373; --gold-lite:#f5c97a; --bg:#070810; }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html,body{ min-height:100%; background:#000; color:#fff; font-family:'Heebo',system-ui,sans-serif; }
+  body{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; padding:26px; min-height:100vh; }
+
+  /* The card you screenshot (16:10, crisp) */
+  .card{ width:min(1120px, 100%); aspect-ratio:16/10; background:
+      radial-gradient(120% 100% at 100% 0%, rgba(212,163,115,.10) 0%, transparent 45%),
+      radial-gradient(120% 100% at 0% 100%, rgba(80,60,160,.12) 0%, transparent 50%), var(--bg);
+    border:1px solid rgba(212,163,115,.22); border-radius:26px; overflow:hidden; position:relative;
+    box-shadow:0 30px 100px rgba(0,0,0,.7); padding:clamp(20px,3.4vw,40px); display:flex; flex-direction:column; }
+  .card::before{ content:""; position:absolute; top:0; inset-inline:0; height:1px; background:linear-gradient(90deg,transparent,rgba(212,163,115,.6),transparent); }
+
+  .top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:clamp(14px,2.4vw,26px); }
+  .brand .l1{ font-weight:900; font-style:italic; letter-spacing:.16em; color:var(--gold); font-size:clamp(14px,1.7vw,20px); }
+  .brand .l2{ font-weight:800; letter-spacing:.34em; color:rgba(255,255,255,.45); font-size:clamp(8px,.95vw,11px); margin-top:2px; }
+  .cc{ font-family:'JetBrains Mono',monospace; font-size:clamp(9px,1.05vw,12px); color:rgba(255,255,255,.4);
+    border:1px solid rgba(255,255,255,.12); border-radius:999px; padding:5px 12px; }
+
+  h1{ font-family:'Secular One'; font-size:clamp(20px,2.9vw,38px); line-height:1.05; margin-bottom:clamp(16px,2.6vw,28px); }
+  h1 .g{ color:var(--gold-lite); }
+
+  .rows{ display:flex; flex-direction:column; gap:clamp(12px,1.8vw,20px); flex:1; justify-content:center; }
+  .row{ display:flex; align-items:center; gap:clamp(8px,1vw,12px); flex-wrap:nowrap; }
+  .tag{ font-family:'Secular One'; font-size:clamp(11px,1.25vw,15px); letter-spacing:.06em; width:clamp(58px,6vw,82px); shrink:0;
+    color:#0b0b0f; background:linear-gradient(135deg,var(--gold-lite),var(--gold)); border-radius:9px; padding:7px 4px; text-align:center; }
+  .tag.img{ background:linear-gradient(135deg,#8fd6ff,#46a8e6); }
+  .chips{ display:flex; align-items:center; gap:clamp(5px,.7vw,9px); flex:1; min-width:0; flex-wrap:nowrap; }
+  .chip{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:clamp(9px,1.05vw,13px); color:#eee;
+    background:rgba(255,255,255,.05); border:1px solid rgba(212,163,115,.28); border-radius:10px; padding:8px clamp(7px,.9vw,12px); white-space:nowrap; }
+  .chip .sub{ display:block; font-weight:500; font-size:.72em; color:rgba(255,255,255,.4); margin-top:1px; }
+  .arrow{ color:var(--gold); font-weight:900; font-size:clamp(12px,1.3vw,17px); opacity:.7; }
+  .win{ font-family:'JetBrains Mono',monospace; font-size:clamp(8px,.95vw,11px); color:var(--gold); white-space:nowrap; opacity:.85; }
+
+  .breaker{ margin-top:clamp(16px,2.6vw,26px); border:1px dashed rgba(212,163,115,.4); border-radius:16px;
+    padding:clamp(12px,1.8vw,18px) clamp(14px,2vw,22px); background:rgba(212,163,115,.05); display:flex; gap:14px; align-items:flex-start; }
+  .breaker .ic{ font-size:clamp(18px,2.2vw,26px); line-height:1; }
+  .breaker .tx b{ font-family:'Secular One'; color:var(--gold-lite); font-size:clamp(12px,1.4vw,17px); }
+  .breaker .tx p{ font-size:clamp(10px,1.15vw,14px); color:rgba(255,255,255,.7); line-height:1.5; margin-top:3px; }
+  .breaker code{ font-family:'JetBrains Mono',monospace; color:var(--gold); font-size:.92em; }
+
+  .foot{ margin-top:clamp(12px,2vw,20px); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  .foot .res{ font-size:clamp(10px,1.2vw,14px); color:rgba(255,255,255,.55); }
+  .foot .res b{ color:#fff; }
+  .foot .stack{ font-family:'JetBrains Mono',monospace; font-size:clamp(8px,.95vw,11px); color:rgba(255,255,255,.35); }
+
+  .hint{ color:#6b6b78; font-size:12px; text-align:center; max-width:640px; line-height:1.5; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div class="brand">
+        <div class="l1">LIFESCRIPT</div>
+        <div class="l2">ENGINEERING NOTES</div>
+      </div>
+      <div class="cc">⌘ built with Claude Code</div>
+    </div>
+
+    <h1>Multi-Provider AI Cascade<br><span class="g">+ Circuit Breaker</span></h1>
+
+    <div class="rows">
+      <div class="row">
+        <div class="tag">TEXT</div>
+        <div class="chips">
+          <span class="chip">Gemini<span class="sub">flash race</span></span>
+          <span class="arrow">→</span>
+          <span class="chip">Gemma<span class="sub">OpenRouter</span></span>
+          <span class="arrow">→</span>
+          <span class="chip">Cohere<span class="sub">Command R+</span></span>
+          <span class="arrow">→</span>
+          <span class="chip">DeepSeek</span>
+          <span class="arrow">→</span>
+          <span class="chip">Free models</span>
+          <span class="win">↳ first success wins</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="tag img">IMAGE</div>
+        <div class="chips">
+          <span class="chip">Cloudflare<span class="sub">Flux schnell</span></span>
+          <span class="arrow">→</span>
+          <span class="chip">OpenRouter<span class="sub">Flux klein</span></span>
+          <span class="arrow">→</span>
+          <span class="chip">HuggingFace<span class="sub">FLUX.1</span></span>
+          <span class="arrow">→</span>
+          <span class="chip">Pollinations</span>
+          <span class="arrow">→</span>
+          <span class="chip">SVG fallback<span class="sub">never errors</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="breaker">
+      <div class="ic">⚡</div>
+      <div class="tx">
+        <b>Redis circuit breaker</b>
+        <p>A failing provider <b>opens</b> for a status-aware duration —
+          <code>429 → 45s</code> · <code>503 → 20s</code> · <code>402/403 → until UTC midnight</code> —
+          and is skipped automatically. <b>Fail-open</b> (Redis down ≠ users blocked). Config errors (no HTTP status) never trip it.</p>
+      </div>
+    </div>
+
+    <div class="foot">
+      <div class="res">Result: <b>near-zero downtime</b> · always runs the most-available / cheapest provider</div>
+      <div class="stack">Next.js 15 · React 19 · Vercel · Upstash Redis</div>
+    </div>
+  </div>
+
+  <div class="hint">
+    צלם מסך של הכרטיס למעלה (Cmd+Shift+4 → רווח → קליק על החלון). זום הדפדפן ל-100% או יותר לאיכות גבוהה.
+    זה הוויזואל לפוסט הטכני בקבוצת קלוד קוד — בלי לינק בגוף הפוסט.
+  </div>
+</body>
+</html>

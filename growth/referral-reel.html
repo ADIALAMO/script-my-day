@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+<title>LIFESCRIPT · Invite Friends, Earn Posters (Reel)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;800;900&family=Secular+One&display=swap" rel="stylesheet">
+<style>
+  :root{ --gold:#d4a373; --gold-lite:#f5c97a; }
+  *{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; background:#000; color:#fff; font-family:'Heebo',system-ui,sans-serif; overflow:hidden; }
+  .app{ height:100%; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:14px; }
+  .fsWrap{ flex:1; width:100%; display:flex; align-items:center; justify-content:center; background:#000; min-height:0; }
+
+  .stage{ position:relative; aspect-ratio:9/16; height:min(100%, calc((100vw - 28px) * 16 / 9)); max-height:100%;
+    background:radial-gradient(120% 90% at 50% 22%, #16130f 0%, #05060a 72%); border-radius:22px; overflow:hidden;
+    box-shadow:0 30px 120px rgba(0,0,0,.85), 0 0 0 1px rgba(212,163,115,.12); user-select:none; }
+  :fullscreen .stage, :-webkit-full-screen .stage{ border-radius:0; height:min(100%, calc(100vw * 16 / 9)); }
+
+  .mesh{ position:absolute; inset:0; pointer-events:none; opacity:.5; }
+  .mesh i{ position:absolute; border-radius:50%; filter:blur(60px); }
+  .mesh .a{ width:60%; height:60%; background:rgba(212,163,115,.14); top:-12%; right:-12%; }
+  .mesh .b{ width:50%; height:50%; background:rgba(120,60,20,.16); bottom:-10%; left:-10%; }
+
+  .layer{ position:absolute; inset:0; opacity:0; transition:opacity .25s ease; }
+  .layer.on{ opacity:1; }
+
+  .brandbar{ position:absolute; top:7%; left:0; right:0; text-align:center; z-index:7; }
+  .brandbar .l1{ font-weight:900; font-style:italic; letter-spacing:.16em; color:var(--gold); font-size:clamp(13px,2.3vh,20px); }
+  .brandbar .l2{ font-weight:900; letter-spacing:.4em; color:#fff; font-size:clamp(7px,1.2vh,10px); margin-top:1px; }
+
+  /* HOOK */
+  #hook{ display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:0 8%; }
+  #hook .gift{ font-size:clamp(50px,9vh,86px); margin-bottom:8px; }
+  #hook .big{ font-family:'Secular One'; font-size:clamp(28px,6vh,52px); line-height:1.14; text-shadow:0 4px 22px rgba(0,0,0,.8); }
+  #hook .big .g{ color:var(--gold-lite); }
+  #hook .sub{ margin-top:14px; font-size:clamp(13px,2.2vh,18px); color:rgba(255,255,255,.55); font-weight:700; }
+
+  /* STEPS */
+  #steps{ display:flex; flex-direction:column; align-items:stretch; justify-content:center; padding:0 8%; gap:16px; }
+  #steps .head{ text-align:center; font-family:'Secular One'; font-size:clamp(22px,4.2vh,36px); margin-bottom:6px; }
+  #steps .head .g{ color:var(--gold-lite); }
+  .step{ display:flex; align-items:center; gap:16px; background:rgba(0,0,0,.4); border:1px solid rgba(212,163,115,.22);
+    border-radius:22px; padding:16px 18px; opacity:0; transform:translateY(16px); }
+  .step .ic{ shrink:0; width:clamp(46px,7vh,60px); height:clamp(46px,7vh,60px); border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:clamp(22px,3.6vh,30px); background:rgba(212,163,115,.12); border:1px solid rgba(212,163,115,.35); }
+  .step .tx b{ display:block; font-family:'Secular One'; font-size:clamp(17px,3vh,24px); color:#fff; }
+  .step .tx span{ font-size:clamp(12px,2vh,15px); color:rgba(255,255,255,.55); }
+  .step .num{ margin-inline-start:auto; font-family:'Secular One'; font-size:clamp(20px,3.4vh,28px); color:var(--gold); }
+
+  /* REWARD */
+  #reward{ display:flex; align-items:center; justify-content:center; }
+  #fan{ position:absolute; inset:0; }
+  #fan img{ position:absolute; top:50%; left:50%; width:40%; aspect-ratio:2/3; object-fit:cover; border-radius:12px;
+    border:1px solid rgba(255,255,255,.14); box-shadow:0 18px 50px rgba(0,0,0,.75); opacity:0; transform:translate(-50%,-46%) rotate(0deg) scale(.6); }
+  .rewardWrap{ position:absolute; inset:0; z-index:5; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:0 8%;
+    background:radial-gradient(120% 70% at 50% 50%, rgba(5,6,10,.18) 0%, rgba(5,6,10,.74) 78%); }
+  .rewardWrap .lbl{ font-weight:900; letter-spacing:.12em; color:rgba(255,255,255,.7); font-size:clamp(13px,2.3vh,18px); }
+  .rewardWrap .count{ font-family:'Secular One'; font-size:clamp(90px,20vh,200px); line-height:.9; color:var(--gold-lite); text-shadow:0 8px 40px rgba(212,163,115,.4); }
+  .rewardWrap .unit{ font-family:'Secular One'; font-size:clamp(22px,4.4vh,38px); color:#fff; margin-top:2px; }
+  .rewardWrap .unit .g{ color:var(--gold); }
+
+  /* CTA */
+  #cta{ display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:0 8%; gap:7px; }
+  #cta .gift{ font-size:clamp(40px,7vh,64px); }
+  #cta .lead{ font-family:'Secular One'; font-size:clamp(28px,6vh,52px); line-height:1.06; text-shadow:0 4px 22px #000; }
+  #cta .lead .g{ color:var(--gold-lite); }
+  #cta .way{ margin-top:6px; font-size:clamp(13px,2.2vh,18px); color:rgba(255,255,255,.6); font-weight:700; }
+  #cta .pill{ margin-top:10px; font-weight:900; font-size:clamp(16px,3vh,26px); color:#0b0b0f;
+    background:linear-gradient(135deg,var(--gold-lite),var(--gold)); padding:11px 28px; border-radius:999px; box-shadow:0 10px 30px rgba(212,163,115,.45); }
+
+  /* FX */
+  #flash{ position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:8; }
+  #grain{ position:absolute; inset:-50%; opacity:.06; pointer-events:none; mix-blend-mode:overlay; z-index:7;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"); }
+  #ticks{ position:absolute; top:3.5%; left:6%; right:6%; height:3px; display:flex; gap:4px; z-index:9; }
+  #ticks i{ flex:1; background:rgba(255,255,255,.16); border-radius:3px; overflow:hidden; }
+  #ticks i b{ display:block; height:100%; width:0; background:var(--gold); }
+
+  .controls{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center; }
+  .btn{ font-family:'Heebo'; font-weight:800; font-size:13px; color:#fff; background:#15151c; border:1px solid #2a2a35; padding:9px 14px; border-radius:12px; cursor:pointer; transition:.15s; }
+  .btn:hover{ border-color:var(--gold); color:var(--gold); }
+  .btn.primary{ background:linear-gradient(135deg,var(--gold-lite),var(--gold)); color:#0b0b0f; border:none; }
+  .hint{ color:#6b6b78; font-size:11px; text-align:center; max-width:600px; line-height:1.5; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="fsWrap" id="fsWrap">
+      <div class="stage" id="stage">
+        <div class="mesh"><i class="a"></i><i class="b"></i></div>
+
+        <!-- HOOK -->
+        <div class="layer on" id="hook">
+          <div class="gift">🎁</div>
+          <div class="big">פוסטרים <span class="g">חינם</span><br>עם הפנים שלך?</div>
+          <div class="sub">המבצע הכי שווה שיש 👇</div>
+        </div>
+
+        <!-- STEPS -->
+        <div class="layer" id="steps">
+          <div class="head">איך מרוויחים? <span class="g">3 צעדים</span></div>
+          <div class="step" id="st1">
+            <div class="ic">📲</div>
+            <div class="tx"><b>שתף את הקישור שלך</b><span>מתוך "הזמן חברים" באפליקציה</span></div>
+            <div class="num">1</div>
+          </div>
+          <div class="step" id="st2">
+            <div class="ic">🙌</div>
+            <div class="tx"><b>חבר מצטרף ויוצר פוסטר</b><span>הפוסטר הראשון שלו — וזהו</span></div>
+            <div class="num">2</div>
+          </div>
+          <div class="step" id="st3">
+            <div class="ic">⭐</div>
+            <div class="tx"><b>אתה מקבל פוסטר חינם</b><span>"לככב בסיפור" — עם הפנים שלך</span></div>
+            <div class="num">3</div>
+          </div>
+        </div>
+
+        <!-- REWARD counter + fanning posters -->
+        <div class="layer" id="reward">
+          <div id="fan"></div>
+          <div class="rewardWrap">
+            <div class="lbl">פוסטרים שהרווחת</div>
+            <div class="count" id="count">0</div>
+            <div class="unit">פוסטרים <span class="g">חינם</span> ⭐</div>
+          </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="layer" id="cta">
+          <div class="gift">🎁</div>
+          <div class="lead">הזמן חברים,<br>קבל <span class="g">פוסטרים</span></div>
+          <div class="way">תפריט החשבון ← "הזמן חברים"</div>
+          <div class="pill">נסו חינם · לינק בביו</div>
+        </div>
+
+        <div class="brandbar"><div class="l1">LIFESCRIPT</div><div class="l2">STUDIO</div></div>
+        <div id="grain"></div>
+        <div id="flash"></div>
+        <div id="ticks"><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn primary" id="play">🔊 הפעל סאונד</button>
+      <button class="btn" id="restart">↺ מהתחלה</button>
+      <button class="btn" id="fs">⛶ מסך מלא</button>
+    </div>
+    <div class="hint">
+      מבצע הרפרל: שתף → חבר יוצר פוסטר ראשון → אתה מקבל פוסטר "לככב בסיפור" חינם. לחץ <b>מסך מלא</b>, הקלט סבב שלם (~15ש'), הוסף סאונד טרנדי בטיקטוק.
+    </div>
+  </div>
+
+<script>
+(() => {
+  // Real Star-Yourself posters (verified starYourself:true) — fan out as rewards
+  const POSTERS=['../public/gallery/sample-26.png','../public/gallery/sample-22.png','../public/gallery/sample-25.png','../public/gallery/sample-27.png'];
+  POSTERS.forEach(s=>{ const im=new Image(); im.src=s; });
+
+  const el=id=>document.getElementById(id);
+  const layers={hook:el('hook'),steps:el('steps'),reward:el('reward'),cta:el('cta')};
+  const steps=[el('st1'),el('st2'),el('st3')], countEl=el('count'), fan=el('fan'),
+        flash=el('flash'), ticks=[...document.querySelectorAll('#ticks b')];
+
+  // build fan poster nodes (rotations spread)
+  const rots=[-18,-6,6,18], offs=[-78,-26,26,78];
+  const fanImgs=POSTERS.map((src,i)=>{ const im=document.createElement('img'); im.src=src;
+    im.dataset.rot=rots[i]; im.dataset.off=offs[i]; fan.appendChild(im); return im; });
+
+  // Timeline (ms), loops — tightened to 15s for higher TikTok completion + faster loop
+  const HOOK=2500, STEPS=8000, REWARD=12000, DUR=15000;
+  const STEP_AT=[2700,4200,5700];                 // when each step pops in
+  const REWARD_AT=[8300,9000,9700,10400];         // each +1 credit / poster reveal
+
+  function show(name){ for(const k in layers) layers[k].classList.toggle('on', k===name); }
+
+  // ---------- WebAudio ----------
+  let actx=null, master=null, soundOn=false;
+  function aInit(){ if(actx) return; actx=new (window.AudioContext||window.webkitAudioContext)();
+    master=actx.createGain(); master.gain.value=.9; master.connect(actx.destination); }
+  function pop(t,gain=1){ const o=actx.createOscillator(), g=actx.createGain();
+    o.frequency.setValueAtTime(180,t); o.frequency.exponentialRampToValueAtTime(60,t+.12);
+    g.gain.setValueAtTime(gain,t); g.gain.exponentialRampToValueAtTime(.001,t+.2); o.connect(g); g.connect(master); o.start(t); o.stop(t+.22); }
+  function ding(t){ // bright coin/reward
+    [880,1320].forEach((f,i)=>{ const o=actx.createOscillator(), g=actx.createGain();
+      o.type='triangle'; o.frequency.setValueAtTime(f,t+i*0.04);
+      g.gain.setValueAtTime(.0001,t+i*0.04); g.gain.exponentialRampToValueAtTime(.35,t+i*0.04+.01); g.gain.exponentialRampToValueAtTime(.001,t+i*0.04+.35);
+      o.connect(g); g.connect(master); o.start(t+i*0.04); o.stop(t+i*0.04+.4); }); }
+  function swish(t){ const b=actx.createBuffer(1,actx.sampleRate*0.3,actx.sampleRate); const d=b.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; const s=actx.createBufferSource(); s.buffer=b;
+    const bp=actx.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=1; bp.frequency.setValueAtTime(400,t); bp.frequency.exponentialRampToValueAtTime(5000,t+.28);
+    const g=actx.createGain(); g.gain.setValueAtTime(.001,t); g.gain.linearRampToValueAtTime(.32,t+.2); g.gain.linearRampToValueAtTime(.001,t+.3);
+    s.connect(bp); bp.connect(g); g.connect(master); s.start(t); s.stop(t+.3); }
+  el('play').addEventListener('click', async ()=>{ aInit(); try{ await actx.resume(); }catch(_){}
+    soundOn=!soundOn; el('play').textContent=soundOn?'🔇 השתק':'🔊 הפעל סאונד'; if(soundOn) ding(actx.currentTime+0.02); });
+
+  el('fs').addEventListener('click', ()=>{ const w=el('fsWrap');
+    if(!document.fullscreenElement){ (w.requestFullscreen||w.webkitRequestFullscreen).call(w); } else { (document.exitFullscreen||document.webkitExitFullscreen).call(document); } });
+  el('restart').addEventListener('click', ()=>{ t0=performance.now(); reset(); });
+
+  // ---------- loop ----------
+  let t0=performance.now(), prevT=0, fired={};
+  function reset(){ fired={}; }
+  function fireOnce(k, fn){ if(!fired[k]){ fired[k]=1; if(soundOn) fn(); } }
+
+  function frame(now){
+    let t=(now-t0)%DUR; if(t<prevT) reset(); prevT=t;
+    const segs=[[0,HOOK],[HOOK,STEPS],[STEPS,REWARD],[REWARD,DUR]];
+    segs.forEach((s,i)=>{ ticks[i].style.width=(Math.max(0,Math.min(1,(t-s[0])/(s[1]-s[0])))*100)+'%'; });
+
+    if(t<HOOK){ show('hook'); flash.style.opacity=0; }
+    else if(t<STEPS){
+      show('steps'); flash.style.opacity=0;
+      STEP_AT.forEach((at,i)=>{ const k=Math.max(0,Math.min(1,(t-at)/300));
+        steps[i].style.opacity=k; steps[i].style.transform=`translateY(${16*(1-k)}px)`;
+        if(t>=at && t<at+60) fireOnce('step'+i, ()=>pop(actx.currentTime,.9)); });
+    }
+    else if(t<REWARD){
+      show('reward'); fireOnce('rw', ()=>swish(actx.currentTime));
+      let c=0; REWARD_AT.forEach((at,i)=>{ if(t>=at){ c=i+1;
+        const k=Math.min(1,(t-at)/350); const im=fanImgs[i];
+        im.style.opacity=Math.min(1,(t-at)/250);
+        im.style.transform=`translate(-50%,-46%) translateX(${im.dataset.off*0.9}px) rotate(${im.dataset.rot}deg) scale(${0.6+0.42*k})`;
+        fireOnce('rew'+i, ()=>{ ding(actx.currentTime); flash.style.opacity=.3; });
+      }});
+      countEl.textContent=c;
+      // ease the micro-flash back down
+      flash.style.opacity=Math.max(0, parseFloat(flash.style.opacity||0)-0.04);
+    }
+    else{
+      show('cta'); flash.style.opacity=0; fireOnce('cta', ()=>ding(actx.currentTime));
+      const k=(t-REWARD)/(DUR-REWARD); el('cta').querySelector('.pill').style.transform=`scale(${1+0.03*Math.sin(k*Math.PI*6)})`;
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+<title>LIFESCRIPT · How It Works (Explainer Reel)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;800;900&family=Secular+One&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --gold:#d4a373; --gold-lite:#f5c97a; }
+  *{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; background:#000; color:#fff; font-family:'Heebo',system-ui,sans-serif; overflow:hidden; }
+  .app{ height:100%; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:14px; }
+  .fsWrap{ flex:1; width:100%; display:flex; align-items:center; justify-content:center; background:#000; min-height:0; }
+
+  .stage{ position:relative; aspect-ratio:9/16; height:min(100%, calc((100vw - 28px) * 16 / 9)); max-height:100%;
+    background:radial-gradient(120% 90% at 50% 22%, #14131a 0%, #05060a 72%); border-radius:22px; overflow:hidden;
+    box-shadow:0 30px 120px rgba(0,0,0,.85), 0 0 0 1px rgba(212,163,115,.12); user-select:none; }
+  :fullscreen .stage, :-webkit-full-screen .stage{ border-radius:0; height:min(100%, calc(100vw * 16 / 9)); }
+
+  .mesh{ position:absolute; inset:0; pointer-events:none; opacity:.5; }
+  .mesh i{ position:absolute; border-radius:50%; filter:blur(60px); }
+  .mesh .a{ width:55%; height:55%; background:rgba(120,40,140,.18); top:-8%; right:-10%; }
+  .mesh .b{ width:50%; height:50%; background:rgba(40,70,150,.16); bottom:-8%; left:-10%; }
+
+  .layer{ position:absolute; inset:0; opacity:0; transition:opacity .25s ease; display:flex; flex-direction:column; }
+  .layer.on{ opacity:1; }
+
+  /* brand bar */
+  .brandbar{ position:absolute; top:7%; left:0; right:0; text-align:center; z-index:6; }
+  .brandbar .l1{ font-weight:900; font-style:italic; letter-spacing:.16em; color:var(--gold); font-size:clamp(13px,2.3vh,20px); }
+  .brandbar .l2{ font-weight:900; letter-spacing:.4em; color:#fff; font-size:clamp(7px,1.2vh,10px); margin-top:1px; }
+
+  /* ---------- HOOK ---------- */
+  #hook{ align-items:center; justify-content:center; text-align:center; padding:0 9%; }
+  #hook .big{ font-family:'Secular One'; font-size:clamp(30px,6.6vh,58px); line-height:1.12; text-shadow:0 4px 22px rgba(0,0,0,.8); }
+  #hook .big .g{ color:var(--gold-lite); }
+  #hook .sub{ margin-top:14px; font-size:clamp(13px,2.2vh,18px); color:rgba(255,255,255,.55); font-weight:700; }
+
+  /* ---------- step caption (shared, bottom) ---------- */
+  .stepCap{ position:absolute; bottom:11%; left:6%; right:6%; text-align:center; z-index:6;
+    font-family:'Secular One'; font-size:clamp(22px,4.4vh,38px); color:#fff; text-shadow:0 3px 18px #000; }
+  .stepCap b{ color:var(--gold); }
+
+  /* ---------- STEP 1: journal mock ---------- */
+  .pane{ position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center; padding:0 7%; gap:18px; }
+  .card{ background:rgba(0,0,0,.45); border:1px solid rgba(212,163,115,.25); border-radius:26px; padding:22px;
+    box-shadow:inset 0 2px 40px rgba(0,0,0,.6); backdrop-filter:blur(4px); }
+  .card .lbl{ display:flex; align-items:center; gap:8px; color:var(--gold); font-size:clamp(10px,1.7vh,13px); font-weight:900; letter-spacing:.25em; text-transform:uppercase; font-style:italic; margin-bottom:14px; }
+  .typed{ font-family:'Courier Prime',monospace; font-size:clamp(16px,2.9vh,24px); line-height:1.7; color:#eee; min-height:4.2em; white-space:pre-wrap; }
+  .cursor{ display:inline-block; width:.6ch; background:var(--gold); color:transparent; animation:blink 1s steps(1) infinite; }
+  @keyframes blink{ 50%{ opacity:0; } }
+  .genbtn{ margin:0 auto; background:var(--gold); color:#0b0b0f; font-weight:900; font-size:clamp(15px,2.6vh,20px);
+    padding:16px 28px; border-radius:20px; text-align:center; box-shadow:0 10px 30px rgba(212,163,115,.35); width:fit-content;
+    display:flex; align-items:center; gap:10px; }
+  /* genre chips — the choice the user makes alongside the journal */
+  .genres{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; opacity:0; transform:translateY(10px);
+    transition:opacity .28s ease, transform .28s ease; }
+  .genres.on{ opacity:1; transform:none; }
+  .chip{ font-weight:800; font-size:clamp(13px,2.2vh,18px); color:rgba(255,255,255,.82);
+    padding:9px 17px; border-radius:999px; border:1px solid rgba(212,163,115,.35); background:rgba(255,255,255,.04);
+    transition:transform .18s ease, background .18s ease, color .18s ease, box-shadow .18s ease; }
+  .chip.sel{ background:linear-gradient(135deg,var(--gold-lite),var(--gold)); color:#0b0b0f; border-color:transparent;
+    transform:scale(1.1); box-shadow:0 8px 26px rgba(212,163,115,.45); }
+
+  /* ---------- STEP 2: script ---------- */
+  #step2 .scriptHead{ position:absolute; top:11%; left:7%; right:7%; text-align:center; color:var(--gold);
+    font-size:clamp(10px,1.7vh,13px); font-weight:900; letter-spacing:.3em; text-transform:uppercase; font-style:italic; z-index:5; }
+  .screenplay{ position:absolute; top:16%; bottom:14%; left:8%; right:8%; overflow:hidden;
+    font-family:'Courier Prime',monospace; font-size:clamp(16px,3vh,25px); line-height:1.85; color:#f0f0f0; white-space:pre-wrap; text-align:right; }
+
+  /* ---------- STEP 3: poster + comic ---------- */
+  #s3bg{ position:absolute; inset:-8%; width:116%; height:116%; object-fit:cover; filter:blur(34px) brightness(.4) saturate(1.2); }
+  #s3poster{ position:absolute; top:13%; bottom:18%; left:50%; transform:translateX(-50%); height:69%; width:auto;
+    border-radius:14px; box-shadow:0 24px 60px rgba(0,0,0,.8); border:1px solid rgba(255,255,255,.12); }
+  #s3comic{ position:absolute; bottom:15%; width:30%; aspect-ratio:1; object-fit:cover; border-radius:12px;
+    border:2px solid var(--gold); box-shadow:0 14px 40px rgba(0,0,0,.7); transform:rotate(-6deg); }
+  .starbadge{ position:absolute; top:14.5%; z-index:5; font-family:'Secular One'; font-size:clamp(10px,1.6vh,13px); letter-spacing:.05em; color:#0b0b0f;
+    background:linear-gradient(135deg,var(--gold-lite),var(--gold)); padding:5px 11px; border-radius:8px; box-shadow:0 3px 12px rgba(0,0,0,.6); }
+
+  /* ---------- CTA ---------- */
+  #cta{ align-items:center; justify-content:center; text-align:center; padding:0 9%; gap:6px; }
+  #cta .lead{ font-family:'Secular One'; font-size:clamp(30px,6.4vh,56px); line-height:1.04; text-shadow:0 4px 22px #000; }
+  #cta .lead .g{ color:var(--gold-lite); }
+  #cta .arrow{ font-size:clamp(30px,6vh,52px); margin:.05em 0; }
+  #cta .pill{ margin-top:8px; font-weight:900; font-size:clamp(16px,3vh,26px); color:#0b0b0f;
+    background:linear-gradient(135deg,var(--gold-lite),var(--gold)); padding:11px 28px; border-radius:999px; box-shadow:0 10px 30px rgba(212,163,115,.45); }
+  /* fanned "hand of posters" behind the closing line */
+  #cta .ctaFan{ position:absolute; inset:0; z-index:0; pointer-events:none; }
+  #cta .ctaFan img{ position:absolute; left:50%; bottom:46%; width:31%; aspect-ratio:2/3; object-fit:cover;
+    border-radius:10px; border:1px solid rgba(255,255,255,.15); box-shadow:0 18px 50px rgba(0,0,0,.7);
+    transform-origin:50% 100%; transform:translateX(-50%); opacity:0; }
+  #cta .ctaScrim{ position:absolute; inset:0; z-index:1; pointer-events:none;
+    background:radial-gradient(120% 80% at 50% 45%, rgba(5,6,10,.32) 0%, rgba(5,6,10,.86) 70%); }
+  #cta .lead, #cta .arrow, #cta .pill{ position:relative; top:7%; z-index:2; }
+
+  /* ---------- FX ---------- */
+  #flash{ position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:8; }
+  #grain{ position:absolute; inset:-50%; opacity:.06; pointer-events:none; mix-blend-mode:overlay; z-index:7;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"); }
+  #ticks{ position:absolute; top:1.8%; left:6%; right:6%; height:3px; display:flex; gap:4px; z-index:9; }
+  #ticks i{ flex:1; background:rgba(255,255,255,.16); border-radius:3px; overflow:hidden; }
+  #ticks i b{ display:block; height:100%; width:0; background:var(--gold); }
+
+  /* controls */
+  .controls{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center; }
+  .btn{ font-family:'Heebo'; font-weight:800; font-size:13px; color:#fff; background:#15151c; border:1px solid #2a2a35; padding:9px 14px; border-radius:12px; cursor:pointer; transition:.15s; }
+  .btn:hover{ border-color:var(--gold); color:var(--gold); }
+  .btn.primary{ background:linear-gradient(135deg,var(--gold-lite),var(--gold)); color:#0b0b0f; border:none; }
+  .hint{ color:#6b6b78; font-size:11px; text-align:center; max-width:600px; line-height:1.5; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="fsWrap" id="fsWrap">
+      <div class="stage" id="stage">
+        <div class="mesh"><i class="a"></i><i class="b"></i></div>
+
+        <!-- HOOK -->
+        <div class="layer on" id="hook">
+          <div class="big">השיחה שלא העזתי לנהל<br>הפכה ל<span class="g">סרט</span> 🎬</div>
+          <div class="sub">משפט אחד ביומן. 30 שניות.</div>
+        </div>
+
+        <!-- STEP 1: journal -->
+        <div class="layer" id="step1">
+          <div class="pane">
+            <div class="card">
+              <div class="lbl">✍️ היומן שלך</div>
+              <div class="typed" id="journalTyped"></div>
+            </div>
+            <div class="genres" id="genres">
+              <span class="chip" data-g="drama">דרמה</span>
+              <span class="chip" data-g="comedy">קומדיה</span>
+              <span class="chip" data-g="action">אקשן</span>
+              <span class="chip" data-g="romance">רומנטי</span>
+              <span class="chip" data-g="scifi">מד״ב</span>
+            </div>
+            <div class="genbtn" id="genBtn">🎬 צור תסריט</div>
+          </div>
+          <div class="stepCap"><b>1.</b> ספר על היום שלך · ובחר ז'אנר 🎭</div>
+        </div>
+
+        <!-- STEP 2: script -->
+        <div class="layer" id="step2">
+          <div class="scriptHead">תסריט · רומנטי · LIFESCRIPT STUDIO</div>
+          <div class="screenplay" id="scriptTyped"></div>
+          <div class="stepCap"><b>2.</b> וזה הופך לתסריט קולנועי 🎬</div>
+        </div>
+
+        <!-- STEP 3: poster + comic -->
+        <div class="layer" id="step3">
+          <img id="s3bg" alt="" />
+          <span class="starbadge">★ אתה הכוכב</span>
+          <img id="s3poster" alt="poster" />
+          <img id="s3comic" alt="comic" />
+          <div class="stepCap"><b>3.</b> פוסטר וקומיקס — עם הפנים שלך ⭐</div>
+        </div>
+
+        <!-- CTA -->
+        <div class="layer" id="cta">
+          <div class="ctaFan" id="ctaFan"></div>
+          <div class="ctaScrim"></div>
+          <div class="lead">כל יום שלך<br>הוא <span class="g">סרט</span>.</div>
+          <div class="arrow">👇</div>
+          <div class="pill">נסו חינם · בלי הרשמה</div>
+        </div>
+
+        <div class="brandbar"><div class="l1">LIFESCRIPT</div><div class="l2">STUDIO</div></div>
+        <div id="grain"></div>
+        <div id="flash"></div>
+        <div id="ticks"><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn primary" id="play">🔊 הפעל סאונד</button>
+      <button class="btn" id="restart">↺ מהתחלה</button>
+      <button class="btn" id="fs">⛶ מסך מלא</button>
+    </div>
+    <div class="hint">
+      סרטון ההסבר: יומן → תסריט → פוסטר+קומיקס. לחץ <b>מסך מלא</b>, הקלט מסך סבב שלם (~15ש'), וחתוך ל-9:16.
+      בטיקטוק הוסף סאונד טרנדי מעל.
+    </div>
+  </div>
+
+<script>
+(() => {
+  // Real Star-Yourself assets for the payoff (verified starYourself:true in showcase.js)
+  const POSTER='../public/gallery/sample-25.png';            // שתיקות שבורות (romance, couple)
+  const COMIC ='../public/gallery/comics/sy-thriller-01.png'; // same couple at the table
+  [POSTER, COMIC].forEach(s=>{ const im=new Image(); im.src=s; });
+
+  // CTA closer: a fanned "hand of posters" (genre spread) behind the final line
+  const FAN=['sample-22','sample-27','sample-24','sample-25','sample-26','sample-29','sample-21'].map(n=>'../public/gallery/'+n+'.png');
+  const FAN_ROT=[-36,-24,-12,0,12,24,36];
+  FAN.forEach(s=>{ const im=new Image(); im.src=s; });
+
+  // Example content (Hebrew) — short so it types within the window
+  const JOURNAL = 'היום ישבנו אחד מול השני, ולראשונה דיברנו על מה שלא העזנו להגיד.';
+  const SCRIPT  = 'פנים. בית קפה — ערב.\nהיא מביטה בי מעל כוס היין.\n"למה חיכינו כל כך הרבה?"\nאני מחייך — יש שתיקות שנשברות בדיוק בזמן.';
+
+  // Timeline (ms), loops — tightened to 15s (shorter example texts keep typing readable)
+  const HOOK=2000, J_TYPE=4800, S1=6000, S_TYPE=9800, S2=10500, S3=13000, DUR=15000;
+
+  const el=id=>document.getElementById(id);
+  const layers={hook:el('hook'),step1:el('step1'),step2:el('step2'),step3:el('step3'),cta:el('cta')};
+  const journalTyped=el('journalTyped'), scriptTyped=el('scriptTyped'), genBtn=el('genBtn'),
+        s3bg=el('s3bg'), s3poster=el('s3poster'), s3comic=el('s3comic'),
+        flash=el('flash'), ticks=[...document.querySelectorAll('#ticks b')];
+  const genres=el('genres'), chips=[...document.querySelectorAll('#genres .chip')],
+        genrePick=document.querySelector('#genres .chip[data-g="romance"]');
+  s3bg.src=POSTER; s3poster.src=POSTER; s3comic.src=COMIC;
+
+  // build the CTA fan (center card on top, edges behind)
+  const ctaFan=el('ctaFan');
+  const fanCards=FAN.map((src,i)=>{ const im=document.createElement('img'); im.src=src;
+    im.style.zIndex=String(3-Math.abs(FAN_ROT[i])/15); ctaFan.appendChild(im); return im; });
+
+  function show(name){ for(const k in layers) layers[k].classList.toggle('on', k===name); }
+  const cur = '<span class="cursor">.</span>';
+
+  // ---------- WebAudio ----------
+  let actx=null, master=null, soundOn=false;
+  function aInit(){ if(actx) return; actx=new (window.AudioContext||window.webkitAudioContext)();
+    master=actx.createGain(); master.gain.value=.9; master.connect(actx.destination); }
+  function tick(t){ const b=actx.createBuffer(1,actx.sampleRate*0.04,actx.sampleRate); const d=b.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3);
+    const s=actx.createBufferSource(); s.buffer=b; const hp=actx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=4500;
+    const g=actx.createGain(); g.gain.value=.12; s.connect(hp); hp.connect(g); g.connect(master); s.start(t); }
+  function swish(t){ const b=actx.createBuffer(1,actx.sampleRate*0.3,actx.sampleRate); const d=b.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; const s=actx.createBufferSource(); s.buffer=b;
+    const bp=actx.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=1; bp.frequency.setValueAtTime(400,t); bp.frequency.exponentialRampToValueAtTime(5000,t+.28);
+    const g=actx.createGain(); g.gain.setValueAtTime(.001,t); g.gain.linearRampToValueAtTime(.35,t+.2); g.gain.linearRampToValueAtTime(.001,t+.3);
+    s.connect(bp); bp.connect(g); g.connect(master); s.start(t); s.stop(t+.3); }
+  function pop(t,gain=1){ const o=actx.createOscillator(), g=actx.createGain();
+    o.frequency.setValueAtTime(180,t); o.frequency.exponentialRampToValueAtTime(60,t+.12);
+    g.gain.setValueAtTime(gain,t); g.gain.exponentialRampToValueAtTime(.001,t+.2);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t+.22); }
+  el('play').addEventListener('click', async ()=>{ aInit(); try{ await actx.resume(); }catch(_){}
+    soundOn=!soundOn; el('play').textContent=soundOn?'🔇 השתק':'🔊 הפעל סאונד'; if(soundOn) pop(actx.currentTime+0.02,.9); });
+
+  // ---------- controls ----------
+  el('fs').addEventListener('click', ()=>{ const w=el('fsWrap');
+    if(!document.fullscreenElement){ (w.requestFullscreen||w.webkitRequestFullscreen).call(w); } else { (document.exitFullscreen||document.webkitExitFullscreen).call(document); } });
+  el('restart').addEventListener('click', ()=>{ t0=performance.now(); reset(); });
+
+  // ---------- loop ----------
+  let t0=performance.now(), prevT=0, lastJ=0, lastS=0, fired={};
+  function reset(){ lastJ=0; lastS=0; fired={}; fanCards.forEach(im=>{ im.style.opacity=0; });
+    genres.classList.remove('on'); chips.forEach(c=>c.classList.remove('sel')); }
+  function fireOnce(key, fn){ if(!fired[key]){ fired[key]=1; if(soundOn) fn(); } }
+
+  function frame(now){
+    let t=(now-t0)%DUR;
+    if(t<prevT) reset(); prevT=t;
+
+    const segs=[[0,HOOK],[HOOK,S1],[S1,S2],[S2,S3],[S3,DUR]];
+    segs.forEach((s,i)=>{ ticks[i].style.width=(Math.max(0,Math.min(1,(t-s[0])/(s[1]-s[0])))*100)+'%'; });
+
+    if(t<HOOK){ show('hook'); flash.style.opacity=0; }
+    else if(t<S1){
+      show('step1'); fireOnce('s1', ()=>swish(actx.currentTime));
+      const p=Math.max(0,Math.min(1,(t-HOOK)/(J_TYPE-HOOK)));
+      const n=Math.floor(p*JOURNAL.length);
+      journalTyped.innerHTML=JOURNAL.slice(0,n)+(p<1?cur:'');
+      if(n>lastJ){ lastJ=n; if(soundOn && n%2===0) tick(actx.currentTime); }
+      // genre chips slide in as the journal finishes, then "רומנטי" gets picked
+      // (matches the romantic script revealed in step 2) — a real choice, just before "צור".
+      if(t>J_TYPE-300) genres.classList.add('on');
+      if(t>J_TYPE+150){ genrePick.classList.add('sel'); fireOnce('genre', ()=>pop(actx.currentTime,.85)); }
+      // generate-button "press" near the end of the step
+      const press = t>S1-1200;
+      genBtn.style.transform = press ? `scale(${t>S1-350?0.94:1.06})` : 'scale(1)';
+      if(t>S1-350){ flash.style.opacity=Math.max(0,(t-(S1-350))/350*0.5); fireOnce('click', ()=>pop(actx.currentTime,1)); }
+      else flash.style.opacity=0;
+    }
+    else if(t<S2){
+      show('step2'); fireOnce('s2', ()=>swish(actx.currentTime)); flash.style.opacity=0;
+      const p=Math.max(0,Math.min(1,(t-S1)/(S_TYPE-S1)));
+      const n=Math.floor(p*SCRIPT.length);
+      scriptTyped.innerHTML=SCRIPT.slice(0,n)+(p<1?cur:'');
+      if(n>lastS){ lastS=n; if(soundOn && n%2===0) tick(actx.currentTime); }
+    }
+    else if(t<S3){
+      show('step3'); fireOnce('s3', ()=>{ swish(actx.currentTime); pop(actx.currentTime+0.18,1.1); });
+      const k=Math.min(1,(t-S2)/450); flash.style.opacity=Math.max(0,0.5-k*0.5);
+      s3poster.style.transform=`translateX(-50%) scale(${0.9+0.1*k})`;
+    }
+    else{
+      show('cta'); flash.style.opacity=0; fireOnce('cta', ()=>pop(actx.currentTime,1));
+      // fan the posters out like a hand of cards
+      fanCards.forEach((im,i)=>{
+        const e=1-Math.pow(1-Math.max(0,Math.min(1,(t-S3-i*55)/600)),3);
+        im.style.opacity=e;
+        im.style.transform=`translateX(-50%) rotate(${FAN_ROT[i]*e}deg) translateY(${-12*e}%) scale(${0.82+0.18*e})`;
+      });
+      const k=(t-S3)/(DUR-S3); el('cta').querySelector('.pill').style.transform=`scale(${1+0.03*Math.sin(k*Math.PI*6)})`;
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
