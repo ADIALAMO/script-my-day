@@ -44,6 +44,16 @@ function applyHeroCap(panels, maxHero = MAX_HERO) {
   return panels.map((p, i) => ({ ...p, hero: keep.has(i) }));
 }
 
+// Free OpenRouter last-resort net for the storyboard step (mirrors lib/story-service.js
+// Stage 5). Verified 2026-06-10; three providers so one provider's rate-limit can't
+// empty it. Only reached when Gemini AND the paid OpenRouter stage both fail — keeps a
+// comic flowing instead of returning "All storyboard engines offline".
+const FREE_STORYBOARD_MODELS = [
+  'google/gemma-4-31b-it:free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'qwen/qwen3-next-80b-a3b-instruct:free',
+];
+
 const STYLE_TRACKS = {
   anime: {
     prefix: 'Dynamic action anime style, flat cel-shading, vibrant dramatic lighting, bold ink outlines —',
@@ -158,13 +168,17 @@ async function tryGemini(staticInstruction, script, apiKey) {
   ]).catch(() => null);
   clearTimeout(hedgeTimerId);
   if (winner) return winner;
-  return runGeminiModel('gemini-flash-latest', staticInstruction, script, apiKey, 20000);
+  // Final retry: a fresh gemini-2.5-flash-lite attempt. The old 'gemini-flash-latest'
+  // alias now resolves to a "thinking" model that emits reasoning prose instead of
+  // JSON and overruns the 750-token cap (finishReason MAX_TOKENS), so extractPanels
+  // always returned null — it was dead weight (~4s wasted). flash-lite reliably
+  // respects both the budget and the JSON-only format for this constrained task.
+  return runGeminiModel('gemini-2.5-flash-lite', staticInstruction, script, apiKey, 14000);
 }
 
 // Opt 2 (OpenRouter): system role carries static instruction for providers that support prefix caching.
 // Opt 3: max_tokens calibrated to 750.
-async function tryOpenRouter(staticInstruction, script, apiKey) {
-  const models = ['google/gemma-3-27b-it', 'google/gemma-3-12b-it', 'deepseek/deepseek-chat'];
+async function tryOpenRouter(staticInstruction, script, apiKey, models = ['google/gemma-3-27b-it', 'google/gemma-3-12b-it', 'deepseek/deepseek-chat']) {
   for (const model of models) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -273,24 +287,29 @@ export default async function handler(req, res) {
     const track = STYLE_TRACKS[comicStyle || 'anime'];
     const geminiKey = process.env.GOOGLE_GEMINI_API_KEY?.trim();
     const openrouterKey = process.env.OPENROUTER_API_KEY?.trim();
+    const openrouterFreeKey = process.env.OPENROUTER_FREE_KEY?.trim();
 
     let enrichedPanels = null;
     let storyboardEngine = null;
 
+    // Style prefix/suffix are injected here (server-side) rather than in the prompt,
+    // so every engine's bare "visual" gets the same FLUX framing.
+    const enrich = (panels) => panels.map(p => ({ ...p, visual: `${track.prefix} ${p.visual} ${track.suffix}` }));
+
     if (geminiKey) {
       const panels = await tryGemini(staticInstruction, cleanScript, geminiKey);
-      if (panels) {
-        enrichedPanels = panels.map(p => ({ ...p, visual: `${track.prefix} ${p.visual} ${track.suffix}` }));
-        storyboardEngine = 'Gemini';
-      }
+      if (panels) { enrichedPanels = enrich(panels); storyboardEngine = 'Gemini'; }
     }
 
     if (!enrichedPanels && openrouterKey) {
       const panels = await tryOpenRouter(staticInstruction, cleanScript, openrouterKey);
-      if (panels) {
-        enrichedPanels = panels.map(p => ({ ...p, visual: `${track.prefix} ${p.visual} ${track.suffix}` }));
-        storyboardEngine = 'OpenRouter';
-      }
+      if (panels) { enrichedPanels = enrich(panels); storyboardEngine = 'OpenRouter'; }
+    }
+
+    // Free last-resort net — only when both paid engines above came up empty.
+    if (!enrichedPanels && openrouterFreeKey) {
+      const panels = await tryOpenRouter(staticInstruction, cleanScript, openrouterFreeKey, FREE_STORYBOARD_MODELS);
+      if (panels) { enrichedPanels = enrich(panels); storyboardEngine = 'OpenRouter (free)'; }
     }
 
     if (!enrichedPanels) {
