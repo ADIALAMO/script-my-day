@@ -41,6 +41,9 @@ export default async function handler(req, res) {
       dailyLimit = limitFor(tier, 'script');
       const today = new Date().toISOString().split('T')[0];
       usageKey    = `usage:script:${identifier}:${today}`;
+      // Guests get a sign-up nudge ("sign in for a renewing daily quota") instead of the
+      // free-tier "come back tomorrow" copy.
+      const isAnon = tier === 'anonymous';
 
       try {
         const currentUsage = await redis.get(usageKey);
@@ -48,7 +51,7 @@ export default async function handler(req, res) {
         if (dailyLimit !== Infinity && used >= dailyLimit) {
           return res.status(429).json({
             success: false,
-            code: CODES.QUOTA_SCRIPT,
+            code: isAnon ? CODES.QUOTA_SCRIPT_GUEST : CODES.QUOTA_SCRIPT,
             message: 'Daily script quota reached. Come back tomorrow.',
           });
         }

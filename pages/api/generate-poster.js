@@ -251,6 +251,7 @@ export default async function handler(req, res) {
   // against the tier's unlock limit so that direct API calls cannot bypass the paywall.
   let usageKey       = null;
   let posterLimit    = 0;
+  let isAnonPoster   = false; // anonymous poster is a LIFETIME allowance → no-expiry key, no daily reset
   let refereeUserId  = null; // set for an authed standalone-poster request → referral activation
 
   if (!isAdmin) {
@@ -280,8 +281,13 @@ export default async function handler(req, res) {
       const { tier, identifier, userId } = await getSessionAndTier(req, res);
       refereeUserId = userId; // authed → eligible to activate a pending referral on success
       posterLimit = limitFor(tier, 'poster');
+      // Anonymous = a single LIFETIME taste poster (no daily reset) so guests can try the
+      // product before committing an email. Authed tiers stay on the daily key.
+      isAnonPoster = tier === 'anonymous';
       const today = new Date().toISOString().split('T')[0];
-      usageKey    = `usage:poster:${identifier}:${today}`;
+      usageKey    = isAnonPoster
+        ? `usage:poster:lifetime:${identifier}`
+        : `usage:poster:${identifier}:${today}`;
 
       if (posterLimit === 0) {
         return res.status(403).json({
@@ -297,8 +303,10 @@ export default async function handler(req, res) {
         if (posterLimit !== Infinity && used >= posterLimit) {
           return res.status(429).json({
             success: false,
-            code: CODES.QUOTA_POSTER,
-            message: 'Daily poster quota reached. Come back tomorrow.',
+            // Guests get a sign-up nudge (renewing daily quota + the selfie hook) instead
+            // of the free-tier "come back tomorrow" copy.
+            code: isAnonPoster ? CODES.QUOTA_POSTER_GUEST : CODES.QUOTA_POSTER,
+            message: 'Poster quota reached.',
           });
         }
       } catch (e) {
@@ -311,12 +319,14 @@ export default async function handler(req, res) {
     if (isComic) return; // comic panels are counted by generate-storyboard.js — never here
     const today = new Date().toISOString().split('T')[0];
 
-    // Per-user daily quota — only finite-quota non-admin tiers consume a credit.
+    // Per-user quota — only finite-quota non-admin tiers consume a credit.
     if (!isAdmin && usageKey && posterLimit !== Infinity) {
       try {
         const pipeline = redis.pipeline();
         pipeline.incr(usageKey);
-        pipeline.expireat(usageKey, nextMidnightUTC());
+        // Anonymous poster is a LIFETIME key — never set an expiry on it. All other
+        // tiers reset at midnight UTC.
+        if (!isAnonPoster) pipeline.expireat(usageKey, nextMidnightUTC());
         await pipeline.exec();
       } catch (e) {
         console.warn(`⚠️ Poster quota increment skipped (Redis unavailable): ${e.message}`);
