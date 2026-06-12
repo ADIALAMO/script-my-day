@@ -79,6 +79,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
   const [emailState, setEmailState] = useState('idle');
   const [email, setEmail]           = useState('');
   const [emailError, setEmailError] = useState('');
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   // One relay token per sign-in attempt — generated fresh each time the modal opens.
   // Stored in a ref so it survives re-renders without causing extra renders itself.
@@ -90,8 +91,21 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
       setEmailState('idle');
       setEmail('');
       setEmailError('');
+      setGoogleLoading(false);
       relayTokenRef.current = generateRelayToken();
     }
+  }, [isOpen]);
+
+  // ── Warm the auth socket on open ───────────────────────────────────────────
+  // In iOS standalone/PWA, WKWebView kills the network process while backgrounded,
+  // so by the time the user opens this modal the auth serverless function is cold
+  // again. signIn() (both Google and email) must fetch a CSRF token first; on a cold
+  // socket that round-trip is several seconds with no feedback, making the buttons feel
+  // frozen on the first tap. Pre-firing /api/auth/csrf the instant the modal opens boots
+  // the function + opens the HTTP/2 connection so the real tap resolves fast.
+  useEffect(() => {
+    if (!isOpen) return;
+    fetch('/api/auth/csrf', { cache: 'no-store' }).catch(() => {});
   }, [isOpen]);
 
   // ── Cross-tab session watcher ─────────────────────────────────────────────
@@ -217,6 +231,11 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
   // after index.js restores '', overwriting it back to 'hidden'. Removed.
 
   const handleGoogleSignIn = () => {
+    if (googleLoading) return; // guard against double-tap during the cold-start round-trip
+    // flushSync paints the spinner before signIn()'s CSRF fetch blocks the main thread on
+    // a cold iOS socket — without it the button looks dead for the few seconds until the
+    // OAuth redirect fires (same cold-start fix as the email path below).
+    flushSync(() => setGoogleLoading(true));
     signIn('google', { callbackUrl: window.location.href });
   };
 
@@ -405,10 +424,20 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                         {/* ── Google CTA ── */}
                         <button
                           onClick={handleGoogleSignIn}
-                          className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-50 active:scale-[0.97] text-[#111] font-semibold text-[14px] px-5 py-3.5 rounded-2xl transition-all duration-150 shadow-[0_4px_20px_rgba(0,0,0,0.4)] select-none"
+                          disabled={googleLoading}
+                          className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-50 active:scale-[0.97] text-[#111] font-semibold text-[14px] px-5 py-3.5 rounded-2xl transition-all duration-150 shadow-[0_4px_20px_rgba(0,0,0,0.4)] select-none disabled:opacity-70 disabled:cursor-not-allowed touch-manipulation"
                         >
-                          <GoogleLogo />
-                          {isHe ? 'המשך עם Google' : 'Continue with Google'}
+                          {googleLoading ? (
+                            <>
+                              <Loader2 size={16} className="animate-spin" />
+                              {isHe ? 'מתחבר...' : 'Connecting…'}
+                            </>
+                          ) : (
+                            <>
+                              <GoogleLogo />
+                              {isHe ? 'המשך עם Google' : 'Continue with Google'}
+                            </>
+                          )}
                         </button>
 
                         {/* ── Divider ── */}

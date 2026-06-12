@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Gift, Copy, Check, Share2, Loader2, AlertCircle } from 'lucide-react';
 import { withUtmMedium } from '../utils/referral-link.js';
-import { shareData } from '../utils/export-image.js';
+import { shareData, exportCapabilities } from '../utils/export-image.js';
 
 /**
  * "Invite friends" modal — the referral loop entry point for signed-in users.
@@ -70,7 +70,28 @@ export default function ReferralModal({ isOpen, onClose, lang = 'en' }) {
     if (!data?.link) return;
     const msg = `${shareText} ${withUtmMedium(data.link, 'whatsapp')}`;
     trackShare('whatsapp');
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+    const encoded = encodeURIComponent(msg);
+    const webUrl  = `https://wa.me/?text=${encoded}`;
+
+    // Mobile: wa.me deep-links straight into the installed WhatsApp app — keep it.
+    if (!exportCapabilities().isDesktop) {
+      window.open(webUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    // Desktop: wa.me shows WhatsApp's "download / Continue to Chat" interstitial even when
+    // the desktop app IS installed (the MacBook complaint). The whatsapp:// protocol opens
+    // the installed app directly. If the protocol isn't registered (no app), the page stays
+    // focused, so after a short grace period we fall back to opening wa.me in a new tab.
+    let opened = false;
+    const onHide  = () => { if (document.hidden) { opened = true; cleanup(); } };
+    const cleanup = () => { document.removeEventListener('visibilitychange', onHide); clearTimeout(timer); };
+    const timer   = setTimeout(() => {
+      cleanup();
+      if (!opened && !document.hidden) window.open(webUrl, '_blank', 'noopener,noreferrer');
+    }, 1500);
+    document.addEventListener('visibilitychange', onHide);
+    window.location.href = `whatsapp://send?text=${encoded}`;
   };
 
   const modal = (
