@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Gift, Copy, Check, Share2, Loader2, AlertCircle } from 'lucide-react';
 import { withUtmMedium } from '../utils/referral-link.js';
+import { shareData } from '../utils/export-image.js';
 
 /**
  * "Invite friends" modal — the referral loop entry point for signed-in users.
@@ -55,12 +56,12 @@ export default function ReferralModal({ isOpen, onClose, lang = 'en' }) {
 
   const nativeShare = async () => {
     if (!data?.link) return;
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({ title: 'LIFESCRIPT', text: shareText, url: withUtmMedium(data.link, 'native') });
-        trackShare('native');
-        return;
-      } catch { /* dismissed — fall through to copy */ }
+    // shareData owns the re-entrancy latch + dismiss handling (see utils/export-image.js),
+    // so re-tapping after dismissing the sheet never freezes the button. Returns false only
+    // when Web Share is unavailable → fall back to copying the link.
+    if (await shareData({ title: 'LIFESCRIPT', text: shareText, url: withUtmMedium(data.link, 'native') })) {
+      trackShare('native');
+      return;
     }
     copyLink();
   };

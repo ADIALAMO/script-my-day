@@ -19,6 +19,7 @@ import { useCinematicAudio } from '../hooks/useCinematicAudio.js';
 import { usePosterGeneration } from '../hooks/usePosterGeneration.js';
 import { useStoryboardGeneration } from '../hooks/useStoryboardGeneration.js';
 import { useCharacter } from '../hooks/useCharacter.js';
+import { shareData } from '../utils/export-image.js';
 
 // ── Brand SVG icons ──────────────────────────────────────────────────────────
 const WhatsAppIcon = () => (
@@ -108,7 +109,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     posterUrl, setPosterUrl, posterLoading, setPosterLoading,
     posterError, setPosterError, showPoster, setShowPoster,
     triggerFlash, setTriggerFlash, posterRef,
-    currentPosterMessage, generatePoster, handleCapturePoster, resetPoster, cancelPoster,
+    currentPosterMessage, generatePoster, handleCapturePoster, prewarmPosterShare, resetPoster, cancelPoster,
   } = usePosterGeneration({ lang, genre, visualPrompt, posterTitle, isHebrew, finalProducerName, onPosterGenerated, onAuthRequired, characterImageUrl: activeCharacterUrl });
 
   const {
@@ -331,13 +332,11 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
   const handleNativeShare = useCallback(async () => {
     const text  = currentDisplayText;
     const title = posterTitle || (isHebrew ? 'התסריט שלי' : 'My Script');
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({ title, text });
-        track('Script Shared', { platform: 'native', genre, language: lang });
-      } catch (err) {
-        if (err.name !== 'AbortError') navigator.clipboard?.writeText(text);
-      }
+    // shareData owns the re-entrancy latch + dismiss handling (see utils/export-image.js),
+    // so a re-tap after dismissing the sheet never deadlocks the button. Returns false only
+    // when Web Share is unavailable → fall back to clipboard.
+    if (await shareData({ title, text })) {
+      track('Script Shared', { platform: 'native', genre, language: lang });
     } else {
       navigator.clipboard?.writeText(text);
       track('Script Shared', { platform: 'clipboard-fallback', genre, language: lang });
@@ -721,6 +720,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               posterTitle={posterTitle}
               credits={credits}
               handleCapturePoster={handleCapturePoster}
+              prewarmPosterShare={prewarmPosterShare}
               onRetryGenerate={generatePoster}
               lang={lang}
               genre={genre}

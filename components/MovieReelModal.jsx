@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Share2, Loader2, AlertCircle, Video, VolumeX, Volume2 } from 'lucide-react';
 import { track } from '@vercel/analytics';
-import { shareBlob } from '../utils/export-image.js';
+import { shareReadyFile, makeShareFile } from '../utils/export-image.js';
 
 // ── Canvas dimensions ────────────────────────────────────────────────────────
 const CANVAS_W      = 720;
@@ -595,20 +595,41 @@ export default function MovieReelModal({
   // Never navigates the page (an <a download> at a blob: URL makes iOS Safari NAVIGATE,
   // tearing down the SPA). Falls back to opening the video where sharing is unsupported.
   // The .mp4 filename is preserved: QuickTime / mobile players codec-detect from it.
+  // Cache of the share-ready reel File, tagged with the videoUrl it was built from so a
+  // stale render is never shared. Pre-warmed on pointer-down so navigator.share() fires
+  // inside iOS's transient-activation window (consistent with poster/panel sharing).
+  const shareFileRef = useRef({ url: null, file: null });
+  const prewarmRef   = useRef(null);
+  const prewarmReel = useCallback(() => {
+    if (!videoUrl) return null;
+    if (shareFileRef.current.url === videoUrl && shareFileRef.current.file) return null;
+    if (prewarmRef.current) return prewarmRef.current;
+    const url = videoUrl;
+    const filename = `lifescript-reel-${genre || 'film'}.mp4`;
+    prewarmRef.current = fetch(url).then(r => r.blob())
+      .then(blob => makeShareFile(blob, filename, {}))
+      .then(file => { shareFileRef.current = { url, file }; return file; })
+      .catch(() => null)
+      .finally(() => { prewarmRef.current = null; });
+    return prewarmRef.current;
+  }, [videoUrl, genre]);
+
   const handleShare = useCallback(async () => {
     if (!videoUrl) return;
-    const filename = `lifescript-reel-${genre || 'film'}.mp4`;
     try {
-      const blob = await (await fetch(videoUrl)).blob();
-      const ok = await shareBlob(blob, filename, 'LifeScript Reel');
-      if (!ok) window.open(videoUrl, '_blank');
+      let file = (shareFileRef.current.url === videoUrl) ? shareFileRef.current.file : null;
+      if (!file) { const p = prewarmReel(); file = p ? await p : null; }
+      if (!file) { window.open(videoUrl, '_blank'); return; }
+      if (!await shareReadyFile(file, 'LifeScript Reel')) window.open(videoUrl, '_blank');
     } catch {
       window.open(videoUrl, '_blank');
     }
-  }, [videoUrl, genre]);
+  }, [videoUrl, prewarmReel]);
 
   const handleReset = useCallback(() => {
     if (videoUrl) { URL.revokeObjectURL(videoUrl); setVideoUrl(null); }
+    shareFileRef.current = { url: null, file: null }; // drop the stale reel share render
+    prewarmRef.current = null;
     chunksRef.current = [];
     setPhase('idle'); setProgress(0); setLabel(''); setErrorMsg('');
   }, [videoUrl]);
@@ -949,6 +970,7 @@ export default function MovieReelModal({
                 ) : (
                   <>
                     <button
+                      onPointerDown={prewarmReel}
                       onClick={handleShare}
                       className="w-full py-[14px] sm:py-[15px] rounded-2xl font-black text-[12px] sm:text-[12.5px] uppercase tracking-widest bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black hover:from-white hover:to-white active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 shadow-[0_8px_28px_rgba(212,163,115,0.35)]"
                     >

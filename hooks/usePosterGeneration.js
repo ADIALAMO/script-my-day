@@ -4,7 +4,7 @@ import { track } from '@vercel/analytics';
 import { getMsg, CODES } from '../lib/messages.js';
 import { getGenreLabel } from '../constants/genres.js';
 import { useRotatingMessages } from './useRotatingMessages.js';
-import { shareBlob, downloadBlob, exportCapabilities } from '../utils/export-image.js';
+import { shareReadyFile, makeShareFile, downloadBlob, exportCapabilities } from '../utils/export-image.js';
 
 const POSTER_MESSAGES_HE = [
   'מנתח את האסתטיקה של התסריט...',
@@ -174,6 +174,75 @@ export function usePosterGeneration({
 
   // ── Capture (share only) ────────────────────────────────────────────────────
 
+  // Cache of the watermarked, share-ready File for the poster currently on screen,
+  // tagged with the posterUrl it was built from so a stale render (from a previous poster)
+  // is never shared. shareFileRef holds the finished File; prewarmRef dedupes an in-flight
+  // background render so a tap and the eager pre-warm don't render twice.
+  const shareFileRef = useRef({ url: null, file: null });
+  const prewarmRef   = useRef(null);
+
+  const posterFilename = useCallback(
+    () => `poster-${(posterTitle || 'movie-poster').replace(/\s+/g, '-')}.png`,
+    [posterTitle],
+  );
+
+  // Render the poster DOM to a PNG blob. This is the expensive part (img.decode +
+  // settle + two html-to-image passes); it MUST run before the user gesture on slow
+  // devices, hence the pre-warm below.
+  const renderPosterBlob = useCallback(async () => {
+    if (!posterRef.current || !posterUrl) return null;
+
+    const img = posterRef.current.querySelector('img');
+    if (img) await img.decode().catch(() => {});
+    await new Promise(r => setTimeout(r, 400));
+
+    const rect   = posterRef.current.getBoundingClientRect();
+    const width  = Math.floor(rect.width);
+    const height = Math.floor(rect.height);
+
+    const sharedOptions = {
+      width, height, quality: 0.95, pixelRatio: 2,
+      skipFonts: true, fontEmbedCSS: '', cacheBust: false,
+      filter: (node) => {
+        const tag = node.tagName?.toUpperCase() || '';
+        if ((tag === 'LINK' || tag === 'STYLE') && node.href && !node.href.includes(window.location.hostname)) {
+          return false;
+        }
+        return true;
+      },
+      style: {
+        transform: 'scale(1)', margin: '0', padding: '0',
+        left: '0', top: '0', borderRadius: '3.5rem', overflow: 'visible',
+      },
+    };
+
+    // Warm-up pass to pre-cache cross-origin resources.
+    await htmlToImage.toPng(posterRef.current, { ...sharedOptions, quality: 0.1 });
+    const dataUrl = await htmlToImage.toPng(posterRef.current, sharedOptions);
+    return (await fetch(dataUrl)).blob();
+  }, [posterUrl, posterTitle]);
+
+  // Pre-render the watermarked share File in the BACKGROUND, before the user taps Share.
+  // This is the slow-device fix: at tap time the heavy work is already done, so the share
+  // path runs only shareReadyFile() → navigator.share() fires instantly, inside iOS's
+  // transient-activation window (otherwise NotAllowedError on slow phones). No-op on
+  // desktop (downloads, no native share) and idempotent per poster. Returns the in-flight
+  // promise so callers can await a pre-warm that is already running.
+  const prewarmPosterShare = useCallback(() => {
+    if (typeof window === 'undefined' || !posterUrl) return null;
+    if (exportCapabilities().isDesktop) return null;
+    if (shareFileRef.current.url === posterUrl && shareFileRef.current.file) return null; // ready
+    if (prewarmRef.current) return prewarmRef.current; // already rendering
+
+    const url = posterUrl;
+    prewarmRef.current = renderPosterBlob()
+      .then((blob) => (blob ? makeShareFile(blob, posterFilename(), { lang }) : null))
+      .then((file) => { if (file) shareFileRef.current = { url, file }; return file; })
+      .catch(() => null)
+      .finally(() => { prewarmRef.current = null; });
+    return prewarmRef.current;
+  }, [posterUrl, lang, renderPosterBlob, posterFilename]);
+
   // mode: 'auto' (desktop ⇒ download, mobile ⇒ share) | 'download' | 'share'.
   const handleCapturePoster = useCallback(async (mode = 'auto') => {
     if (!posterRef.current || !posterUrl) return;
@@ -188,46 +257,30 @@ export function usePosterGeneration({
     }
 
     try {
-      const img = posterRef.current.querySelector('img');
-      if (img) await img.decode().catch(() => {});
-      await new Promise(r => setTimeout(r, 400));
-
-      const rect   = posterRef.current.getBoundingClientRect();
-      const width  = Math.floor(rect.width);
-      const height = Math.floor(rect.height);
-
-      const sharedOptions = {
-        width, height, quality: 0.95, pixelRatio: 2,
-        skipFonts: true, fontEmbedCSS: '', cacheBust: false,
-        filter: (node) => {
-          const tag = node.tagName?.toUpperCase() || '';
-          if ((tag === 'LINK' || tag === 'STYLE') && node.href && !node.href.includes(window.location.hostname)) {
-            return false;
-          }
-          return true;
-        },
-        style: {
-          transform: 'scale(1)', margin: '0', padding: '0',
-          left: '0', top: '0', borderRadius: '3.5rem', overflow: 'visible',
-        },
-      };
-
-      // Warm-up pass to pre-cache cross-origin resources.
-      await htmlToImage.toPng(posterRef.current, { ...sharedOptions, quality: 0.1 });
-      const dataUrl = await htmlToImage.toPng(posterRef.current, sharedOptions);
-
-      // Convert to a blob once. Desktop ⇒ clean `<a download>` of the composited poster
-      // (never navigates the SPA). Mobile ⇒ Web Share API ("Save Image" / social sheet),
-      // which is the platform-native save path and also never navigates — fixing the iOS
-      // "share then refresh, lose all state" bug. If file-share is unsupported, fall back
-      // to opening the poster in a new tab so the user can still save it.
-      const blob = await (await fetch(dataUrl)).blob();
-      const filename = `poster-${(posterTitle || 'movie-poster').replace(/\s+/g, '-')}.png`;
+      // Desktop ⇒ clean `<a download>` of the composited poster (never navigates the SPA).
       if (wantDownload) {
-        const ok = await downloadBlob(blob, filename, { lang });
+        const blob = await renderPosterBlob();
+        const ok = blob && await downloadBlob(blob, posterFilename(), { lang });
         if (!ok && posterUrl) window.open(posterUrl, '_blank');
         return;
       }
+
+      // Mobile ⇒ Web Share API. Prefer the pre-warmed File so navigator.share() fires
+      // instantly inside the activation window. If the pre-warm hasn't finished (or never
+      // started), await/run it now — no worse than the pre-fix behaviour, and the result
+      // is cached for the next tap.
+      let file = (shareFileRef.current.url === posterUrl) ? shareFileRef.current.file : null;
+      if (!file) {
+        const p = prewarmPosterShare();
+        if (p) await p;
+        file = (shareFileRef.current.url === posterUrl) ? shareFileRef.current.file : null;
+      }
+      if (!file) {
+        const blob = await renderPosterBlob();
+        if (blob) file = await makeShareFile(blob, posterFilename(), { lang });
+      }
+      if (!file) { if (posterUrl) window.open(posterUrl, '_blank'); return; }
+
       // CRITICAL (iOS share behaviour): WhatsApp / iMessage downgrade a file share to a
       // *link card* — dropping the image entirely — the instant the share text contains a
       // URL. The poster image is the whole point of the share, so we send a clean caption
@@ -235,18 +288,20 @@ export function usePosterGeneration({
       // watermark burned into the image (see compositeWatermark in utils/export-image.js);
       // the clickable, coded referral link has its own dedicated path in ReferralModal.
       const caption = isHebrew ? 'נוצר ב-LIFESCRIPT 🎬' : 'Made with LIFESCRIPT 🎬';
-      const shared = await shareBlob(blob, filename, posterTitle || 'My Poster', { lang, text: caption });
+      const shared = await shareReadyFile(file, posterTitle || 'My Poster', { text: caption });
       if (!shared && posterUrl) window.open(posterUrl, '_blank');
     } catch (err) {
       console.error('Poster capture error:', err);
       if (posterUrl) window.open(posterUrl, '_blank');
     }
-  }, [posterUrl, posterTitle, isHebrew, finalProducerName, genre, lang]);
+  }, [posterUrl, posterTitle, isHebrew, finalProducerName, genre, lang, renderPosterBlob, posterFilename, prewarmPosterShare]);
 
   // ── Reset (called by ScriptOutput when a new script arrives) ────────────────
 
   const resetPoster = useCallback(() => {
     posterActiveRef.current = false;
+    shareFileRef.current = { url: null, file: null }; // drop the stale share render
+    prewarmRef.current = null;
     setShowPoster(false);
     setPosterUrl('');
     setPosterError('');
@@ -271,6 +326,7 @@ export function usePosterGeneration({
     currentPosterMessage: currentMessage,
     generatePoster,
     handleCapturePoster,
+    prewarmPosterShare,
     resetPoster,
     cancelPoster,
   };

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Check, X, Clapperboard, Film, Loader2, ChevronDown, Share2, Download, Lock, Crown } from 'lucide-react';
-import { shareBlob, shareBlobs, downloadBlob, downloadBlobs, exportCapabilities } from '../utils/export-image.js';
+import { shareReadyFile, makeShareFile, shareBlobs, downloadBlob, downloadBlobs, exportCapabilities } from '../utils/export-image.js';
 
 export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade }) {
   const isHebrew = lang === 'he';
@@ -50,18 +50,47 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
     }
   };
 
+  const panelFilename = (panelNum) => `panel-${String(panelNum).padStart(2, '0')}.png`;
+
+  // Cache of pre-rendered, watermarked share Files keyed by panel url, plus the in-flight
+  // renders, so the network fetch + watermark happen on pointer-down (before the tap) — the
+  // eventual navigator.share() then fires inside iOS's transient-activation window even on
+  // a slow connection. See prewarmPosterShare for the same pattern on the poster.
+  const shareFilesRef = useRef(new Map());
+  const prewarmingRef = useRef(new Map());
+  const prewarmFrame = (url, panelNum) => {
+    if (!url || isDesktop) return null;
+    if (shareFilesRef.current.has(url)) return null;
+    if (prewarmingRef.current.has(url)) return prewarmingRef.current.get(url);
+    const p = fetchImageBlob(url)
+      .then((blob) => makeShareFile(blob, panelFilename(panelNum), { lang }))
+      .then((file) => { shareFilesRef.current.set(url, file); return file; })
+      .catch(() => null)
+      .finally(() => { prewarmingRef.current.delete(url); });
+    prewarmingRef.current.set(url, p);
+    return p;
+  };
+
   // Export a single panel. Desktop ⇒ clean `<a download>`; mobile ⇒ Web Share API.
   // Never navigates the page (which previously refreshed the SPA and wiped state on iOS);
   // falls back to opening the image in a new tab where neither path is supported.
   const exportFrame = async (url, panelNum, mode) => {
     if (!url) return;
-    const filename = `panel-${String(panelNum).padStart(2, '0')}.png`;
+    const filename = panelFilename(panelNum);
     try {
-      const blob = await fetchImageBlob(url);
-      const ok = mode === 'download'
-        ? await downloadBlob(blob, filename, { lang })
-        : await shareBlob(blob, filename, `Panel ${panelNum}`, { lang });
-      if (!ok) window.open(url, '_blank');
+      if (mode === 'download') {
+        const blob = await fetchImageBlob(url);
+        if (!await downloadBlob(blob, filename, { lang })) window.open(url, '_blank');
+        return;
+      }
+      // Prefer the pre-warmed File (instant share); otherwise render now and cache it.
+      let file = shareFilesRef.current.get(url);
+      if (!file) { const p = prewarmFrame(url, panelNum); file = p ? await p : null; }
+      if (!file) {
+        const blob = await fetchImageBlob(url);
+        file = await makeShareFile(blob, filename, { lang });
+      }
+      if (!await shareReadyFile(file, `Panel ${panelNum}`)) window.open(url, '_blank');
     } catch {
       window.open(url, '_blank');
     }
@@ -297,7 +326,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                   {/* Export action bar — desktop: download (+ share) · mobile: share */}
                   {imgState === 'loaded' && imgUrl && (
                     <div className="absolute bottom-0 inset-x-0 z-20 flex items-center justify-center gap-2 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out">
-                      <button type="button" onClick={() => exportFrame(imgUrl, panel.panel, isDesktop ? 'download' : 'share')} className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200">
+                      <button type="button" onPointerDown={() => prewarmFrame(imgUrl, panel.panel)} onClick={() => exportFrame(imgUrl, panel.panel, isDesktop ? 'download' : 'share')} className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200">
                         {isDesktop ? <Download size={10} /> : <Share2 size={10} />}
                         <span>{isDesktop ? (isHebrew ? 'הורד' : 'Download') : (isHebrew ? 'שתף' : 'Share')}</span>
                       </button>

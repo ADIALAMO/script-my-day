@@ -15,6 +15,7 @@ function PosterRenderer({
   posterTitle,
   credits,
   handleCapturePoster,
+  prewarmPosterShare,
   onRetryGenerate,
   lang,
   genre,
@@ -52,6 +53,15 @@ function PosterRenderer({
               // History restores arrive as http URLs (proxied CDN).
               // Fresh generations are always data URIs.  Skip all cinematic
               // fanfare on history loads — just reveal the image silently.
+              // Pre-render the share file in the background once the poster is on screen,
+              // so a Share tap fires navigator.share() instantly (slow-device activation
+              // fix — see prewarmPosterShare). Deferred so it never janks the reveal.
+              const prewarm = () => prewarmPosterShare?.();
+              if (typeof window !== 'undefined') {
+                if (window.requestIdleCallback) window.requestIdleCallback(prewarm, { timeout: 2500 });
+                else setTimeout(prewarm, 1200);
+              }
+
               if (posterUrl.startsWith('http')) {
                 setPosterLoading(false);
                 return;
@@ -191,6 +201,7 @@ function PosterRenderer({
             type="button"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.95 }}
+            onPointerDown={() => { if (!isDesktop) prewarmPosterShare?.(); }}
             onClick={() => {
                 // דסקטופ → הורדה · מובייל → שיתוף נייטיב
                 handleCapturePoster(isDesktop ? 'download' : 'share');

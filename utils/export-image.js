@@ -156,27 +156,84 @@ export async function downloadBlobs(items, { lang = 'en' } = {}) {
   return count > 0;
 }
 
+// Re-entrancy latch shared by EVERY Web Share call in the app (files, text, url).
+// iOS WebKit keeps an internal "a share is already in progress" flag; invoking
+// navigator.share() again before the previous call fully settles throws
+// InvalidStateError. Without this latch, a fast double-tap — or tapping Share again
+// right after dismissing the sheet — fired an overlapping share, and the old error
+// fallback (window.open after awaits, which iOS blocks) left the button looking frozen.
+// There is only ever one OS share sheet, so a module-level latch is the correct scope.
+let sharePending = false;
+
+// True when a rejection means "no need to fall back": the user dismissed the sheet
+// (AbortError) or a share was still settling (InvalidStateError). Falling through to a
+// popup-blocked window.open in these cases is exactly what made the button freeze.
+function shareHandled(err) {
+  return err?.name === 'AbortError' || err?.name === 'InvalidStateError';
+}
+
 // Core: hand an array of Files to the OS share sheet. Optional `text` rides along in the
 // share payload (used to carry the referral link so every poster share seeds the loop).
 async function shareFiles(files, title, text) {
   if (typeof navigator === 'undefined' || !navigator.share || !navigator.canShare) return false;
   if (!files.length || !navigator.canShare({ files })) return false;
+  if (sharePending) return true; // a sheet is already open/settling — swallow the re-tap
+  sharePending = true;
   try {
     await navigator.share({ files, title, ...(text ? { text } : {}) });
     return true;
   } catch (err) {
-    // User dismissed the sheet — treat as handled; never fall through to navigation.
-    return err?.name === 'AbortError';
+    return shareHandled(err);
+  } finally {
+    sharePending = false;
   }
+}
+
+// Web Share for plain payloads (text/url, no files): script text, referral link. Shares
+// the same latch as file shares so a poster share and a script/referral share can never
+// overlap and trip InvalidStateError. Returns true when handled (shared or dismissed),
+// false only when Web Share is unavailable so the caller can fall back (copy / email).
+export async function shareData({ title, text, url } = {}) {
+  if (typeof navigator === 'undefined' || !navigator.share) return false;
+  if (sharePending) return true; // a sheet is already open/settling — swallow the re-tap
+  sharePending = true;
+  try {
+    await navigator.share({
+      ...(title ? { title } : {}),
+      ...(text ? { text } : {}),
+      ...(url ? { url } : {}),
+    });
+    return true;
+  } catch (err) {
+    return shareHandled(err);
+  } finally {
+    sharePending = false;
+  }
+}
+
+// Build the final, watermarked File for a blob WITHOUT sharing it. Lets callers pre-render
+// the share payload in the background (see usePosterGeneration's prewarm) so the eventual
+// navigator.share() fires INSIDE the iOS transient-activation window. On slow devices the
+// heavy prep (htmlToImage, network fetch, canvas watermark) between the tap and share()
+// otherwise overruns activation and throws NotAllowedError — even on the first tap.
+export async function makeShareFile(blob, filename, { lang = 'en' } = {}) {
+  const stamped = await compositeWatermark(blob, { lang });
+  return new File([stamped], filename, { type: stamped.type || blob.type || 'image/png' });
+}
+
+// Share an already-prepared File (e.g. one cached by makeShareFile). No compositing happens
+// here, so almost nothing runs between the user gesture and navigator.share() — the path
+// that keeps slow devices inside the activation window. `text` rides along as the caption.
+export async function shareReadyFile(file, title, { text } = {}) {
+  return shareFiles([file], title, text);
 }
 
 // Share a single blob (poster, comic panel, reel video…). Images get the bilingual
 // share-loop watermark; videos pass through compositeWatermark untouched. `text` (e.g. a
 // localized caption + referral link) is forwarded to the OS share sheet when provided.
 export async function shareBlob(blob, filename, title, { lang = 'en', text } = {}) {
-  const stamped = await compositeWatermark(blob, { lang });
-  const file = new File([stamped], filename, { type: stamped.type || blob.type || 'image/png' });
-  return shareFiles([file], title, text);
+  const file = await makeShareFile(blob, filename, { lang });
+  return shareReadyFile(file, title, { text });
 }
 
 // Share many blobs at once (the tier-aware "Share all panels" action).
