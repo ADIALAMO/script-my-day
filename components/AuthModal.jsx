@@ -18,6 +18,10 @@ const CONTEXT_COPY = {
     en: "You've reached your guest limit. Sign in to keep creating.",
     he: 'הגעת למכסת האורח. התחבר כדי להמשיך ליצור.',
   },
+  invite: {
+    en: 'Sign in to get your personal invite link — earn a free "Star Yourself" poster for every friend who joins.',
+    he: 'התחבר כדי לקבל קישור הזמנה אישי — על כל חבר שמצטרף תקבל פוסטר "לככב בסיפור" חינם.',
+  },
   upgrade: {
     en: 'Upgrade to Pro for unlimited scripts, 3 posters/day, and full comic books.',
     he: 'שדרג לפרו לתסריטים ללא הגבלה, 3 פוסטרים ביום וקומיקס מלא.',

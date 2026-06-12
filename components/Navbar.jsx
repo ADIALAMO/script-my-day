@@ -289,14 +289,25 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
           // Skeleton while session resolves — prevents layout shift.
           <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 animate-pulse shrink-0" />
         ) : !isAuthenticated ? (
-          // ── Anonymous: Sign In pill ──
-          <button
-            onClick={() => handleOpenAuthModal('general')}
-            className="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 bg-[#d4a373]/10 hover:bg-[#d4a373]/20 border border-[#d4a373]/30 hover:border-[#d4a373]/50 rounded-full text-[10px] md:text-[12px] font-bold text-[#d4a373] tracking-wide transition-all duration-200 whitespace-nowrap shrink-0 active:scale-95"
-          >
-            <User size={11} className="shrink-0" />
-            <span className="hidden sm:inline">{isHe ? 'כניסה' : 'Sign In'}</span>
-          </button>
+          // ── Anonymous: Invite (gated) + Sign In pill ──
+          <>
+            {/* Invite friends — visible to guests too; clicking it opens the auth gate
+                with the 'invite' context, which explains they must sign in first. */}
+            <button
+              onClick={() => handleOpenAuthModal('invite')}
+              aria-label={isHe ? 'הזמן חברים' : 'Invite friends'}
+              className="relative flex items-center justify-center w-8 h-8 md:w-9 md:h-9 border border-[#d4a373]/25 rounded-xl hover:border-[#d4a373]/50 hover:bg-[#d4a373]/8 transition-all duration-300 shrink-0"
+            >
+              <Gift size={14} className="text-[#d4a373]/65 md:w-[15px] md:h-[15px]" />
+            </button>
+            <button
+              onClick={() => handleOpenAuthModal('general')}
+              className="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 bg-[#d4a373]/10 hover:bg-[#d4a373]/20 border border-[#d4a373]/30 hover:border-[#d4a373]/50 rounded-full text-[10px] md:text-[12px] font-bold text-[#d4a373] tracking-wide transition-all duration-200 whitespace-nowrap shrink-0 active:scale-95"
+            >
+              <User size={11} className="shrink-0" />
+              <span className="hidden sm:inline">{isHe ? 'כניסה' : 'Sign In'}</span>
+            </button>
+          </>
         ) : (
           // ── Authenticated: Avatar + badge + dropdown ──
           <div className="flex items-center gap-2 shrink-0">
