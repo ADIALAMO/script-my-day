@@ -1087,7 +1087,7 @@ function HomePage() {
                 journalEntry={journalText}
                 onPosterGenerated={(url) => updateEntry(currentEntryIdRef.current, { posterUrl: url })}
                 onScriptEdited={(text) => updateEntry(currentEntryIdRef.current, { script: text })}
-                onPanelsGenerated={(panels) => updateEntry(currentEntryIdRef.current, { panels })}
+                onPanelsGenerated={(panels) => updateEntry(currentEntryIdRef.current, { panels: panels.filter(p => !p.isLocked) })}
                 onAuthRequired={openAuthModal}
                 initialPanels={initialPanels}
                 initialPosterUrl={initialPosterUrl}

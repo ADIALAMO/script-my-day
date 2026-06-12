@@ -105,6 +105,11 @@ export default async function handler(req, res) {
   if (!isAdminRequest(req)) {
     try {
       const { tier, identifier } = await getSessionAndTier(req, res);
+      // Admin (resolved via session tier, not the x-admin-key header) bypasses the storage
+      // gate entirely — same as a header admin. Without this an admin fell through to the
+      // anonymous caps (20 panels / 5 posters) and uploads silently returned url:null, so
+      // generated panels never got a CDN URL and could not persist to history.
+      if (tier !== 'admin') {
       const limits     = UPLOAD_LIMITS[tier] ?? UPLOAD_LIMITS.anonymous;
       const limit      = limits[assetType];
       const storageKey = `upload:${assetType}:${identifier}`;
@@ -123,6 +128,7 @@ export default async function handler(req, res) {
           .catch(e => console.warn(`⚠️ upload gate decr failed (${storageKey}): ${e.message}`));
 
         return res.status(200).json({ url: null, gated: true });
+      }
       }
     } catch (e) {
       // Redis unavailable or session resolution threw — fail open so uploads are

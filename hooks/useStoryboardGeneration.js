@@ -115,10 +115,15 @@ export function useStoryboardGeneration({
 
     if (initialPanels && initialPanels.length > 0) {
       // Restore saved panels from history — skip re-generation entirely.
-      setStoryboardPanels(initialPanels);
-      setUnlockedPanels(initialPanels.length);
+      // History is a faithful snapshot of what the user actually created: drop any
+      // legacy locked teaser panels so a restored comic is never re-gated by quota
+      // (older entries, saved before unlockedPanels hit the full count, could still
+      // carry isLocked:true and would otherwise show the "Pro Only" card on restore).
+      const ownedPanels = initialPanels.filter(p => !p.isLocked);
+      setStoryboardPanels(ownedPanels);
+      setUnlockedPanels(ownedPanels.length);
       setShowStoryboard(true);
-      dispatchPanelImages({ type: 'INIT_FROM_HISTORY', panels: initialPanels });
+      dispatchPanelImages({ type: 'INIT_FROM_HISTORY', panels: ownedPanels });
     } else {
       setShowStoryboard(false);
       setStoryboardPanels([]);
