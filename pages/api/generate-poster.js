@@ -213,11 +213,15 @@ const IDENTITY_CASCADE_VALUE   = [runGeminiIdentity, runGrokIdentity];
 //   P3 HuggingFace        → free HF token, cold-start aware, cache-bypassed
 //   P4 Pollinations       → anonymous, 1 req/15s throttled — final safety net
 //
-// TRACK B — Comic/Storyboard Panel
-//   P1 Cloudflare Workers → high daily budget handles panel burst well
-//   P2 OpenRouter Klein   → paid fallback, prompt-flexible
-//   P3 HuggingFace        → x-wait-for-model absorbs cold-start stalls
-//   P4 Pollinations       → anonymous sequential fallback
+// TRACK B — Comic/Storyboard Panel — ordered by ANATOMY STRENGTH, not by cost.
+// Comic panels live or die on hands/faces/object-separation, so the strongest model
+// leads and the weaker FLUX.1-schnell engines are demoted to fallback.
+//   P1 OpenRouter Klein   → FLUX.2-klein, strongest anatomy + object separation (paid).
+//                           Auto-dropped once DAILY_IMAGE_BUDGET is hit (see filter below),
+//                           so a viral day degrades gracefully to the free schnell engines.
+//   P2 Cloudflare Workers → FLUX.1-schnell @ steps:6, free high daily budget
+//   P3 HuggingFace        → FLUX.1-schnell, x-wait-for-model absorbs cold-start stalls
+//   P4 Pollinations       → anonymous sequential fallback, last resort
 
 const POSTER_CASCADE = [
   runCloudflareAI,
@@ -227,8 +231,8 @@ const POSTER_CASCADE = [
 ];
 
 const COMIC_CASCADE = [
-  runCloudflareAI,
   runOpenRouterKlein,
+  runCloudflareAI,
   runHuggingFace,
   runPollinationsFlux,
 ];

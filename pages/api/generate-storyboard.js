@@ -57,7 +57,7 @@ const FREE_STORYBOARD_MODELS = [
 const STYLE_TRACKS = {
   anime: {
     prefix: 'Dynamic action anime style, flat cel-shading, vibrant dramatic lighting, bold ink outlines —',
-    suffix: '— vivid saturated colors, speed lines, expressive faces'
+    suffix: '— vivid saturated colors, speed lines, expressive characters, dynamic cinematic angles'
   },
   marvel: {
     prefix: '90s X-Men animated series, classic comic book shading, sharp ink line art, retro animation —',
@@ -108,11 +108,11 @@ Field rules:
 - "panel": integer (1 to 7)
 - "scene": location and time context, match script language
 - "visual": ALWAYS ENGLISH. STRICT LIMIT: 15-25 words. Describe ONLY the key subject, action, and camera angle in clean natural language. No style context. No photography jargon.
-  COMPOSITION GUIDANCE (frame the shot so the image renders cleanly — these are camera/framing choices, not content to spell out):
-  • Prefer medium-wide or full-body framing. Reserve close-ups for FACES only — never close-ups on hands.
-  • Convey action through the OBJECT or the GOAL, not body parts: write "reaching toward the door", "lantern glowing", "leaning on the railing" — describe the thing and the intent, the figure follows naturally.
-  • Keep the description free of body-part words (no "hand", "fingers", "arm", "wrist"); name the action, the object, and the camera angle instead.
-  Examples: "Hero leaping across a rooftop gap, full body silhouette, city far below, dynamic low angle" or "Two figures facing off in a rain-soaked alley, tense stand-off, wide shot".
+  CINEMATIC FRAMING (vary the shots so the comic feels alive — let the moment dictate the camera):
+  • Use the full cinematic range and vary it panel to panel: sweeping wide establishing shots, dynamic full-body action, intimate medium shots, and bold emotional close-ups when the beat calls for it.
+  • Choose dramatic, intentional angles — low hero angles, high-tension top-downs, over-the-shoulder — whatever sells the emotion of the moment.
+  • Light framing hygiene only: leave a little headroom above the head, and keep the main figure clear of background props (lamps, signs, posts) so nothing merges into it.
+  Examples: "Hero leaping across a rooftop gap, full body silhouette, city far below, dynamic low angle" or "Tight close-up on her determined eyes, rain streaking down, dramatic rim light".
 - "dialogue": single most important line or caption, match script language
 - "hero": boolean — true only when the main character is the focal subject of the panel (used for image budgeting); when in doubt, false.
 
