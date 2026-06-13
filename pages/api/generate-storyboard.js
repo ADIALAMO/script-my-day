@@ -107,12 +107,17 @@ ${heroBlock}
 Field rules:
 - "panel": integer (1 to 7)
 - "scene": location and time context, match script language
-- "visual": ALWAYS ENGLISH. STRICT LIMIT: 15-25 words. Describe ONLY the key subject, action, and camera angle in clean natural language. No style context. No photography jargon.
-  CINEMATIC FRAMING (vary the shots so the comic feels alive — let the moment dictate the camera):
-  • Use the full cinematic range and vary it panel to panel: sweeping wide establishing shots, dynamic full-body action, intimate medium shots, and bold emotional close-ups when the beat calls for it.
-  • Choose dramatic, intentional angles — low hero angles, high-tension top-downs, over-the-shoulder — whatever sells the emotion of the moment.
-  • Light framing hygiene only: leave a little headroom above the head, and keep the main figure clear of background props (lamps, signs, posts) so nothing merges into it.
-  Examples: "Hero leaping across a rooftop gap, full body silhouette, city far below, dynamic low angle" or "Tight close-up on her determined eyes, rain streaking down, dramatic rim light".
+- "visual": ALWAYS ENGLISH, 20-35 words of clean natural-language prose. Describe, in this order: the ONE main subject, their clear simple action or expression, the setting, the shot/angle, and the lighting. No keyword lists, no photography jargon.
+  CINEMATIC FRAMING — vary the camera so the comic feels alive (the moment dictates the shot):
+  • Range freely panel to panel: wide establishing shots, full-body action, intimate medium shots, and bold emotional close-ups on a FACE when the beat earns it.
+  • Pick dramatic, intentional angles — low hero angles, high-tension top-downs, over-the-shoulder.
+  CLEAN-RENDER RULES — these keep the image model from hallucinating; apply every panel:
+  • ONE clear focal subject. If others appear, place them clearly SEPARATED in space (across the table, beside, further back) — never overlapping or merged into each other.
+  • Keep the BACKGROUND simple and suggested. Never spell out detailed background crowds; render extra people as a soft blurred suggestion at most.
+  • Give the subject a NATURAL, relaxed pose. Reserve close-ups for the face — never a close-up centered on hands. Let hands sit naturally (at the side, in a pocket, holding one large simple object); avoid intricate finger work or hands manipulating small objects up close.
+  • One coherent light source, kept clear of the face and head so no prop, lamp, or glow fuses into it.
+  • Leave a little headroom above the head and keep the whole subject inside the frame.
+  Examples: "A weary detective leans in a doorway, coat damp, a dim streetlight glowing behind him, medium shot, moody noir lighting" or "Tight close-up on her determined eyes, rain streaking down, dramatic rim light".
 - "dialogue": single most important line or caption, match script language
 - "hero": boolean — true only when the main character is the focal subject of the panel (used for image budgeting); when in doubt, false.
 
