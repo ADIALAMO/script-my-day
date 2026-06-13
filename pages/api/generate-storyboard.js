@@ -87,7 +87,7 @@ function buildStaticInstruction(lang, maxPanels = 7, heroDescriptor = null) {
   const heroBlock = heroDescriptor ? `
 HERO IDENTITY — READ FIRST (a reference photo of the ${heroDescriptor} will be applied to this comic):
 - The protagonist of this story is ${heroDescriptor}. This is the ONLY character whose likeness comes from the uploaded photo.
-- In EVERY panel where the protagonist appears, the "visual" MUST name them FIRST and explicitly as "the ${heroDescriptor}" — e.g. "The ${heroDescriptor} steps into the dark hall, wide shot".
+- In EVERY panel where the protagonist appears, the "visual" MUST name them FIRST and explicitly as "the ${heroDescriptor}" — e.g. "The ${heroDescriptor} stands in the dark hall, medium shot".
 - Describe any OTHER people as clearly SEPARATE, distinct secondary characters, mentioned AFTER the protagonist, and never in a way that could be mistaken for them. Example: "The ${heroDescriptor} looks at a woman across the room, while she smiles back at him, medium two-shot".
 - If the protagonist is NOT present in a panel, describe the scene normally and do NOT force them in.
 - SELECTIVE FRAMING (image budget): set "hero": true ONLY for panels where the ${heroDescriptor} is the visible focal subject. Set "hero": false for panels centered on objects, locations, or secondary characters. Mark AT MOST 3 panels as hero — prioritize the opening, the climax, and the resolution.
@@ -107,17 +107,20 @@ ${heroBlock}
 Field rules:
 - "panel": integer (1 to 7)
 - "scene": location and time context, match script language
-- "visual": ALWAYS ENGLISH, 20-35 words of clean natural-language prose. Describe, in this order: the ONE main subject, their clear simple action or expression, the setting, the shot/angle, and the lighting. No keyword lists, no photography jargon.
-  CINEMATIC FRAMING — vary the camera so the comic feels alive (the moment dictates the shot):
-  • Range freely panel to panel: wide establishing shots, full-body action, intimate medium shots, and bold emotional close-ups on a FACE when the beat earns it.
-  • Pick dramatic, intentional angles — low hero angles, high-tension top-downs, over-the-shoulder.
+- "visual": ALWAYS ENGLISH, 20-35 words of clean natural-language prose. Describe, in this order: the ONE main subject, their calm simple expression or relaxed pose, the setting, the shot/angle, and the lighting. No keyword lists, no photography jargon.
+  CINEMATIC FRAMING — vary the camera so the comic feels alive, but stay in the image model's comfort zone:
+  • DEFAULT to medium shots and bold close-ups: frame people from roughly the waist up so the face reads clearly and hands stay simple and small in frame. This single rule prevents most distortions.
+  • Use wide or full-body shots ONLY to establish a location or an object with NO person in it, or with a single small distant figure — never for two people interacting up close.
+  • Still pick dramatic, intentional angles — low hero angle, over-the-shoulder, a slight Dutch tilt — but keep the subject large, centred, and close to camera.
   CLEAN-RENDER RULES — these keep the image model from hallucinating; apply every panel:
-  • ONE clear focal subject. If others appear, place them clearly SEPARATED in space (across the table, beside, further back) — never overlapping or merged into each other.
+  • ONE clear focal subject, large in frame. At most ONE other person, kept to a calm medium two-shot and clearly SEPARATED in space (across the table, beside, further back) — never three or more people, never overlapping or merged.
+  • Convert confrontations and action into a single charged MOMENT rather than mid-motion: a hard stare, a turn of the head, a still standoff — not punching, pointing, throwing, or grabbing.
   • Keep the BACKGROUND simple and suggested. Never spell out detailed background crowds; render extra people as a soft blurred suggestion at most.
-  • Give the subject a NATURAL, relaxed pose. Reserve close-ups for the face — never a close-up centered on hands. Let hands sit naturally (at the side, in a pocket, holding one large simple object); avoid intricate finger work or hands manipulating small objects up close.
+  • Give the subject a NATURAL, relaxed pose with hands AT REST — at the side, in a pocket, folded, or resting on a surface. Do NOT describe pointing, gesturing, reaching, or hands manipulating small objects. If a prop matters, let it sit in the scene, not in a gripping hand.
+  • Reserve close-ups for the face — never a close-up centred on hands.
   • One coherent light source, kept clear of the face and head so no prop, lamp, or glow fuses into it.
   • Leave a little headroom above the head and keep the whole subject inside the frame.
-  Examples: "A weary detective leans in a doorway, coat damp, a dim streetlight glowing behind him, medium shot, moody noir lighting" or "Tight close-up on her determined eyes, rain streaking down, dramatic rim light".
+  Examples: "A weary detective leans in a doorway, hands in his coat pockets, a dim streetlight glowing behind him, medium shot, moody noir lighting" or "Tight close-up on her determined eyes, rain streaking down, dramatic rim light".
 - "dialogue": single most important line or caption, match script language
 - "hero": boolean — true only when the main character is the focal subject of the panel (used for image budgeting); when in doubt, false.
 
