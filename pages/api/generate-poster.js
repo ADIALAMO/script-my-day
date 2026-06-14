@@ -207,33 +207,26 @@ const IDENTITY_CASCADE_VALUE   = [runGeminiIdentity, runGrokIdentity];
 
 // ─── Cascade definitions ─────────────────────────────────────────────────────
 //
-// TRACK A — Standalone Poster
-//   P1 Cloudflare Workers → ~170 img/day free (10K neurons), no CC, base64 JSON
-//   P2 OpenRouter Klein   → paid key required, solid quality fallback
-//   P3 HuggingFace        → free HF token, cold-start aware, cache-bypassed
-//   P4 Pollinations       → anonymous, 1 req/15s throttled — final safety net
-//
-// TRACK B — Comic/Storyboard Panel — ordered by ANATOMY STRENGTH, not by cost.
-// Comic panels live or die on hands/faces/object-separation, so the strongest model
-// leads and the weaker FLUX.1-schnell engines are demoted to fallback.
-//   P1 OpenRouter Klein   → FLUX.2-klein, strongest anatomy + object separation (paid).
-//                           Auto-dropped once DAILY_IMAGE_BUDGET is hit (see filter below),
-//                           so a viral day degrades gracefully to the free schnell engines.
-//   P2 Cloudflare Workers → FLUX.1-schnell @ steps:6, free high daily budget
-//   P3 HuggingFace        → FLUX.1-schnell, x-wait-for-model absorbs cold-start stalls
-//   P4 Pollinations       → anonymous sequential fallback, last resort
+// Poster and Comic share ONE ordering — free engines first, the paid engine third — so
+// everyday generation stays on the free providers and OpenRouter Klein is only reached as a
+// paid fallback when BOTH free engines fail. This minimizes spend (Klein is rarely hit).
+//   P1 HuggingFace      → FLUX.1-schnell, free HF token, x-wait-for-model absorbs cold-start
+//   P2 Cloudflare       → FLUX.1-schnell @ steps:6, free ~170 img/day (10K neurons)
+//   P3 OpenRouter Klein → FLUX.2-klein (paid). Auto-dropped once DAILY_IMAGE_BUDGET is hit
+//                         (see filter below) so a viral day can never produce a billing surprise.
+//   P4 Pollinations     → anonymous, 1 req/15s throttled — final safety net.
 
 const POSTER_CASCADE = [
+  runHuggingFace,
   runCloudflareAI,
   runOpenRouterKlein,
-  runHuggingFace,
   runPollinationsFlux,
 ];
 
 const COMIC_CASCADE = [
-  runOpenRouterKlein,
-  runCloudflareAI,
   runHuggingFace,
+  runCloudflareAI,
+  runOpenRouterKlein,
   runPollinationsFlux,
 ];
 
