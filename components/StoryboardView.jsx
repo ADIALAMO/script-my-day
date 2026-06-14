@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Copy, Check, X, Clapperboard, Film, Loader2, ChevronDown, Share2, Download, Lock, Crown } from 'lucide-react';
+import { Copy, Check, X, Clapperboard, Film, Loader2, ChevronDown, Share2, Download, Lock, Crown, RefreshCw } from 'lucide-react';
 import { shareReadyFile, makeShareFile, shareBlobs, downloadBlob, downloadBlobs, exportCapabilities } from '../utils/export-image.js';
 
-export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade }) {
+export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade, onRegenerate, regensLeft = 0 }) {
   const isHebrew = lang === 'he';
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [allCopied, setAllCopied] = useState(false);
@@ -249,6 +249,9 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
             const imgState = getImageState(idx);
             const imgUrl = panelImages?.[idx]?.url;
             const isExpanded = !!expandedPrompts[idx];
+            // During a REPLACE the panel is `loading` but keeps its old url + a regenerating
+            // flag — so we show the old image under a spinner instead of a blank skeleton.
+            const isRegenerating = !!(panelImages?.[idx]?.loading && panelImages?.[idx]?.regenerating && imgUrl);
 
             return (
               <motion.div
@@ -261,7 +264,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                 {/* ── Image zone ──────────────────────────────── */}
                 <div className="relative aspect-[3/2] overflow-hidden bg-[#02040a]">
                   <AnimatePresence>
-                    {(imgState === 'loading' || imgState === 'pending') && (
+                    {(imgState === 'loading' || imgState === 'pending') && !isRegenerating && (
                       <motion.div
                         key="skeleton"
                         initial={{ opacity: 0 }}
@@ -285,7 +288,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                       </motion.div>
                     )}
 
-                    {imgState === 'loaded' && imgUrl && (
+                    {(imgState === 'loaded' || isRegenerating) && imgUrl && (
                       <motion.div
                         key="img-wrapper"
                         initial={{ opacity: 0 }}
@@ -318,6 +321,16 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                     )}
                   </AnimatePresence>
 
+                  {/* Replace-in-progress overlay — old image stays visible underneath */}
+                  {isRegenerating && (
+                    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-black/55 backdrop-blur-[2px]">
+                      <Loader2 size={22} className="text-[#d4a373] animate-spin" />
+                      <span className="text-[#d4a373]/85 text-[9px] font-black tracking-[0.35em] uppercase">
+                        {isHebrew ? 'מחליף פריים...' : 'Replacing...'}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Cinematic gradient overlay on loaded images */}
                   {imgState === 'loaded' && (
                     <div className="absolute inset-0 bg-gradient-to-t from-[#050710]/85 via-transparent to-black/15 pointer-events-none z-10" />
@@ -326,6 +339,21 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                   {/* Export action bar — desktop: download (+ share) · mobile: share */}
                   {imgState === 'loaded' && imgUrl && (
                     <div className="absolute bottom-0 inset-x-0 z-20 flex items-center justify-center gap-2 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out">
+                      {/* Replace this panel's image — budget-limited (regensLeft) across the comic */}
+                      {onRegenerate && (
+                        <button
+                          type="button"
+                          onClick={() => onRegenerate(idx)}
+                          disabled={regensLeft <= 0}
+                          title={regensLeft > 0
+                            ? (isHebrew ? `החלף תמונה • נותרו ${regensLeft}` : `Replace image • ${regensLeft} left`)
+                            : (isHebrew ? 'נגמרו ההחלפות' : 'No replacements left')}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-white/80 disabled:hover:border-white/20 disabled:hover:bg-black/75"
+                        >
+                          <RefreshCw size={10} />
+                          <span>{isHebrew ? 'החלף' : 'Replace'}{regensLeft > 0 ? ` ${regensLeft}` : ''}</span>
+                        </button>
+                      )}
                       <button type="button" onPointerDown={() => prewarmFrame(imgUrl, panel.panel)} onClick={() => exportFrame(imgUrl, panel.panel, isDesktop ? 'download' : 'share')} className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200">
                         {isDesktop ? <Download size={10} /> : <Share2 size={10} />}
                         <span>{isDesktop ? (isHebrew ? 'הורד' : 'Download') : (isHebrew ? 'שתף' : 'Share')}</span>

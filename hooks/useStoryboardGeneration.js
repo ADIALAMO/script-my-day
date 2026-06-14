@@ -33,6 +33,10 @@ function panelImagesReducer(state, action) {
 const STORYBOARD_MESSAGES_HE = ['סורק סצנות...', 'ממפה פאנלים...', 'מדפיס קווי דיו...', 'מסיים ציורים...'];
 const STORYBOARD_MESSAGES_EN = ['Scanning scenes...', 'Mapping panels...', 'Inking drawings...', 'Composing frames...'];
 
+// Max user-initiated panel image replacements per comic. A small budget keeps the
+// "try again" cost bounded — each replace is a fresh image generation.
+const REGEN_LIMIT = 2;
+
 /**
  * Manages the full storyboard lifecycle: panel data fetching, per-panel
  * image generation, R2 upload, loading state, error state, and style selection.
@@ -78,6 +82,7 @@ export function useStoryboardGeneration({
   const [comicStyle,          setComicStyle]           = useState('anime');
   const [panelImages, dispatchPanelImages]             = useReducer(panelImagesReducer, {});
   const [unlockedPanels,      setUnlockedPanels]       = useState(0);
+  const [regensLeft,          setRegensLeft]           = useState(REGEN_LIMIT);
 
   // Tracks whether the current generation session is still active.
   // Set to false on reset / close so in-flight callbacks self-abort.
@@ -91,6 +96,11 @@ export function useStoryboardGeneration({
   // Accumulates R2 CDN URLs as each panel upload completes.
   // Reset at the start of every new generation run.
   const panelCdnUrlsRef = useRef({});
+
+  // Remembers the R2 key namespace for this run so a later panel REPLACE can mint a fresh,
+  // uniquely-keyed object (panel images are cached immutable; reusing a key would let the CDN
+  // serve the stale image). Null until the first generation/restore assigns it.
+  const panelSessionRef = useRef(null);
 
   // Stable ref to the latest onPanelsGenerated callback.
   // Using a ref avoids adding the callback to useCallback dep arrays,
@@ -110,6 +120,8 @@ export function useStoryboardGeneration({
   useEffect(() => {
     storyboardActiveRef.current = false;
     panelCdnUrlsRef.current     = {};
+    panelSessionRef.current     = null;
+    setRegensLeft(REGEN_LIMIT);
     setStoryboardError('');
     setStoryboardErrorCode('');
 
@@ -120,6 +132,9 @@ export function useStoryboardGeneration({
       // (older entries, saved before unlockedPanels hit the full count, could still
       // carry isLocked:true and would otherwise show the "Pro Only" card on restore).
       const ownedPanels = initialPanels.filter(p => !p.isLocked);
+      // Seed the CDN-url ref so a later REPLACE rebuilds the full history array without
+      // dropping the other panels' existing images.
+      ownedPanels.forEach((p, i) => { if (p.imageUrl) panelCdnUrlsRef.current[i] = p.imageUrl; });
       setStoryboardPanels(ownedPanels);
       setUnlockedPanels(ownedPanels.length);
       setShowStoryboard(true);
@@ -229,6 +244,77 @@ export function useStoryboardGeneration({
     }
   }, [genre, lang]); // onPanelsGeneratedRef is a ref — intentionally excluded from deps
 
+  // ── Replace a single panel image (user-initiated, budget-limited) ──────────
+  // Re-runs image generation for ONE unlocked panel with the same visual prompt (a fresh
+  // server-side seed → a new image). The old image stays visible under a spinner, so a
+  // failed/placeholder attempt never blanks a good panel and never spends a replacement.
+  // Budget (REGEN_LIMIT) is shared across the whole comic.
+  const regeneratePanel = useCallback(async (idx) => {
+    if (regensLeft <= 0) return;
+    if (idx >= unlockedPanels) return;
+    const panel = storyboardPanels[idx];
+    if (!panel || panel.isLocked || !panel.visual) return;
+    const current = panelImages[idx];
+    if (current?.loading) return;               // a render is already in flight for this panel
+    const oldUrl = current?.url || null;
+
+    // Keep the existing image visible (regenerating flag) instead of resetting to a skeleton.
+    dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: true, url: oldUrl, error: false, regenerating: true } });
+
+    try {
+      const resp = await fetch('/api/generate-poster', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt:      panel.visual,
+          genre,
+          lang,
+          requestType: 'comic',
+          panelIndex:  idx,
+          characterImageUrl: (panel.hero && characterImageUrlRef.current) ? characterImageUrlRef.current : undefined,
+        }),
+      });
+      const data = await resp.json();
+      if (!storyboardActiveRef.current) return;  // user closed the storyboard mid-flight
+
+      // A placeholder/failure must NOT replace a good image or burn a replacement.
+      if (!data.success || !data.imageUrl || data.isPlaceholder) {
+        dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: false, url: oldUrl, error: !oldUrl } });
+        return;
+      }
+
+      // Commit the new image immediately (data URI) and spend one replacement.
+      setRegensLeft(n => Math.max(0, n - 1));
+      dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: false, url: data.imageUrl, error: false } });
+      track('Comic Panel Replaced', { genre, language: lang });
+
+      // Background R2 upload under a FRESH key (immutable cache → a reused key would serve the
+      // stale image). Hot-swap to the CDN URL, then persist the merged panel array to history.
+      const ext = data.imageUrl.startsWith('data:image/png') ? 'png' : 'jpg';
+      const sid = panelSessionRef.current || (panelSessionRef.current = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+      const key = `panels/${sid}_${String(idx).padStart(2, '0')}_r${Date.now().toString(36)}.${ext}`;
+      fetch('/api/upload-panel', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData: data.imageUrl, key }),
+      })
+        .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+        .then(({ url: cdnUrl }) => {
+          if (!cdnUrl || !storyboardActiveRef.current) return;
+          dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: false, url: cdnUrl, error: false } });
+          panelCdnUrlsRef.current[idx] = cdnUrl;
+          const merged = storyboardPanels.map((p, i) => ({
+            ...p, imageUrl: panelCdnUrlsRef.current[i] ?? p.imageUrl ?? null,
+          }));
+          onPanelsGeneratedRef.current?.(merged);
+        })
+        .catch((err) => console.warn(`⚠️ R2 upload skipped for replaced panel ${idx}: ${err.message}`));
+    } catch {
+      if (!storyboardActiveRef.current) return;
+      dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: false, url: oldUrl, error: !oldUrl } });
+    }
+  }, [regensLeft, unlockedPanels, storyboardPanels, panelImages, genre, lang]);
+
   // ── Storyboard text fetch ─────────────────────────────────────────────────
 
   const generateStoryboard = useCallback(async () => {
@@ -276,8 +362,9 @@ export function useStoryboardGeneration({
         // Even if the user closes before images finish, the narrative plan is saved.
         onPanelsGeneratedRef.current?.(data.panels.map(p => ({ ...p, imageUrl: null })));
 
-        // Unique session ID scopes all R2 keys for this generation run.
+        // Unique session ID scopes all R2 keys for this generation run (and later replaces).
         const sessionId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        panelSessionRef.current = sessionId;
         generateStoryboardImages(data.panels, unlocked, sessionId);
 
       } else {
@@ -335,6 +422,9 @@ export function useStoryboardGeneration({
     setComicStyle,
     currentStoryboardMessage: currentMessage,
     generateStoryboard,
+    regeneratePanel,
+    regensLeft,
+    regenLimit: REGEN_LIMIT,
     closeStoryboard,
     cancelStoryboard,
     isQuotaError,

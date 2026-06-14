@@ -118,6 +118,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     unlockedPanels,
     comicStyle, setComicStyle, currentStoryboardMessage,
     generateStoryboard, closeStoryboard, cancelStoryboard,
+    regeneratePanel, regensLeft,
   } = useStoryboardGeneration({
     lang, genre, cleanScript, script, onAuthRequired, onPanelsGenerated, initialPanels,
     characterImageUrl: activeCharacterUrl,
@@ -821,6 +822,8 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
             onClose={closeStoryboard}
             unlockedPanels={unlockedPanels}
             onUpgrade={() => onAuthRequired('upgrade')}
+            onRegenerate={regeneratePanel}
+            regensLeft={regensLeft}
           />
         )}
       </AnimatePresence>
