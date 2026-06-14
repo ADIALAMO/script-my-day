@@ -210,22 +210,24 @@ const IDENTITY_CASCADE_VALUE   = [runGeminiIdentity, runGrokIdentity];
 // Poster and Comic share ONE ordering — free engines first, the paid engine third — so
 // everyday generation stays on the free providers and OpenRouter Klein is only reached as a
 // paid fallback when BOTH free engines fail. This minimizes spend (Klein is rarely hit).
-//   P1 HuggingFace      → FLUX.1-schnell, free HF token, x-wait-for-model absorbs cold-start
-//   P2 Cloudflare       → FLUX.1-schnell @ steps:6, free ~170 img/day (10K neurons)
+// Cloudflare leads over HuggingFace for SPEED: CF returns in ~2-3s, whereas HF's
+// x-wait-for-model:true blocks on cold-start and can take 15-20s on the first call.
+//   P1 Cloudflare       → FLUX.1-schnell @ steps:6, free ~170 img/day (10K neurons), fast
+//   P2 HuggingFace      → FLUX.1-schnell, free HF token, x-wait-for-model absorbs cold-start
 //   P3 OpenRouter Klein → FLUX.2-klein (paid). Auto-dropped once DAILY_IMAGE_BUDGET is hit
 //                         (see filter below) so a viral day can never produce a billing surprise.
 //   P4 Pollinations     → anonymous, 1 req/15s throttled — final safety net.
 
 const POSTER_CASCADE = [
-  runHuggingFace,
   runCloudflareAI,
+  runHuggingFace,
   runOpenRouterKlein,
   runPollinationsFlux,
 ];
 
 const COMIC_CASCADE = [
-  runHuggingFace,
   runCloudflareAI,
+  runHuggingFace,
   runOpenRouterKlein,
   runPollinationsFlux,
 ];

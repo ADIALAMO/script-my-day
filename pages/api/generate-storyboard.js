@@ -134,7 +134,12 @@ Story arc required: opening → development → conflict peak → climax → res
 }
 
 // Opt 2: systemInstruction carries the cached static block; contents carries only the dynamic screenplay.
-// Opt 3: maxOutputTokens calibrated to 750 (realistic ceiling for 7 panels ≈ 630 tokens + 20% headroom).
+// Opt 3: JSON mode + thinking disabled is what makes Gemini reliable here. gemini-2.5-flash is a
+// "thinking" model — at a tight token cap it spends the budget on reasoning and returns truncated,
+// non-JSON output (finishReason MAX_TOKENS). That was the #1 cause of the storyboard falling all the
+// way through to the slow free-tier fallback (~76s). responseMimeType forces a pure JSON array,
+// thinkingConfig.thinkingBudget:0 stops the reasoning overrun, and 2000 tokens leaves headroom —
+// together they yield a clean first-try parse in ~2-3s (verified).
 async function runGeminiModel(model, staticInstruction, script, apiKey, timeoutMs) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -146,7 +151,12 @@ async function runGeminiModel(model, staticInstruction, script, apiKey, timeoutM
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: staticInstruction }] },
         contents: [{ role: 'user', parts: [{ text: `SCREENPLAY:\n${script}` }] }],
-        generationConfig: { temperature: 0.25, maxOutputTokens: 750 }
+        generationConfig: {
+          temperature: 0.25,
+          maxOutputTokens: 2000,
+          responseMimeType: 'application/json',
+          thinkingConfig: { thinkingBudget: 0 },
+        }
       }),
       signal: controller.signal
     });
