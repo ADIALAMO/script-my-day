@@ -54,14 +54,19 @@ const FREE_STORYBOARD_MODELS = [
   'qwen/qwen3-next-80b-a3b-instruct:free',
 ];
 
+// NOTE: suffixes deliberately carry NO motion/pose words (no "speed lines", "dynamic
+// cinematic angles", "dramatic heroic poses"). Those terms push FLUX toward foreshortened,
+// mid-motion bodies — the single biggest amplifier of hand/limb distortion in comic panels
+// (verified before/after on Klein). They stay style+palette only; the framing energy comes
+// from the per-panel "visual" instead, where it can be kept anatomy-safe.
 const STYLE_TRACKS = {
   anime: {
-    prefix: 'Dynamic action anime style, flat cel-shading, vibrant dramatic lighting, bold ink outlines —',
-    suffix: '— vivid saturated colors, speed lines, expressive characters, dynamic cinematic angles'
+    prefix: 'Anime comic illustration, flat cel-shading, vibrant dramatic lighting, bold clean ink outlines —',
+    suffix: '— vivid saturated colors, clean bold linework, expressive faces'
   },
   marvel: {
     prefix: '90s X-Men animated series, classic comic book shading, sharp ink line art, retro animation —',
-    suffix: '— strong black ink outlines, halftone dots, dramatic heroic poses'
+    suffix: '— strong black ink outlines, halftone dots, bold graphic composition'
   },
   noir: {
     prefix: 'Gritty black and white comic noir, Sin City aesthetic, stark chiaroscuro shadows —',
@@ -113,11 +118,12 @@ Field rules:
   • Use wide or full-body shots ONLY to establish a location or an object with NO person in it, or with a single small distant figure — never for two people interacting up close.
   • Still pick dramatic, intentional angles — low hero angle, over-the-shoulder, a slight Dutch tilt — but keep the subject large, centred, and close to camera.
   CLEAN-RENDER RULES — these keep the image model from hallucinating; apply every panel:
+  • HANDS ARE THE #1 CAUSE OF DISTORTION. Whenever a beat shows a person USING an object (typing, holding a phone, pouring or drinking, writing, gripping or manipulating anything), do NOT show the hands operating it. Reframe the beat as EITHER a close-up of the OBJECT alone (a glowing laptop screen, a steaming coffee cup on the counter, a graph on a wall screen) OR a close-up of the person's FACE reacting, with the hands fully OUT of frame. This is mandatory — never describe a hand doing fine work.
   • ONE clear focal subject, large in frame. At most ONE other person, kept to a calm medium two-shot and clearly SEPARATED in space (across the table, beside, further back) — never three or more people, never overlapping or merged.
-  • Convert confrontations and action into a single charged MOMENT rather than mid-motion: a hard stare, a turn of the head, a still standoff — not punching, pointing, throwing, or grabbing.
+  • Convert confrontations and action into a single charged MOMENT rather than mid-motion: a hard stare, a turn of the head, a still standoff — not punching, pointing, throwing, grabbing, or running.
   • Keep the BACKGROUND simple and suggested. Never spell out detailed background crowds; render extra people as a soft blurred suggestion at most.
-  • Give the subject a NATURAL, relaxed pose with hands AT REST — at the side, in a pocket, folded, or resting on a surface. Do NOT describe pointing, gesturing, reaching, or hands manipulating small objects. If a prop matters, let it sit in the scene, not in a gripping hand.
-  • Reserve close-ups for the face — never a close-up centred on hands.
+  • Outside the object/face reframe above, give the subject a relaxed pose with hands AT REST and barely visible — at the side, in a pocket, folded, behind the back, or below the frame edge. Never describe pointing, gesturing, or reaching.
+  • Reserve close-ups for the face or a single object — never a close-up centred on hands.
   • One coherent light source, kept clear of the face and head so no prop, lamp, or glow fuses into it.
   • Leave a little headroom above the head and keep the whole subject inside the frame.
   Examples: "A weary detective leans in a doorway, hands in his coat pockets, a dim streetlight glowing behind him, medium shot, moody noir lighting" or "Tight close-up on her determined eyes, rain streaking down, dramatic rim light".

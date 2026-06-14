@@ -113,13 +113,10 @@ async function runCloudflareAI(prompt, seed) {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      // steps:8 is CF's documented max for flux-1-schnell — the most refinement passes the engine
-      // allows for fine details like hands/anatomy (this is the free fallback that serves comic
-      // panels once paid Klein is circuit-open or budget-capped, so it must render at its best).
-      // width/height pinned to 1024² — FLUX is trained at ~1MP and anatomy degrades below it; CF
-      // accepts these fields explicitly (verified) rather than relying on the implicit default.
-      // Prompt is untouched, so this cannot regress prompt quality.
-      body: JSON.stringify({ prompt, seed, steps: 8, width: 1024, height: 1024 }),
+      // steps:6 (up from schnell's default 4, CF max is 8) — gives the model more refinement
+      // passes for fine details like hands/anatomy. Costs ~85 neurons/img vs ~58 (still ~115/day
+      // within the 10K free budget). Prompt is untouched, so this cannot regress prompt quality.
+      body: JSON.stringify({ prompt, seed, steps: 6 }),
       signal: AbortSignal.timeout(35000),
     }
   );
