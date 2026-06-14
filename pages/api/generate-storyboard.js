@@ -71,6 +71,15 @@ const STYLE_TRACKS = {
   noir: {
     prefix: 'Gritty black and white comic noir, Sin City aesthetic, stark chiaroscuro shadows —',
     suffix: '— high contrast black and white, deep ink shadows, graphic novel style'
+  },
+  // Soft "painted" track — semi-realistic anime with RENDERED shading instead of flat ink.
+  // Verified to render hands/anatomy markedly cleaner than the flat tracks on the SAME engine
+  // and seed: soft shading + mild realism move the panel toward FLUX's stronger (poster-like)
+  // regime, and the absence of crisp ink outlines HIDES residual finger errors instead of
+  // drawing a sharp line around them. Same no-motion-words rule as the other tracks.
+  painted: {
+    prefix: 'Semi-realistic anime style, soft rendered shading with natural shadows, atmospheric cinematic lighting, modern digital painting —',
+    suffix: '— warm painterly colors, soft detailed rendering'
   }
 };
 

@@ -345,13 +345,15 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
 
   // ── Comic style options ────────────────────────────────────────────────────
   const comicStyleOptions = useMemo(() => uiHebrew ? [
-    { value: 'anime',  label: 'אנימה סטודיו' },
-    { value: 'marvel', label: 'מארוול רטרו' },
-    { value: 'noir',   label: 'נואר קולנועי' },
+    { value: 'anime',   label: 'אנימה סטודיו' },
+    { value: 'marvel',  label: 'מארוול רטרו' },
+    { value: 'noir',    label: 'נואר קולנועי' },
+    { value: 'painted', label: 'ציור קולנועי' },
   ] : [
-    { value: 'anime',  label: 'ANIME STUDIO' },
-    { value: 'marvel', label: 'MARVEL RETRO' },
-    { value: 'noir',   label: 'CINEMATIC NOIR' },
+    { value: 'anime',   label: 'ANIME STUDIO' },
+    { value: 'marvel',  label: 'MARVEL RETRO' },
+    { value: 'noir',    label: 'CINEMATIC NOIR' },
+    { value: 'painted', label: 'CINEMATIC PAINTED' },
   ], [uiHebrew]);
 
   // ── Derived values ─────────────────────────────────────────────────────────
