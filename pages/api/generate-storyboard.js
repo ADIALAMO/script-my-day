@@ -329,28 +329,24 @@ export default async function handler(req, res) {
     // so every engine's bare "visual" gets the same FLUX framing.
     const enrich = (panels) => panels.map(p => ({ ...p, visual: `${track.prefix} ${p.visual} ${track.suffix}` }));
 
-    if (geminiKey) {
-      const panels = await tryGemini(staticInstruction, cleanScript, geminiKey);
-      if (panels) { enrichedPanels = enrich(panels); storyboardEngine = 'Gemini'; }
-    }
-
-    if (!enrichedPanels && openrouterKey) {
+    // OpenRouter runs FIRST now (paid → free) so the gemma/deepseek/llama/qwen engines are
+    // the primary path and can be evaluated. Both Gemini models are demoted to the LAST resort.
+    if (openrouterKey) {
       const panels = await tryOpenRouter(staticInstruction, cleanScript, openrouterKey);
       if (panels) { enrichedPanels = enrich(panels); storyboardEngine = 'OpenRouter'; }
     }
 
-    // Free last-resort net — only when both paid engines above came up empty.
+    // Free net — only when the paid OpenRouter tier came up empty.
     if (!enrichedPanels && openrouterFreeKey) {
       const panels = await tryOpenRouter(staticInstruction, cleanScript, openrouterFreeKey, FREE_STORYBOARD_MODELS);
       if (panels) { enrichedPanels = enrich(panels); storyboardEngine = 'OpenRouter (free)'; }
     }
 
-    // Last resort: one more lone gemini-2.5-flash-lite attempt, after every OpenRouter tier.
-    // If the earlier Gemini failures were transient (timeout/rate spike), this fresh call —
-    // seconds later — can still land, and flash-lite reliably respects the JSON-only format.
+    // Gemini LAST (both gemini-2.5-flash and its gemini-2.5-flash-lite hedge/retry live inside
+    // tryGemini) — the final fallback once every OpenRouter engine has failed.
     if (!enrichedPanels && geminiKey) {
-      const panels = await runGeminiModel('gemini-2.5-flash-lite', staticInstruction, cleanScript, geminiKey, 14000);
-      if (panels) { enrichedPanels = enrich(panels); storyboardEngine = 'Gemini (flash-lite fallback)'; }
+      const panels = await tryGemini(staticInstruction, cleanScript, geminiKey);
+      if (panels) { enrichedPanels = enrich(panels); storyboardEngine = 'Gemini'; }
     }
 
     if (!enrichedPanels) {
