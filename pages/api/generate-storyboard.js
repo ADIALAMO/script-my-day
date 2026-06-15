@@ -345,6 +345,14 @@ export default async function handler(req, res) {
       if (panels) { enrichedPanels = enrich(panels); storyboardEngine = 'OpenRouter (free)'; }
     }
 
+    // Last resort: one more lone gemini-2.5-flash-lite attempt, after every OpenRouter tier.
+    // If the earlier Gemini failures were transient (timeout/rate spike), this fresh call —
+    // seconds later — can still land, and flash-lite reliably respects the JSON-only format.
+    if (!enrichedPanels && geminiKey) {
+      const panels = await runGeminiModel('gemini-2.5-flash-lite', staticInstruction, cleanScript, geminiKey, 14000);
+      if (panels) { enrichedPanels = enrich(panels); storyboardEngine = 'Gemini (flash-lite fallback)'; }
+    }
+
     if (!enrichedPanels) {
       return res.status(500).json({ success: false, code: CODES.STORYBOARD_FAIL, message: 'All storyboard engines offline.' });
     }
