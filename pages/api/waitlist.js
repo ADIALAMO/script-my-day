@@ -26,7 +26,7 @@ export default async function handler(req, res) {
   }
 
   // ── Rate limiting (per IP) ──────────────────────────────────────────────────
-  const ip = extractIdentifier(req, null);
+  const ip = extractIdentifier(req);
   const rateLimitKey = `ratelimit:waitlist:${ip}`;
   try {
     const current = await redis.get(rateLimitKey);

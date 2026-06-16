@@ -23,6 +23,7 @@ import { getSessionAndTier } from '../../lib/auth.js';
 import { limitFor } from '../../lib/quota.js';
 import { moderateImage, grokImageFromReference, geminiImageFromReference, identityQuotaExceeded } from '../../lib/identity.js';
 import { blobConfigured, putImage, decodeDataUri } from '../../lib/blob-store.js';
+import { enforceRateLimit } from '../../lib/rate-limit.js';
 
 export const maxDuration = 60;
 // Selfies are large base64 blobs; raise the default 1mb body limit.
@@ -35,6 +36,11 @@ const CHARACTER_SHEET_PROMPT =
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
+
+  // ── Rate limiting (sliding window, before any paid AI call) ──────────────
+  // upload-character triggers Grok + Gemini calls (~$0.10/request); the tight
+  // 4/5m window means a malicious burst drains at most $0.40 before being cut.
+  if (await enforceRateLimit(req, res, 'upload-character')) return;
 
   try {
     const isAdmin = isAdminRequest(req);

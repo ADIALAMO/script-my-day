@@ -18,7 +18,7 @@ export default async function handler(req, res) {
   }
 
   // ── Rate limiting ─────────────────────────────────────────────────────────
-  const ip = extractIdentifier(req, null);
+  const ip = extractIdentifier(req);
   const rateLimitKey = `ratelimit:feedback:${ip}`;
 
   try {

@@ -4,6 +4,7 @@ import { CODES } from '../../lib/messages.js';
 import { nextMidnightUTC, isAdminRequest, extractDevTier } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { limitFor } from '../../lib/quota.js';
+import { enforceRateLimit } from '../../lib/rate-limit.js';
 
 export const maxDuration = 60;
 
@@ -252,6 +253,9 @@ async function tryOpenRouter(staticInstruction, script, apiKey, models = ['googl
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
+
+  // ── Rate limiting (sliding window, before quota gate) ─────────────────────
+  if (await enforceRateLimit(req, res, 'generate-storyboard')) return;
 
   try {
     const { script, lang, genre, comicStyle, heroDescriptor: rawHeroDescriptor } = req.body;
