@@ -69,7 +69,7 @@ export default async function handler(req, res) {
     //   • bodyParser was accidentally left enabled
     //   • Wrong webhook secret (test vs live keys mixed up)
     console.error('❌ Stripe webhook signature verification failed:', err.message);
-    return res.status(400).json({ error: `Signature error: ${err.message}` });
+    return res.status(400).json({ error: 'Webhook signature verification failed.' });
   }
 
   // ── Event routing ─────────────────────────────────────────────────────────

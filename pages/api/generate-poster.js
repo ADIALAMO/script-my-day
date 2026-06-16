@@ -3,6 +3,7 @@ import { CODES } from '../../lib/messages.js';
 import { nextMidnightUTC, isAdminRequest } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { limitFor } from '../../lib/quota.js';
+import { enforceRateLimit } from '../../lib/rate-limit.js';
 import {
   PROVIDER_KEY,
   extractStatusCode,
@@ -268,6 +269,12 @@ export default async function handler(req, res) {
   try {
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
 
+  // ── Rate limiting (sliding window, before quota gate) ─────────────────────
+  // generate-poster is called for both standalone posters and per-panel comic
+  // images (up to 7 per comic), so the limit is set higher than other endpoints.
+  // This still blocks automated burst attacks while never throttling real users.
+  if (await enforceRateLimit(req, res, 'generate-poster')) return;
+
   const {
     prompt,
     visualPrompt,
@@ -491,8 +498,7 @@ export default async function handler(req, res) {
     return res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',
-      message: error.message || 'Internal server error.',
-      errorType: error.name,
+      message: 'Internal server error.',
     });
   }
 }

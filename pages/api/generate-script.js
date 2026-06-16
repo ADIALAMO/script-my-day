@@ -5,6 +5,7 @@ import { CODES } from '../../lib/messages.js';
 import { nextMidnightUTC, isAdminRequest } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { limitFor } from '../../lib/quota.js';
+import { enforceRateLimit } from '../../lib/rate-limit.js';
 
 // Must be a top-level export — NOT nested inside config — for Vercel to honour it.
 export const maxDuration = 60;
@@ -27,6 +28,11 @@ export default async function handler(req, res) {
         message: 'Server misconfiguration: no AI provider keys set.',
       });
     }
+
+    // ── Rate limiting (sliding window, before quota gate) ─────────────────────
+    // Rejects automated burst attacks before they can race through the quota
+    // counter. Admin requests bypass this (isAdminRequest check is inside).
+    if (await enforceRateLimit(req, res, 'generate-script')) return;
 
     // ── Parse body ────────────────────────────────────────────────────────────
     const { journalEntry, genre, gender } = req.body;
@@ -83,7 +89,7 @@ export default async function handler(req, res) {
       return res.status(500).json({
         success: false,
         code: CODES.SCRIPT_FAIL,
-        message: result.error || 'Script generation failed.',
+        message: 'Script generation failed.',
       });
     }
 
@@ -122,12 +128,10 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('generate-script unhandled error:', error.message, error.stack);
-
     return res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',
-      message: error.message || 'Internal server error.',
-      errorType: error.name,
+      message: 'Internal server error.',
     });
   }
 }
