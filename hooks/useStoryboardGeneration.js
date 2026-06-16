@@ -37,6 +37,16 @@ const STORYBOARD_MESSAGES_EN = ['Scanning scenes...', 'Mapping panels...', 'Inki
 // "try again" cost bounded — each replace is a fresh image generation.
 const REGEN_LIMIT = 2;
 
+function makeClientComicSeed() {
+  const cryptoObj = typeof globalThis !== 'undefined' ? globalThis.crypto : null;
+  if (cryptoObj?.getRandomValues) {
+    const values = new Uint32Array(2);
+    cryptoObj.getRandomValues(values);
+    return `${values[0]}${values[1]}`;
+  }
+  return `${Date.now()}${Math.floor(Math.random() * 1_000_000_000)}`;
+}
+
 /**
  * Manages the full storyboard lifecycle: panel data fetching, per-panel
  * image generation, R2 upload, loading state, error state, and style selection.
@@ -102,6 +112,10 @@ export function useStoryboardGeneration({
   // serve the stale image). Null until the first generation/restore assigns it.
   const panelSessionRef = useRef(null);
 
+  // One seed root per comic run. The server derives panel-specific seeds from this
+  // plus panelIndex, keeping character/style randomness coherent across panels.
+  const comicSeedRef = useRef(null);
+
   // Stable ref to the latest onPanelsGenerated callback.
   // Using a ref avoids adding the callback to useCallback dep arrays,
   // which would recreate generateStoryboardImages on every parent render.
@@ -121,6 +135,7 @@ export function useStoryboardGeneration({
     storyboardActiveRef.current = false;
     panelCdnUrlsRef.current     = {};
     panelSessionRef.current     = null;
+    comicSeedRef.current        = null;
     setRegensLeft(REGEN_LIMIT);
     setStoryboardError('');
     setStoryboardErrorCode('');
@@ -175,6 +190,7 @@ export function useStoryboardGeneration({
               lang,
               requestType: 'comic',
               panelIndex:  idx,
+              comicSeed:   comicSeedRef.current,
               // Selective Framing: only HERO panels carry the identity reference.
               // Non-hero panels send no reference → the server degrades them to the
               // free faceless cascade automatically (objects/locations/secondaries).
@@ -271,6 +287,7 @@ export function useStoryboardGeneration({
           lang,
           requestType: 'comic',
           panelIndex:  idx,
+          comicSeed:   comicSeedRef.current,
           characterImageUrl: (panel.hero && characterImageUrlRef.current) ? characterImageUrlRef.current : undefined,
         }),
       });
@@ -321,6 +338,7 @@ export function useStoryboardGeneration({
     storyboardActiveRef.current = false;
     storyboardCancelledRef.current = false;
     panelCdnUrlsRef.current     = {};
+    comicSeedRef.current        = makeClientComicSeed();
     dispatchPanelImages({ type: 'RESET' });
     setStoryboardLoading(true);
     setStoryboardError('');

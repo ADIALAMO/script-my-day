@@ -19,6 +19,12 @@ import {
   consumeIdentityCredit,
 } from '../../lib/identity.js';
 import { maybeRedeemReferral } from '../../lib/referral.js';
+import {
+  COMIC_NEGATIVE_PROMPT,
+  compileComicPrompt,
+  makeComicSeedRoot,
+  makePanelSeed,
+} from '../../lib/comic-prompt-compiler.js';
 
 // ─── Shared utility ───────────────────────────────────────────────────────────
 
@@ -55,11 +61,20 @@ function makePlaceholderImage(label = 'Scene unavailable') {
 // x-wait-for-model: true → blocks on cold-start instead of immediately returning 503
 // num_inference_steps: 4 → FLUX Schnell is distilled for 1–4 steps; explicit beats default
 // guidance_scale: 3.5    → FLUX Schnell's documented optimum (SD defaults cause oversaturation)
-async function runHuggingFace(prompt, seed) {
+async function runHuggingFace(prompt, seed, opts = {}) {
   const token = process.env.HF_TOKEN;
   if (!token) throw new Error('HF_TOKEN not configured');
 
-  const res = await fetch(
+  const parameters = {
+    seed,
+    width: 1024,
+    height: 1024,
+    num_inference_steps: 4,
+    guidance_scale: 3.5,
+  };
+  if (opts.negativePrompt) parameters.negative_prompt = opts.negativePrompt;
+
+  const post = (params) => fetch(
     'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell',
     {
       method: 'POST',
@@ -71,17 +86,21 @@ async function runHuggingFace(prompt, seed) {
       },
       body: JSON.stringify({
         inputs: prompt,
-        parameters: {
-          seed,
-          width: 1024,
-          height: 1024,
-          num_inference_steps: 4,
-          guidance_scale: 3.5,
-        },
+        parameters: params,
       }),
       signal: AbortSignal.timeout(55000),
     }
   );
+
+  let res = await post(parameters);
+  // Some FLUX endpoints ignore/accept negative_prompt, others reject unknown params.
+  // If that happens, retry once without losing the whole provider.
+  if (!res.ok && opts.negativePrompt && (res.status === 400 || res.status === 422)) {
+    const safeParameters = { ...parameters };
+    delete safeParameters.negative_prompt;
+    console.warn('⚠️ HuggingFace rejected negative_prompt — retrying without it');
+    res = await post(safeParameters);
+  }
 
   if (!res.ok) {
     const err = await res.text();
@@ -100,12 +119,15 @@ async function runHuggingFace(prompt, seed) {
 // Setup: free cloudflare.com account → My Profile → API Tokens → Workers AI template.
 // Env vars: CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN
 // Response: JSON with `image` field containing base64 JPEG — no binary parsing needed.
-async function runCloudflareAI(prompt, seed) {
+async function runCloudflareAI(prompt, seed, opts = {}) {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const token = process.env.CLOUDFLARE_API_TOKEN;
   if (!accountId || !token) throw new Error('CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN not configured');
 
-  const res = await fetch(
+  const body = { prompt, seed, steps: 6 };
+  if (opts.negativePrompt) body.negative_prompt = opts.negativePrompt;
+
+  const post = (payload) => fetch(
     `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/black-forest-labs/flux-1-schnell`,
     {
       method: 'POST',
@@ -115,11 +137,19 @@ async function runCloudflareAI(prompt, seed) {
       },
       // steps:6 (up from schnell's default 4, CF max is 8) — gives the model more refinement
       // passes for fine details like hands/anatomy. Costs ~85 neurons/img vs ~58 (still ~115/day
-      // within the 10K free budget). Prompt is untouched, so this cannot regress prompt quality.
-      body: JSON.stringify({ prompt, seed, steps: 6 }),
+      // within the 10K free budget).
+      body: JSON.stringify(payload),
       signal: AbortSignal.timeout(35000),
     }
   );
+
+  let res = await post(body);
+  // Workers AI model schemas can lag behind provider features. Retry cleanly if
+  // negative_prompt is not accepted by the deployed Flux endpoint.
+  if (!res.ok && opts.negativePrompt && (res.status === 400 || res.status === 422)) {
+    console.warn('⚠️ Cloudflare rejected negative_prompt — retrying without it');
+    res = await post({ prompt, seed, steps: 6 });
+  }
 
   if (!res.ok) {
     const err = await res.text();
@@ -238,9 +268,16 @@ export default async function handler(req, res) {
   try {
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
 
-  const { prompt, visualPrompt, requestType, panelIndex, characterImageUrl } = req.body;
+  const {
+    prompt,
+    visualPrompt,
+    requestType,
+    panelIndex,
+    characterImageUrl,
+    comicSeed,
+    seed: requestedSeed,
+  } = req.body;
   const rawPrompt = prompt || visualPrompt || '';
-  const seed      = Math.floor(Math.random() * 999999);
 
   const isAdmin = isAdminRequest(req);
   const isComic = requestType === 'comic' || requestType === 'storyboard';
@@ -350,17 +387,28 @@ export default async function handler(req, res) {
       ? rawPrompt.replace(/\[image:\s*/i, '').replace(/\]$/, '').trim()
       : 'Cinematic movie poster, dramatic lighting';
 
+  const numericPanelIndex = Number.isFinite(panelIndex) ? panelIndex : parseInt(panelIndex, 10);
+  const normalizeSeed = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.abs(Math.floor(n)) % 1000000 : null;
+  };
+  const stableComicSeed = comicSeed ?? makeComicSeedRoot(agentPrompt);
+  const seed = isComic
+    ? (normalizeSeed(requestedSeed) ?? makePanelSeed(stableComicSeed, numericPanelIndex))
+    : (normalizeSeed(requestedSeed) ?? Math.floor(Math.random() * 999999));
+
   // Two distinct rendering targets:
-  //  • COMIC — stays bare clean prose; the storyboard already supplies the style framing in
-  //    agentPrompt. Anatomy/fidelity guards proved to summon defects on FLUX, so none are added.
+  //  • COMIC — compiled server-side into a compact, anatomy-safe panel prompt right before
+  //    the provider call. This protects every comic image path, including retries/regens.
   //  • POSTER — photorealistic film still. Here the rich cinematic descriptors genuinely help FLUX
   //    produce a polished result, so we restore the original cinematic structure (positive prose
   //    only — no SD-weight syntax and no negation lists, which FLUX cannot parse).
   const finalPrompt = isComic
-    ? agentPrompt
+    ? compileComicPrompt(agentPrompt)
     : `A high-end cinematic RAW 35mm film still of: ${agentPrompt}. ` +
       `Shot on IMAX, dramatic cinematic lighting, realistic skin textures, ` +
       `sharp focus, 8k, masterpiece.`;
+  const negativePrompt = isComic ? COMIC_NEGATIVE_PROMPT : undefined;
 
   // ── Identity Track gate ─────────────────────────────────────────────────────
   // Decides whether this request may inject the user's character reference.
@@ -397,7 +445,7 @@ export default async function handler(req, res) {
 
   for (const provider of liveCascade) {
     try {
-      const result = await provider(finalPrompt, seed, { characterImageUrl });
+      const result = await provider(finalPrompt, seed, { characterImageUrl, negativePrompt });
       await recordSuccess(redis, PROVIDER_KEY[provider.name]);
       // Count every successful PAID faceless call toward the daily image budget so the
       // kill-switch above can trip once DAILY_IMAGE_BUDGET is reached. Klein is the only
