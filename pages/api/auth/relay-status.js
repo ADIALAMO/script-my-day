@@ -1,4 +1,5 @@
-import { Redis } from '@upstash/redis';
+import { Redis }            from '@upstash/redis';
+import { enforceRateLimit } from '../../../lib/rate-limit.js';
 
 /**
  * GET /api/auth/relay-status?token=<relay_token>
@@ -12,6 +13,8 @@ import { Redis } from '@upstash/redis';
  */
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
+
+  if (await enforceRateLimit(req, res, 'relay-status')) return;
 
   const { token } = req.query;
   if (!token || typeof token !== 'string' || token.length > 64) {

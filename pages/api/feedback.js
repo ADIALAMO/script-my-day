@@ -12,6 +12,9 @@ export default async function handler(req, res) {
 
   const { text, lang, producerName } = req.body;
   const cleanText = sanitize(text, 500);
+  // Strip Telegram MarkdownV1 special chars from the user-supplied name to
+  // prevent *bold*, _italic_, `code`, and [link]() injection into the admin chat.
+  const cleanName = sanitize(producerName || '', 100).replace(/[*_`[\]()]/g, '');
 
   if (!cleanText) {
     return res.status(400).json({ message: 'Feedback text is required' });
@@ -42,7 +45,7 @@ export default async function handler(req, res) {
   const message = `
 🎬 *New Director's Note!*
 -------------------------
-👤 *Producer:* ${producerName || 'Guest'}
+👤 *Producer:* ${cleanName || 'Guest'}
 🌐 *Language:* ${lang === 'he' ? 'Hebrew 🇮🇱' : 'English 🇺🇸'}
 📝 *Message:*
 "${cleanText}"

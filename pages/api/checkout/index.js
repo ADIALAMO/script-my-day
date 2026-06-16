@@ -26,6 +26,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ success: false, error: 'Method not allowed.' });
   }
 
+  // ── Server-side billing guard ──────────────────────────────────────────────
+  // NEXT_PUBLIC_BILLING_ENABLED gates the UI, but direct API calls bypass it.
+  // This server-side check ensures the route is inert while billing is disabled,
+  // regardless of what the client sends.
+  if (process.env.NEXT_PUBLIC_BILLING_ENABLED !== 'true') {
+    return res.status(503).json({ success: false, error: 'Billing is not available yet.' });
+  }
+
   // ── Auth gate ──────────────────────────────────────────────────────────────
   // getSessionAndTier resolves JWT → Redis tier in one call. We need both
   // userId (for metadata) and email (to pre-fill Stripe checkout).

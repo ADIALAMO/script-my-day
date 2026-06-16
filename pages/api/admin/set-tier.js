@@ -102,5 +102,5 @@ export default async function handler(req, res) {
     console.warn(`⚠️ Pro member set update skipped (Redis): ${e.message}`);
   }
 
-  return res.status(200).json({ success: true, userId, email: resolvedEmail, tier, redisKey: key });
+  return res.status(200).json({ success: true, userId, email: resolvedEmail, tier });
 }
