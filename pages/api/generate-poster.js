@@ -27,6 +27,13 @@ import {
   makePanelSeed,
 } from '../../lib/comic-prompt-compiler.js';
 
+// Body size cap: the largest legitimate payload is a ~2 MB base64 characterImageUrl
+// (validFaceUrl allows up to 2 000 000 chars). Capping at 2 mb prevents the default
+// 4 mb Next.js limit from being abused to waste serverless CPU on junk bodies.
+export const config = {
+  api: { bodyParser: { sizeLimit: '2mb' } },
+};
+
 // ─── Shared utility ───────────────────────────────────────────────────────────
 
 async function fetchImageAsBase64(url) {
