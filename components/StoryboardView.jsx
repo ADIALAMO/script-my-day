@@ -90,9 +90,9 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
         const blob = await fetchImageBlob(url);
         file = await makeShareFile(blob, filename, { lang });
       }
-      if (!await shareReadyFile(file, `Panel ${panelNum}`)) window.open(url, '_blank');
+      if (!await shareReadyFile(file, `Panel ${panelNum}`) && isDesktop) window.open(url, '_blank');
     } catch {
-      window.open(url, '_blank');
+      if (isDesktop) window.open(url, '_blank');
     }
   };
 
@@ -121,7 +121,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
         ? await downloadBlobs(items, { lang })
         : await shareBlobs(items, isHebrew ? 'הסטוריבורד שלי' : 'My Comic Storyboard', { lang });
       // Fallback when neither path is supported: open the first available panel.
-      if (!ok && items.length) window.open(panelImages[shareableIdxs[0]].url, '_blank');
+      if (!ok && isDesktop && items.length) window.open(panelImages[shareableIdxs[0]].url, '_blank');
     } catch {
       /* user dismissed the sheet or a fetch failed — no-op, state restored below */
     } finally {

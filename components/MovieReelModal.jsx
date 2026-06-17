@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Share2, Loader2, AlertCircle, Video, VolumeX, Volume2 } from 'lucide-react';
 import { track } from '@vercel/analytics';
-import { shareReadyFile, makeShareFile } from '../utils/export-image.js';
+import { shareReadyFile, makeShareFile, exportCapabilities } from '../utils/export-image.js';
 
 // ── Canvas dimensions ────────────────────────────────────────────────────────
 const CANVAS_W      = 720;
@@ -614,15 +614,29 @@ export default function MovieReelModal({
     return prewarmRef.current;
   }, [videoUrl, genre]);
 
+  // Auto-prewarm as soon as the reel is ready — maximises head-start before the user
+  // taps "Share Reel", keeping navigator.share() inside iOS's transient-activation
+  // window even when the video blob is large (10-30 MB).
+  useEffect(() => {
+    if (videoUrl && phase === 'done') prewarmReel();
+  }, [videoUrl, phase, prewarmReel]);
+
   const handleShare = useCallback(async () => {
     if (!videoUrl) return;
+    const { isDesktop } = exportCapabilities();
     try {
       let file = (shareFileRef.current.url === videoUrl) ? shareFileRef.current.file : null;
       if (!file) { const p = prewarmReel(); file = p ? await p : null; }
-      if (!file) { window.open(videoUrl, '_blank'); return; }
-      if (!await shareReadyFile(file, 'LifeScript Reel')) window.open(videoUrl, '_blank');
+      if (!file) {
+        // Prewarm failed — only open a new tab on desktop (iOS blocks window.open in async handlers).
+        if (isDesktop) window.open(videoUrl, '_blank');
+        return;
+      }
+      const shared = await shareReadyFile(file, 'LifeScript Reel');
+      // shared=false only when Web Share is fully unsupported (desktop without Share API).
+      if (!shared && isDesktop) window.open(videoUrl, '_blank');
     } catch {
-      window.open(videoUrl, '_blank');
+      if (isDesktop) window.open(videoUrl, '_blank');
     }
   }, [videoUrl, prewarmReel]);
 

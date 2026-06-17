@@ -166,10 +166,14 @@ export async function downloadBlobs(items, { lang = 'en' } = {}) {
 let sharePending = false;
 
 // True when a rejection means "no need to fall back": the user dismissed the sheet
-// (AbortError) or a share was still settling (InvalidStateError). Falling through to a
-// popup-blocked window.open in these cases is exactly what made the button freeze.
+// (AbortError), a share was still settling (InvalidStateError), or iOS revoked the
+// transient-activation token because async work ran too long before navigator.share()
+// (NotAllowedError). Falling through to a popup-blocked window.open in any of these
+// cases is exactly what made the button look frozen.
 function shareHandled(err) {
-  return err?.name === 'AbortError' || err?.name === 'InvalidStateError';
+  return err?.name === 'AbortError'
+    || err?.name === 'InvalidStateError'
+    || err?.name === 'NotAllowedError';
 }
 
 // Core: hand an array of Files to the OS share sheet. Optional `text` rides along in the

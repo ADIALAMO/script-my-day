@@ -279,7 +279,9 @@ export function usePosterGeneration({
         const blob = await renderPosterBlob();
         if (blob) file = await makeShareFile(blob, posterFilename(), { lang });
       }
-      if (!file) { if (posterUrl) window.open(posterUrl, '_blank'); return; }
+      // All rendering paths failed — only open a new tab on desktop (iOS blocks window.open
+      // in async handlers; a popup-blocked no-op looks like a frozen button to the user).
+      if (!file) { if (isDesktop && posterUrl) window.open(posterUrl, '_blank'); return; }
 
       // CRITICAL (iOS share behaviour): WhatsApp / iMessage downgrade a file share to a
       // *link card* — dropping the image entirely — the instant the share text contains a
@@ -289,10 +291,11 @@ export function usePosterGeneration({
       // the clickable, coded referral link has its own dedicated path in ReferralModal.
       const caption = isHebrew ? 'נוצר ב-LIFESCRIPT 🎬' : 'Made with LIFESCRIPT 🎬';
       const shared = await shareReadyFile(file, posterTitle || 'My Poster', { text: caption });
-      if (!shared && posterUrl) window.open(posterUrl, '_blank');
+      // shared=false only when Web Share is fully unsupported — safe to open on desktop.
+      if (!shared && isDesktop && posterUrl) window.open(posterUrl, '_blank');
     } catch (err) {
       console.error('Poster capture error:', err);
-      if (posterUrl) window.open(posterUrl, '_blank');
+      if (isDesktop && posterUrl) window.open(posterUrl, '_blank');
     }
   }, [posterUrl, posterTitle, isHebrew, finalProducerName, genre, lang, renderPosterBlob, posterFilename, prewarmPosterShare]);
 
