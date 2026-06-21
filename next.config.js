@@ -58,7 +58,7 @@ const CSP_DIRECTIVES = [
   // All XHR/fetch calls stay on-origin; Vercel telemetry endpoints explicit
   "connect-src 'self' https://va.vercel-scripts.com https://vitals.vercel-insights.com",
 
-  "media-src 'none'",
+  "media-src 'self' blob:",
   "frame-src 'none'",
 
   // Belt-and-suspenders with X-Frame-Options: DENY for pre-CSP browsers
