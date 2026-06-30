@@ -190,56 +190,130 @@ function PosterRenderer({
         )}
       </div>
 
-      {/* פעולת הייצוא — דסקטופ: הורדה ראשית + שיתוף משני · מובייל: שיתוף נייטיב בלבד */}
+      {/* ── Share panel — visible immediately after poster generation ── */}
       {!posterLoading && posterUrl && (
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
+          initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-center gap-2.5 mt-8 pb-10 w-full max-w-[380px] mx-auto px-4"
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="mt-7 pb-10 w-full max-w-[420px] mx-auto px-4"
         >
+          {/* Label */}
+          <p className="text-center text-[#d4a373]/50 text-[9px] font-black tracking-[0.45em] uppercase mb-4">
+            {isHebrew ? 'שתף את הסרט שלך' : 'SHARE YOUR FILM'}
+          </p>
+
+          {/* Primary action — full-width, large */}
           <motion.button
             type="button"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.02, boxShadow: '0 12px 40px rgba(212,163,115,0.45)' }}
+            whileTap={{ scale: 0.96 }}
             onPointerDown={() => { if (!isDesktop) prewarmPosterShare?.(); }}
             onClick={() => {
-                // דסקטופ → הורדה · מובייל → שיתוף נייטיב
-                handleCapturePoster(isDesktop ? 'download' : 'share');
-                // מדידת לחיצה על הפעולה הראשית
-                if (typeof window !== 'undefined' && window.gtag) {
-                  window.gtag('event', 'poster_share_click', {
-                    title: posterTitle,
-                    genre: genre,
-                    method: isDesktop ? 'download' : 'share',
-                  });
-                }
-              }}
-            className="relative flex-1 flex items-center justify-center gap-2.5 h-12 bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black rounded-xl font-black transition-all duration-300 overflow-hidden shadow-[0_8px_28px_rgba(212,163,115,0.3)]"
+              handleCapturePoster(isDesktop ? 'download' : 'share');
+              if (typeof window !== 'undefined' && window.gtag) {
+                window.gtag('event', 'poster_share_click', {
+                  title: posterTitle, genre, method: isDesktop ? 'download' : 'share',
+                });
+              }
+            }}
+            className="relative w-full flex items-center justify-center gap-3 h-14 rounded-2xl font-black overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, #d4a373 0%, #e8bc80 48%, #c68b4a 100%)',
+              boxShadow: '0 8px 32px rgba(212,163,115,0.32), 0 2px 8px rgba(0,0,0,0.4)',
+            }}
           >
-            {/* אפקט הברק (Shiny Sweep) */}
-            <motion.div animate={{ left: ['-100%', '200%'] }} transition={{ repeat: Infinity, duration: 3, ease: "linear" }} className="absolute top-0 bottom-0 w-12 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[35deg]" />
-            {isDesktop ? <Download size={16} strokeWidth={2.5} /> : <Share2 size={16} strokeWidth={2.5} />}
-            <span className="text-[11px] tracking-[0.2em] uppercase">
+            <motion.span
+              className="pointer-events-none absolute inset-0"
+              animate={{ backgroundPosition: ['200% center', '-200% center'] }}
+              transition={{ repeat: Infinity, duration: 3.5, ease: 'linear' }}
+              style={{
+                background: 'linear-gradient(90deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%)',
+                backgroundSize: '200% 100%',
+              }}
+            />
+            {isDesktop ? <Download size={18} strokeWidth={2.5} className="text-[#0b0b0f]" /> : <Share2 size={18} strokeWidth={2.5} className="text-[#0b0b0f]" />}
+            <span className="relative text-[#0b0b0f] text-[12px] tracking-[0.22em] uppercase">
               {isDesktop
                 ? (isHebrew ? 'הורד פוסטר' : 'DOWNLOAD POSTER')
-                : (isHebrew ? 'שתף פוסטר' : 'SHARE POSTER')}
+                : (isHebrew ? 'שמור ושתף' : 'SAVE & SHARE')}
             </span>
           </motion.button>
 
-          {/* שיתוף משני — דסקטופ בלבד (העתקה/שיתוף ישיר לרשתות) */}
-          {isDesktop && (
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.95 }}
+          {/* Platform row */}
+          <div className="mt-4 flex items-center justify-center gap-3">
+            {/* WhatsApp — direct link on desktop, native sheet on mobile */}
+            {isDesktop ? (
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent((isHebrew ? 'נוצר ב-LIFESCRIPT 🎬' : 'Made with LIFESCRIPT 🎬') + '\nmy-life-script.vercel.app')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-col items-center gap-1.5 group"
+              >
+                <span className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center group-hover:border-[#25d366]/40 group-hover:bg-[#25d366]/10 transition-all duration-200">
+                  <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#25d366]/60 group-hover:fill-[#25d366] transition-colors duration-200"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.555 4.11 1.523 5.836L.057 23.882l6.196-1.623A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.006-1.371l-.359-.214-3.717.975.993-3.63-.234-.373A9.818 9.818 0 0 1 2.182 12C2.182 6.58 6.58 2.182 12 2.182S21.818 6.58 21.818 12 17.42 21.818 12 21.818z"/></svg>
+                </span>
+                <span className="text-[8px] text-white/30 group-hover:text-white/55 font-bold tracking-wide transition-colors duration-200">WhatsApp</span>
+              </a>
+            ) : (
+              <button onClick={() => handleCapturePoster('share')} onPointerDown={() => prewarmPosterShare?.()} className="flex flex-col items-center gap-1.5 group">
+                <span className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center group-active:bg-[#25d366]/10 transition-all duration-200">
+                  <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#25d366]/60"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.555 4.11 1.523 5.836L.057 23.882l6.196-1.623A11.954 11.954 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.006-1.371l-.359-.214-3.717.975.993-3.63-.234-.373A9.818 9.818 0 0 1 2.182 12C2.182 6.58 6.58 2.182 12 2.182S21.818 6.58 21.818 12 17.42 21.818 12 21.818z"/></svg>
+                </span>
+                <span className="text-[8px] text-white/30 font-bold tracking-wide">WhatsApp</span>
+              </button>
+            )}
+
+            {/* Instagram */}
+            <button
               onClick={() => handleCapturePoster('share')}
-              aria-label={isHebrew ? 'שתף פוסטר' : 'Share poster'}
-              className="flex items-center justify-center gap-2 h-12 px-4 bg-[#d4a373]/10 border border-[#d4a373]/30 text-[#d4a373] rounded-xl font-black hover:bg-[#d4a373]/18 hover:border-[#d4a373]/50 transition-all duration-300"
+              onPointerDown={() => { if (!isDesktop) prewarmPosterShare?.(); }}
+              className="flex flex-col items-center gap-1.5 group"
             >
-              <Share2 size={16} strokeWidth={2.5} />
-              <span className="text-[11px] tracking-[0.2em] uppercase">{isHebrew ? 'שתף' : 'SHARE'}</span>
-            </motion.button>
-          )}
+              <span className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center group-hover:border-[#e1306c]/40 group-hover:bg-[#e1306c]/10 group-active:bg-[#e1306c]/10 transition-all duration-200">
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#e1306c]/60 group-hover:fill-[#e1306c] transition-colors duration-200"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
+              </span>
+              <span className="text-[8px] text-white/30 group-hover:text-white/55 font-bold tracking-wide transition-colors duration-200">Instagram</span>
+            </button>
+
+            {/* TikTok */}
+            <button
+              onClick={() => handleCapturePoster('share')}
+              onPointerDown={() => { if (!isDesktop) prewarmPosterShare?.(); }}
+              className="flex flex-col items-center gap-1.5 group"
+            >
+              <span className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center group-hover:border-white/25 group-hover:bg-white/10 group-active:bg-white/10 transition-all duration-200">
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white/50 group-hover:fill-white/80 transition-colors duration-200"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.78a4.85 4.85 0 0 1-1.01-.09z"/></svg>
+              </span>
+              <span className="text-[8px] text-white/30 group-hover:text-white/55 font-bold tracking-wide transition-colors duration-200">TikTok</span>
+            </button>
+
+            {/* Desktop-only: secondary share button */}
+            {isDesktop && (
+              <button
+                onClick={() => handleCapturePoster('share')}
+                className="flex flex-col items-center gap-1.5 group"
+              >
+                <span className="w-10 h-10 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center group-hover:border-[#d4a373]/40 group-hover:bg-[#d4a373]/10 transition-all duration-200">
+                  <Share2 size={18} className="text-[#d4a373]/55 group-hover:text-[#d4a373] transition-colors duration-200" />
+                </span>
+                <span className="text-[8px] text-white/30 group-hover:text-white/55 font-bold tracking-wide transition-colors duration-200">
+                  {isHebrew ? 'שתף' : 'Share'}
+                </span>
+              </button>
+            )}
+          </div>
+
+          {/* Helper text */}
+          <p className="mt-4 text-center text-white/22 text-[9px] leading-relaxed">
+            {isDesktop
+              ? (isHebrew
+                ? 'הורד לשמירה · לחץ "שתף" לשליחה ישירה לרשתות'
+                : 'Download to save · tap Share to post directly to your networks')
+              : (isHebrew
+                ? 'שמור לגלריה או שתף ישירות לאינסטגרם, וואטסאפ, טיקטוק'
+                : 'Save to gallery or share directly to Instagram, WhatsApp, TikTok')}
+          </p>
         </motion.div>
       )}
     </motion.div>

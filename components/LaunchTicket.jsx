@@ -13,7 +13,7 @@ export default function LaunchTicket({ lang = 'he' }) {
   }, []);
 
   const content = {
-    badge: isHe ? "סטטוס הפקה" : "Production Status",
+    badge: isHe ? "מבצעים פעילים" : "Active Offers",
     title: isHe ? "מבצעי הפקה פעילים" : "Active Production Deals",
     desc: isHe
       ? "שני בונוסים פתוחים על הסט עכשיו — נצל אותם לפני שהמצלמות מפסיקות לצלם."

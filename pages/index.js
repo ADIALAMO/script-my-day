@@ -346,6 +346,15 @@ function HomePage() {
   // Incremented to trigger Navbar's useTier to re-fetch
   const [tierVersion, setTierVersion] = useState(0);
 
+  // Public social-proof counter — fetched once on mount, fail-silent
+  const [scriptCount, setScriptCount] = useState(0);
+  useEffect(() => {
+    fetch('/api/public-stats')
+      .then(r => r.json())
+      .then(d => { if (d.count > 0) setScriptCount(d.count); })
+      .catch(() => {});
+  }, []);
+
   // Smart router for 'upgrade' intent:
   //   billing gated  → Pro waitlist (everyone; no checkout exposed to the public)
   //   billing live   → authed users get the Pro checkout modal; guests sign in first
@@ -686,7 +695,86 @@ function HomePage() {
 
       <main className="container mx-auto pt-4 md:pt-8 pb-12 px-6 max-w-5xl flex-grow relative">
 
-        <HeroSection lang={lang} />
+        <HeroSection
+          lang={lang}
+          onGetStarted={() =>
+            document.querySelector('.glass-panel')
+              ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        />
+
+        {/* ── Poster teaser strip — social proof above the form ────────── */}
+        <div className="mb-8 -mx-2">
+          <div className="flex items-center justify-between mb-2 px-2">
+            <p className="text-[#d4a373]/50 text-[9px] font-black tracking-[0.45em] uppercase">
+              {lang === 'he' ? 'דוגמאות הפקה' : 'PRODUCTION SAMPLES'}
+            </p>
+            <button
+              onClick={() =>
+                document.getElementById('production-samples')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+              className="text-[#d4a373]/40 hover:text-[#d4a373]/80 text-[9px] font-black tracking-[0.3em] uppercase transition-colors duration-200"
+            >
+              {lang === 'he' ? 'כל הגלריה ←' : 'VIEW ALL →'}
+            </button>
+          </div>
+          {scriptCount > 0 && (
+            <p className="text-center text-white/18 text-[8px] font-black tracking-[0.3em] uppercase tabular-nums mb-2 px-2">
+              ✦ {scriptCount.toLocaleString()} {lang === 'he' ? 'תסריטים נוצרו' : 'SCRIPTS CREATED'} ✦
+            </p>
+          )}
+
+          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none px-2"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            {SHOWCASE_POSTERS.slice(0, 5).map((poster) => (
+              <div
+                key={poster.id}
+                className="relative shrink-0 rounded-2xl overflow-hidden"
+                style={{ width: 110, height: 165 }}
+              >
+                <img
+                  src={poster.src}
+                  alt={lang === 'he' ? poster.titleHe : poster.titleEn}
+                  className="w-full h-full object-cover"
+                  loading="eager"
+                  style={{ transform: 'translateZ(0)' }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                {poster.starYourself && (
+                  <div
+                    className="absolute top-1.5 left-1.5 px-1 py-[2px] rounded-md font-black uppercase leading-none text-[6px] tracking-wide pointer-events-none"
+                    style={{
+                      background: 'linear-gradient(135deg, #f5c97a 0%, #d4a373 100%)',
+                      color: '#0b0b0f',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
+                    }}
+                  >
+                    {lang === 'he' ? '★ אתה הכוכב' : '★ YOU\'RE THE STAR'}
+                  </div>
+                )}
+                <p className="absolute bottom-2 left-0 right-0 text-center text-white/80 text-[7px] font-bold uppercase tracking-wide px-1 leading-tight line-clamp-2">
+                  {lang === 'he' ? poster.titleHe : poster.titleEn}
+                </p>
+              </div>
+            ))}
+
+            {/* "See more" card */}
+            <button
+              onClick={() =>
+                document.getElementById('production-samples')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+              className="relative shrink-0 rounded-2xl overflow-hidden border border-[#d4a373]/20 bg-[#d4a373]/[0.04] hover:bg-[#d4a373]/[0.09] transition-colors duration-200 flex flex-col items-center justify-center gap-1.5"
+              style={{ width: 110, height: 165 }}
+            >
+              <span className="text-[#d4a373]/60 text-xl font-black">+</span>
+              <span className="text-[#d4a373]/50 text-[8px] font-black tracking-wide uppercase text-center leading-tight px-2">
+                {lang === 'he' ? 'עוד הפקות' : 'More\nSamples'}
+              </span>
+            </button>
+          </div>
+        </div>
 
         {/* ── Stripe checkout return notification ───────────────────────── */}
         <AnimatePresence>
@@ -832,7 +920,7 @@ function HomePage() {
                         <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-4">
                           {MODAL_DATA[modalContent][lang].footerLabel}
                         </p>
-                        <div className="inline-block px-6 py-2 rounded-full bg-[#d4a373]/10 border border-[#d4a373]/20 text-[#d4a373] text-[11px] font-bold">
+                        <div className="inline-block px-6 py-2 rounded-full bg-[#d4a373]/10 border border-[#d4a373]/20 text-[#d4a373] text-[11px] font-black uppercase tracking-widest">
                           {MODAL_DATA[modalContent][lang].footerButton}
                         </div>
                       </div>
@@ -848,9 +936,66 @@ function HomePage() {
         <motion.section
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className={`glass-panel rounded-[3rem] overflow-hidden shadow-2xl relative ${(scriptLoading || isTyping) ? 'ai-loading-active' : ''}`}
+          className={`glass-panel scroll-mt-20 rounded-[3rem] overflow-hidden shadow-2xl relative ${(scriptLoading || isTyping) ? 'ai-loading-active' : ''}`}
         >
           <div className="bg-[#030712]/60 backdrop-blur-3xl p-8 md:p-16 relative">
+
+            {/* ── Production progress strip ─────────────────────────────── */}
+            {(() => {
+              const step = initialPosterUrl ? 3 : script ? 2 : 1;
+              const steps = lang === 'he'
+                ? ['יומן', 'תסריט', 'פוסטר']
+                : ['Story', 'Script', 'Poster'];
+              const pct = step === 1 ? 0 : step === 2 ? 50 : 100;
+              return (
+                <div className="mb-8 md:mb-10" aria-label={lang === 'he' ? `שלב ${step} מתוך 3` : `Step ${step} of 3`}>
+                  <div className="flex justify-between mb-2">
+                    {steps.map((label, i) => {
+                      const s = i + 1;
+                      const done = step > s;
+                      const active = step === s;
+                      return (
+                        <motion.span
+                          key={label}
+                          animate={{ opacity: active ? 1 : done ? 0.6 : 0.22, scale: active ? 1 : 0.94 }}
+                          transition={{ duration: 0.45, ease: 'easeInOut' }}
+                          className="text-[9px] font-black uppercase tracking-[0.3em]"
+                          style={{ color: done || active ? '#d4a373' : 'rgba(255,255,255,0.3)' }}
+                        >
+                          {done ? '✓ ' : ''}{label}
+                        </motion.span>
+                      );
+                    })}
+                  </div>
+                  <div className="relative h-[2px] rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                    <motion.div
+                      className="absolute inset-y-0 left-0 rounded-full"
+                      animate={{ width: `${pct}%` }}
+                      transition={{ duration: 0.55, ease: 'easeInOut' }}
+                      style={{ background: 'linear-gradient(90deg, #c68b4a 0%, #e8bc80 100%)' }}
+                    />
+                    {[0, 50, 100].map((pos, i) => {
+                      const s = i + 1;
+                      const reached = step >= s;
+                      return (
+                        <motion.div
+                          key={pos}
+                          className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full border"
+                          style={{ left: `calc(${pos}% - 4px)` }}
+                          animate={{
+                            background: reached ? '#d4a373' : 'transparent',
+                            borderColor: reached ? '#d4a373' : 'rgba(255,255,255,0.2)',
+                            scale: step === s ? 1.35 : 1,
+                          }}
+                          transition={{ duration: 0.45, ease: 'easeInOut' }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
             <ScriptForm
               onSubmit={handleGenerateScript}
               onCancel={handleCancelGeneration}
@@ -915,6 +1060,7 @@ function HomePage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
+              id="production-samples"
               className="mt-16 mb-10"
             >
               {/* ── Header + Segmented View Toggle ───────────────────────── */}
@@ -1085,7 +1231,7 @@ function HomePage() {
                 gender={gender}
                 setGender={setGender}
                 journalEntry={journalText}
-                onPosterGenerated={(url) => updateEntry(currentEntryIdRef.current, { posterUrl: url })}
+                onPosterGenerated={(url) => { updateEntry(currentEntryIdRef.current, { posterUrl: url }); setInitialPosterUrl(url); }}
                 onScriptEdited={(text) => updateEntry(currentEntryIdRef.current, { script: text })}
                 onPanelsGenerated={(panels) => updateEntry(currentEntryIdRef.current, { panels: panels.filter(p => !p.isLocked) })}
                 onAuthRequired={openAuthModal}

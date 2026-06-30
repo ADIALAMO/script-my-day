@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-function HeroSection({ lang }) {
+function HeroSection({ lang, onGetStarted }) {
   return (
     <motion.header
       initial={{ opacity: 0, y: -20 }}
@@ -59,6 +59,30 @@ function HeroSection({ lang }) {
             {chip}
           </span>
         ))}
+      </div>
+
+      {/* Primary CTA */}
+      <div className="mt-8 flex justify-center px-4">
+        <motion.button
+          onClick={onGetStarted}
+          whileHover={{ scale: 1.04, boxShadow: '0 0 36px rgba(212,163,115,0.45)' }}
+          whileTap={{ scale: 0.97 }}
+          transition={{ type: 'spring', stiffness: 340, damping: 22 }}
+          className="relative px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-sm md:text-base text-[#0b0b0f] overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg, #d4a373 0%, #e8bc80 45%, #c68b4a 100%)',
+            boxShadow: '0 8px 32px rgba(212,163,115,0.28), 0 2px 8px rgba(0,0,0,0.4)',
+          }}
+        >
+          {/* subtle inner sheen */}
+          <span
+            className="pointer-events-none absolute inset-0 rounded-2xl"
+            style={{ background: 'linear-gradient(160deg, rgba(255,255,255,0.18) 0%, transparent 55%)' }}
+          />
+          <span className="relative z-10">
+            {lang === 'he' ? '← הפוך את היום שלך לסרט' : 'Turn Your Day Into a Film →'}
+          </span>
+        </motion.button>
       </div>
     </motion.header>
   );

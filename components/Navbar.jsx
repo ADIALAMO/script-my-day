@@ -44,6 +44,16 @@ const FreeBadge = ({ isHe }) => (
   </span>
 );
 
+// Hover/focus tooltip for icon-only nav buttons. Parent must be `group relative`.
+const IconTooltip = ({ label }) => (
+  <span
+    role="tooltip"
+    className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 px-2 py-1 rounded-lg bg-black/90 border border-white/10 text-white text-[10px] font-medium whitespace-nowrap opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 group-focus-visible:opacity-100 group-focus-visible:scale-100 transition-all duration-150 z-50"
+  >
+    {label}
+  </span>
+);
+
 // Dropdown menu rendered via portal so it escapes the navbar's overflow:hidden.
 function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, onInviteClick }) {
   const ref = useRef(null);
@@ -265,7 +275,7 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
         <button
           onClick={onHistoryOpen}
           aria-label={isHe ? 'ארכיון הפקות' : 'Production archive'}
-          className="relative flex items-center justify-center w-8 h-8 md:w-9 md:h-9 border border-white/15 rounded-xl hover:border-[#d4a373]/40 hover:bg-[#d4a373]/8 transition-all duration-300 shrink-0"
+          className="group relative flex items-center justify-center w-8 h-8 md:w-9 md:h-9 border border-white/15 rounded-xl hover:border-[#d4a373]/40 hover:bg-[#d4a373]/8 transition-all duration-300 shrink-0"
         >
           <Clapperboard size={14} className="text-[#d4a373]/55 md:w-[15px] md:h-[15px] transition-colors duration-300" />
           {historyCount > 0 && (
@@ -273,15 +283,17 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
               {historyCount > 9 ? '9+' : historyCount}
             </span>
           )}
+          <IconTooltip label={isHe ? 'ארכיון הפקות' : 'Production archive'} />
         </button>
 
         {/* Language toggle */}
         <button
           onClick={onLanguageToggle}
-          className="flex items-center gap-1.5 px-2 py-1.5 md:px-4 md:py-2 border border-white/20 rounded-full text-[10px] md:text-[13px] hover:bg-white/10 hover:border-[#d4a373]/30 transition-all text-white font-medium whitespace-nowrap"
+          className="group relative flex items-center gap-1.5 px-2 py-1.5 md:px-4 md:py-2 border border-white/20 rounded-full text-[10px] md:text-[13px] hover:bg-white/10 hover:border-[#d4a373]/30 transition-all text-white font-black tracking-[0.15em] whitespace-nowrap"
         >
           <Languages size={12} className="text-[#d4a373] md:w-[14px]" />
           {isHe ? 'EN' : 'עב'}
+          <IconTooltip label={isHe ? 'החלף שפה' : 'Change language'} />
         </button>
 
         {/* ── Auth chip ── */}
@@ -296,13 +308,14 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
             <button
               onClick={() => handleOpenAuthModal('invite')}
               aria-label={isHe ? 'הזמן חברים' : 'Invite friends'}
-              className="relative flex items-center justify-center w-8 h-8 md:w-9 md:h-9 border border-[#d4a373]/25 rounded-xl hover:border-[#d4a373]/50 hover:bg-[#d4a373]/8 transition-all duration-300 shrink-0"
+              className="group relative flex items-center justify-center w-8 h-8 md:w-9 md:h-9 border border-[#d4a373]/25 rounded-xl hover:border-[#d4a373]/50 hover:bg-[#d4a373]/8 transition-all duration-300 shrink-0"
             >
               <Gift size={14} className="text-[#d4a373]/65 md:w-[15px] md:h-[15px]" />
+              <IconTooltip label={isHe ? 'הזמן חברים' : 'Invite friends'} />
             </button>
             <button
               onClick={() => handleOpenAuthModal('general')}
-              className="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 bg-[#d4a373]/10 hover:bg-[#d4a373]/20 border border-[#d4a373]/30 hover:border-[#d4a373]/50 rounded-full text-[10px] md:text-[12px] font-bold text-[#d4a373] tracking-wide transition-all duration-200 whitespace-nowrap shrink-0 active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 bg-[#d4a373]/10 hover:bg-[#d4a373]/20 border border-[#d4a373]/30 hover:border-[#d4a373]/50 rounded-full text-[10px] md:text-[12px] font-black uppercase tracking-wide transition-all duration-200 whitespace-nowrap shrink-0 active:scale-95"
             >
               <User size={11} className="shrink-0" />
               <span className="hidden sm:inline">{isHe ? 'כניסה' : 'Sign In'}</span>
@@ -315,7 +328,7 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
             {!isPro && (
               <button
                 onClick={() => handleOpenAuthModal('upgrade')}
-                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 hover:border-amber-500/45 text-amber-400 text-[10px] font-black tracking-wide transition-all duration-200 whitespace-nowrap active:scale-95"
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 hover:border-amber-500/45 text-amber-400 text-[10px] font-black uppercase tracking-wide transition-all duration-200 whitespace-nowrap active:scale-95"
               >
                 <Crown size={11} />
                 {BILLING_ENABLED

@@ -382,18 +382,22 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
       </div>
 
       <div className="mb-6 relative group max-w-[320px]">
-        <label className="block text-[#d4a373] text-[10px] uppercase tracking-[0.4em] mb-3 font-black italic">{lang === 'he' ? 'קרדיט ליוצר/ת:' : 'CREATOR CREDIT:'}</label>
-        <input 
-          type="text" value={producerName} 
+        <label className="block text-[#d4a373] text-[10px] uppercase tracking-[0.4em] mb-2 font-black italic">{lang === 'he' ? 'קרדיט ליוצר/ת:' : 'CREATOR CREDIT:'}</label>
+        <input
+          type="text" value={producerName}
+          placeholder={lang === 'he' ? 'שמך — יופיע בקרדיטי הפוסטר' : 'Your name — appears in poster credits'}
           onChange={(e) => {
             const val = e.target.value.slice(0, 22);
             playTypewriterSound();
             setProducerName(val);
             localStorage.setItem('lifescript_producer_name', val);
           }}
-          className="w-full bg-black/40 border-b border-[#d4a373]/30 p-3 text-white focus:border-[#d4a373] outline-none transition-all italic tracking-widest text-sm"
+          className="w-full bg-black/40 border-b border-[#d4a373]/30 p-3 text-white focus:border-[#d4a373] outline-none transition-all italic tracking-widest text-sm placeholder:text-white/25 placeholder:not-italic placeholder:tracking-normal"
           maxLength={22}
         />
+        <p className="mt-1.5 text-[9px] text-white/28 tracking-wide">
+          {lang === 'he' ? 'אופציונלי · מופיע בפוסטר ובפתיח התסריט' : 'Optional · shown in the poster & script header'}
+        </p>
       </div>
 
       <motion.button
@@ -425,6 +429,28 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
           )}
         </div>
       </motion.button>
+
+      {/* Fixed-height hint slot — holds space whether content is visible or not,
+          so the Cancel button below never jumps when loading starts/stops. */}
+      <div className="h-8 mt-2.5 flex items-center justify-center pointer-events-none">
+        <AnimatePresence mode="wait">
+          {!loading && (
+            <motion.p
+              key={(!journalEntry.trim() || !activeGenre) ? 'empty' : 'ready'}
+              initial={{ opacity: 0, y: 3 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -3 }}
+              transition={{ duration: 0.22 }}
+              className="text-center text-[10px] tracking-wide"
+              style={{ color: (!journalEntry.trim() || !activeGenre) ? 'rgba(255,255,255,0.22)' : 'rgba(212,163,115,0.42)' }}
+            >
+              {(!journalEntry.trim() || !activeGenre)
+                ? (lang === 'he' ? 'כתוב את היום שלך למעלה כדי להתחיל' : 'Enter your story above to get started')
+                : (lang === 'he' ? '⏱ כ-20 שניות · AI קולנועי' : '⏱ ~20 sec · AI cinematics')}
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </div>
 
       <AnimatePresence>
         {loading && onCancel && (
