@@ -4,6 +4,40 @@ export default function Document() {
   return (
     <Html lang="he" style={{ backgroundColor: '#030712' }}>
       <Head>
+        {/*
+          GA4 Consent Mode v2 — must execute before the GA loader script.
+          Reads the stored consent decision synchronously from localStorage so that:
+          - Returning users who accepted  → analytics_storage: 'granted'  (no delay)
+          - Returning users who declined  → analytics_storage: 'denied'   (no delay)
+          - First-time visitors           → analytics_storage: 'denied' + wait_for_update: 500
+            (the CookieConsent banner fires gtag('consent','update') on acceptance)
+          Using dangerouslySetInnerHTML in <Head> is the correct Pages-Router pattern for
+          scripts that must precede all other JS — this string runs in the browser, not on
+          the server, so localStorage is available.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function() {
+            window.dataLayer = window.dataLayer || [];
+            function gtag() { dataLayer.push(arguments); }
+            window.gtag = gtag;
+
+            var analyticsState = 'denied';
+            var alreadyDecided = false;
+            try {
+              var stored = localStorage.getItem('lifescript_cookie_v2');
+              if (stored !== null) {
+                var parsed = JSON.parse(stored);
+                analyticsState = parsed.analytics ? 'granted' : 'denied';
+                alreadyDecided = true;
+              }
+            } catch (e) {}
+
+            var consentOpts = { analytics_storage: analyticsState, ad_storage: 'denied' };
+            if (!alreadyDecided) consentOpts.wait_for_update = 500;
+            gtag('consent', 'default', consentOpts);
+          })();
+        `}} />
+
         <meta name="color-scheme" content="dark" />
         <meta name="theme-color" content="#030712" />
 

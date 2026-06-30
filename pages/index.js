@@ -1281,8 +1281,8 @@ function HomePage() {
         lang={lang}
       />
 
-      {/* Notice-only cookie banner — links to the Privacy modal */}
-      <CookieConsent lang={lang} onPolicyClick={() => setModalContent('privacy')} />
+      {/* GA4 Consent Mode v2 banner — Accept Analytics / Essential Only */}
+      <CookieConsent lang={lang} />
 
       <Analytics />
     </div>

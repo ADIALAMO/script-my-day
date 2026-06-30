@@ -82,14 +82,18 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
           <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         </Head>
 
+        {/*
+          GA4 loader — window.dataLayer, window.gtag, and the consent default are
+          already set by the beforeInteractive script in _document.js <Head>, so we
+          only need the loader + config here. Consent Mode v2 ensures no data is
+          collected until the user explicitly accepts in the CookieConsent banner.
+        */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-YL145XYBD3"
           strategy="afterInteractive"
         />
         <Script id="google-analytics" strategy="afterInteractive">
           {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
             gtag('config', 'G-YL145XYBD3');
           `}
