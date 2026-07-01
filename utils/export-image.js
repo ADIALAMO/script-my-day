@@ -5,10 +5,12 @@
  * at a blob:/data: URL makes iOS Safari NAVIGATE the tab, tearing down the SPA
  * ("download refreshes the page and loses state").
  *
- * Every export returns a boolean: true when the OS handled it (including a user
- * cancel), false when file sharing is unsupported on this platform — letting the
- * caller fall back (e.g. open the asset in a new tab). Nothing here ever navigates
- * the page.
+ * shareFiles / shareReadyFile return a tri-state:
+ *   true  — OS handled it (shared or user dismissed the sheet — both are "handled").
+ *   false — file sharing unsupported (navigator.canShare returned false).
+ *   null  — activation window expired (NotAllowedError). Caller should fall back to
+ *           download rather than window.open, which popup-blockers intercept after async.
+ * Nothing here ever navigates the page.
  */
 
 // Capability detection (never UA sniffing). Decides which export affordance to show:
@@ -144,6 +146,27 @@ export async function downloadBlob(blob, filename, { lang = 'en' } = {}) {
   }
 }
 
+// Download a pre-watermarked File directly — skips compositeWatermark so the mark is
+// never applied twice. Use this for Files already produced by makeShareFile.
+// Do NOT call on touch devices (see iOS blob-download note at top of this file).
+export function downloadFile(file, filename) {
+  if (typeof document === 'undefined') return false;
+  try {
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || 'lifescript.png';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Download several blobs in sequence (the desktop "Download comic" action). A short gap
 // lets the browser queue each file instead of dropping all but the first.
 // items: Array<{ blob, filename }>.
@@ -178,6 +201,7 @@ function shareHandled(err) {
 
 // Core: hand an array of Files to the OS share sheet. Optional `text` rides along in the
 // share payload (used to carry the referral link so every poster share seeds the loop).
+// Returns: true (shared/dismissed), false (unsupported), null (activation expired).
 async function shareFiles(files, title, text) {
   if (typeof navigator === 'undefined' || !navigator.share || !navigator.canShare) return false;
   if (!files.length || !navigator.canShare({ files })) return false;
@@ -187,7 +211,8 @@ async function shareFiles(files, title, text) {
     await navigator.share({ files, title, ...(text ? { text } : {}) });
     return true;
   } catch (err) {
-    return shareHandled(err);
+    if (err?.name === 'NotAllowedError') return null; // activation expired — let caller fall back to download
+    return shareHandled(err) ? true : false;
   } finally {
     sharePending = false;
   }

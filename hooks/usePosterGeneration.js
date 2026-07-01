@@ -4,7 +4,7 @@ import { track } from '@vercel/analytics';
 import { getMsg, CODES } from '../lib/messages.js';
 import { getGenreLabel } from '../constants/genres.js';
 import { useRotatingMessages } from './useRotatingMessages.js';
-import { shareReadyFile, makeShareFile, downloadBlob, exportCapabilities } from '../utils/export-image.js';
+import { shareReadyFile, makeShareFile, downloadBlob, downloadFile, exportCapabilities } from '../utils/export-image.js';
 
 const POSTER_MESSAGES_HE = [
   'מנתח את האסתטיקה של התסריט...',
@@ -244,8 +244,10 @@ export function usePosterGeneration({
   }, [posterUrl, lang, renderPosterBlob, posterFilename]);
 
   // mode: 'auto' (desktop ⇒ download, mobile ⇒ share) | 'download' | 'share'.
+  // Returns: 'ok' | 'blocked' (activation expired / share unsupported) | 'error'.
+  // 'blocked' on mobile means the caller should show a "tap again" hint.
   const handleCapturePoster = useCallback(async (mode = 'auto') => {
-    if (!posterRef.current || !posterUrl) return;
+    if (!posterRef.current || !posterUrl) return 'error';
 
     const { isDesktop } = exportCapabilities();
     const wantDownload = mode === 'download' || (mode === 'auto' && isDesktop);
@@ -256,20 +258,22 @@ export function usePosterGeneration({
       window.gtag('event', 'content_export', { method, genre, title: posterTitle });
     }
 
+    // Hoist outside try so catch can fall back to downloading it if we got that far.
+    let file = null;
     try {
       // Desktop ⇒ clean `<a download>` of the composited poster (never navigates the SPA).
       if (wantDownload) {
         const blob = await renderPosterBlob();
         const ok = blob && await downloadBlob(blob, posterFilename(), { lang });
-        if (!ok && posterUrl) window.open(posterUrl, '_blank');
-        return;
+        if (!ok && posterUrl) window.open(posterUrl, '_blank'); // last resort: raw image URL
+        return ok ? 'ok' : 'error';
       }
 
       // Mobile ⇒ Web Share API. Prefer the pre-warmed File so navigator.share() fires
       // instantly inside the activation window. If the pre-warm hasn't finished (or never
       // started), await/run it now — no worse than the pre-fix behaviour, and the result
       // is cached for the next tap.
-      let file = (shareFileRef.current.url === posterUrl) ? shareFileRef.current.file : null;
+      file = (shareFileRef.current.url === posterUrl) ? shareFileRef.current.file : null;
       if (!file) {
         const p = prewarmPosterShare();
         if (p) await p;
@@ -279,9 +283,12 @@ export function usePosterGeneration({
         const blob = await renderPosterBlob();
         if (blob) file = await makeShareFile(blob, posterFilename(), { lang });
       }
-      // All rendering paths failed — only open a new tab on desktop (iOS blocks window.open
-      // in async handlers; a popup-blocked no-op looks like a frozen button to the user).
-      if (!file) { if (isDesktop && posterUrl) window.open(posterUrl, '_blank'); return; }
+      // All rendering paths failed — open raw URL as last resort on desktop only.
+      // On mobile, iOS blocks async window.open and a popup-blocked call looks like a crash.
+      if (!file) {
+        if (isDesktop && posterUrl) window.open(posterUrl, '_blank');
+        return 'error';
+      }
 
       // CRITICAL (iOS share behaviour): WhatsApp / iMessage downgrade a file share to a
       // *link card* — dropping the image entirely — the instant the share text contains a
@@ -291,11 +298,29 @@ export function usePosterGeneration({
       // the clickable, coded referral link has its own dedicated path in ReferralModal.
       const caption = isHebrew ? 'נוצר ב-LIFESCRIPT 🎬' : 'Made with LIFESCRIPT 🎬';
       const shared = await shareReadyFile(file, posterTitle || 'My Poster', { text: caption });
-      // shared=false only when Web Share is fully unsupported — safe to open on desktop.
-      if (!shared && isDesktop && posterUrl) window.open(posterUrl, '_blank');
+      // true  → shared or user dismissed (both are "handled", no fallback needed).
+      // null  → NotAllowedError (activation expired after async render).
+      // false → Web Share unsupported on this platform.
+      if (shared !== true) {
+        if (isDesktop) {
+          // Desktop: silently download the pre-watermarked file instead of window.open
+          // (which popup-blockers intercept after awaits, causing a blank-page experience).
+          downloadFile(file, posterFilename());
+        } else {
+          // Mobile: can't download via <a> on iOS without navigating the SPA.
+          // Return 'blocked' so the caller shows a brief "tap again" hint.
+          return 'blocked';
+        }
+      }
+      return 'ok';
     } catch (err) {
       console.error('Poster capture error:', err);
-      if (isDesktop && posterUrl) window.open(posterUrl, '_blank');
+      if (isDesktop) {
+        // If rendering succeeded before the error, download what we have.
+        if (file) downloadFile(file, posterFilename());
+        else if (posterUrl) window.open(posterUrl, '_blank');
+      }
+      return 'error';
     }
   }, [posterUrl, posterTitle, isHebrew, finalProducerName, genre, lang, renderPosterBlob, posterFilename, prewarmPosterShare]);
 
