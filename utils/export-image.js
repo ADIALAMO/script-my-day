@@ -165,15 +165,15 @@ export async function downloadBlobs(items, { lang = 'en' } = {}) {
 // There is only ever one OS share sheet, so a module-level latch is the correct scope.
 let sharePending = false;
 
-// True when a rejection means "no need to fall back": the user dismissed the sheet
-// (AbortError), a share was still settling (InvalidStateError), or iOS revoked the
-// transient-activation token because async work ran too long before navigator.share()
-// (NotAllowedError). Falling through to a popup-blocked window.open in any of these
-// cases is exactly what made the button look frozen.
+// True when the rejection is a deliberate OS/user action (not an error we should
+// fall back on): the user dismissed the sheet (AbortError) or a share was still
+// settling from a rapid double-tap (InvalidStateError). Both cases are "handled"
+// — the OS saw the request and the user chose not to proceed. NotAllowedError is
+// intentionally excluded: it means the transient-activation window expired (too
+// much async work between the tap and navigator.share), and callers must decide
+// whether to fall back to a download or retry.
 function shareHandled(err) {
-  return err?.name === 'AbortError'
-    || err?.name === 'InvalidStateError'
-    || err?.name === 'NotAllowedError';
+  return err?.name === 'AbortError' || err?.name === 'InvalidStateError';
 }
 
 // Core: hand an array of Files to the OS share sheet. Optional `text` rides along in the
@@ -187,7 +187,12 @@ async function shareFiles(files, title, text) {
     await navigator.share({ files, title, ...(text ? { text } : {}) });
     return true;
   } catch (err) {
-    return shareHandled(err);
+    if (shareHandled(err)) return true;
+    // NotAllowedError = activation window expired (async work took too long before
+    // navigator.share was called). Return null so callers can distinguish "expired"
+    // from "unsupported" (false) and choose the right fallback (download vs open tab).
+    if (err?.name === 'NotAllowedError') return null;
+    return false;
   } finally {
     sharePending = false;
   }
