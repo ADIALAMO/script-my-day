@@ -240,13 +240,23 @@ export function usePosterGeneration({
     if (prewarmRef.current) return prewarmRef.current; // already rendering
 
     const url = posterUrl;
-    prewarmRef.current = renderPosterBlob()
-      .then((blob) => (blob ? makeShareFile(blob, posterFilename(), { lang }) : null))
-      .then((file) => { if (file) shareFileRef.current = { url, file }; return file; })
+    // Fetch the poster source directly instead of running html-to-image.
+    // html-to-image blocks the main thread for 1-3 s on slow phones (DOM clone +
+    // canvas draws), causing visible UI jank and expiring iOS's transient-activation
+    // window so navigator.share() always throws NotAllowedError.  A same-origin
+    // fetch completes in <200 ms for data URIs and <500 ms for proxied CDN URLs —
+    // the share file is ready long before the user's tap.
+    const src = posterUrl.startsWith('http')
+      ? `/api/proxy-image?url=${encodeURIComponent(posterUrl)}`
+      : posterUrl;
+    prewarmRef.current = fetch(src)
+      .then(r => r.ok ? r.blob() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(blob => makeShareFile(blob, posterFilename(), { lang }))
+      .then(file => { shareFileRef.current = { url, file }; return file; })
       .catch(() => null)
       .finally(() => { prewarmRef.current = null; });
     return prewarmRef.current;
-  }, [posterUrl, lang, renderPosterBlob, posterFilename]);
+  }, [posterUrl, lang, posterFilename]);
 
   // mode: 'auto' (desktop ⇒ download, mobile ⇒ share) | 'download' | 'share'.
   const handleCapturePoster = useCallback(async (mode = 'auto') => {
@@ -292,10 +302,26 @@ export function usePosterGeneration({
         file = (shareFileRef.current.url === posterUrl) ? shareFileRef.current.file : null;
       }
       if (!file) {
-        const blob = await renderPosterBlob();
-        if (blob) file = await makeShareFile(blob, posterFilename(), { lang });
+        if (isDesktop) {
+          // Desktop: html-to-image to capture the CSS title/credits overlay.
+          const blob = await renderPosterBlob();
+          if (blob) file = await makeShareFile(blob, posterFilename(), { lang });
+        } else {
+          // Mobile: fast direct fetch — no CSS overlays, but stays inside iOS's
+          // transient-activation window (html-to-image takes 2-3 s and kills it).
+          try {
+            const src = posterUrl.startsWith('http')
+              ? `/api/proxy-image?url=${encodeURIComponent(posterUrl)}`
+              : posterUrl;
+            const resp = await fetch(src);
+            if (resp.ok) {
+              const blob = await resp.blob();
+              file = await makeShareFile(blob, posterFilename(), { lang });
+            }
+          } catch { /* silent */ }
+        }
       }
-      // All rendering paths failed — only open a new tab on desktop (iOS blocks window.open
+      // All paths failed — only open a new tab on desktop (iOS blocks window.open
       // in async handlers; a popup-blocked no-op looks like a frozen button to the user).
       if (!file) { if (isDesktop && posterUrl) window.open(posterUrl, '_blank'); return; }
 

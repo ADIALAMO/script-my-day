@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Share2, Download, Loader2, AlertCircle, Video, VolumeX, Volume2 } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { shareReadyFile, makeShareFile, exportCapabilities } from '../utils/export-image.js';
+import SocialShareRow from './SocialShareRow.jsx';
 
 // ── Canvas dimensions ────────────────────────────────────────────────────────
 const CANVAS_W      = 720;
@@ -609,7 +610,13 @@ export default function MovieReelModal({
     const url = videoUrl;
     const filename = `lifescript-reel-${genre || 'film'}.mp4`;
     prewarmRef.current = fetch(url).then(r => r.blob())
-      .then(blob => makeShareFile(blob, filename, {}))
+      .then(blob => {
+        // Strip codec params (e.g. "video/mp4;codecs=h264,aac" → "video/mp4").
+        // navigator.canShare on some iOS versions rejects the semicolon-qualified
+        // type and returns false, causing the share to silently no-op on mobile.
+        const baseType = (blob.type || 'video/mp4').split(';')[0].trim();
+        return new File([blob], filename, { type: baseType });
+      })
       .then(file => { shareFileRef.current = { url, file }; return file; })
       .catch(() => null)
       .finally(() => { prewarmRef.current = null; });
@@ -625,34 +632,34 @@ export default function MovieReelModal({
 
   const handleShare = useCallback(async () => {
     if (!videoUrl) return;
-    // Desktop helper: trigger a real file download instead of window.open (which just
-    // opens the video in a tab with no download prompt).
-    const triggerDownload = (src, name) => {
+    const doDownload = (src, ext) => {
       const a = document.createElement('a');
-      a.href = src; a.download = name;
+      a.href = src; a.download = `lifescript-reel-${genre || 'film'}.${ext}`;
       document.body.appendChild(a); a.click(); a.remove();
     };
     try {
       let file = (shareFileRef.current.url === videoUrl) ? shareFileRef.current.file : null;
       if (!file) { const p = prewarmReel(); file = p ? await p : null; }
-      if (!file) {
-        // Prewarm failed — download the raw blob directly (no watermark, but at least
-        // the file lands in the user's Downloads folder).  iOS never reaches here because
-        // prewarmReel is auto-fired on reel completion; desktop is the primary case.
-        if (isDesktop) triggerDownload(videoUrl, `lifescript-reel-${genre || 'film'}.webm`);
+
+      if (isDesktop) {
+        // Desktop: always use <a download> — never the share sheet.
+        // macOS Safari supports navigator.share for files and returns shared=true,
+        // so a share-then-fallback pattern silently goes through the share sheet
+        // instead of saving to Downloads.  Direct download is always the right UX.
+        const ext = file ? ((file.type || '').includes('mp4') ? 'mp4' : 'webm') : 'webm';
+        const src = file ? URL.createObjectURL(file) : videoUrl;
+        doDownload(src, ext);
+        if (file && src !== videoUrl) setTimeout(() => URL.revokeObjectURL(src), 1000);
         return;
       }
-      const shared = await shareReadyFile(file, 'LifeScript Reel');
-      // null = activation window expired; false = Web Share unsupported (desktop Chrome).
-      // Both cases get a proper download on desktop instead of window.open.
-      if ((shared === null || !shared) && isDesktop) {
-        const ext = (file.type || '').includes('mp4') ? 'mp4' : 'webm';
-        const blobUrl = URL.createObjectURL(file);
-        triggerDownload(blobUrl, `lifescript-reel-${genre || 'film'}.${ext}`);
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-      }
+
+      // Mobile: native share sheet (navigator.share).
+      if (!file) return; // prewarm failed — no safe fallback on iOS without navigating the SPA
+      await shareReadyFile(file, 'LifeScript Reel');
+      // null = activation expired, false = canShare returned false — both silent on mobile.
     } catch {
-      if (isDesktop) triggerDownload(videoUrl, `lifescript-reel-${genre || 'film'}.webm`);
+      // Catch-all: on desktop, fall back to the raw blob URL download.
+      if (isDesktop) doDownload(videoUrl, 'webm');
     }
   }, [videoUrl, prewarmReel, genre, isDesktop]);
 
@@ -999,6 +1006,16 @@ export default function MovieReelModal({
                   </button>
                 ) : (
                   <>
+                    {/* Social share chips at the top of the done-phase panel */}
+                    <SocialShareRow
+                      onNativeShare={handleShare}
+                      onDownload={handleShare}
+                      onPrewarm={prewarmReel}
+                      lang={lang}
+                      mediaType="video"
+                      className="mb-1"
+                    />
+
                     <button
                       onPointerDown={prewarmReel}
                       onClick={handleShare}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Check, X, Clapperboard, Film, Loader2, ChevronDown, Share2, Download, Lock, Crown, RefreshCw } from 'lucide-react';
 import { shareReadyFile, makeShareFile, shareBlobs, downloadBlob, downloadBlobs, exportCapabilities } from '../utils/export-image.js';
+import SocialShareRow from './SocialShareRow.jsx';
 
 export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade, onRegenerate, regensLeft = 0 }) {
   const isHebrew = lang === 'he';
@@ -486,7 +487,20 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
         )}
 
         {/* ── Export comic + Copy All Prompts ───────────────────── */}
-        <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+        <div className="mt-6 flex flex-col items-center gap-4">
+
+          {/* Social chips — shown above the primary export buttons when images exist */}
+          {shareableIdxs.length > 0 && (
+            <SocialShareRow
+              onNativeShare={() => exportAllFrames('share')}
+              onDownload={() => exportAllFrames('download')}
+              lang={lang}
+              mediaType="image"
+              className="w-full max-w-xs"
+            />
+          )}
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
           {/* Export comic — tier-aware: only the panels the user actually owns & that
               finished rendering. Hidden until at least one image is exportable.
               Desktop: download (primary) + share (secondary) · Mobile: share. */}
@@ -526,6 +540,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
               <><Copy size={13} className="text-[#d4a373]" /><span className="text-[#d4a373]">{isHebrew ? 'העתק את כל הפרומפטים' : 'COPY ALL PROMPTS'}</span></>
             )}
           </button>
+          </div>
         </div>
       </div>
 
