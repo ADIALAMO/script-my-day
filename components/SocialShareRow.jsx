@@ -71,11 +71,15 @@ const PLATFORMS = [
     bgGradient: 'linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)',
     fg: '#fff',
     desktopUrl: () => 'https://www.instagram.com/',
+    // No URL-based image sharing on mobile — open the native OS share sheet so the
+    // user can pick Instagram (or another app) and the image arrives in-app.
+    mobileNativeShare: true,
   },
   {
     id: 'tiktok', label: 'TikTok',
     bg: '#010101', fg: '#fff', border: 'rgba(255,255,255,0.12)',
     desktopUrl: () => 'https://www.tiktok.com/upload',
+    mobileNativeShare: true,
   },
 ];
 
@@ -128,14 +132,17 @@ export default function SocialShareRow({
 
   const handlePlatform = useCallback(
     (p) => {
-      if (!isDesktop) {
-        // Mobile: OS share sheet includes WhatsApp / IG / TikTok etc. if installed.
+      // IG / TikTok have no URL-based image share on mobile — open the native OS
+      // share sheet so the image goes directly into the app the user picks.
+      if (p.mobileNativeShare && !isDesktop) {
         onNativeShare?.();
         return;
       }
-        window.open(p.desktopUrl(siteUrl, cap), '_blank', 'noopener,noreferrer');
+      // WhatsApp / Facebook / X — and IG/TikTok on desktop:
+      // open the platform web URL. On mobile, wa.me deep-links into the WA app.
+      window.open(p.desktopUrl(siteUrl, cap), '_blank', 'noopener,noreferrer');
     },
-    [isDesktop, onNativeShare, onDownload, siteUrl, cap],
+    [isDesktop, onNativeShare, siteUrl, cap],
   );
 
   const handleCopyLink = useCallback(async () => {

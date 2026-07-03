@@ -54,14 +54,12 @@ function PosterRenderer({
               // History restores arrive as http URLs (proxied CDN).
               // Fresh generations are always data URIs.  Skip all cinematic
               // fanfare on history loads — just reveal the image silently.
-              // Pre-render the share file in the background once the poster is on screen,
-              // so a Share tap fires navigator.share() instantly (slow-device activation
-              // fix — see prewarmPosterShare). Deferred so it never janks the reveal.
-              const prewarm = () => prewarmPosterShare?.();
-              if (typeof window !== 'undefined') {
-                if (window.requestIdleCallback) window.requestIdleCallback(prewarm, { timeout: 2500 });
-                else setTimeout(prewarm, 1200);
-              }
+              // Start share prewarm immediately on load. The old implementation used
+              // html-to-image (heavy canvas render — deferred to avoid jank). The new
+              // implementation is a plain fetch + watermark: non-blocking, ~200-500 ms,
+              // safe to call straight from onLoad. Starting early maximises the head-start
+              // before the user can tap any share button or chip.
+              prewarmPosterShare?.();
 
               if (posterUrl.startsWith('http')) {
                 setPosterLoading(false);
