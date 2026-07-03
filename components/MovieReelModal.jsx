@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Share2, Loader2, AlertCircle, Video, VolumeX, Volume2 } from 'lucide-react';
+import { X, Share2, Download, Loader2, AlertCircle, Video, VolumeX, Volume2 } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { shareReadyFile, makeShareFile, exportCapabilities } from '../utils/export-image.js';
 
@@ -293,6 +293,8 @@ export default function MovieReelModal({
   lang, genre, producerName,
 }) {
   const isHebrew = lang === 'he';
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => { setIsDesktop(exportCapabilities().isDesktop); }, []);
 
   // ── Director settings ───────────────────────────────────────────────────
   const defaultSoundtrack = GENRE_SOUNDTRACK_MAP[genre] || 'drama';
@@ -623,22 +625,36 @@ export default function MovieReelModal({
 
   const handleShare = useCallback(async () => {
     if (!videoUrl) return;
-    const { isDesktop } = exportCapabilities();
+    // Desktop helper: trigger a real file download instead of window.open (which just
+    // opens the video in a tab with no download prompt).
+    const triggerDownload = (src, name) => {
+      const a = document.createElement('a');
+      a.href = src; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+    };
     try {
       let file = (shareFileRef.current.url === videoUrl) ? shareFileRef.current.file : null;
       if (!file) { const p = prewarmReel(); file = p ? await p : null; }
       if (!file) {
-        // Prewarm failed — only open a new tab on desktop (iOS blocks window.open in async handlers).
-        if (isDesktop) window.open(videoUrl, '_blank');
+        // Prewarm failed — download the raw blob directly (no watermark, but at least
+        // the file lands in the user's Downloads folder).  iOS never reaches here because
+        // prewarmReel is auto-fired on reel completion; desktop is the primary case.
+        if (isDesktop) triggerDownload(videoUrl, `lifescript-reel-${genre || 'film'}.webm`);
         return;
       }
       const shared = await shareReadyFile(file, 'LifeScript Reel');
-      // shared=false only when Web Share is fully unsupported (desktop without Share API).
-      if (!shared && isDesktop) window.open(videoUrl, '_blank');
+      // null = activation window expired; false = Web Share unsupported (desktop Chrome).
+      // Both cases get a proper download on desktop instead of window.open.
+      if ((shared === null || !shared) && isDesktop) {
+        const ext = (file.type || '').includes('mp4') ? 'mp4' : 'webm';
+        const blobUrl = URL.createObjectURL(file);
+        triggerDownload(blobUrl, `lifescript-reel-${genre || 'film'}.${ext}`);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      }
     } catch {
-      if (isDesktop) window.open(videoUrl, '_blank');
+      if (isDesktop) triggerDownload(videoUrl, `lifescript-reel-${genre || 'film'}.webm`);
     }
-  }, [videoUrl, prewarmReel]);
+  }, [videoUrl, prewarmReel, genre, isDesktop]);
 
   const handleReset = useCallback(() => {
     if (videoUrl) { URL.revokeObjectURL(videoUrl); setVideoUrl(null); }
@@ -988,8 +1004,10 @@ export default function MovieReelModal({
                       onClick={handleShare}
                       className="w-full py-[14px] sm:py-[15px] rounded-2xl font-black text-[12px] sm:text-[12.5px] uppercase tracking-widest bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black hover:from-white hover:to-white active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 shadow-[0_8px_28px_rgba(212,163,115,0.35)]"
                     >
-                      <Share2 size={15} />
-                      {isHebrew ? 'שתף ריל' : 'Share Reel'}
+                      {isDesktop ? <Download size={15} /> : <Share2 size={15} />}
+                      {isDesktop
+                        ? (isHebrew ? 'הורד ריל' : 'Download Reel')
+                        : (isHebrew ? 'שתף ריל' : 'Share Reel')}
                     </button>
                     <button
                       onClick={handleReset}

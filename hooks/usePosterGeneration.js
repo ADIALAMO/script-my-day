@@ -216,10 +216,15 @@ export function usePosterGeneration({
       },
     };
 
-    // Warm-up pass to pre-cache cross-origin resources.
-    await htmlToImage.toPng(posterRef.current, { ...sharedOptions, quality: 0.1 });
-    const dataUrl = await htmlToImage.toPng(posterRef.current, sharedOptions);
-    return (await fetch(dataUrl)).blob();
+    try {
+      // Warm-up pass to pre-cache cross-origin resources.
+      await htmlToImage.toPng(posterRef.current, { ...sharedOptions, quality: 0.1 });
+      const dataUrl = await htmlToImage.toPng(posterRef.current, sharedOptions);
+      return (await fetch(dataUrl)).blob();
+    } catch (err) {
+      console.error('[renderPosterBlob] html-to-image failed:', err);
+      return null;
+    }
   }, [posterUrl, posterTitle]);
 
   // Pre-render the watermarked share File in the BACKGROUND, before the user taps Share.
@@ -259,9 +264,20 @@ export function usePosterGeneration({
     try {
       // Desktop ⇒ clean `<a download>` of the composited poster (never navigates the SPA).
       if (wantDownload) {
-        const blob = await renderPosterBlob();
-        const ok = blob && await downloadBlob(blob, posterFilename(), { lang });
-        if (!ok && posterUrl) window.open(posterUrl, '_blank');
+        let blob = await renderPosterBlob();
+        if (!blob) {
+          // html-to-image failed (canvas taint, zero-size element, etc.) — fall back to
+          // fetching the raw poster image directly.  The CSS title/credits overlay is lost
+          // but the user still gets the AI-generated image with the watermark applied.
+          try {
+            const src = posterUrl.startsWith('http')
+              ? `/api/proxy-image?url=${encodeURIComponent(posterUrl)}`
+              : posterUrl;
+            const resp = await fetch(src);
+            if (resp.ok) blob = await resp.blob();
+          } catch { /* silent */ }
+        }
+        if (blob) await downloadBlob(blob, posterFilename(), { lang });
         return;
       }
 
@@ -291,7 +307,17 @@ export function usePosterGeneration({
       // the clickable, coded referral link has its own dedicated path in ReferralModal.
       const caption = isHebrew ? 'נוצר ב-LIFESCRIPT 🎬' : 'Made with LIFESCRIPT 🎬';
       const shared = await shareReadyFile(file, posterTitle || 'My Poster', { text: caption });
-      // shared=false only when Web Share is fully unsupported — safe to open on desktop.
+      if (shared === null && isDesktop) {
+        // Activation window expired — download the pre-watermarked file rather than
+        // opening a (likely popup-blocked) new tab.
+        const fileUrl = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = fileUrl; a.download = posterFilename(); a.rel = 'noopener';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(fileUrl), 1000);
+        return;
+      }
+      // false = Web Share not supported on this browser — last resort new tab on desktop.
       if (!shared && isDesktop && posterUrl) window.open(posterUrl, '_blank');
     } catch (err) {
       console.error('Poster capture error:', err);
