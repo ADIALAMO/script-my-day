@@ -263,7 +263,10 @@ export function usePosterGeneration({
     if (!posterRef.current || !posterUrl) return;
 
     const { isDesktop } = exportCapabilities();
-    const wantDownload = mode === 'download' || (mode === 'auto' && isDesktop);
+    // On mobile, <a download> either navigates the iOS tab or saves to the Downloads
+    // folder — neither is the "Save to Camera Roll" flow the user expects. Route ALL
+    // mobile paths through the share sheet; only desktop takes the direct download path.
+    const wantDownload = isDesktop && (mode === 'download' || mode === 'auto');
     const method = wantDownload ? 'download' : 'share';
 
     track('Poster Shared', { genre, language: lang, title: posterTitle, method });
@@ -334,8 +337,18 @@ export function usePosterGeneration({
       const caption = isHebrew ? 'נוצר ב-LIFESCRIPT 🎬' : 'Made with LIFESCRIPT 🎬';
       const shared = await shareReadyFile(file, posterTitle || 'My Poster', { text: caption });
       if (shared === null && isDesktop) {
-        // Activation window expired — download the pre-watermarked file rather than
-        // opening a (likely popup-blocked) new tab.
+        // Activation window expired (desktop) — download the pre-watermarked file.
+        const fileUrl = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = fileUrl; a.download = posterFilename(); a.rel = 'noopener';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(fileUrl), 1000);
+        return;
+      }
+      if (shared !== true && !isDesktop) {
+        // Mobile: share failed (activation expired or file sharing not supported).
+        // Fall back to <a download> — on Android this saves to Files; on modern iOS
+        // it opens the Downloads manager rather than navigating the page.
         const fileUrl = URL.createObjectURL(file);
         const a = document.createElement('a');
         a.href = fileUrl; a.download = posterFilename(); a.rel = 'noopener';

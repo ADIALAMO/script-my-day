@@ -1,9 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Copy, Check } from 'lucide-react';
-import { exportCapabilities } from '../utils/export-image.js';
+import { useCallback } from 'react';
 
-// ── Inline SVG brand icons ────────────────────────────────────────────────────
-// Kept as plain functions (no React.memo) — static icons with zero props.
 function WaIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 15, height: 15 }}>
@@ -12,112 +8,16 @@ function WaIcon() {
   );
 }
 
-function FbIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 15, height: 15 }}>
-      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-    </svg>
-  );
-}
-
-function XIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 12, height: 12 }}>
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-    </svg>
-  );
-}
-
-function IgIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 15, height: 15 }}>
-      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
-    </svg>
-  );
-}
-
-function TtIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 14, height: 14 }}>
-      <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
-    </svg>
-  );
-}
-
-// ── Platform definitions ──────────────────────────────────────────────────────
-// `desktopUrl` is only used for image-type shares (not video — no platform
-// accepts video files via URL). Set to null for platforms with no web share URL.
-const PLATFORMS = [
-  {
-    id: 'whatsapp', label: 'WhatsApp',
-    bg: '#25D366', fg: '#fff',
-    desktopUrl: (url, cap) =>
-      `https://wa.me/?text=${encodeURIComponent(cap + ' 👉 ' + url)}`,
-  },
-  {
-    id: 'facebook', label: 'Facebook',
-    bg: '#1877F2', fg: '#fff',
-    desktopUrl: (url) =>
-      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
-  },
-  {
-    id: 'twitter', label: 'X',
-    bg: '#0f0f0f', fg: '#fff',
-    desktopUrl: (url, cap) =>
-      `https://twitter.com/intent/tweet?text=${encodeURIComponent(cap)}&url=${encodeURIComponent(url)}`,
-  },
-  {
-    id: 'instagram', label: 'Instagram',
-    bgGradient: 'linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)',
-    fg: '#fff',
-    desktopUrl: () => 'https://www.instagram.com/',
-    // No URL-based image sharing on mobile — open the native OS share sheet so the
-    // user can pick Instagram (or another app) and the image arrives in-app.
-    mobileNativeShare: true,
-  },
-  {
-    id: 'tiktok', label: 'TikTok',
-    bg: '#010101', fg: '#fff', border: 'rgba(255,255,255,0.12)',
-    desktopUrl: () => 'https://www.tiktok.com/upload',
-    mobileNativeShare: true,
-  },
-];
-
-// ── Component ─────────────────────────────────────────────────────────────────
-/**
- * A row of social-platform share chips to place above the primary download/share
- * button in each share panel (poster, reel, comic).
- *
- * Behavior:
- * - Mobile: every chip triggers `onNativeShare` (opens the OS share sheet where
- *   WhatsApp / Instagram / TikTok etc. appear as options if installed).
- * - Desktop, WA / FB / X: open that platform's web-share URL (text + link).
- * - Desktop, IG / TikTok: open the platform in a new tab (Instagram home / TikTok upload).
- * - Copy link: writes `window.location.origin` to the clipboard on all platforms.
- *
- * Props:
- * @param {Function} onNativeShare  Called when the native OS share sheet should open.
- * @param {Function} onDownload     Called when a download should start (desktop IG/TT/video).
- * @param {Function} [onPrewarm]    Called on pointerdown to warm up the share file in advance.
- * @param {string}   [caption]      Share caption; falls back to a localized default.
- * @param {string}   [lang]         'he' | 'en'
- * @param {'image'|'video'} [mediaType='image']  'video' → all desktop chips download.
- * @param {string}   [className]    Extra Tailwind classes for the wrapper.
- */
 export default function SocialShareRow({
-  onNativeShare,
-  onDownload,
+  onNativeShare,  // kept for API compat — not used when only WA chip is present
+  onDownload,     // kept for API compat
   onPrewarm,
   caption,
   lang,
   mediaType = 'image',
   className = '',
 }) {
-  const [isDesktop, setIsDesktop] = useState(false);
-  const [copied, setCopied] = useState(false);
   const isHebrew = lang === 'he';
-
-  useEffect(() => { setIsDesktop(exportCapabilities().isDesktop); }, []);
 
   const siteUrl =
     typeof window !== 'undefined'
@@ -130,34 +30,13 @@ export default function SocialShareRow({
       ? 'הפוך את היום שלך לסרט! 🎬'
       : 'Turn your day into a movie! 🎬');
 
-  const handlePlatform = useCallback(
-    (p) => {
-      // IG / TikTok have no URL-based image share on mobile — open the native OS
-      // share sheet so the image goes directly into the app the user picks.
-      if (p.mobileNativeShare && !isDesktop) {
-        onNativeShare?.();
-        return;
-      }
-      // WhatsApp / Facebook / X — and IG/TikTok on desktop:
-      // open the platform web URL. On mobile, wa.me deep-links into the WA app.
-      window.open(p.desktopUrl(siteUrl, cap), '_blank', 'noopener,noreferrer');
-    },
-    [isDesktop, onNativeShare, siteUrl, cap],
-  );
-
-  const handleCopyLink = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(siteUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // clipboard API unavailable (e.g. insecure context)
-    }
-  }, [siteUrl]);
+  const handleWhatsApp = useCallback(() => {
+    const url = `https://wa.me/?text=${encodeURIComponent(cap + ' 👉 ' + siteUrl)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }, [siteUrl, cap]);
 
   return (
     <div className={`flex flex-col items-center gap-2.5 ${className}`}>
-      {/* Divider label */}
       <div className="flex items-center gap-2.5 w-full">
         <div className="h-px flex-1 bg-white/[0.07]" />
         <span className="text-[7.5px] font-black uppercase tracking-[0.28em] text-white/25 whitespace-nowrap">
@@ -166,72 +45,24 @@ export default function SocialShareRow({
         <div className="h-px flex-1 bg-white/[0.07]" />
       </div>
 
-      {/* Chip row */}
-      <div className="flex items-center justify-center gap-2.5 flex-wrap">
-        {PLATFORMS.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onPointerDown={onPrewarm}
-            onClick={() => handlePlatform(p)}
-            aria-label={`${isHebrew ? 'שתף ב' : 'Share on'} ${p.label}`}
-            title={p.label}
-            className="flex flex-col items-center gap-[5px] group"
-          >
-            <div
-              className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 group-hover:scale-110 group-active:scale-90 group-hover:ring-2 group-hover:ring-white/15"
-              style={
-                p.bgGradient
-                  ? { background: p.bgGradient }
-                  : {
-                      background: p.bg,
-                      ...(p.border ? { outline: `1px solid ${p.border}` } : {}),
-                    }
-              }
-            >
-              <span
-                style={{
-                  color: p.fg,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {p.id === 'whatsapp'  && <WaIcon />}
-                {p.id === 'facebook'  && <FbIcon />}
-                {p.id === 'twitter'   && <XIcon />}
-                {p.id === 'instagram' && <IgIcon />}
-                {p.id === 'tiktok'    && <TtIcon />}
-              </span>
-            </div>
-            <span className="text-[7px] font-medium text-white/30 tracking-wide leading-none">
-              {p.label}
-            </span>
-          </button>
-        ))}
-
-        {/* Copy link */}
+      <div className="flex items-center justify-center">
         <button
           type="button"
-          onClick={handleCopyLink}
-          aria-label={isHebrew ? 'העתק קישור' : 'Copy link'}
-          title={isHebrew ? 'העתק קישור' : 'Copy link'}
+          onClick={handleWhatsApp}
+          aria-label={isHebrew ? 'שתף בוואטסאפ' : 'Share on WhatsApp'}
+          title="WhatsApp"
           className="flex flex-col items-center gap-[5px] group"
         >
-          <div className="w-10 h-10 rounded-full flex items-center justify-center bg-white/[0.07] border border-white/[0.12] transition-all duration-200 group-hover:scale-110 group-active:scale-90 group-hover:border-[#d4a373]/40 group-hover:ring-2 group-hover:ring-white/10">
-            {copied ? (
-              <Check size={14} className="text-green-400" />
-            ) : (
-              <Copy
-                size={14}
-                className="text-white/45 group-hover:text-[#d4a373] transition-colors duration-200"
-              />
-            )}
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 group-hover:scale-110 group-active:scale-90 group-hover:ring-2 group-hover:ring-white/15"
+            style={{ background: '#25D366' }}
+          >
+            <span style={{ color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <WaIcon />
+            </span>
           </div>
           <span className="text-[7px] font-medium text-white/30 tracking-wide leading-none">
-            {copied
-              ? (isHebrew ? 'הועתק!' : 'Copied!')
-              : (isHebrew ? 'קישור' : 'Copy')}
+            WhatsApp
           </span>
         </button>
       </div>
