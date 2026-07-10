@@ -32,7 +32,7 @@ const GENDER_DESCRIPTOR = {
  */
 export function useCharacter(gender = 'neutral') {
   const [characterImageUrl, setCharacterImageUrl] = useState('');
-  const [starring, setStarring] = useState(true);
+  const [starring, setStarring] = useState(false);
   const [status, setStatus]     = useState('idle'); // idle | loading | ready | error
   const [error, setError]       = useState('');
 
@@ -80,7 +80,7 @@ export function useCharacter(gender = 'neutral') {
       }
       if (d.success && d.characterImageUrl) {
         setCharacterImageUrl(d.characterImageUrl);
-        setStarring(true);
+        setStarring(false);
         setStatus('ready');
         localStorage.setItem(LS_KEY, d.characterImageUrl);
         return { ok: true, characterImageUrl: d.characterImageUrl };

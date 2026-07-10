@@ -34,6 +34,33 @@ export function exportCapabilities() {
   return { isDesktop, canShareFiles };
 }
 
+// ─── data: URI → Blob without fetch() ───────────────────────────────────────────
+// CSP's connect-src (next.config.js) intentionally does NOT allowlist the data:
+// scheme — even though a data: URI never leaves the page, browsers still gate
+// fetch()/XHR against connect-src by scheme. That made every fetch('data:image/...')
+// in this app throw silently in production while working fine in local dev (no CSP
+// there). Decoding the base64 payload locally sidesteps fetch entirely — it never
+// touches the network, so it needs no CSP allowance.
+function dataUrlToBlob(dataUrl) {
+  const [header, base64 = ''] = dataUrl.split(',');
+  const mime = /data:(.*?);base64/.exec(header)?.[1] || 'image/png';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+// Turn any poster/panel source URL into a Blob: data: URIs are decoded locally
+// (see dataUrlToBlob above); http(s) URLs still go through fetch, unaffected since
+// connect-src already allows 'self' and CDN assets are always requested via the
+// same-origin /api/proxy-image route.
+export async function urlToBlob(url) {
+  if (url.startsWith('data:')) return dataUrlToBlob(url);
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.blob();
+}
+
 // ─── Share-loop watermark (compositing) ─────────────────────────────────────────
 // Every shared poster/panel is a free ad: we burn a small bilingual brand + CTA into the
 // bottom of the image so re-shares carry attribution back to lifescript.app and pull new

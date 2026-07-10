@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Check, X, Clapperboard, Film, Loader2, ChevronDown, Share2, Download, Lock, Crown, RefreshCw } from 'lucide-react';
-import { shareReadyFile, makeShareFile, shareBlobs, downloadBlob, downloadBlobs, exportCapabilities } from '../utils/export-image.js';
+import { shareReadyFile, makeShareFile, shareBlobs, downloadBlob, downloadBlobs, exportCapabilities, urlToBlob } from '../utils/export-image.js';
 import SocialShareRow from './SocialShareRow.jsx';
 
 export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade, onRegenerate, regensLeft = 0 }) {
@@ -39,16 +39,19 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
   };
 
   const fetchImageBlob = async (url) => {
-    try {
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error('direct fetch failed');
-      return await resp.blob();
-    } catch {
-      // Cross-origin or CORS blocked — fall back to server proxy
+    if (url.startsWith('data:')) return urlToBlob(url);
+    // Cross-origin (R2 CDN) URLs are always blocked by CSP's connect-src, which only
+    // allows 'self' — going straight to the same-origin proxy avoids a guaranteed-fail
+    // direct fetch (and the CSP violation it logs) on every panel share/download.
+    const isSameOrigin = typeof window !== 'undefined' && url.startsWith(window.location.origin);
+    if (!isSameOrigin) {
       const resp = await fetch(`/api/proxy-image?url=${encodeURIComponent(url)}`);
       if (!resp.ok) throw new Error('proxy fetch failed');
       return await resp.blob();
     }
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('direct fetch failed');
+    return await resp.blob();
   };
 
   const panelFilename = (panelNum) => `panel-${String(panelNum).padStart(2, '0')}.png`;

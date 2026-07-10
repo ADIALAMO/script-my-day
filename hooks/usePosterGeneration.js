@@ -4,7 +4,7 @@ import { track } from '@vercel/analytics';
 import { getMsg, CODES } from '../lib/messages.js';
 import { getGenreLabel } from '../constants/genres.js';
 import { useRotatingMessages } from './useRotatingMessages.js';
-import { shareReadyFile, makeShareFile, downloadBlob, exportCapabilities } from '../utils/export-image.js';
+import { shareReadyFile, makeShareFile, downloadBlob, exportCapabilities, urlToBlob } from '../utils/export-image.js';
 
 const POSTER_MESSAGES_HE = [
   'מנתח את האסתטיקה של התסריט...',
@@ -220,7 +220,7 @@ export function usePosterGeneration({
       // Warm-up pass to pre-cache cross-origin resources.
       await htmlToImage.toPng(posterRef.current, { ...sharedOptions, quality: 0.1 });
       const dataUrl = await htmlToImage.toPng(posterRef.current, sharedOptions);
-      return (await fetch(dataUrl)).blob();
+      return await urlToBlob(dataUrl);
     } catch (err) {
       console.error('[renderPosterBlob] html-to-image failed:', err);
       return null;
@@ -249,8 +249,7 @@ export function usePosterGeneration({
     const src = posterUrl.startsWith('http')
       ? `/api/proxy-image?url=${encodeURIComponent(posterUrl)}`
       : posterUrl;
-    prewarmRef.current = fetch(src)
-      .then(r => r.ok ? r.blob() : Promise.reject(new Error(`HTTP ${r.status}`)))
+    prewarmRef.current = urlToBlob(src)
       .then(blob => makeShareFile(blob, posterFilename(), { lang }))
       .then(file => { shareFileRef.current = { url, file }; return file; })
       .catch(() => null)
@@ -286,8 +285,7 @@ export function usePosterGeneration({
             const src = posterUrl.startsWith('http')
               ? `/api/proxy-image?url=${encodeURIComponent(posterUrl)}`
               : posterUrl;
-            const resp = await fetch(src);
-            if (resp.ok) blob = await resp.blob();
+            blob = await urlToBlob(src);
           } catch { /* silent */ }
         }
         if (blob) await downloadBlob(blob, posterFilename(), { lang });
@@ -316,11 +314,8 @@ export function usePosterGeneration({
             const src = posterUrl.startsWith('http')
               ? `/api/proxy-image?url=${encodeURIComponent(posterUrl)}`
               : posterUrl;
-            const resp = await fetch(src);
-            if (resp.ok) {
-              const blob = await resp.blob();
-              file = await makeShareFile(blob, posterFilename(), { lang });
-            }
+            const blob = await urlToBlob(src);
+            file = await makeShareFile(blob, posterFilename(), { lang });
           } catch { /* silent */ }
         }
       }

@@ -322,6 +322,7 @@ export default function MovieReelModal({
   const videoRef     = useRef(null);
   const recorderRef  = useRef(null);
   const chunksRef    = useRef([]);
+  const videoBlobRef = useRef(null);   // the real MediaRecorder Blob — see prewarmReel
   const cancelledRef = useRef(false);
 
   // ── Body scroll lock — prevent background page from scrolling ────────────
@@ -559,6 +560,7 @@ export default function MovieReelModal({
       // ─────────────────────────────────────────────────────────────────────
       const outputMime = mimeType || 'video/webm';
       const blob = new Blob(chunksRef.current, { type: outputMime });
+      videoBlobRef.current = blob;
       const url  = URL.createObjectURL(blob);
 
       // Push final frame to preview before switching to video element.
@@ -603,24 +605,24 @@ export default function MovieReelModal({
   // inside iOS's transient-activation window (consistent with poster/panel sharing).
   const shareFileRef = useRef({ url: null, file: null });
   const prewarmRef   = useRef(null);
+  // prewarmReel builds the share File directly from the in-memory Blob (see generate()
+  // below) instead of fetch()-ing videoUrl's blob: object URL — CSP's connect-src
+  // (next.config.js) does not allowlist the blob: scheme, so that fetch always failed
+  // silently, leaving mobile's "Share Reel" a dead button (see handleShare's `if (!file)
+  // return`) and desktop surviving only by accident via the raw-videoUrl download fallback.
   const prewarmReel = useCallback(() => {
-    if (!videoUrl) return null;
+    if (!videoUrl || !videoBlobRef.current) return null;
     if (shareFileRef.current.url === videoUrl && shareFileRef.current.file) return null;
     if (prewarmRef.current) return prewarmRef.current;
     const url = videoUrl;
     const filename = `lifescript-reel-${genre || 'film'}.mp4`;
-    prewarmRef.current = fetch(url).then(r => r.blob())
-      .then(blob => {
-        // Strip codec params (e.g. "video/mp4;codecs=h264,aac" → "video/mp4").
-        // navigator.canShare on some iOS versions rejects the semicolon-qualified
-        // type and returns false, causing the share to silently no-op on mobile.
-        const baseType = (blob.type || 'video/mp4').split(';')[0].trim();
-        return new File([blob], filename, { type: baseType });
-      })
-      .then(file => { shareFileRef.current = { url, file }; return file; })
-      .catch(() => null)
-      .finally(() => { prewarmRef.current = null; });
-    return prewarmRef.current;
+    // Strip codec params (e.g. "video/mp4;codecs=h264,aac" → "video/mp4").
+    // navigator.canShare on some iOS versions rejects the semicolon-qualified
+    // type and returns false, causing the share to silently no-op on mobile.
+    const baseType = (videoBlobRef.current.type || 'video/mp4').split(';')[0].trim();
+    const file = new File([videoBlobRef.current], filename, { type: baseType });
+    shareFileRef.current = { url, file };
+    return Promise.resolve(file);
   }, [videoUrl, genre]);
 
   // Auto-prewarm as soon as the reel is ready — maximises head-start before the user
@@ -668,6 +670,7 @@ export default function MovieReelModal({
     shareFileRef.current = { url: null, file: null }; // drop the stale reel share render
     prewarmRef.current = null;
     chunksRef.current = [];
+    videoBlobRef.current = null;
     setPhase('idle'); setProgress(0); setLabel(''); setErrorMsg('');
   }, [videoUrl]);
 
