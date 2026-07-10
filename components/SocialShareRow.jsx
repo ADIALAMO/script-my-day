@@ -9,8 +9,8 @@ function WaIcon() {
 }
 
 export default function SocialShareRow({
-  onNativeShare,  // kept for API compat — not used when only WA chip is present
-  onDownload,     // kept for API compat
+  onNativeShare,
+  onDownload,     // kept for API compat — this chip only ever triggers the native share sheet
   onPrewarm,
   caption,
   lang,
@@ -19,21 +19,14 @@ export default function SocialShareRow({
 }) {
   const isHebrew = lang === 'he';
 
-  const siteUrl =
-    typeof window !== 'undefined'
-      ? window.location.origin
-      : 'https://my-life-script.vercel.app';
-
-  const cap =
-    caption ||
-    (isHebrew
-      ? 'הפוך את היום שלך לסרט! 🎬'
-      : 'Turn your day into a movie! 🎬');
-
+  // WhatsApp has no web API to open with a file pre-attached — a wa.me/api.whatsapp.com
+  // link only supports a `text` param, never media. The only real way to land a file
+  // inside WhatsApp from a browser is the native OS share sheet (navigator.share), where
+  // WhatsApp appears as a target the user picks — identical to the other Share buttons.
   const handleWhatsApp = useCallback(() => {
-    const url = `https://wa.me/?text=${encodeURIComponent(cap + ' 👉 ' + siteUrl)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  }, [siteUrl, cap]);
+    onPrewarm?.();
+    onNativeShare?.();
+  }, [onPrewarm, onNativeShare]);
 
   return (
     <div className={`flex flex-col items-center gap-2.5 ${className}`}>
