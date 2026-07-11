@@ -155,7 +155,7 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, 
             className="w-full flex items-center gap-2.5 px-4 py-2.5 text-amber-400 hover:bg-amber-500/10 transition-colors duration-150 group"
           >
             <Crown size={13} className="shrink-0 group-hover:scale-110 transition-transform" />
-            <span className="text-[12px] font-bold">
+            <span className="text-[11px] font-black uppercase tracking-wide">
               {BILLING_ENABLED
                 ? (isHe ? 'שדרג לפרו 👑' : 'Upgrade to Pro 👑')
                 : (isHe ? 'Pro — רשימת המתנה 🎬' : 'Pro — Join waitlist 🎬')}
@@ -176,7 +176,7 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, 
               ) : (
                 <CreditCard size={13} className="shrink-0 group-hover:scale-110 transition-transform" />
               )}
-              <span className="text-[12px] font-semibold">
+              <span className="text-[11px] font-black uppercase tracking-wide">
                 {portalLoading
                   ? (isHe ? 'פותח...' : 'Opening…')
                   : (isHe ? 'נהל מנוי' : 'Manage Subscription')}
@@ -196,7 +196,7 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, 
           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[#d4a373] hover:bg-[#d4a373]/10 transition-colors duration-150 group"
         >
           <Gift size={13} className="shrink-0 group-hover:scale-110 transition-transform" />
-          <span className="text-[12px] font-bold">
+          <span className="text-[11px] font-black uppercase tracking-wide">
             {isHe ? 'הזמן חברים 🎁' : 'Invite friends 🎁'}
           </span>
         </button>
@@ -207,7 +207,7 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, 
           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-white/40 hover:text-white/70 hover:bg-white/[0.04] transition-colors duration-150"
         >
           <LogOut size={13} className="shrink-0" />
-          <span className="text-[12px]">{isHe ? 'התנתק' : 'Sign out'}</span>
+          <span className="text-[11px] font-medium uppercase tracking-wide">{isHe ? 'התנתק' : 'Sign out'}</span>
         </button>
       </div>
     </div>
@@ -315,7 +315,7 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
             </button>
             <button
               onClick={() => handleOpenAuthModal('general')}
-              className="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 bg-[#d4a373]/10 hover:bg-[#d4a373]/20 border border-[#d4a373]/30 hover:border-[#d4a373]/50 rounded-full text-[10px] md:text-[12px] font-black uppercase tracking-wide transition-all duration-200 whitespace-nowrap shrink-0 active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 bg-[#d4a373]/10 hover:bg-[#d4a373]/20 border border-[#d4a373]/30 hover:border-[#d4a373]/50 rounded-full text-[10px] md:text-[12px] font-black uppercase tracking-wide text-[#d4a373] transition-all duration-200 whitespace-nowrap shrink-0 active:scale-95"
             >
               <User size={11} className="shrink-0" />
               <span className="hidden sm:inline">{isHe ? 'כניסה' : 'Sign In'}</span>
@@ -340,35 +340,38 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
             {/* Badge (desktop) */}
             {isPro ? <ProBadge isHe={isHe} /> : <FreeBadge isHe={isHe} />}
 
-            {/* Avatar button */}
-            <button
-              ref={avatarBtnRef}
-              onClick={() => setDropdownOpen(v => !v)}
-              aria-label={isHe ? 'תפריט חשבון' : 'Account menu'}
-              aria-expanded={dropdownOpen}
-              className={`relative w-8 h-8 md:w-9 md:h-9 rounded-full overflow-hidden border-2 transition-all duration-200 shrink-0 focus:outline-none
-                ${isPro
-                  ? 'border-amber-400/60 shadow-[0_0_12px_rgba(245,158,11,0.35)] hover:shadow-[0_0_20px_rgba(245,158,11,0.5)]'
-                  : 'border-white/20 hover:border-[#d4a373]/50'
-                }`}
-            >
-              {session?.user?.image ? (
-                <img
-                  src={session.user.image}
-                  alt={session.user.name || ''}
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="w-full h-full bg-[#d4a373]/20 flex items-center justify-center">
-                  <User size={14} className="text-[#d4a373]/70" />
-                </div>
-              )}
-              {/* Pro ring pulse */}
-              {isPro && (
-                <span className="absolute inset-0 rounded-full animate-ping opacity-20 bg-amber-400 pointer-events-none" />
-              )}
-            </button>
+            {/* Avatar button — wrapped in group div so tooltip isn't clipped by overflow-hidden */}
+            <div className="group relative shrink-0">
+              <button
+                ref={avatarBtnRef}
+                onClick={() => setDropdownOpen(v => !v)}
+                aria-label={isHe ? 'תפריט חשבון' : 'Account menu'}
+                aria-expanded={dropdownOpen}
+                className={`relative w-8 h-8 md:w-9 md:h-9 rounded-full overflow-hidden border-2 transition-all duration-200 shrink-0 focus:outline-none
+                  ${isPro
+                    ? 'border-amber-400/60 shadow-[0_0_12px_rgba(245,158,11,0.35)] hover:shadow-[0_0_20px_rgba(245,158,11,0.5)]'
+                    : 'border-white/20 hover:border-[#d4a373]/50'
+                  }`}
+              >
+                {session?.user?.image ? (
+                  <img
+                    src={session.user.image}
+                    alt={session.user.name || ''}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-[#d4a373]/20 flex items-center justify-center">
+                    <User size={14} className="text-[#d4a373]/70" />
+                  </div>
+                )}
+                {/* Pro ring pulse */}
+                {isPro && (
+                  <span className="absolute inset-0 rounded-full animate-ping opacity-20 bg-amber-400 pointer-events-none" />
+                )}
+              </button>
+              <IconTooltip label={isHe ? 'תפריט חשבון' : 'Account menu'} />
+            </div>
 
             {/* Dropdown */}
             {mounted && dropdownOpen && (
