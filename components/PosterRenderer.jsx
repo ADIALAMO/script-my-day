@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, VolumeX, Share2, Download } from 'lucide-react'; // וודא שאייקונים אלה מיובאים
-import SocialShareRow from './SocialShareRow.jsx';
 import * as htmlToImage from 'html-to-image'; // וודא שזה מיובא אם handleCapturePoster מועבר
 import { exportCapabilities } from '../utils/export-image.js';
 
@@ -196,17 +195,6 @@ function PosterRenderer({
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-col items-center gap-4 mt-8 pb-10 w-full max-w-[380px] mx-auto px-4"
         >
-          {/* Social chips — at the top of the share panel, above primary action */}
-          <SocialShareRow
-            onNativeShare={() => handleCapturePoster('share')}
-            onDownload={() => handleCapturePoster('download')}
-            onPrewarm={() => { if (!isDesktop) prewarmPosterShare?.(); }}
-            caption={posterTitle || undefined}
-            lang={lang}
-            mediaType="image"
-            className="w-full"
-          />
-
           {/* Primary action + secondary share (existing buttons) */}
           <div className="flex items-center justify-center gap-2.5 w-full">
           <motion.button

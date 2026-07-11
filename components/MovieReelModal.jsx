@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Share2, Download, Loader2, AlertCircle, Video, VolumeX, Volume2 } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { shareReadyFile, makeShareFile, exportCapabilities } from '../utils/export-image.js';
-import SocialShareRow from './SocialShareRow.jsx';
 
 // ── Canvas dimensions ────────────────────────────────────────────────────────
 const CANVAS_W      = 720;
@@ -1009,16 +1008,6 @@ export default function MovieReelModal({
                   </button>
                 ) : (
                   <>
-                    {/* Social share chips at the top of the done-phase panel */}
-                    <SocialShareRow
-                      onNativeShare={handleShare}
-                      onDownload={handleShare}
-                      onPrewarm={prewarmReel}
-                      lang={lang}
-                      mediaType="video"
-                      className="mb-1"
-                    />
-
                     <button
                       onPointerDown={prewarmReel}
                       onClick={handleShare}
