@@ -557,25 +557,44 @@ function HomePage() {
   // 2s to actually exit — the standard Android "press back again to exit"
   // convention — surfaced via a native Toast so it still works even if the
   // web content itself is in a broken/frozen state.
+  //
+  // Registered ONCE (empty deps), not re-created per overlay-state change.
+  // An earlier version re-registered the native listener on every dependency
+  // change, via addListener/removeListener calls that are themselves async —
+  // under real JS-thread load (confirmed on the Android emulator: the
+  // typewriter reveal effect measurably lags there too) that teardown/re-add
+  // cycle can fall behind the actual state change, leaving a stale listener
+  // with an outdated closure active for a real window. Verified failure mode,
+  // not a hypothetical: opening the "How it works" tips card and pressing
+  // back fired the exit prompt instead of closing it. Fixed by reading all
+  // state through a ref that's updated on every render (synchronous, no
+  // effect lag possible) instead of closing over the state variables.
   const lastBackPressRef = useRef(0);
+  const backStateRef = useRef(null);
+  backStateRef.current = {
+    selectedReel, selectedPoster, modalContent, characterModalOpenMirror,
+    showAuthModal, showUpgradeModal, showWaitlistModal,
+    showHistory, showFeedback, showTips,
+  };
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
     const listenerPromise = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
-      if (selectedReel)          { setSelectedReel(null);    return; }
-      if (selectedPoster)        { setSelectedPoster(null);  return; }
-      if (modalContent)          { setModalContent(null);    return; }
+      const s = backStateRef.current;
+      if (s.selectedReel)          { setSelectedReel(null);    return; }
+      if (s.selectedPoster)        { setSelectedPoster(null);  return; }
+      if (s.modalContent)          { setModalContent(null);    return; }
       // CharacterModal's own state lives inside ScriptOutput, not here — this
       // mirror + ref pair is the bridge (see the two new props passed to
       // ScriptOutput below). Checked alongside the other full modals since a
       // native-Android user tapping back mid-upload expects the same result.
-      if (characterModalOpenMirror) { closeCharacterModalRef.current?.(); return; }
-      if (showAuthModal)         { setShowAuthModal(false);  return; }
-      if (showUpgradeModal)      { setShowUpgradeModal(false); return; }
-      if (showWaitlistModal)     { setShowWaitlistModal(false); return; }
-      if (showHistory)           { setShowHistory(false);    return; }
-      if (showFeedback)          { setShowFeedback(false);   return; }
-      if (showTips)              { setShowTips(false);       return; }
+      if (s.characterModalOpenMirror) { closeCharacterModalRef.current?.(); return; }
+      if (s.showAuthModal)         { setShowAuthModal(false);  return; }
+      if (s.showUpgradeModal)      { setShowUpgradeModal(false); return; }
+      if (s.showWaitlistModal)     { setShowWaitlistModal(false); return; }
+      if (s.showHistory)           { setShowHistory(false);    return; }
+      if (s.showFeedback)          { setShowFeedback(false);   return; }
+      if (s.showTips)              { setShowTips(false);       return; }
 
       // No overlay open. Real navigation history (e.g. /terms, /privacy) wins
       // over the exit prompt — only fall through to it at a genuine root.
@@ -591,11 +610,7 @@ function HomePage() {
     });
 
     return () => { listenerPromise.then(handle => handle.remove()); };
-  }, [
-    selectedReel, selectedPoster, modalContent, characterModalOpenMirror,
-    showAuthModal, showUpgradeModal, showWaitlistModal,
-    showHistory, showFeedback, showTips,
-  ]);
+  }, []);
 
   const toggleLanguage = () => setLang(prev => prev === 'he' ? 'en' : 'he');
 
