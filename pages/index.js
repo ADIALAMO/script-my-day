@@ -315,6 +315,12 @@ function HomePage() {
   const [isTyping, setIsTyping] = useState(false);
   const [modalContent, setModalContent] = useState(null);
   const [showTips, setShowTips] = useState(false);
+  // Bridge for ScriptOutput's own showCharacterModal state (see the
+  // back-button handler below) — ScriptOutput reports open/close here via
+  // onCharacterModalToggle, and closeCharacterModalRef is how this component
+  // can command it shut without lifting the whole state up.
+  const [characterModalOpenMirror, setCharacterModalOpenMirror] = useState(false);
+  const closeCharacterModalRef = useRef(null);
   const [showGallery, setShowGallery] = useState(true);
   const [selectedPoster, setSelectedPoster] = useState(null);
   const [selectedReel,   setSelectedReel]   = useState(null);
@@ -559,11 +565,17 @@ function HomePage() {
       if (selectedReel)          { setSelectedReel(null);    return; }
       if (selectedPoster)        { setSelectedPoster(null);  return; }
       if (modalContent)          { setModalContent(null);    return; }
+      // CharacterModal's own state lives inside ScriptOutput, not here — this
+      // mirror + ref pair is the bridge (see the two new props passed to
+      // ScriptOutput below). Checked alongside the other full modals since a
+      // native-Android user tapping back mid-upload expects the same result.
+      if (characterModalOpenMirror) { closeCharacterModalRef.current?.(); return; }
       if (showAuthModal)         { setShowAuthModal(false);  return; }
       if (showUpgradeModal)      { setShowUpgradeModal(false); return; }
       if (showWaitlistModal)     { setShowWaitlistModal(false); return; }
       if (showHistory)           { setShowHistory(false);    return; }
       if (showFeedback)          { setShowFeedback(false);   return; }
+      if (showTips)              { setShowTips(false);       return; }
 
       // No overlay open. Real navigation history (e.g. /terms, /privacy) wins
       // over the exit prompt — only fall through to it at a genuine root.
@@ -580,9 +592,9 @@ function HomePage() {
 
     return () => { listenerPromise.then(handle => handle.remove()); };
   }, [
-    selectedReel, selectedPoster, modalContent,
+    selectedReel, selectedPoster, modalContent, characterModalOpenMirror,
     showAuthModal, showUpgradeModal, showWaitlistModal,
-    showHistory, showFeedback,
+    showHistory, showFeedback, showTips,
   ]);
 
   const toggleLanguage = () => setLang(prev => prev === 'he' ? 'en' : 'he');
@@ -1287,6 +1299,8 @@ function HomePage() {
                 onAuthRequired={openAuthModal}
                 initialPanels={initialPanels}
                 initialPosterUrl={initialPosterUrl}
+                onCharacterModalToggle={setCharacterModalOpenMirror}
+                closeCharacterModalRef={closeCharacterModalRef}
               />
             </motion.div>
           )}

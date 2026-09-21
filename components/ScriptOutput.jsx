@@ -51,7 +51,7 @@ const getCinematicTitle = (text) => {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, gender, setGender, onPosterGenerated, onScriptEdited, onAuthRequired, onPanelsGenerated, initialPanels, initialPosterUrl, journalEntry }) {
+function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, gender, setGender, onPosterGenerated, onScriptEdited, onAuthRequired, onPanelsGenerated, initialPanels, initialPosterUrl, journalEntry, onCharacterModalToggle, closeCharacterModalRef }) {
   const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST');
 
   // ── Language: UI chrome vs generated content ────────────────────────────────
@@ -105,6 +105,19 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     status: characterStatus, uploadCharacter, clearCharacter,
   } = useCharacter(gender);
   const [showCharacterModal, setShowCharacterModal] = useState(false);
+
+  // Bridge for the Capacitor back-button handler in pages/index.js, which
+  // can't see this local state directly. Reports every open/close so the
+  // parent's mirror stays in sync, and exposes the closer via a ref so the
+  // parent can command it shut without lifting this state up entirely.
+  useEffect(() => {
+    onCharacterModalToggle?.(showCharacterModal);
+  }, [showCharacterModal, onCharacterModalToggle]);
+  useEffect(() => {
+    if (!closeCharacterModalRef) return;
+    closeCharacterModalRef.current = () => setShowCharacterModal(false);
+    return () => { closeCharacterModalRef.current = null; };
+  }, [closeCharacterModalRef]);
 
   const {
     posterUrl, setPosterUrl, posterLoading, setPosterLoading,
