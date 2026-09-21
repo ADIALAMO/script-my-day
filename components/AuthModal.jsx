@@ -4,6 +4,8 @@ import { flushSync } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signIn, getSession } from 'next-auth/react';
 import { X, Film, Shield, Mail, ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 
 const CONTEXT_COPY = {
   poster: {
@@ -56,6 +58,25 @@ function isStandalonePWA() {
   );
 }
 
+// True in the Capacitor Android/iOS shell. Same underlying problem as the iOS
+// PWA case above — the WebView is an isolated context that can't share a
+// session cookie with wherever auth actually completes — so it shares the
+// same relay-exchange mechanism. Kept as a separate check from
+// isStandalonePWA() because the two runtimes need different handling for
+// Google specifically: Google's OAuth policy blocks embedded WebViews
+// (Capacitor's is one) outright, which plain iOS PWA Safari redirects don't
+// hit, so only the Capacitor case needs the system-browser detour below.
+function isCapacitorNative() {
+  return typeof window !== 'undefined' && Capacitor.isNativePlatform();
+}
+
+// Any runtime where the WebView showing this modal can't receive a session
+// cookie set elsewhere, and so needs the Redis relay-token handoff instead of
+// the plain same-tab / cross-tab flows below.
+function needsRelay() {
+  return isStandalonePWA() || isCapacitorNative();
+}
+
 // crypto.randomUUID is available on iOS ≥ 15.4. Fallback covers older devices.
 function generateRelayToken() {
   if (typeof crypto?.randomUUID === 'function') return crypto.randomUUID();
@@ -84,6 +105,10 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
   const [email, setEmail]           = useState('');
   const [emailError, setEmailError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
+  // True once the Capacitor Google flow has been launched in the system
+  // browser and we're waiting for its relay entry — the Capacitor analogue of
+  // emailState === 'sent' for the magic-link relay poll below.
+  const [googleRelayPending, setGoogleRelayPending] = useState(false);
 
   // One relay token per sign-in attempt — generated fresh each time the modal opens.
   // Stored in a ref so it survives re-renders without causing extra renders itself.
@@ -96,6 +121,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
       setEmail('');
       setEmailError('');
       setGoogleLoading(false);
+      setGoogleRelayPending(false);
       relayTokenRef.current = generateRelayToken();
     }
   }, [isOpen]);
@@ -155,22 +181,22 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
     };
   }, [emailState, isOpen]);
 
-  // ── iOS PWA relay-exchange poll ───────────────────────────────────────────
+  // ── Relay-exchange poll (iOS PWA magic link + Capacitor magic link/Google) ─
   // The getSession() poll above covers desktop / same-browser flows where all
   // tabs share the same cookie jar.
   //
-  // This effect covers the iOS PWA case: the magic link opens in external
-  // Safari (different WKWebView sandbox), authenticates there, and writes a
-  // verified relay entry to Redis via /auth-relay-complete. Once the entry is
-  // detected here, we call signIn('relay-exchange') to materialise a real
-  // NextAuth JWT session cookie inside this PWA's WKWebView — no cookie
-  // sharing or sandbox bypass required.
-  //
-  // Only activates when running as a standalone PWA (window.navigator.standalone
-  // or display-mode: standalone) to avoid conflicting with the desktop flow.
+  // This effect covers every case where auth completes in an isolated context
+  // that can't share a session cookie back with this WebView: iOS PWA's magic
+  // link (opens in external Safari) and Capacitor's magic link AND Google
+  // sign-in (both opened in the system browser — see handleGoogleSignIn and
+  // auth-relay-start.jsx for why Google specifically needs this on Capacitor).
+  // Whichever wrote the verified relay entry to Redis via /auth-relay-complete,
+  // this poll detects it and calls signIn('relay-exchange') to materialise a
+  // real NextAuth JWT session cookie inside this WebView — no cookie sharing
+  // or sandbox bypass required.
+  const awaitingRelay = (emailState === 'sent' && needsRelay()) || googleRelayPending;
   useEffect(() => {
-    if (emailState !== 'sent' || !isOpen) return;
-    if (!isStandalonePWA()) return;
+    if (!awaitingRelay || !isOpen) return;
 
     const relayToken = relayTokenRef.current;
     if (!relayToken) return;
@@ -184,7 +210,10 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
           relayToken,
           redirect: false,
         });
-        if (result?.ok && !cancelled) setEmailState('authenticated');
+        if (result?.ok && !cancelled) {
+          setGoogleRelayPending(false);
+          setEmailState('authenticated');
+        }
       } catch {
         // Exchange failed — relay entry not ready or already consumed. Safe to retry.
       }
@@ -218,7 +247,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
       clearTimeout(maxAgeTimer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [emailState, isOpen]);
+  }, [emailState, googleRelayPending, isOpen]);
 
   // ── Post-authentication reload ────────────────────────────────────────────
   // Once authenticated, show the confirmation screen briefly, then do a full
@@ -240,6 +269,21 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
     // a cold iOS socket — without it the button looks dead for the few seconds until the
     // OAuth redirect fires (same cold-start fix as the email path below).
     flushSync(() => setGoogleLoading(true));
+
+    // Capacitor's WebView is an embedded WebView by Google's own definition —
+    // signing in here directly would hit disallowed_useragent. Instead, open
+    // the OAuth flow in the system browser (a real, non-embedded browsing
+    // context Google accepts) via auth-relay-start.jsx, then wait for the
+    // relay poll above to pick up the session once it completes there.
+    if (isCapacitorNative()) {
+      const relayToken = relayTokenRef.current;
+      Browser.open({
+        url: `${window.location.origin}/auth-relay-start?relay_token=${relayToken}`,
+      });
+      setGoogleRelayPending(true);
+      return;
+    }
+
     signIn('google', { callbackUrl: window.location.href });
   };
 
@@ -257,11 +301,12 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
     // Without it, React may defer the re-render past the cold-start freeze.
     flushSync(() => setEmailState('sending'));
     try {
-      // In standalone PWA mode, embed the relay_token in the callbackUrl so
-      // that /auth-relay-complete can write the verified entry to Redis after
-      // the user authenticates in Safari. In all other contexts, keep the
-      // existing /auth-success flow (tab auto-close + getSession() polling).
-      const callbackUrl = isStandalonePWA()
+      // In standalone PWA / Capacitor native, embed the relay_token in the
+      // callbackUrl so that /auth-relay-complete can write the verified entry
+      // to Redis after the user authenticates in the external browser. In all
+      // other contexts, keep the existing /auth-success flow (tab auto-close
+      // + getSession() polling).
+      const callbackUrl = needsRelay()
         ? `${window.location.origin}/auth-relay-complete?relay_token=${relayTokenRef.current}`
         : `${window.location.origin}/auth-success`;
 
@@ -378,14 +423,14 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                           ? `שלחנו קישור כניסה לכתובת ${email}. הוא יפוג תוך 10 דקות.`
                           : `We sent a sign-in link to ${email}. It expires in 10 minutes.`}
                       </p>
-                      {isStandalonePWA() && (
+                      {needsRelay() && (
                         <p className="text-emerald-400/50 text-[11px] leading-relaxed mb-6 px-2">
                           {isHe
                             ? 'לחץ על הקישור במייל ואז חזור לאפליקציה — הכניסה תתבצע אוטומטית.'
                             : 'Tap the link in your email, then return here — sign-in completes automatically.'}
                         </p>
                       )}
-                      {!isStandalonePWA() && <div className="mb-6" />}
+                      {!needsRelay() && <div className="mb-6" />}
                       <button
                         onClick={() => { setEmailState('idle'); setEmail(''); }}
                         className="text-white/25 hover:text-white/50 text-[11px] transition-colors"
