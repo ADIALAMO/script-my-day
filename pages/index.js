@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Head from 'next/head';
+import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
+import { Toast } from '@capacitor/toast';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { Film, Copyright, AlertCircle, X, Download, Share2, MessageSquare, Send, Check } from 'lucide-react';
 import { getMsg, CODES, isQuotaError, inferCode } from '../lib/messages.js';
@@ -534,6 +537,53 @@ function HomePage() {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
   }, [modalContent, selectedPoster, showAuthModal, showUpgradeModal, showWaitlistModal]);
+
+  // ── Android hardware back button (Capacitor only) ──────────────────────────
+  // This app is a single route with every modal/lightbox implemented as plain
+  // React state (see the scroll-lock effect above) rather than router.push —
+  // so the WebView almost never has back-history to consume. Capacitor's
+  // default back-button behaviour is "goBack in WebView history, else exit
+  // the app", which meant a single back press exited the app from nearly any
+  // point in the core flow. This listener replaces that default entirely:
+  // it closes exactly one topmost overlay per press (checked most-transient
+  // first), falls back to real WebView history for the few genuine multi-page
+  // routes (/terms, /privacy), and otherwise requires a second press within
+  // 2s to actually exit — the standard Android "press back again to exit"
+  // convention — surfaced via a native Toast so it still works even if the
+  // web content itself is in a broken/frozen state.
+  const lastBackPressRef = useRef(0);
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const listenerPromise = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+      if (selectedReel)          { setSelectedReel(null);    return; }
+      if (selectedPoster)        { setSelectedPoster(null);  return; }
+      if (modalContent)          { setModalContent(null);    return; }
+      if (showAuthModal)         { setShowAuthModal(false);  return; }
+      if (showUpgradeModal)      { setShowUpgradeModal(false); return; }
+      if (showWaitlistModal)     { setShowWaitlistModal(false); return; }
+      if (showHistory)           { setShowHistory(false);    return; }
+      if (showFeedback)          { setShowFeedback(false);   return; }
+
+      // No overlay open. Real navigation history (e.g. /terms, /privacy) wins
+      // over the exit prompt — only fall through to it at a genuine root.
+      if (canGoBack) { window.history.back(); return; }
+
+      const now = Date.now();
+      if (now - lastBackPressRef.current < 2000) {
+        CapacitorApp.exitApp();
+        return;
+      }
+      lastBackPressRef.current = now;
+      Toast.show({ text: 'Press back again to exit', duration: 'short' }).catch(() => {});
+    });
+
+    return () => { listenerPromise.then(handle => handle.remove()); };
+  }, [
+    selectedReel, selectedPoster, modalContent,
+    showAuthModal, showUpgradeModal, showWaitlistModal,
+    showHistory, showFeedback,
+  ]);
 
   const toggleLanguage = () => setLang(prev => prev === 'he' ? 'en' : 'he');
 
