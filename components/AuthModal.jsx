@@ -4,8 +4,8 @@ import { flushSync } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signIn, getSession } from 'next-auth/react';
 import { X, Film, Shield, Mail, ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
-import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
+import { isCapacitorNative } from '../utils/platform.js';
 
 const CONTEXT_COPY = {
   poster: {
@@ -58,17 +58,14 @@ function isStandalonePWA() {
   );
 }
 
-// True in the Capacitor Android/iOS shell. Same underlying problem as the iOS
-// PWA case above — the WebView is an isolated context that can't share a
-// session cookie with wherever auth actually completes — so it shares the
-// same relay-exchange mechanism. Kept as a separate check from
+// isCapacitorNative() (imported above) covers the same underlying problem as
+// the iOS PWA case above — the WebView is an isolated context that can't
+// share a session cookie with wherever auth actually completes — so it
+// shares the same relay-exchange mechanism. Kept as a separate check from
 // isStandalonePWA() because the two runtimes need different handling for
 // Google specifically: Google's OAuth policy blocks embedded WebViews
 // (Capacitor's is one) outright, which plain iOS PWA Safari redirects don't
 // hit, so only the Capacitor case needs the system-browser detour below.
-function isCapacitorNative() {
-  return typeof window !== 'undefined' && Capacitor.isNativePlatform();
-}
 
 // Any runtime where the WebView showing this modal can't receive a session
 // cookie set elsewhere, and so needs the Redis relay-token handoff instead of

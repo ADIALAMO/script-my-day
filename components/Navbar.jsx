@@ -5,6 +5,7 @@ import { useSession, signOut } from 'next-auth/react';
 import LaunchTicket from './LaunchTicket';
 import ReferralModal from './ReferralModal';
 import { BILLING_ENABLED } from '../constants/billing';
+import { isCapacitorNative } from '../utils/platform.js';
 
 // Fetches the current user's tier from the server.
 // refreshToken is an external counter; incrementing it triggers a re-fetch.
@@ -148,8 +149,10 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, 
 
       {/* Actions */}
       <div className="py-1.5">
-        {/* Upgrade to Pro — hidden for pro and admin users */}
-        {!isElevated && (
+        {/* Upgrade to Pro — hidden for pro/admin users, and for the Capacitor
+            shell entirely (no purchase/pricing CTA in the native app — see
+            the mobile-wrapper plan's billing decision). */}
+        {!isElevated && !isCapacitorNative() && (
           <button
             onClick={() => { onClose(); onUpgradeClick(); }}
             className="w-full flex items-center gap-2.5 px-4 py-2.5 text-amber-400 hover:bg-amber-500/10 transition-colors duration-150 group"
@@ -324,8 +327,9 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
         ) : (
           // ── Authenticated: Avatar + badge + dropdown ──
           <div className="flex items-center gap-2 shrink-0">
-            {/* Go Pro CTA — desktop, free users only */}
-            {!isPro && (
+            {/* Go Pro CTA — desktop, free users only. Hidden entirely on
+                Capacitor (no purchase/pricing CTA in the native app). */}
+            {!isPro && !isCapacitorNative() && (
               <button
                 onClick={() => handleOpenAuthModal('upgrade')}
                 className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 hover:border-amber-500/45 text-amber-400 text-[10px] font-black uppercase tracking-wide transition-all duration-200 whitespace-nowrap active:scale-95"

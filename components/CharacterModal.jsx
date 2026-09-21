@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Loader2, Camera, Sparkles, RefreshCw, Crown } from 'lucide-react';
+import { isCapacitorNative } from '../utils/platform.js';
 
 // Downscale a selected file to a JPEG data URI (max 1024px, q0.9) before upload.
 // Keeps the request well under the endpoint's body limit and trims R2/latency cost.
@@ -164,12 +165,18 @@ export default function CharacterModal({
                     ? 'שדרג ל-Pro כדי להפוך לגיבור של הקומיקס והפוסטרים שלך.'
                     : 'Upgrade to Pro to become the hero of your comics and posters.'}
                 </p>
-                <button
-                  onClick={() => { onClose(); onUpgrade?.(); }}
-                  className="w-full bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black font-black py-3 rounded-2xl text-[12px] uppercase tracking-wider"
-                >
-                  {isHebrew ? 'שדרג ל-Pro' : 'Upgrade to Pro'}
-                </button>
+                {/* No purchase/pricing CTA in the Capacitor shell (per the
+                    mobile-wrapper plan's billing decision) — the informational
+                    copy above still explains the gate, this button just isn't
+                    shown, since tapping it can't lead anywhere on native. */}
+                {!isCapacitorNative() && (
+                  <button
+                    onClick={() => { onClose(); onUpgrade?.(); }}
+                    className="w-full bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black font-black py-3 rounded-2xl text-[12px] uppercase tracking-wider"
+                  >
+                    {isHebrew ? 'שדרג ל-Pro' : 'Upgrade to Pro'}
+                  </button>
+                )}
               </div>
             )}
 

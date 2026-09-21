@@ -8,6 +8,7 @@ import {
 import { track } from '@vercel/analytics';
 import { getMsg, CODES, isQuotaError } from '../lib/messages.js';
 import { getGenreLabel } from '../constants/genres.js';
+import { isCapacitorNative } from '../utils/platform.js';
 import { HEBREW_RANGE } from '../constants/language.js';
 import PosterRenderer from './PosterRenderer';
 import StoryboardView from './StoryboardView';
@@ -821,7 +822,10 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
             panelImages={panelImages}
             onClose={closeStoryboard}
             unlockedPanels={unlockedPanels}
-            onUpgrade={() => onAuthRequired('upgrade')}
+            // Omitted entirely on Capacitor — StoryboardView only renders its
+            // upgrade CTA banner when onUpgrade is truthy (no purchase/pricing
+            // CTA in the native app, per the mobile-wrapper plan).
+            onUpgrade={isCapacitorNative() ? undefined : () => onAuthRequired('upgrade')}
             onRegenerate={regeneratePanel}
             regensLeft={regensLeft}
           />
