@@ -43,8 +43,8 @@ const isProd = process.env.NODE_ENV === 'production';
 const CSP_DIRECTIVES = [
   "default-src 'self'",
 
-  // Next.js inline hydration scripts + Vercel Analytics loader
-  "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com",
+  // Next.js inline hydration scripts + Vercel Analytics loader + GA4 gtag.js loader
+  "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://www.googletagmanager.com",
 
   // Tailwind utility classes, framer-motion inline styles, optional Google Fonts
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
@@ -55,8 +55,11 @@ const CSP_DIRECTIVES = [
   // Heebo font subsets (self-hosted or jsDelivr) + Google Fonts glyphs
   "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net",
 
-  // All XHR/fetch calls stay on-origin; Vercel telemetry endpoints explicit
-  "connect-src 'self' https://va.vercel-scripts.com https://vitals.vercel-insights.com",
+  // All XHR/fetch calls stay on-origin; Vercel telemetry + GA4 hit-collection
+  // endpoints explicit. GA4 sends measurement beacons to www.google-analytics.com
+  // and regionalized subdomains (e.g. region1.google-analytics.com) depending on
+  // the visitor's location, hence the wildcard rather than one fixed host.
+  "connect-src 'self' https://va.vercel-scripts.com https://vitals.vercel-insights.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com",
 
   "media-src 'self' blob:",
   "frame-src 'none'",
