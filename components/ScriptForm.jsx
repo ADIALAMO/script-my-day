@@ -327,7 +327,30 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
       <div>
         <div className="flex justify-between items-center mb-6 px-2">
           <label className="text-[#d4a373] text-[10px] md:text-xs font-black uppercase tracking-[0.3em] italic">{lang === 'he' ? 'בחר סגנון קולנועי' : 'Select Cinematic Style'}</label>
-          <button type="button" onClick={() => !isLocked && setIsMusicMuted(!isMusicMuted)} disabled={isLocked} className={`p-2.5 rounded-xl border transition-all duration-300 ${isMusicMuted ? 'border-white/10 bg-white/5 text-gray-500' : 'border-[#d4a373]/50 bg-[#d4a373]/10 text-[#d4a373]'} ${isLocked ? 'opacity-30' : ''}`}>
+          <button
+            type="button"
+            onClick={() => {
+              if (isLocked) return;
+              const next = !isMusicMuted;
+              setIsMusicMuted(next);
+              // Synchronous, gesture-time play() attempt: this tap is a real
+              // user gesture, so it's the one reliable place to (re)start
+              // playback on unmute. useBackgroundAudio.js's own play() calls
+              // run inside effects (not synchronously inside a click), which
+              // iOS Safari does not count as gesture-triggered — confirmed via
+              // this app's own play-log capture, where an effect-triggered
+              // call came back rejected with NotAllowedError. Setting volume
+              // here is harmless either way; only the play() call needs the
+              // gesture.
+              const audio = document.getElementById('main-bg-music');
+              if (audio) {
+                audio.volume = next ? 0 : 0.5;
+                if (!next && audio.paused) audio.play().catch(() => {});
+              }
+            }}
+            disabled={isLocked}
+            className={`p-2.5 rounded-xl border transition-all duration-300 ${isMusicMuted ? 'border-white/10 bg-white/5 text-gray-500' : 'border-[#d4a373]/50 bg-[#d4a373]/10 text-[#d4a373]'} ${isLocked ? 'opacity-30' : ''}`}
+          >
             {isMusicMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
           </button>
         </div>
