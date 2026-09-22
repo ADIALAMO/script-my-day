@@ -5,9 +5,24 @@ import '../styles/globals.css';
 import Head from 'next/head';
 import Script from 'next/script';
 import { useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { StatusBar, Style } from '@capacitor/status-bar';
 import { SITE_URL } from '../lib/site.js';
 
 function MyApp({ Component, pageProps: { session, ...pageProps } }) {
+
+  // ── Native status bar styling (Capacitor only) ────────────────────────────
+  // Unstyled, this renders as the OS default — a plain white/light bar with
+  // dark icons, clashing hard against the app's dark theme (#030712, same as
+  // manifest.json's background_color/theme_color). Visible in every emulator
+  // screenshot taken during Phase 4 testing. Style.Dark here means "this bar
+  // sits on a dark background" — Capacitor's naming, not the bar's own color —
+  // so it renders light icons/text, which is what a dark background needs.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    StatusBar.setBackgroundColor({ color: '#030712' }).catch(() => {});
+    StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
