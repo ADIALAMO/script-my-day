@@ -7,6 +7,7 @@ import Script from 'next/script';
 import { useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
+import { SplashScreen } from '@capacitor/splash-screen';
 import { SITE_URL } from '../lib/site.js';
 
 function MyApp({ Component, pageProps: { session, ...pageProps } }) {
@@ -24,6 +25,38 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
     if (!Capacitor.isNativePlatform()) return;
     StatusBar.setBackgroundColor({ color: '#030712' }).catch(() => {});
     StatusBar.setStyle({ style: Style.Light }).catch(() => {});
+  }, []);
+
+  // ── Native splash hide (Capacitor only) ────────────────────────────────────
+  // launchAutoHide (capacitor.config.json) is off. The default (500ms show +
+  // 200ms fade) hid the splash on a fixed clock with no idea whether the
+  // remote page had actually loaded — since server.url points at a live
+  // Vercel deployment rather than bundled assets, real load reliably takes
+  // longer than 700ms on a cold launch. That gap showed up on-device as a
+  // ~700ms blank white WebView frame between the splash and real content,
+  // confirmed via frame-by-frame screen-recording analysis. Hide explicitly
+  // once the page has actually finished loading instead. The 8s fallback is a
+  // last resort only (a stalled network, or 'load' never firing for some
+  // other reason) — generous on purpose, since the cost of waiting a little
+  // longer is trivial next to the cost of dropping to a blank screen early.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let hidden = false;
+    const hide = () => {
+      if (hidden) return;
+      hidden = true;
+      SplashScreen.hide().catch(() => {});
+    };
+    if (document.readyState === 'complete') {
+      hide();
+    } else {
+      window.addEventListener('load', hide, { once: true });
+    }
+    const timeoutId = setTimeout(hide, 8000);
+    return () => {
+      window.removeEventListener('load', hide);
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   useEffect(() => {

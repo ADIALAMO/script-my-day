@@ -182,6 +182,8 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
   const textareaRef      = useRef(null);
   const saveDebounceRef  = useRef(null);
   const exportMenuRef    = useRef(null);
+  const posterSectionRef     = useRef(null);
+  const storyboardSectionRef = useRef(null);
 
   useEffect(() => {
     if (!isEditing || !textareaRef.current) return;
@@ -189,6 +191,18 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     ta.focus();
     ta.setSelectionRange(ta.value.length, ta.value.length);
   }, [isEditing]);
+
+  // Poster/storyboard both mount their loading UI and their result inside the
+  // same section (unlike the script form, which shows loading elsewhere) —
+  // but that section itself can still land below the fold, so scroll to it
+  // the moment it first appears rather than waiting for the result specifically.
+  useEffect(() => {
+    if (showPoster) posterSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [showPoster]);
+
+  useEffect(() => {
+    if (showStoryboard) storyboardSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [showStoryboard]);
 
   useEffect(() => () => clearTimeout(saveDebounceRef.current), []);
 
@@ -725,7 +739,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
       {/* ── Poster ───────────────────────────────────────────────────── */}
       <AnimatePresence>
         {showPoster && (
-          <div className="mt-8">
+          <div className="mt-8" ref={posterSectionRef}>
             <PosterRenderer
               posterUrl={posterUrl}
               posterLoading={posterLoading}
@@ -828,20 +842,21 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
       {/* ── Storyboard view ───────────────────────────────────────────── */}
       <AnimatePresence>
         {showStoryboard && storyboardPanels.length > 0 && (
-          <StoryboardView
-            key="storyboard-view"
-            panels={storyboardPanels}
-            lang={lang}
-            panelImages={panelImages}
-            onClose={closeStoryboard}
-            unlockedPanels={unlockedPanels}
-            // Omitted entirely on Capacitor — StoryboardView only renders its
-            // upgrade CTA banner when onUpgrade is truthy (no purchase/pricing
-            // CTA in the native app, per the mobile-wrapper plan).
-            onUpgrade={isCapacitorNative() ? undefined : () => onAuthRequired('upgrade')}
-            onRegenerate={regeneratePanel}
-            regensLeft={regensLeft}
-          />
+          <div key="storyboard-view" ref={storyboardSectionRef}>
+            <StoryboardView
+              panels={storyboardPanels}
+              lang={lang}
+              panelImages={panelImages}
+              onClose={closeStoryboard}
+              unlockedPanels={unlockedPanels}
+              // Omitted entirely on Capacitor — StoryboardView only renders its
+              // upgrade CTA banner when onUpgrade is truthy (no purchase/pricing
+              // CTA in the native app, per the mobile-wrapper plan).
+              onUpgrade={isCapacitorNative() ? undefined : () => onAuthRequired('upgrade')}
+              onRegenerate={regeneratePanel}
+              regensLeft={regensLeft}
+            />
+          </div>
         )}
       </AnimatePresence>
 

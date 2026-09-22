@@ -336,6 +336,7 @@ function HomePage() {
   const abortControllerRef = useRef(null);
   const lastJournalEntryRef = useRef({ entry: '', genre: '' });
   const currentEntryIdRef = useRef(null);
+  const scriptOutputRef = useRef(null);
 
   const { history, addEntry, updateEntry, deleteEntry } = useScriptHistory();
 
@@ -619,6 +620,17 @@ function HomePage() {
 
     return () => { listenerPromise.then(handle => handle.remove()); };
   }, []);
+
+  // The script result renders well below the input form (mt-16/24) — nothing
+  // brings it into view on its own, so a completed (or restored) script was
+  // easy to miss below the fold. scriptLoading is checked alongside script so
+  // this only fires once both state updates from handleGenerateScript have
+  // landed, regardless of which one commits first.
+  useEffect(() => {
+    if (script && !scriptLoading) {
+      scriptOutputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [script, scriptLoading]);
 
   const toggleLanguage = () => setLang(prev => prev === 'he' ? 'en' : 'he');
 
@@ -1303,6 +1315,7 @@ function HomePage() {
         <AnimatePresence mode="wait">
           {script && !scriptLoading && (
             <motion.div
+              ref={scriptOutputRef}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
