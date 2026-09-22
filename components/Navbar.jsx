@@ -222,7 +222,7 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, 
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHistoryOpen, onOpenAuthModal, tierRefreshToken = 0 }) {
+export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHistoryOpen, onOpenAuthModal, tierRefreshToken = 0, onDropdownToggle, closeDropdownRef }) {
   const { data: session, status } = useSession();
   const isAuthenticated = status === 'authenticated';
   const tier = useTier(isAuthenticated, tierRefreshToken);
@@ -243,6 +243,19 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [dropdownOpen]);
+
+  // Bridge to index.js's Android hardware back-button handler — same pattern
+  // as ScriptOutput's CharacterModal bridge, since this dropdown's open state
+  // lives here, not in the parent's backStateRef.
+  useEffect(() => {
+    onDropdownToggle?.(dropdownOpen);
+  }, [dropdownOpen, onDropdownToggle]);
+
+  useEffect(() => {
+    if (!closeDropdownRef) return;
+    closeDropdownRef.current = () => setDropdownOpen(false);
+    return () => { closeDropdownRef.current = null; };
+  }, [closeDropdownRef]);
 
   const handleOpenAuthModal = (ctx = 'general') => {
     onOpenAuthModal?.(ctx);

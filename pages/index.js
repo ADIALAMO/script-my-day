@@ -321,6 +321,12 @@ function HomePage() {
   // can command it shut without lifting the whole state up.
   const [characterModalOpenMirror, setCharacterModalOpenMirror] = useState(false);
   const closeCharacterModalRef = useRef(null);
+  // Same bridge, for Navbar's account dropdown (its open state lives in
+  // Navbar, not here). Found via manual back-button testing: without this,
+  // pressing back while the dropdown is open falls through to the exit
+  // prompt instead of just closing the dropdown.
+  const [dropdownOpenMirror, setDropdownOpenMirror] = useState(false);
+  const closeDropdownRef = useRef(null);
   const [showGallery, setShowGallery] = useState(true);
   const [selectedPoster, setSelectedPoster] = useState(null);
   const [selectedReel,   setSelectedReel]   = useState(null);
@@ -573,6 +579,7 @@ function HomePage() {
   const backStateRef = useRef(null);
   backStateRef.current = {
     selectedReel, selectedPoster, modalContent, characterModalOpenMirror,
+    dropdownOpenMirror,
     showAuthModal, showUpgradeModal, showWaitlistModal,
     showHistory, showFeedback, showTips,
   };
@@ -589,6 +596,7 @@ function HomePage() {
       // ScriptOutput below). Checked alongside the other full modals since a
       // native-Android user tapping back mid-upload expects the same result.
       if (s.characterModalOpenMirror) { closeCharacterModalRef.current?.(); return; }
+      if (s.dropdownOpenMirror)    { closeDropdownRef.current?.();    return; }
       if (s.showAuthModal)         { setShowAuthModal(false);  return; }
       if (s.showUpgradeModal)      { setShowUpgradeModal(false); return; }
       if (s.showWaitlistModal)     { setShowWaitlistModal(false); return; }
@@ -768,6 +776,8 @@ function HomePage() {
         onHistoryOpen={() => setShowHistory(true)}
         onOpenAuthModal={openAuthModal}
         tierRefreshToken={tierVersion}
+        onDropdownToggle={setDropdownOpenMirror}
+        closeDropdownRef={closeDropdownRef}
       />
 
       <main className="container mx-auto pt-4 md:pt-8 pb-12 px-6 max-w-5xl flex-grow relative">
