@@ -57,17 +57,52 @@ export function useCinematicAudio() {
   }, []);
 
   /**
+   * Unlocks the flash-sound element for iOS Safari's autoplay policy.
+   * Must be called synchronously inside a real user gesture (e.g. the very
+   * first line of the tap handler that starts poster generation) — a
+   * muted play-then-pause registers this SPECIFIC HTMLAudioElement instance
+   * as unlocked with WebKit, which then allows a later programmatic
+   * play() call on it (e.g. from an <img onLoad>, which is not itself a
+   * gesture) to actually produce sound instead of being silently blocked.
+   * The generation flow's tap-to-reveal gap (a network fetch, typically
+   * 10-30s+) is far too long for WebKit's gesture window regardless, so
+   * the unlock has to happen here, separately from the sound itself.
+   */
+  const unlockFlashAudio = useCallback(() => {
+    const el = flashRef.current;
+    if (!el) return;
+    const prevVolume = el.volume;
+    el.volume = 0;
+    el.play()
+      .then(() => {
+        el.pause();
+        el.currentTime = 0;
+        el.volume = prevVolume;
+      })
+      .catch(() => { el.volume = prevVolume; });
+  }, []);
+
+  /**
    * Camera-flash shutter — single shot with a 2.5 s fade-out.
    * Starts playback at 0.5 s into the file (skips the silent lead-in),
    * then ramps volume down to near-zero via a lightweight interval.
+   *
+   * Plays flashRef.current directly rather than a cloneNode() — unlike the
+   * typewriter click (which can genuinely overlap itself during fast
+   * typing), the flash only ever fires once per poster, so there's no
+   * need to clone for overlapping playback. More importantly, cloning
+   * would defeat unlockFlashAudio(): iOS Safari's unlock is tied to the
+   * specific HTMLMediaElement instance that was played in a gesture, not
+   * to the underlying audio resource, so a fresh clone has never itself
+   * been unlocked no matter what happened earlier in the session.
    */
   const playFlashSound = useCallback(() => {
     if (isMutedRef.current || !flashRef.current) return;
 
-    const s = /** @type {HTMLAudioElement} */ (flashRef.current.cloneNode());
-    s.currentTime = 0.5; // skip silent lead-in, matching original Web Audio offset
-    s.volume = 0.9;
-    s.play().catch(() => {});
+    const el = flashRef.current;
+    el.currentTime = 0.5; // skip silent lead-in, matching original Web Audio offset
+    el.volume = 0.9;
+    el.play().catch(() => {});
 
     // Fade 0.9 → 0 over 2.5 s in 80 ms steps (mirrors the old gain ramp).
     const start = Date.now();
@@ -75,12 +110,12 @@ export function useCinematicAudio() {
       const t = (Date.now() - start) / 2500;
       if (t >= 1) {
         clearInterval(timer);
-        try { s.pause(); } catch {}
+        try { el.pause(); } catch {}
         return;
       }
-      try { s.volume = Math.max(0, 0.9 * (1 - t)); } catch { clearInterval(timer); }
+      try { el.volume = Math.max(0, 0.9 * (1 - t)); } catch { clearInterval(timer); }
     }, 80);
   }, []);
 
-  return { isMuted, setIsMuted, playSound, playFlashSound };
+  return { isMuted, setIsMuted, playSound, playFlashSound, unlockFlashAudio };
 }

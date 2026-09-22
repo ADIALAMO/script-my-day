@@ -49,6 +49,8 @@ export function usePosterGeneration({
   onPosterGenerated,
   onAuthRequired,
   characterImageUrl, // Identity Track — null/undefined → standard generation
+  onUnlockAudio, // Called synchronously at the top of generatePoster, still
+                 // inside the tap gesture — see generatePoster below.
 }) {
   const [posterUrl,     setPosterUrl]     = useState('');
   const [posterLoading, setPosterLoading] = useState(false);
@@ -81,6 +83,13 @@ export function usePosterGeneration({
   // ── Generation ──────────────────────────────────────────────────────────────
 
   const generatePoster = useCallback(async () => {
+    // Must run before the first await below — this is still inside the
+    // original tap's synchronous call stack, the only point in this whole
+    // flow that counts as a real user gesture to iOS Safari. The flash
+    // sound itself fires much later, from the poster <img>'s onLoad (after
+    // the fetch below resolves), which is never a gesture no matter how
+    // fast it happens — see unlockFlashAudio's own comment.
+    onUnlockAudio?.();
     posterActiveRef.current = true;
     setPosterLoading(true);
     setPosterError('');
@@ -170,7 +179,7 @@ export function usePosterGeneration({
       ));
       setPosterLoading(false);
     }
-  }, [lang, genre, visualPrompt, onPosterGenerated, characterImageUrl]);
+  }, [lang, genre, visualPrompt, onPosterGenerated, characterImageUrl, onUnlockAudio]);
 
   // ── Capture (share only) ────────────────────────────────────────────────────
 

@@ -768,7 +768,10 @@ function HomePage() {
     <div className={`min-h-screen text-white flex flex-col selection:bg-[#d4a373]/30 ${lang === 'he' ? 'font-heebo' : ''}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
       <Head>
         <title>LifeScript | Cinematic AI Studio</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+        {/* viewport meta lives once, in _app.js — a second one here (without
+            viewport-fit=cover) was silently winning in the rendered DOM,
+            confirmed via CDP, meaning env(safe-area-inset-*) resolved to 0
+            everywhere on iOS Safari regardless of what the CSS asked for. */}
         <link rel="icon" href="/icon.png" />
         <link rel="apple-touch-icon" href="/icon.png" />
         <link rel="manifest" href="/manifest.json" />

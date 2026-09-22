@@ -52,7 +52,14 @@ export default function LaunchTicket({ lang = 'he' }) {
         <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
       </span>
       <Star size={14} className="text-amber-500" fill="currentColor" />
-      <span className="text-[9px] md:text-[10px] font-black tracking-[0.1em] text-amber-500 uppercase italic whitespace-nowrap">
+      {/* Hidden below sm: — this text label was the single widest element in the
+          navbar's right-controls row (measured ~140px), the main cause of it
+          overflowing the nav's own overflow-hidden bounds on phone-width
+          viewports and clipping the sign-in/profile button off-screen. Every
+          other nav item already collapses to icon-only on mobile; this brings
+          the badge in line with that existing pattern instead of being the
+          one exception. */}
+      <span className="hidden sm:inline text-[9px] md:text-[10px] font-black tracking-[0.1em] text-amber-500 uppercase italic whitespace-nowrap">
                 {content.badge}
       </span>
     </button>

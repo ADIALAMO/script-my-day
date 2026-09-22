@@ -41,6 +41,45 @@ export default function Document() {
         <meta name="color-scheme" content="dark" />
         <meta name="theme-color" content="#030712" />
 
+        {/*
+          Google Fonts, loaded non-render-blocking. The old @import in
+          globals.css forced the browser to wait on this fetch before
+          painting ANYTHING — including the dark background set moments
+          below — which was a direct contributor to the white-flash-on-load
+          gap (measured on Android Chrome, confirmed user-visible on iOS
+          Safari). preload+media=print is the standard loadCSS pattern: the
+          browser fetches it at normal priority without blocking first
+          paint, then the onload swap applies it once ready. <noscript>
+          keeps the font working with JS disabled.
+        */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/*
+          A JSX onLoad prop on a <link> here would silently do nothing —
+          verified via the actual build output: Next.js's static Document
+          renderer drops unrecognized onX props entirely rather than
+          serializing them, which would have left this stylesheet stuck at
+          media="print" (and the fonts never applying) forever. Building
+          the <link> imperatively, matching the two other inline <script>
+          blocks already in this file, guarantees a real onload handler.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function() {
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'https://fonts.googleapis.com/css2?family=Courier+Prime&family=Heebo:wght@300;400;700;900&display=swap';
+            link.media = 'print';
+            link.onload = function() { this.media = 'all'; };
+            document.head.appendChild(link);
+          })();
+        `}} />
+        <noscript>
+          <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Courier+Prime&family=Heebo:wght@300;400;700;900&display=swap"
+          />
+        </noscript>
+
         {/* Web App Manifest — must be in _document so iOS reads it before hydration */}
         <link rel="manifest" href="/manifest.json" />
 

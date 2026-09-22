@@ -284,7 +284,14 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
       </div>
 
       {/* ── Right controls ── */}
-      <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
+      {/* min-w-0 (overriding flex's default min-width:auto) + overflow-x-auto is a
+          safety net: even with LaunchTicket's badge text now hidden on mobile (the
+          fix for the actual overflow), this lets the row scroll internally instead
+          of silently clipping an item off-screen again if a future addition, an
+          unusually wide localized string, or a very narrow device makes it too
+          wide to fit. nav-controls-scroll (globals.css) hides the scrollbar so it
+          doesn't look like a stray UI element. */}
+      <div className="flex items-center gap-1.5 md:gap-3 min-w-0 overflow-x-auto nav-controls-scroll">
         <LaunchTicket lang={lang} />
 
         {/* History */}

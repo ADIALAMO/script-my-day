@@ -72,7 +72,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
   const showJournal     = Boolean(journalEntry) && viewMode === 'journal';
 
   // ── Custom hooks ───────────────────────────────────────────────────────────
-  const { isMuted, setIsMuted, playSound, playFlashSound } = useCinematicAudio();
+  const { isMuted, setIsMuted, playSound, playFlashSound, unlockFlashAudio } = useCinematicAudio();
 
   const { displayText, isTyping, skip, scrollRef, handleScroll } = useTypewriter({
     cleanScript,
@@ -124,7 +124,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     posterError, setPosterError, showPoster, setShowPoster,
     triggerFlash, setTriggerFlash, posterRef,
     currentPosterMessage, generatePoster, handleCapturePoster, prewarmPosterShare, resetPoster, cancelPoster,
-  } = usePosterGeneration({ lang, genre, visualPrompt, posterTitle, isHebrew, finalProducerName, onPosterGenerated, onAuthRequired, characterImageUrl: activeCharacterUrl });
+  } = usePosterGeneration({ lang, genre, visualPrompt, posterTitle, isHebrew, finalProducerName, onPosterGenerated, onAuthRequired, characterImageUrl: activeCharacterUrl, onUnlockAudio: unlockFlashAudio });
 
   const {
     showStoryboard, storyboardPanels, storyboardLoading,
