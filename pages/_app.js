@@ -15,13 +15,15 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
   // Unstyled, this renders as the OS default — a plain white/light bar with
   // dark icons, clashing hard against the app's dark theme (#030712, same as
   // manifest.json's background_color/theme_color). Visible in every emulator
-  // screenshot taken during Phase 4 testing. Style.Dark here means "this bar
-  // sits on a dark background" — Capacitor's naming, not the bar's own color —
-  // so it renders light icons/text, which is what a dark background needs.
+  // screenshot taken during Phase 4 testing. Style naming is content color,
+  // not background: Style.Light means LIGHT icons/text (for a dark background
+  // like ours); Style.Dark means dark icons/text (for a light background).
+  // Confirmed empirically on-device — Style.Dark against #030712 rendered the
+  // clock/icons nearly invisible.
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     StatusBar.setBackgroundColor({ color: '#030712' }).catch(() => {});
-    StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+    StatusBar.setStyle({ style: Style.Light }).catch(() => {});
   }, []);
 
   useEffect(() => {
