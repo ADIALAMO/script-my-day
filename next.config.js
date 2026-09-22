@@ -130,6 +130,21 @@ const securityHeaders = isProd
     ]
   : SHARED_HEADERS;
 
+// Files placed directly in public/ get Next.js's unconfigured default —
+// `public, max-age=0, must-revalidate` — forcing a real network round-trip on
+// every single load to check freshness, even though these never change
+// between deploys (unlike _next/static/*, which is content-hashed and
+// already served immutable automatically). That default round-trip is what
+// was behind part of the residual white flash on iOS home-screen launches:
+// the launch-screen image itself was being re-fetched/revalidated on every
+// launch, not just the first. Safe to cache hard: if any of these ever need
+// to change, replacing the file (or renaming it) sidesteps staleness
+// entirely — there's no scenario where a stale copy of an icon or splash
+// image causes a correctness problem the way stale page data would.
+const STATIC_ASSET_HEADERS = [
+  { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+];
+
 // ── Next.js config ────────────────────────────────────────────────────────────
 
 const nextConfig = {
@@ -141,6 +156,43 @@ const nextConfig = {
       {
         source: '/:path*',
         headers: securityHeaders,
+      },
+      {
+        source: '/splash/:path*',
+        headers: STATIC_ASSET_HEADERS,
+      },
+      {
+        source: '/icon.png',
+        headers: STATIC_ASSET_HEADERS,
+      },
+      {
+        source: '/apple-touch-icon.png',
+        headers: STATIC_ASSET_HEADERS,
+      },
+      {
+        source: '/favicon.ico',
+        headers: STATIC_ASSET_HEADERS,
+      },
+      {
+        source: '/og-image.png',
+        headers: STATIC_ASSET_HEADERS,
+      },
+      {
+        // Homepage only — deliberately NOT applied broadly via /:path*.
+        // pages/index.js has no getStaticProps/getServerSideProps and its
+        // "live" numbers (e.g. the script counter) are fetched client-side
+        // via /api/public-stats after mount, so the HTML shell itself is
+        // 100% static between deploys — there's no per-request data in it
+        // that this could ever serve stale. /i/[code], /admin, and the auth
+        // relay pages are genuinely dynamic SSR and must never get this.
+        // Short max-age + stale-while-revalidate: repeat visits within 10s
+        // render with zero network round-trip; visits within the next 60s
+        // still render instantly from the (very recently) cached copy while
+        // quietly refreshing in the background for next time.
+        source: '/',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=10, stale-while-revalidate=60' },
+        ],
       },
     ];
   },
