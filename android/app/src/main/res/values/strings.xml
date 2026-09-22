@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">LifeScript</string>
+    <string name="title_activity_main">LifeScript</string>
+    <string name="package_name">app.lifescript.studio</string>
+    <string name="custom_url_scheme">app.lifescript.studio</string>
+</resources>

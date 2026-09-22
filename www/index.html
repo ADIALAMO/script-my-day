@@ -1,0 +1,35 @@
+<!doctype html>
+<!--
+  Capacitor's required local webDir, kept intentionally minimal.
+
+  This shell is REMOTE-LOADED: capacitor.config.json's server.url points the
+  WebView at the live production deployment, so this file is normally never
+  seen by a user — the CLI schema just requires webDir to point somewhere.
+  It only appears if the native shell ever fails to reach that remote URL
+  (e.g. no network on cold start), so it doubles as a minimal offline notice.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>LifeScript</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #030712;
+      color: rgba(255, 255, 255, 0.7);
+      font-family: -apple-system, system-ui, "Segoe UI", sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  <p>Couldn't reach LifeScript. Check your connection and reopen the app.</p>
+</body>
+</html>

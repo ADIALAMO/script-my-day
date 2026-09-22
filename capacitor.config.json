@@ -1,0 +1,19 @@
+{
+  "appId": "app.lifescript.studio",
+  "appName": "LifeScript",
+  "webDir": "www",
+  "server": {
+    "url": "https://my-life-script.vercel.app",
+    "cleartext": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "backgroundColor": "#030712",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true
+    }
+  }
+}

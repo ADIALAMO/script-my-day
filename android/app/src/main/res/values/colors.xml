@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- LifeScript's fixed dark theme — matches manifest.json's
+         background_color/theme_color and pages/_app.js's bg-[#030712].
+         The app doesn't adapt to system light/dark mode, so this is the
+         only splash/status-bar background color needed. -->
+    <color name="brand_background">#030712</color>
+
+    <!-- No local colors.xml existed before this — colorPrimary etc. below
+         resolved from the capacitor-android library's own bundled defaults.
+         Defining them explicitly here for consistency with the brand. -->
+    <color name="colorPrimary">#030712</color>
+    <color name="colorPrimaryDark">#030712</color>
+    <color name="colorAccent">#D4A373</color>
+</resources>
