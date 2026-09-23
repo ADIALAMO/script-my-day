@@ -765,7 +765,21 @@ function HomePage() {
   if (!mounted) return null;
 
   return (
-    <div className={`min-h-screen text-white flex flex-col selection:bg-[#d4a373]/30 ${lang === 'he' ? 'font-heebo' : ''}`} dir={lang === 'he' ? 'rtl' : 'ltr'}>
+    // Real content only exists once `mounted` flips true (see the effect
+    // above) — the static/SSG HTML ships with nothing here at all, so this
+    // is this component's first-ever paint, not a re-render. Without a
+    // transition it pops in all at once the instant hydration completes,
+    // which read as a jarring flicker especially right after the iOS
+    // splash screen hands off. This doesn't make that handoff any faster —
+    // see the mounted-gate architecture discussion — it just makes the
+    // same-timed appearance look like a deliberate fade instead of a glitch.
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.35, ease: 'easeOut' }}
+      className={`min-h-screen text-white flex flex-col selection:bg-[#d4a373]/30 ${lang === 'he' ? 'font-heebo' : ''}`}
+      dir={lang === 'he' ? 'rtl' : 'ltr'}
+    >
       <Head>
         <title>LifeScript | Cinematic AI Studio</title>
         {/* viewport meta lives once, in _app.js — a second one here (without
@@ -1536,7 +1550,7 @@ function HomePage() {
       <CookieConsent lang={lang} />
 
       <Analytics />
-    </div>
+    </motion.div>
   );
 }
 

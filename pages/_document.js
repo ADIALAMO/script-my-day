@@ -145,14 +145,23 @@ export default function Document() {
       
       <body style={{ backgroundColor: '#030712' }}>
         <div id="global-loader">
-          <img 
-            src="/icon.png" 
-            alt="LifeScript" 
-            style={{ 
-              width: '80px', height: '80px', 
+          {/*
+            Sized to roughly match the apple-touch-startup-image icon
+            proportion (~32% of the shorter screen dimension) rather than a
+            fixed 80px — on an iOS home-screen launch, this is the first
+            thing shown right after the native splash hands off, and the
+            previous fixed size made the icon visibly jump smaller the
+            instant that handoff happened. min() caps it on wide/desktop
+            viewports, where this loader can also briefly appear.
+          */}
+          <img
+            src="/icon.png"
+            alt="LifeScript"
+            style={{
+              width: 'min(32vw, 180px)', height: 'min(32vw, 180px)',
               animation: 'pulse 2s infinite ease-in-out',
               borderRadius: '20%'
-            }} 
+            }}
           />
         </div>
 
