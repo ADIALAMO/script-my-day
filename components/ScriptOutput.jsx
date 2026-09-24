@@ -712,30 +712,6 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
         </div>
       )}
 
-      {/* ── Storyboard error ─────────────────────────────────────────── */}
-      <AnimatePresence>
-        {storyboardError && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className={`mx-4 px-5 py-4 rounded-2xl border flex flex-col items-center gap-3 text-center ${
-              isQuotaError(storyboardErrorCode)
-                ? 'bg-[#d4a373]/8 border-[#d4a373]/20 text-[#d4a373]/80'
-                : 'bg-red-500/10 border-red-500/20 text-red-400'
-            }`}
-          >
-            <p className="text-[12px] font-medium">{storyboardError}</p>
-            {!isQuotaError(storyboardErrorCode) && (
-              <button
-                onClick={generateStoryboard}
-                className="px-5 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:border-white/25 transition-all duration-200"
-              >
-                {lang === 'he' ? '↺ נסה שוב' : '↺ TRY AGAIN'}
-              </button>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ── Poster ───────────────────────────────────────────────────── */}
       <AnimatePresence>
         {showPoster && (
@@ -829,6 +805,40 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
 
         </div>
       )}
+
+      {/* ── Storyboard error ─────────────────────────────────────────── */}
+      {/* Relocated here, right next to the button that actually triggers it —
+          it previously rendered up near the poster's own generate button,
+          which is way above where the comic button sits once a poster
+          already exists. A user who'd scrolled down to the comic button and
+          hit the daily quota never saw this message at all, since it
+          appeared off their screen entirely (reported on Android; not a
+          WebView caching issue — the message was simply rendering
+          somewhere the user wasn't looking). Deliberately kept ungated by
+          !showStoryboard (unlike the button above it) so a legitimate error
+          is never hidden by that condition specifically. */}
+      <AnimatePresence>
+        {storyboardError && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className={`mx-4 mt-3 px-5 py-4 rounded-2xl border flex flex-col items-center gap-3 text-center ${
+              isQuotaError(storyboardErrorCode)
+                ? 'bg-[#d4a373]/8 border-[#d4a373]/20 text-[#d4a373]/80'
+                : 'bg-red-500/10 border-red-500/20 text-red-400'
+            }`}
+          >
+            <p className="text-[12px] font-medium">{storyboardError}</p>
+            {!isQuotaError(storyboardErrorCode) && (
+              <button
+                onClick={generateStoryboard}
+                className="px-5 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:border-white/25 transition-all duration-200"
+              >
+                {lang === 'he' ? '↺ נסה שוב' : '↺ TRY AGAIN'}
+              </button>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Storyboard cinematic loader ───────────────────────────────── */}
       <CinematicLoader
