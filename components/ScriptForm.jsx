@@ -339,12 +339,22 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
               // run inside effects (not synchronously inside a click), which
               // iOS Safari does not count as gesture-triggered — confirmed via
               // this app's own play-log capture, where an effect-triggered
-              // call came back rejected with NotAllowedError. Setting volume
-              // here is harmless either way; only the play() call needs the
-              // gesture.
+              // call came back rejected with NotAllowedError.
+              //
+              // Muting via volume=0 doesn't work on iPhone Safari at all —
+              // iOS silently ignores JS writes to HTMLMediaElement.volume,
+              // locking it to the hardware volume buttons instead (a
+              // long-documented WebKit restriction, iPhone-only — Mac/iPad
+              // Safari and Android Chrome both allow it normally, confirmed
+              // via direct property testing on the latter). `.muted` IS
+              // respected on iOS and silences output without pausing or
+              // touching the volume level, so it's used here instead —
+              // volume stays fixed at the target level; muted is the actual
+              // on/off switch on every platform.
               const audio = document.getElementById('main-bg-music');
               if (audio) {
-                audio.volume = next ? 0 : 0.5;
+                audio.volume = 0.5;
+                audio.muted = next;
                 if (!next && audio.paused) audio.play().catch(() => {});
               }
             }}

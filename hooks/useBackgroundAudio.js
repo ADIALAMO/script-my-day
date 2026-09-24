@@ -33,12 +33,19 @@ export function useBackgroundAudio(activeGenre, isMusicMuted) {
     // 2. ניהול החלפת הקבצים לפי ז'אנר
     const fileName = activeGenre ? `${activeGenre}_bg.m4a` : 'neutral_bg.m4a'; // הוספתי ברירת מחדל ניטרלית אם אין ז'אנר
 
+    // volume stays fixed at the target playback level; `muted` is the actual
+    // on/off switch. iOS Safari on iPhone silently ignores JS writes to
+    // .volume (a long-documented WebKit restriction — volume is locked to
+    // the hardware buttons there), but does respect .muted, which also has
+    // the advantage of not touching playback state at all.
+    audio.volume = 0.5;
+    audio.muted = isMusicMuted;
+
     if (!audio.src.endsWith(fileName)) {
       audio.pause();
       audio.src = `/audio/${fileName}`;
       audio.load();
       audio.loop = true;
-      audio.volume = isMusicMuted ? 0 : 0.5;
 
       // ניסיון השמעה (עלול להיחסם, לכן יש לנו את ה-Interaction למעלה)
       // Known limitation, out of scope for now: this runs inside a useEffect
@@ -48,8 +55,6 @@ export function useBackgroundAudio(activeGenre, isMusicMuted) {
       // it was triggered by a real tap. handleInteraction above is the actual
       // gesture-synchronous path that (re)starts playback in that case.
       audio.play().catch(() => {});
-    } else {
-      audio.volume = isMusicMuted ? 0 : 0.5;
     }
 
     return () => {
