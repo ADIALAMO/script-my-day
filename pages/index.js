@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
@@ -1054,6 +1055,21 @@ function HomePage() {
                         <div className="inline-block px-6 py-2 rounded-full bg-[#d4a373]/10 border border-[#d4a373]/20 text-[#d4a373] text-[11px] font-black uppercase tracking-widest">
                           {MODAL_DATA[modalContent][lang].footerButton}
                         </div>
+                      </div>
+                    )}
+
+                    {/* This modal is a second, independent rendering of MODAL_DATA — it
+                        does NOT go through components/LegalPage.jsx, so the equivalent
+                        link there has to be duplicated here too. Same target, same text,
+                        same "privacy only" gating. */}
+                    {modalContent === 'privacy' && (
+                      <div className="pt-6 text-center border-t border-white/5">
+                        <Link
+                          href="/data-deletion"
+                          className="text-white/20 hover:text-white/50 text-[11px] transition-colors"
+                        >
+                          {lang === 'he' ? 'מחיקת חשבון ומידע' : 'Account & Data Deletion'}
+                        </Link>
                       </div>
                     )}
                   </div>
