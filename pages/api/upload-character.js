@@ -21,7 +21,7 @@ import { CODES } from '../../lib/messages.js';
 import { isAdminRequest } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { limitFor } from '../../lib/quota.js';
-import { moderateImage, grokImageFromReference, geminiImageFromReference, identityQuotaExceeded } from '../../lib/identity.js';
+import { moderateImage, grokImageFromReference, geminiImageFromReference, identityQuotaExceeded, identityBudgetReached } from '../../lib/identity.js';
 import { blobConfigured, putImage, decodeDataUri } from '../../lib/blob-store.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 
@@ -103,13 +103,21 @@ export default async function handler(req, res) {
 
     // (5) STAGE A — canonical character sheet. If it fails, fall back to the raw
     // selfie as the reference so the feature still works (degraded consistency).
+    // Gated by the SAME global daily spend kill-switch resolveIdentityGate uses for
+    // poster/panel identity calls (lib/identity.js) — this is also a paid Grok/Gemini
+    // call and was previously unmetered by that budget, letting a signup wave keep
+    // spending on Character Sheets even after the global daily cap was hit.
     let styledUrl = rawUrl;
-    try {
-      const sheetDataUri = await sheetGenerator(CHARACTER_SHEET_PROMPT, rawUrl);
-      const sheet = decodeDataUri(sheetDataUri);
-      styledUrl = await putImage(`characters/${identifier}-sheet-${stamp}.jpg`, sheet.bytes, sheet.contentType);
-    } catch (e) {
-      console.warn(`⚠️ Character sheet generation failed, using raw selfie as reference: ${e.message}`);
+    if (await identityBudgetReached()) {
+      console.warn('🛑 Global daily identity budget reached — skipping Character Sheet generation, using raw selfie as reference.');
+    } else {
+      try {
+        const sheetDataUri = await sheetGenerator(CHARACTER_SHEET_PROMPT, rawUrl);
+        const sheet = decodeDataUri(sheetDataUri);
+        styledUrl = await putImage(`characters/${identifier}-sheet-${stamp}.jpg`, sheet.bytes, sheet.contentType);
+      } catch (e) {
+        console.warn(`⚠️ Character sheet generation failed, using raw selfie as reference: ${e.message}`);
+      }
     }
 
     // (6) Persist pointer (URLs only) with 90-day TTL.

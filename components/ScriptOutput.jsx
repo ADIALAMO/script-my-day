@@ -148,9 +148,15 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     const processed = script.replace(/<br\s*\/?>/gi, '\n');
     const marker    = '[image:';
     const markerIdx = processed.toLowerCase().indexOf(marker);
-    if (markerIdx !== -1) {
+    const endIdx    = markerIdx !== -1 ? processed.indexOf(']', markerIdx) : -1;
+    // endIdx === -1 means the response was cut off before the closing bracket
+    // (observed under provider load — see lib/story-service.js's truncation guard).
+    // substring() treats a negative end as 0 and swaps start/end when start > end,
+    // so without this guard the ENTIRE script (not just the image line) would
+    // silently become the poster prompt. Fall through to the same default used
+    // when the marker is missing entirely.
+    if (markerIdx !== -1 && endIdx !== -1) {
       setCleanScript(processed.substring(0, markerIdx).trim());
-      const endIdx = processed.indexOf(']', markerIdx);
       setVisualPrompt(processed.substring(markerIdx + marker.length, endIdx).trim());
     } else {
       setCleanScript(processed);
