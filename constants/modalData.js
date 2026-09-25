@@ -106,7 +106,7 @@ export const MODAL_DATA = {
         },
         {
           h: '3. חשבון והתחברות',
-          p: 'אם אתה נרשם, אנחנו שומרים את כתובת האימייל והשם שלך (מ-Google או מקישור הכניסה) כדי לנהל את החשבון, המכסה והמנוי שלך. זהו המידע המזהה אישית היחיד שאנחנו מחזיקים.',
+          p: 'אם אתה נרשם, אנחנו שומרים את כתובת האימייל והשם שלך (מ-Google או מקישור הכניסה) כדי לנהל את החשבון, המכסה והמנוי שלך. אם התחברת באמצעות Google, אנחנו שומרים גם את כתובת ה-URL של תמונת הפרופיל שלך מהחשבון, המשמשת אך ורק להצגת האווטאר שלך באפליקציה. זהו המידע המזהה אישית היחיד שאנחנו מחזיקים.',
         },
         {
           h: '4. נתוני שימוש ומכסות',
@@ -130,7 +130,7 @@ export const MODAL_DATA = {
         },
         {
           h: '9. הזכויות שלך ובעל המאגר',
-          p: 'אתה יכול לבקש בכל עת לעיין במידע שלך, לתקנו או למחוק את חשבונך, את תמונות הפנים שהעלית או כל מידע אחר שאנחנו מחזיקים. השירות מופעל תחת השם LIFESCRIPT, והאחראי לפניות בנושא המידע זמין במייל adialamo@gmail.com — נטפל בכל בקשה בהקדם.',
+          p: 'אתה יכול לבקש בכל עת לעיין במידע שלך, לתקנו או למחוק את חשבונך, את תמונות הפנים שהעלית או כל מידע אחר שאנחנו מחזיקים. ניתן להגיש בקשת מחיקה דרך עמוד מחיקת החשבון והמידע שלנו, או ישירות במייל adialamo@gmail.com — נטפל בכל בקשה בהקדם.',
         },
       ],
     },
@@ -148,7 +148,7 @@ export const MODAL_DATA = {
         },
         {
           h: '3. Account & Sign-In',
-          p: 'If you sign up, we store your email address and name (from Google or the magic-link sign-in) to manage your account, quota, and subscription. This is the only personally identifying information we hold.',
+          p: 'If you sign up, we store your email address and name (from Google or the magic-link sign-in) to manage your account, quota, and subscription. If you sign in with Google, we also store the profile photo URL from your Google account, used only to display your avatar in the app. This is the only personally identifying information we hold.',
         },
         {
           h: '4. Usage & Quota Data',
@@ -172,7 +172,7 @@ export const MODAL_DATA = {
         },
         {
           h: '9. Your Rights & Data Controller',
-          p: 'You can request at any time to access your data, correct it, or delete your account, the face photos you uploaded, or any other data we hold. The service operates under the name LIFESCRIPT, and the person responsible for data requests is reachable at adialamo@gmail.com — we will handle every request promptly.',
+          p: 'You can request at any time to access your data, correct it, or delete your account, the face photos you uploaded, or any other data we hold. You can submit a deletion request through our account & data deletion page, or directly at adialamo@gmail.com — we will handle every request promptly.',
         },
       ],
     },

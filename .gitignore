@@ -4,3 +4,10 @@ node_modules/
 .env.local
 .next/
 .env*.local
+
+# Internal working docs for Play Console submission prep — draft analysis of
+# privacy-policy/data-safety gaps, kept locally for filling out the forms, not
+# meant to live in a public repo's history. See store-listing/ for the actual
+# (public-facing) store listing copy, which IS tracked.
+store-listing/privacy-policy-gaps.md
+store-listing/data-safety.md

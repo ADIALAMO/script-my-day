@@ -142,6 +142,14 @@ export default function LegalPage({ contentKey }) {
                 ? (isHe ? 'מדיניות פרטיות' : 'Privacy Policy')
                 : (isHe ? 'תנאי שימוש'     : 'Terms of Service')}
             </Link>
+            {contentKey === 'privacy' && (
+              <Link
+                href="/data-deletion"
+                className="text-white/20 hover:text-white/50 text-[11px] transition-colors"
+              >
+                {isHe ? 'מחיקת חשבון ומידע' : 'Account & Data Deletion'}
+              </Link>
+            )}
           </div>
         </main>
       </div>
