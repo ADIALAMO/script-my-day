@@ -3,7 +3,7 @@ export const SHOWCASE_POSTERS = [
   {
     id: 49,
     starYourself: true,
-    src: '/gallery/sample-26.png',
+    src: '/gallery/sample-26.webp',
     titleHe: 'קור אדום',
     titleEn: 'Cold Fury — Action',
     excerptHe: `חוץ. שדה הקרב הבוער — שקיעה אדומה.
@@ -16,7 +16,7 @@ You charge forward, rifle up, enemy ships carving the sky behind you.
   {
     id: 50,
     starYourself: true,
-    src: '/gallery/sample-27.png',
+    src: '/gallery/sample-27.webp',
     titleHe: 'תזוזת תהום',
     titleEn: 'Void Shift — Sci-Fi',
     excerptHe: `פנים. תחנת חלל נטושה — אזור הדמדומים.
@@ -29,7 +29,7 @@ Behind you, a glowing figure flickers between dimensions. You're the only one wh
   {
     id: 51,
     starYourself: true,
-    src: '/gallery/sample-28.png',
+    src: '/gallery/sample-28.webp',
     titleHe: 'קוד שתיקה',
     titleEn: 'Code of Silence — Action',
     excerptHe: `חוץ. מתחם תחת אש — רגע הבריחה.
@@ -42,7 +42,7 @@ You and your partner leap through the blast, shrapnel flying everywhere.
   {
     id: 52,
     starYourself: true,
-    src: '/gallery/sample-29.png',
+    src: '/gallery/sample-29.webp',
     titleHe: 'נפילת שמיים',
     titleEn: 'Skyfall — Sci-Fi',
     excerptHe: `חוץ. גג מעל העיר — לילה סגול.
@@ -57,7 +57,7 @@ An army of war-machines descends from the clouds like a rain of metal. You stand
     id: 53,
     starYourself: true,
     type: 'comic',
-    src: '/gallery/comics/sy-scifi-01.png',
+    src: '/gallery/comics/sy-scifi-01.webp',
     titleHe: 'יריית הפתיחה',
     titleEn: 'Opening Shot',
     excerptHe: `פנים. שדה קרב חייזרי — סופה של אור.
@@ -71,7 +71,7 @@ You fire upward, plasma pistol blazing, war-mechs diving from every angle.
     id: 54,
     starYourself: true,
     type: 'comic',
-    src: '/gallery/comics/sy-scifi-02.png',
+    src: '/gallery/comics/sy-scifi-02.webp',
     titleHe: 'גב אל גב',
     titleEn: 'Back to Back',
     excerptHe: `חוץ. חורבות תחת שמיים סגולים — קרב.
@@ -85,7 +85,7 @@ You and your partner fight back to back, your plasma rifle searing a battle-droi
     id: 55,
     starYourself: true,
     type: 'comic',
-    src: '/gallery/comics/sy-thriller-01.png',
+    src: '/gallery/comics/sy-thriller-01.webp',
     titleHe: 'הספירה לאחור',
     titleEn: 'The Countdown',
     excerptHe: `פנים. חדר חקירות — חצות.
@@ -99,7 +99,7 @@ A cracked clock ticks behind you. You and she lock eyes across the table.
     id: 56,
     starYourself: true,
     type: 'comic',
-    src: '/gallery/comics/sy-action-01.png',
+    src: '/gallery/comics/sy-action-01.webp',
     titleHe: 'במסדרון',
     titleEn: 'In the Corridor',
     excerptHe: `פנים. מסדרון ספינת קרב — קרב יריות.
@@ -113,7 +113,7 @@ You drop to a knee and fire, sparks and shells flying around you.
     id: 57,
     starYourself: true,
     type: 'comic',
-    src: '/gallery/comics/sy-action-02.png',
+    src: '/gallery/comics/sy-action-02.webp',
     titleHe: 'קרב בר',
     titleEn: 'Bar Brawl',
     excerptHe: `פנים. בר ניאון מתפרק — לילה.
@@ -127,7 +127,7 @@ You swing a wooden chair as your friend ducks behind you and the wall shatters.
   {
     id: 58,
     type: 'comic',
-    src: '/gallery/comics/toon-01.png',
+    src: '/gallery/comics/toon-01.webp',
     titleHe: 'אקדחים תאומים',
     titleEn: 'Twin Guns',
     excerptHe: `פנים. בית מהמרים נטוש — רגע השיא.
@@ -140,7 +140,7 @@ Two pistols, one wild grin. The bullets are already in the air.
   {
     id: 59,
     type: 'comic',
-    src: '/gallery/comics/toon-02.png',
+    src: '/gallery/comics/toon-02.webp',
     titleHe: 'קפיצת אמונה',
     titleEn: 'Leap of Faith',
     excerptHe: `חוץ. גג מעל העיר — לילה.
@@ -153,7 +153,7 @@ The blade glints in the moonlight. They leap together into the unknown.
   {
     id: 60,
     type: 'comic',
-    src: '/gallery/comics/toon-03.png',
+    src: '/gallery/comics/toon-03.webp',
     titleHe: 'ארוחת ערב גורלית',
     titleEn: 'A Fateful Dinner',
     excerptHe: `פנים. מטבח ביתי — ערב.
@@ -166,7 +166,7 @@ The recipe exploded. Literally. A column of smoke rises between them.
   {
     id: 61,
     type: 'comic',
-    src: '/gallery/comics/toon-04.png',
+    src: '/gallery/comics/toon-04.webp',
     titleHe: 'הירייה האחרונה',
     titleEn: 'The Last Shot',
     excerptHe: `פנים. סמטה אפלה — לילה גשום.
@@ -179,7 +179,7 @@ A fedora, a long coat, one pistol spitting fire in the dark.
   {
     id: 62,
     type: 'comic',
-    src: '/gallery/comics/toon-05.png',
+    src: '/gallery/comics/toon-05.webp',
     titleHe: 'יום הנחיתה',
     titleEn: 'Landing Day',
     excerptHe: `חוץ. שדה קרח קפוא — שחר.
@@ -192,7 +192,7 @@ A colossal mothership opens its belly. A war-mech strides out.
   {
     id: 63,
     type: 'comic',
-    src: '/gallery/comics/toon-06.png',
+    src: '/gallery/comics/toon-06.webp',
     titleHe: 'מתחת לצל',
     titleEn: 'Beneath the Shadow',
     excerptHe: `חוץ. עיר הריסות — בין הערביים.
@@ -205,7 +205,7 @@ A massive saucer blots out the sun. She cocks her rifle and never looks away.
   {
     id: 64,
     type: 'comic',
-    src: '/gallery/comics/toon-07.png',
+    src: '/gallery/comics/toon-07.webp',
     titleHe: 'הקצה הראשון',
     titleEn: 'The First Lead',
     excerptHe: `פנים. סמטת אבן — אחר חצות.
@@ -218,7 +218,7 @@ She points at the screen, he reads intently. The mystery is just starting to unr
   {
     id: 65,
     type: 'comic',
-    src: '/gallery/comics/toon-08.png',
+    src: '/gallery/comics/toon-08.webp',
     titleHe: 'מה שמחכה למטה',
     titleEn: 'What Waits Below',
     excerptHe: `פנים. מנהרת ביוב — חושך מוחלט.
@@ -231,7 +231,7 @@ Two red eyes flare at the end of the tunnel. Something metallic awakens.
   {
     id: 66,
     type: 'comic',
-    src: '/gallery/comics/toon-09.png',
+    src: '/gallery/comics/toon-09.webp',
     titleHe: 'בנות הברק',
     titleEn: 'Daughters of Lightning',
     excerptHe: `חוץ. כיכר העיר ההרוסה — ליל מלחמה.
@@ -244,7 +244,7 @@ The two of them charge straight into a line of robots. No turning back.
   {
     id: 67,
     type: 'comic',
-    src: '/gallery/comics/toon-10.png',
+    src: '/gallery/comics/toon-10.webp',
     titleHe: 'הגיבור של אתמול',
     titleEn: "Yesterday's Hero",
     excerptHe: `חוץ. שולי העיירה — דמדומים.
@@ -257,7 +257,7 @@ Classic vintage style: a torch, a heroic pose, and a world waiting to be saved.
   {
     id: 68,
     type: 'comic',
-    src: '/gallery/comics/toon-11.png',
+    src: '/gallery/comics/toon-11.webp',
     titleHe: 'שניים נגד צבא',
     titleEn: 'Two Against an Army',
     excerptHe: `חוץ. שדה סלעים — תחת שמש זרה.
@@ -270,7 +270,7 @@ She aims the rifle, he springs forward. Behind them, a war-mech opens fire.
   {
     id: 69,
     type: 'comic',
-    src: '/gallery/comics/toon-12.png',
+    src: '/gallery/comics/toon-12.webp',
     titleHe: 'הכספת',
     titleEn: 'The Vault',
     excerptHe: `פנים. כספת תת-קרקעית — אזעקה דוממת.
@@ -287,7 +287,7 @@ The door is breached. They stand in the doorway, ready for anything but what wai
   {
     id: 36,
     starYourself: true,
-    src: '/gallery/sample-19.png',
+    src: '/gallery/sample-19.webp',
     titleHe: 'שמיים דוממים',
     titleEn: 'Silent Sky — Sci-Fi',
     excerptHe: `חוץ. גג בעיר תחת מצור — בין הערביים.
@@ -300,7 +300,7 @@ A colossal mothership unfurls overhead like frozen lightning. You shield the chi
   {
     id: 37,
     starYourself: true,
-    src: '/gallery/sample-20.png',
+    src: '/gallery/sample-20.webp',
     titleHe: 'שמי התהום',
     titleEn: 'Void Sky — Sci-Fi',
     excerptHe: `חוץ. גגות עיר הניאון — לילה.
@@ -313,7 +313,7 @@ A saucer the size of a district eclipses the moon. You stare straight at it, unb
   {
     id: 38,
     starYourself: true,
-    src: '/gallery/sample-21.png',
+    src: '/gallery/sample-21.webp',
     titleHe: 'עשן סמיך',
     titleEn: 'Thick Smoke — Action War',
     excerptHe: `חוץ. קו החזית — אחרי ההפצצה.
@@ -326,7 +326,7 @@ You crouch amid the wreckage, ash falling like black snow. Behind you, the unit 
   {
     id: 39,
     starYourself: true,
-    src: '/gallery/sample-22.png',
+    src: '/gallery/sample-22.webp',
     titleHe: 'צללים של אמש',
     titleEn: "Yesterday's Shadows — Horror",
     excerptHe: `פנים. מסדרון הבית הנטוש — לילה.
@@ -339,7 +339,7 @@ Your flashlight flickers across peeling walls. Behind you, a shadow that belongs
   {
     id: 40,
     starYourself: true,
-    src: '/gallery/sample-23.png',
+    src: '/gallery/sample-23.webp',
     titleHe: 'שמיים ירוקים',
     titleEn: 'Green Skies — Sci-Fi',
     excerptHe: `חוץ. גג מעל העיר — לילה ירוק.
@@ -352,7 +352,7 @@ Toxic alien light bleeds between the skyscrapers. War-drones sweep the streets b
   {
     id: 41,
     starYourself: true,
-    src: '/gallery/sample-24.png',
+    src: '/gallery/sample-24.webp',
     titleHe: 'שתיקה קטלנית',
     titleEn: 'Deadly Silence — Action',
     excerptHe: `פנים. מחסן עולה באש — שיא הקרב.
@@ -365,7 +365,7 @@ You and your partner burst forward, back to back, a fireball erupting behind you
   {
     id: 42,
     starYourself: true,
-    src: '/gallery/sample-25.png',
+    src: '/gallery/sample-25.webp',
     titleHe: 'שתיקות שבורות',
     titleEn: 'Broken Silences — Romantic Drama',
     excerptHe: `פנים. בר אפלולי — שעת לילה מאוחרת.
@@ -380,7 +380,7 @@ Two glasses of wine, one candle, and a silence a whole year long.
     id: 43,
     starYourself: true,
     type: 'comic',
-    src: '/gallery/comics/panel-01-13.png',
+    src: '/gallery/comics/panel-01-13.webp',
     titleHe: 'הסף',
     titleEn: 'The Threshold',
     excerptHe: `קלוז-אפ. פנים. דלת עץ עתיקה — לילה.
@@ -394,7 +394,7 @@ You grip an iron key before a door sealed for fifty years.
     id: 44,
     starYourself: true,
     type: 'comic',
-    src: '/gallery/comics/panel-02-13.png',
+    src: '/gallery/comics/panel-02-13.webp',
     titleHe: 'פריצה פנימה',
     titleEn: 'Breaking In',
     excerptHe: `פנים. מסגרת דלת — לילה.
@@ -408,7 +408,7 @@ You burst through, your flashlight slicing the dark, heart pounding.
     id: 45,
     starYourself: true,
     type: 'comic',
-    src: '/gallery/comics/panel-03-12.png',
+    src: '/gallery/comics/panel-03-12.webp',
     titleHe: 'הם צפו בך',
     titleEn: 'They Were Watching',
     excerptHe: `פנים. חדר נטוש — לילה.
@@ -422,7 +422,7 @@ You burst through, your flashlight slicing the dark, heart pounding.
     id: 46,
     starYourself: true,
     type: 'comic',
-    src: '/gallery/comics/panel-04-11.png',
+    src: '/gallery/comics/panel-04-11.webp',
     titleHe: 'המנוסה',
     titleEn: 'The Descent',
     excerptHe: `פנים. גרם מדרגות מתפורר — לילה.
@@ -436,7 +436,7 @@ You drag your friend down the steps as a choked voice calls behind you: "...help
     id: 47,
     starYourself: true,
     type: 'comic',
-    src: '/gallery/comics/panel-05-12.png',
+    src: '/gallery/comics/panel-05-12.webp',
     titleHe: 'מול החושך',
     titleEn: 'Face the Dark',
     excerptHe: `פנים. מסדרון תת-קרקעי — לילה.
@@ -448,7 +448,7 @@ Your flashlight locks onto a shadow-creature rising at the end of the hall.
   },
   {
     id: 2,
-    src: '/gallery/sample-2.png', 
+    src: '/gallery/sample-2.webp', 
     titleHe: 'פעולה ומלחמה', 
     titleEn: 'Action & War',
     excerptHe: `חוץ. רחובות העיר ההרוסה - יום מעונן
@@ -460,7 +460,7 @@ Three soldiers march silently through the rubble. In the background, a skyscrape
   },
   { 
     id: 3, 
-    src: '/gallery/sample-3.png', 
+    src: '/gallery/sample-3.webp', 
     titleHe: 'דרמת מדע בדיוני', 
     titleEn: 'Sci-Fi Drama',
     excerptHe: `פנים - שולחן המטבח - יום
@@ -472,7 +472,7 @@ Sunlight streams through the blinds, but Elias is still clad in his grime-staine
   },
   { 
     id: 4, 
-    src: '/gallery/sample-4.png', 
+    src: '/gallery/sample-4.webp', 
     titleHe: 'אקשן עוצר נשימה', 
     titleEn: 'High Action',
     excerptHe: `חוץ. גג גורד שחקים - שקיעה
@@ -482,7 +482,7 @@ The wind whips. Ari tightens his gloves. "They think I have nowhere to run," he 
   },
   { 
     id: 5, 
-    src: '/gallery/sample-5.png', 
+    src: '/gallery/sample-5.webp', 
     titleHe: 'דרמה רומנטית', 
     titleEn: 'Romantic Drama',
     excerptHe: `פנים. היכל האחוזה העתיקה - שקיעה
@@ -494,7 +494,7 @@ Last sunrays pierce through massive stained-glass windows. The space is vast and
   },
   { 
     id: 6, 
-    src: '/gallery/sample-6.png', 
+    src: '/gallery/sample-6.webp', 
     titleHe: 'הרפתקאות ומד״ב', 
     titleEn: 'Sci-Fi Adventure',
     excerptHe: `חוץ. גנים תלויים - עתיד
@@ -506,7 +506,7 @@ They stand on an endless patch of grass floating between glass towers and hologr
   },
   { 
     id: 7, 
-    src: '/gallery/sample-7.png', 
+    src: '/gallery/sample-7.webp', 
     titleHe: 'אימה ומסתורין', 
     titleEn: 'Horror & Mystery',
     excerptHe: `פנים. גן ילדים נטוש - לילה
@@ -516,7 +516,7 @@ Jonathan stands in a ruined playroom. Broken toys litter the darkness. "They sai
   },
   { 
     id: 8, 
-    src: '/gallery/sample-8.png', 
+    src: '/gallery/sample-8.webp', 
     titleHe: 'דרמה עתידנית', 
     titleEn: 'Futuristic Drama',
     excerptHe: `חוץ - מרפסת מגדל הספקטרום - לילה
@@ -526,7 +526,7 @@ Blue neon rain washes over the lower city. K and Mia stand close, their coats ba
   },
   { 
     id: 9, 
-    src: '/gallery/sample-9.png', 
+    src: '/gallery/sample-9.webp', 
     titleHe: 'פעולה והרפתקאות', 
     titleEn: 'Action & Adventure',
     excerptHe: `פנים. מסדרון לוהט - רגע השיא
@@ -538,7 +538,7 @@ They stand back to back, guns drawn. Enemies close in from all sides.
   },
   { 
     id: 10, 
-    src: '/gallery/sample-10.png', 
+    src: '/gallery/sample-10.webp', 
     titleHe: 'אימה ומסתורין', 
     titleEn: 'Horror & Mystery',
     excerptHe: `חוץ. אחוזת בלקווד - לילה
@@ -550,7 +550,7 @@ The old building stands as a menacing silhouette. A pale light flickers in every
   },
   { 
     id: 11, 
-    src: '/gallery/sample-11.png', 
+    src: '/gallery/sample-11.webp', 
     titleHe: 'אקשן עתידני', 
     titleEn: 'Futuristic Action',
     excerptHe: `חוץ. עיר הקצה - לילה
@@ -562,7 +562,7 @@ The sky burns in deep purple. Above the skyline, a high-tech starship disintegra
   },
   { 
     id: 12, 
-    src: '/gallery/sample-12.png', 
+    src: '/gallery/sample-12.webp', 
     titleHe: 'דרמה רומנטית', 
     titleEn: 'Romantic Drama',
     excerptHe: `פנים. דיינר "פינת הרחוב" - יום (גשום)
@@ -574,7 +574,7 @@ Steam rises from two coffee mugs. Outside, rain streaks the windows. Jonathan lo
   },
   { 
     id: 13, 
-    src: '/gallery/sample-13.png', 
+    src: '/gallery/sample-13.webp', 
     titleHe: 'קומדיה מטורפת', 
     titleEn: 'Wacky Comedy',
     excerptHe: `פנים. בית קפה עתידני - יום
@@ -584,7 +584,7 @@ A ten-armed robot tries to froth milk while dancing. "It's not just a cappuccino
   },
   { 
     id: 14, 
-    src: '/gallery/sample-14.png', 
+    src: '/gallery/sample-14.webp', 
     titleHe: 'דרמה רומנטית', 
     titleEn: 'Romantic Drama',
     excerptHe: `פנים. דירה תל אביבית - לילה
@@ -594,7 +594,7 @@ Street lights paint the room in blue. Dana stares at her reflection. "Sometimes 
   },
   { 
     id: 15, 
-    src: '/gallery/sample-15.png', 
+    src: '/gallery/sample-15.webp', 
     titleHe: 'קומדיה אורבנית', 
     titleEn: 'Urban Comedy',
     excerptHe: `חוץ - שדרות רוטשילד - יום
@@ -606,7 +606,7 @@ Itay stands in line at a kiosk, covered from head to toe in massive yellow feath
   },
   { 
     id: 16, 
-    src: '/gallery/sample-16.png', 
+    src: '/gallery/sample-16.webp', 
     titleHe: 'מתח פסיכולוגי', 
     titleEn: 'Psychological Thriller',
     excerptHe: `פנים. סיפון פיקוד, חללית נעדרת - לילה
@@ -616,7 +616,7 @@ Detective Jonathan stares at the flickering monitor. "I know you're here," he sh
   },
   { 
     id: 17, 
-    src: '/gallery/sample-17.png', 
+    src: '/gallery/sample-17.webp', 
     titleHe: 'מדע בדיוני', 
     titleEn: 'Sci-Fi Future',
     excerptHe: `חוץ. נתיבי איילון - יום
@@ -626,7 +626,7 @@ A roar shakes the skyscrapers. A massive T-Rex crushes the barriers. "Who would 
   },
   { 
     id: 18, 
-    src: '/gallery/sample-18.png', 
+    src: '/gallery/sample-18.webp', 
     titleHe: 'מדע בדיוני דיסטופי', 
     titleEn: 'Dystopian Sci-Fi',
     excerptHe: `פנים. בונקר תת קרקעי - לילה
@@ -639,7 +639,7 @@ Steam rises from futuristic pipes. Humans and cyborgs huddle in the dark. "We ar
   {
     id: 19,
     type: 'comic',
-    src: '/gallery/comics/panel-01.png',
+    src: '/gallery/comics/panel-01.webp',
     titleHe: 'הרגע הפנימי',
     titleEn: 'The Inner Moment',
     excerptHe: `קלוז-אפ. פנים. בוקר מוקדם.
@@ -652,7 +652,7 @@ A figure sits in total silence, eyes closed. Breath rises and falls.
   {
     id: 21,
     type: 'comic',
-    src: '/gallery/comics/panel-03.png',
+    src: '/gallery/comics/panel-03.webp',
     titleHe: 'האימון',
     titleEn: 'The Workout',
     excerptHe: `פנים. שטח פתוח - בוקר מאוחר.
@@ -665,7 +665,7 @@ Face full of strain. Muscles taut. Pain is the fuel.
   {
     id: 22,
     type: 'comic',
-    src: '/gallery/comics/panel-04.png',
+    src: '/gallery/comics/panel-04.webp',
     titleHe: 'הסיבוב בעיר',
     titleEn: 'City Walk',
     excerptHe: `חוץ. רחוב עירוני - צהריים.
@@ -678,7 +678,7 @@ The figure walks, gaze lifted toward the horizon. The city moves around them.
   {
     id: 23,
     type: 'comic',
-    src: '/gallery/comics/panel-05.png',
+    src: '/gallery/comics/panel-05.webp',
     titleHe: 'הפגישה הבלתי-נמנעת',
     titleEn: 'The Unavoidable Encounter',
     excerptHe: `חוץ. מדרכה סואנת - אחר הצהריים.
@@ -691,7 +691,7 @@ Eye meets eye for a second. A polite smile — brief and calculated.
   {
     id: 24,
     type: 'comic',
-    src: '/gallery/comics/panel-06.png',
+    src: '/gallery/comics/panel-06.webp',
     titleHe: 'בירה עם חבר',
     titleEn: 'Beer with a Friend',
     excerptHe: `חוץ. בר עם שולחנות חוץ - אחר הצהריים.
@@ -704,7 +704,7 @@ Two glasses. Two men. Easy air. Conversations that don't need endings.
   {
     id: 25,
     type: 'comic',
-    src: '/gallery/comics/panel-07.png',
+    src: '/gallery/comics/panel-07.webp',
     titleHe: 'הדרך הביתה',
     titleEn: 'The Way Home',
     excerptHe: `חוץ. רחוב שקט - לילה.
@@ -754,7 +754,7 @@ Dim street lights. Rhythmic steps on the pavement. A note with a number in the p
   {
     id: 29,
     type: 'comic',
-    src: '/gallery/comics/panel-01-2.png',
+    src: '/gallery/comics/panel-01-2.webp',
     titleHe: 'פעימה דיגיטלית',
     titleEn: 'Digital Pulse',
     excerptHe: `קלוז-אפ. פנים. לאונג' סייבר — לילה.
@@ -767,7 +767,7 @@ Their faces centimetres apart. Data streams glow between them like something ali
   {
     id: 30,
     type: 'comic',
-    src: '/gallery/comics/panel-01-3.png',
+    src: '/gallery/comics/panel-01-3.webp',
     titleHe: 'גשם ושכל',
     titleEn: 'Rain & Reason',
     excerptHe: `פנים. דירה במגדל — לילה. גשם.
@@ -780,7 +780,7 @@ He slides a cup toward her. The neon city bleeds colour through the glass behind
   {
     id: 31,
     type: 'comic',
-    src: '/gallery/comics/panel-01-4.png',
+    src: '/gallery/comics/panel-01-4.webp',
     titleHe: 'תוכנית הבריחה',
     titleEn: 'The Getaway',
     excerptHe: `פנים. מכונית נוסעת במהירות — יום.
@@ -793,7 +793,7 @@ Three people. One vehicle. Zero plan. The radio crackles with a voice none of th
   {
     id: 32,
     type: 'comic',
-    src: '/gallery/comics/panel-01-5.png',
+    src: '/gallery/comics/panel-01-5.webp',
     titleHe: 'העונה שביניינו',
     titleEn: 'The Season Between Us',
     excerptHe: `חוץ. שביל ביער — אחר צהריים של סתיו.
@@ -806,7 +806,7 @@ Four friends walk where the map ends. Gold light falls through red leaves.
   {
     id: 33,
     type: 'comic',
-    src: '/gallery/comics/panel-06-6.png',
+    src: '/gallery/comics/panel-06-6.webp',
     titleHe: 'הצד השני',
     titleEn: 'The Other Side',
     excerptHe: `פנים. מסגרת דלת חשוכה — לילה.
@@ -819,7 +819,7 @@ He forces the door open. The torch cuts a blade of light through the dark.
   {
     id: 34,
     type: 'comic',
-    src: '/gallery/comics/panel-01-7.png',
+    src: '/gallery/comics/panel-01-7.webp',
     titleHe: 'חשודים מוכרים',
     titleEn: 'Known Suspects',
     excerptHe: `פנים. מושב אחורי ברכב נוסע — לילה.
@@ -832,7 +832,7 @@ He doesn't look at her. She doesn't look at him. Both watching the same darkness
   {
     id: 35,
     type: 'comic',
-    src: '/gallery/comics/panel-01-8.png',
+    src: '/gallery/comics/panel-01-8.webp',
     titleHe: 'הבוקר שאחרי',
     titleEn: 'The Morning After',
     excerptHe: `פנים. שולחן המטבח — בוקר מוקדם.
@@ -852,7 +852,7 @@ export const SHOWCASE_REELS = [
     starYourself: true,
     genre: 'action',
     src: '/reels/lifescript-reel-action-3.mp4',
-    poster: '/gallery/comics/sy-action-01.png',
+    poster: '/gallery/comics/sy-action-01.webp',
     titleHe: 'אקשן II',
     titleEn: 'Action II',
     tagline: 'NO SURRENDER',
@@ -863,7 +863,7 @@ export const SHOWCASE_REELS = [
     starYourself: true,
     genre: 'action',
     src: '/reels/lifescript-reel-action-4.mp4',
-    poster: '/gallery/comics/sy-action-02.png',
+    poster: '/gallery/comics/sy-action-02.webp',
     titleHe: 'אקשן III',
     titleEn: 'Action III',
     tagline: 'LAST STAND',
@@ -874,7 +874,7 @@ export const SHOWCASE_REELS = [
     id: 'reel-action-comic',
     genre: 'action',
     src: '/reels/lifescript-reel-action-comic.mp4',
-    poster: '/gallery/comics/toon-01.png',
+    poster: '/gallery/comics/toon-01.webp',
     titleHe: 'קומיקס אקשן',
     titleEn: 'Action Comic',
     tagline: 'MOTION COMIC',
@@ -886,7 +886,7 @@ export const SHOWCASE_REELS = [
     starYourself: true,
     genre: 'action',
     src: '/reels/lifescript-reel-action-2.mp4',
-    poster: '/gallery/comics/panel-03-12.png',
+    poster: '/gallery/comics/panel-03-12.webp',
     titleHe: 'אקשן',
     titleEn: 'Action',
     tagline: 'FRONTLINE FURY',
@@ -897,7 +897,7 @@ export const SHOWCASE_REELS = [
     starYourself: true,
     genre: 'sci-fi',
     src: '/reels/lifescript-reel-sci-fi-3.mp4',
-    poster: '/gallery/comics/panel-02-13.png',
+    poster: '/gallery/comics/panel-02-13.webp',
     titleHe: 'מד"ב III',
     titleEn: 'Sci-Fi III',
     tagline: 'VOID RISING',
@@ -908,7 +908,7 @@ export const SHOWCASE_REELS = [
     starYourself: true,
     genre: 'horror',
     src: '/reels/lifescript-reel-horror-5.mp4',
-    poster: '/gallery/comics/panel-05-12.png',
+    poster: '/gallery/comics/panel-05-12.webp',
     titleHe: 'אימה V',
     titleEn: 'Horror V',
     tagline: 'INTO THE DARK',
@@ -919,7 +919,7 @@ export const SHOWCASE_REELS = [
     starYourself: true,
     genre: 'romance',
     src: '/reels/lifescript-reel-romance-4.mp4',
-    poster: '/gallery/comics/panel-01-13.png',
+    poster: '/gallery/comics/panel-01-13.webp',
     titleHe: 'רומנטיקה IV',
     titleEn: 'Romance IV',
     tagline: 'LAST CALL',
@@ -929,7 +929,7 @@ export const SHOWCASE_REELS = [
     id: 'reel-drama',
     genre: 'drama',
     src: '/reels/lifescript-reel-drama.mp4',
-    poster: '/gallery/comics/panel-01-5.png',
+    poster: '/gallery/comics/panel-01-5.webp',
     titleHe: 'דרמה',
     titleEn: 'Drama',
     tagline: 'HOLLYWOOD DRAMA',
@@ -939,7 +939,7 @@ export const SHOWCASE_REELS = [
     id: 'reel-romance',
     genre: 'romance',
     src: '/reels/lifescript-reel-romance.mp4',
-    poster: '/gallery/comics/panel-01-3.png',
+    poster: '/gallery/comics/panel-01-3.webp',
     titleHe: 'רומנטיקה',
     titleEn: 'Romance',
     tagline: 'HEART & SOUL',
@@ -949,7 +949,7 @@ export const SHOWCASE_REELS = [
     id: 'reel-horror',
     genre: 'horror',
     src: '/reels/lifescript-reel-horror.mp4',
-    poster: '/gallery/comics/panel-06-6.png',
+    poster: '/gallery/comics/panel-06-6.webp',
     titleHe: 'אימה',
     titleEn: 'Horror',
     tagline: 'PSYCH THRILLER',
@@ -959,7 +959,7 @@ export const SHOWCASE_REELS = [
     id: 'reel-sci-fi',
     genre: 'sci-fi',
     src: '/reels/lifescript-reel-sci-fi.mp4',
-    poster: '/gallery/comics/panel-01-2.png',
+    poster: '/gallery/comics/panel-01-2.webp',
     titleHe: 'מד"ב',
     titleEn: 'Sci-Fi',
     tagline: 'BEYOND REALITY',
@@ -969,7 +969,7 @@ export const SHOWCASE_REELS = [
     id: 'reel-horror-2',
     genre: 'horror',
     src: '/reels/lifescript-reel-horror-2.mp4',
-    poster: '/gallery/comics/panel-01-7.png',
+    poster: '/gallery/comics/panel-01-7.webp',
     titleHe: 'אימה II',
     titleEn: 'Horror II',
     tagline: 'DARK TENSION',
@@ -979,7 +979,7 @@ export const SHOWCASE_REELS = [
     id: 'reel-horror-3',
     genre: 'horror',
     src: '/reels/lifescript-reel-horror-3.mp4',
-    poster: '/gallery/comics/panel-06-7.png',
+    poster: '/gallery/comics/panel-06-7.webp',
     titleHe: 'אימה III',
     titleEn: 'Horror III',
     tagline: 'DARK PURSUIT',
@@ -989,7 +989,7 @@ export const SHOWCASE_REELS = [
     id: 'reel-horror-4',
     genre: 'horror',
     src: '/reels/lifescript-reel-horror-4.mp4',
-    poster: '/gallery/comics/panel-03-6.png',
+    poster: '/gallery/comics/panel-03-6.webp',
     titleHe: 'אימה IV',
     titleEn: 'Horror IV',
     tagline: 'SILENT THREAT',
@@ -999,7 +999,7 @@ export const SHOWCASE_REELS = [
     id: 'reel-romance-2',
     genre: 'romance',
     src: '/reels/lifescript-reel-romance-2.mp4',
-    poster: '/gallery/comics/panel-01-8.png',
+    poster: '/gallery/comics/panel-01-8.webp',
     titleHe: 'רומנטיקה II',
     titleEn: 'Romance II',
     tagline: 'MORNING LIGHT',
@@ -1009,7 +1009,7 @@ export const SHOWCASE_REELS = [
     id: 'reel-romance-3',
     genre: 'romance',
     src: '/reels/lifescript-reel-romance-3.mp4',
-    poster: '/gallery/comics/panel-02-7.png',
+    poster: '/gallery/comics/panel-02-7.webp',
     titleHe: 'רומנטיקה III',
     titleEn: 'Romance III',
     tagline: 'MOONRISE',
@@ -1019,7 +1019,7 @@ export const SHOWCASE_REELS = [
     id: 'reel-sci-fi-2',
     genre: 'sci-fi',
     src: '/reels/lifescript-reel-sci-fi-2.mp4',
-    poster: '/gallery/comics/panel-02-2.png',
+    poster: '/gallery/comics/panel-02-2.webp',
     titleHe: 'מד"ב II',
     titleEn: 'Sci-Fi II',
     tagline: 'NEURAL LINK',

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
 import {
   Copy, Download, Share2, Check, CheckCheck, Film, Volume2, VolumeX,
   Loader2, FastForward, Pencil, RotateCcw, FileText, ChevronDown,
-  Printer, X, Mail, NotebookPen, Clapperboard, Star,
+  Printer, X, Mail, NotebookPen, Clapperboard, Star, Gift,
 } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { getMsg, CODES, isQuotaError } from '../lib/messages.js';
@@ -11,16 +12,22 @@ import { getGenreLabel } from '../constants/genres.js';
 import { isCapacitorNative } from '../utils/platform.js';
 import { HEBREW_RANGE } from '../constants/language.js';
 import PosterRenderer from './PosterRenderer';
-import StoryboardView from './StoryboardView';
-import MovieReelModal from './MovieReelModal';
 import CinematicLoader from './CinematicLoader';
-import CharacterModal from './CharacterModal';
 import { useTypewriter } from '../hooks/useTypewriter.js';
 import { useCinematicAudio } from '../hooks/useCinematicAudio.js';
 import { usePosterGeneration } from '../hooks/usePosterGeneration.js';
 import { useStoryboardGeneration } from '../hooks/useStoryboardGeneration.js';
 import { useCharacter } from '../hooks/useCharacter.js';
 import { shareData } from '../utils/export-image.js';
+
+// ── Interaction-gated views — code-split out of the initial bundle ─────────
+// Each only renders after an explicit user action (generating a comic, opening
+// the reel modal, opening the Star Yourself modal). ssr: false is safe for all
+// three: they're plain client-side overlays/panels gated on boolean state.
+const StoryboardView = dynamic(() => import('./StoryboardView'), { ssr: false });
+const MovieReelModal = dynamic(() => import('./MovieReelModal'), { ssr: false });
+const CharacterModal = dynamic(() => import('./CharacterModal'), { ssr: false });
+const ReferralModal  = dynamic(() => import('./ReferralModal'),  { ssr: false });
 
 // ── Brand SVG icons ──────────────────────────────────────────────────────────
 const WhatsAppIcon = () => (

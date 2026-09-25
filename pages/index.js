@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Head from 'next/head';
+import dynamic from 'next/dynamic';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Toast } from '@capacitor/toast';
@@ -7,8 +8,6 @@ import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import { Film, Copyright, AlertCircle, X, Download, Share2, MessageSquare, Send, Check } from 'lucide-react';
 import { getMsg, CODES, isQuotaError, inferCode } from '../lib/messages.js';
 import Navbar from '../components/Navbar';
-import AuthModal from '../components/AuthModal';
-import UpgradeModal from '../components/UpgradeModal';
 import WaitlistModal from '../components/WaitlistModal';
 import { BILLING_ENABLED } from '../constants/billing';
 import { useSession } from 'next-auth/react';
@@ -19,11 +18,19 @@ import { Analytics } from '@vercel/analytics/react';
 import { track } from '@vercel/analytics';
 import { SHOWCASE_POSTERS, SHOWCASE_REELS } from '../constants/showcase';
 import { MODAL_DATA } from '../constants/modalData';
-import HistoryPanel from '../components/HistoryPanel';
 import CinematicLoader from '../components/CinematicLoader';
 import CookieConsent from '../components/CookieConsent';
 import { useScriptHistory } from '../hooks/useScriptHistory';
 import { useGender } from '../hooks/useGender';
+
+// ── Interaction-gated modals/panels — code-split out of the initial bundle ──
+// Each of these only renders after an explicit user action (sign-in, hitting a
+// quota limit, opening the history archive). ssr: false is safe for all three:
+// they're plain client-side overlays gated on boolean state, never part of the
+// content Next.js needs to server-render for the initial HTML.
+const AuthModal    = dynamic(() => import('../components/AuthModal'),    { ssr: false });
+const UpgradeModal = dynamic(() => import('../components/UpgradeModal'), { ssr: false });
+const HistoryPanel = dynamic(() => import('../components/HistoryPanel'), { ssr: false });
 
 // ── Genre metadata for filmstrip grouping ────────────────────────────────────
 const GENRE_GROUPS = [
@@ -50,7 +57,7 @@ function inferPosterGenre(poster) {
 }
 
 // ── Shared card body renderer (used by both Grid and Filmstrip) ───────────────
-function PosterCardBody({ poster, lang, compact = false }) {
+function PosterCardBody({ poster, lang, compact = false, eager = false }) {
   // ── Text panel ──────────────────────────────────────────────────────────────
   if (poster.type === 'text') {
     return (
@@ -106,8 +113,12 @@ function PosterCardBody({ poster, lang, compact = false }) {
         onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500'; }}
         alt={lang === 'he' ? poster.titleHe : poster.titleEn}
         className={`relative z-0 block w-full h-auto object-cover ${imgAspect}`}
-        loading="eager"
-        decoding="sync"
+        // Only the above-the-fold "production samples" strip (index.js's first 1-2
+        // items) opts into eager+sync via the `eager` prop; every other call site —
+        // including the full unpaginated masonry gallery further down the page —
+        // defaults to lazy so off-screen multi-MB images don't compete with LCP.
+        loading={eager ? 'eager' : 'lazy'}
+        decoding={eager ? 'sync' : 'async'}
         /* WebKit multicol paint fix: own backing store so Safari paints the
            image instead of a black box (and survives fullscreen reflow). */
         style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden', backfaceVisibility: 'hidden' }}
@@ -843,7 +854,7 @@ function HomePage() {
 
           <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none px-2"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            {SHOWCASE_POSTERS.slice(0, 5).map((poster) => (
+            {SHOWCASE_POSTERS.slice(0, 5).map((poster, idx) => (
               <div
                 key={poster.id}
                 className="relative shrink-0 rounded-2xl overflow-hidden"
@@ -853,7 +864,11 @@ function HomePage() {
                   src={poster.src}
                   alt={lang === 'he' ? poster.titleHe : poster.titleEn}
                   className="w-full h-full object-cover"
-                  loading="eager"
+                  // Only the first 1-2 cards are actually above the fold on load;
+                  // the rest of this horizontally-scrolling strip is lazy so it
+                  // doesn't compete with LCP for the images that matter.
+                  loading={idx < 2 ? 'eager' : 'lazy'}
+                  decoding={idx < 2 ? 'sync' : 'async'}
                   style={{ transform: 'translateZ(0)' }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
