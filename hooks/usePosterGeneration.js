@@ -58,6 +58,17 @@ export function usePosterGeneration({
   const [showPoster,    setShowPoster]    = useState(false);
   const [triggerFlash,  setTriggerFlash]  = useState(false);
 
+  // Post-share referral nudge — shown once after a successful share/download, only to
+  // signed-in users (referralLinkRef only ever resolves to a string for them; see below).
+  // Dismissal is a plain ref, not persisted anywhere — "don't nag again this session" per
+  // the product ask, nothing stronger.
+  const [showReferralNudge, setShowReferralNudge] = useState(false);
+  const referralNudgeDismissedRef = useRef(false);
+  const dismissReferralNudge = useCallback(() => {
+    referralNudgeDismissedRef.current = true;
+    setShowReferralNudge(false);
+  }, []);
+
   const posterRef = useRef(null);
   // Tracks whether the current generation run is still active.
   // cancelPoster() flips it to false so an in-flight response self-aborts
@@ -282,6 +293,12 @@ export function usePosterGeneration({
       window.gtag('event', 'content_export', { method, genre, title: posterTitle });
     }
 
+    // Optimistic: flipped off only in the catch block below. Every in-try exit path
+    // (download, native share, or one of its same-desktop/same-device fallbacks) means
+    // the poster actually left the app in some usable form — good enough to gate the
+    // post-share referral nudge on, without having to duplicate the check at each return.
+    let captureSucceeded = true;
+
     try {
       // Desktop ⇒ clean `<a download>` of the composited poster (never navigates the SPA).
       if (wantDownload) {
@@ -363,8 +380,16 @@ export function usePosterGeneration({
       // false = Web Share not supported on this browser — last resort new tab on desktop.
       if (!shared && isDesktop && posterUrl) window.open(posterUrl, '_blank');
     } catch (err) {
+      captureSucceeded = false;
       console.error('Poster capture error:', err);
       if (isDesktop && posterUrl) window.open(posterUrl, '_blank');
+    } finally {
+      // Referral nudge: only for signed-in users (referralLinkRef only ever resolves to a
+      // string for them — see ensureReferralLink above; anonymous/failed stays null), only
+      // once per session, and only as a follow-up to a real share/download.
+      if (captureSucceeded && !referralNudgeDismissedRef.current && typeof referralLinkRef.current === 'string') {
+        setShowReferralNudge(true);
+      }
     }
   }, [posterUrl, posterTitle, isHebrew, finalProducerName, genre, lang, renderPosterBlob, posterFilename, prewarmPosterShare]);
 
@@ -379,6 +404,9 @@ export function usePosterGeneration({
     setPosterError('');
     setPosterLoading(false);
     setTriggerFlash(false);
+    // Hide any currently-visible nudge (the poster it was about is gone), but leave
+    // referralNudgeDismissedRef alone — a dismissal still holds for the rest of the session.
+    setShowReferralNudge(false);
   }, []);
 
   // Cancel an in-flight poster generation and restore the pre-poster UI.
@@ -401,5 +429,7 @@ export function usePosterGeneration({
     prewarmPosterShare,
     resetPoster,
     cancelPoster,
+    showReferralNudge,
+    dismissReferralNudge,
   };
 }

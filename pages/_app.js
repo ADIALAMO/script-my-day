@@ -111,7 +111,14 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
           {/* Default OG/Twitter tags. `key` props let per-page <Head> (e.g. the /i/[code]
               invite landing) OVERRIDE these — next/head only dedupes `property` meta by key. */}
           <meta key="description" name="description" content="LIFESCRIPT: הופכים כל רגע בחיים ליצירת אמנות קולנועית. יומן תסריטים אישי שנותן לסיפור שלכם את הבמה הראויה לו." />
-          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
+          {/* user-scalable/maximum-scale intentionally omitted — blocking pinch-to-zoom
+              fails WCAG 2.1 SC 1.4.4 (Resize Text) and disadvantages low-vision users.
+              Checked every fixed-position/full-viewport surface in the app for reliance
+              on a locked zoom level (MovieReelModal's 100dvh, Navbar's window.innerWidth
+              dropdown positioning, the info modal's calc(100vh-...) cap) — all use
+              layout-viewport values that stay correct under pinch-zoom; none assume
+              scale=1. */}
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
           {/* PWA / theme meta tags live in _document.js — not duplicated here */}
           <meta key="og:title" property="og:title" content="LIFESCRIPT | Turn Your Life Into A Movie" />
           <meta key="og:description" property="og:description" content="החיים שלך הם סרט, הגיע הזמן לכתוב אותם. יומן תסריטים קולנועי בבימוי Adialamo Production." />

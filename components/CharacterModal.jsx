@@ -209,7 +209,7 @@ export default function CharacterModal({
             {showPreview && (
               <div className="flex flex-col items-center gap-4">
                 <div className="w-full aspect-square rounded-[1.5rem] overflow-hidden border border-white/10">
-                  <img src={picked} alt="selfie preview" className="w-full h-full object-cover" />
+                  <img src={picked} alt={isHebrew ? 'תצוגה מקדימה של הסלפי שהעלית' : 'Preview of your uploaded selfie'} className="w-full h-full object-cover" />
                 </div>
                 <p className="text-gray-500 text-[10.5px] text-center leading-relaxed px-2">
                   {isHebrew
@@ -273,7 +273,7 @@ export default function CharacterModal({
             {showResult && (
               <div className="flex flex-col items-center gap-4">
                 <div className="relative w-full aspect-square rounded-[1.5rem] overflow-hidden border border-[#d4a373]/30 shadow-[0_0_30px_rgba(212,163,115,0.12)]">
-                  <img src={characterImageUrl} alt="your character" className="w-full h-full object-cover" />
+                  <img src={characterImageUrl} alt={isHebrew ? 'הדמות המעוצבת שלך' : 'Your generated character'} className="w-full h-full object-cover" />
                   <span className="absolute bottom-3 right-3 w-7 h-7 rounded-full bg-[#d4a373] text-black flex items-center justify-center shadow-lg">
                     <Check size={15} />
                   </span>

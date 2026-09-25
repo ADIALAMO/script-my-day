@@ -131,7 +131,12 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     posterError, setPosterError, showPoster, setShowPoster,
     triggerFlash, setTriggerFlash, posterRef,
     currentPosterMessage, generatePoster, handleCapturePoster, prewarmPosterShare, resetPoster, cancelPoster,
+    showReferralNudge, dismissReferralNudge,
   } = usePosterGeneration({ lang, genre, visualPrompt, posterTitle, isHebrew, finalProducerName, onPosterGenerated, onAuthRequired, characterImageUrl: activeCharacterUrl, onUnlockAudio: unlockFlashAudio });
+
+  // Referral modal, opened from the post-share nudge below. Reuses the same modal the
+  // Navbar's "Invite friends" menu item opens — no new referral UI is built here.
+  const [showReferralModal, setShowReferralModal] = useState(false);
 
   const {
     showStoryboard, storyboardPanels, storyboardLoading,
@@ -635,7 +640,8 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
                   <><span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" /><span className="text-[#d4a373] text-[12px] font-bold">{uiHebrew ? 'ההפקה סיימה' : 'PRODUCTION COMPLETE'}</span></>
                 )}
               </div>
-              <img src="/icon.png" className="w-8 h-8 object-contain opacity-50" alt="icon" />
+              {/* Purely decorative — the adjacent text already states "production complete" */}
+              <img src="/icon.png" className="w-8 h-8 object-contain opacity-50" alt="" />
             </motion.div>
           )}
           {saveStatus === 'saved' && (
@@ -684,7 +690,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
             {characterStatus === 'ready' && characterImageUrl ? (
               <div className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#d4a373]/[0.06] border border-[#d4a373]/25">
                 <button onClick={() => setShowCharacterModal(true)} className="relative shrink-0" title={uiHebrew ? 'החלף דמות' : 'Change character'}>
-                  <img src={characterImageUrl} alt="character" className="w-9 h-9 rounded-xl object-cover border border-[#d4a373]/40" />
+                  <img src={characterImageUrl} alt={uiHebrew ? 'הדמות שלך' : 'Your character'} className="w-9 h-9 rounded-xl object-cover border border-[#d4a373]/40" />
                   <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#d4a373] text-black flex items-center justify-center"><Check size={9} /></span>
                 </button>
                 <button onClick={() => setStarring(s => !s)} className="flex items-center gap-1.5" title={uiHebrew ? 'הצג/הסתר אותי' : 'Toggle starring'}>
@@ -752,6 +758,40 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
           </div>
         )}
       </AnimatePresence>
+
+      {/* ── Post-share referral nudge ─────────────────────────────────── */}
+      {/* Fires once handleCapturePoster (in usePosterGeneration.js) completes a real   */}
+      {/* share/download — additive follow-up, never blocks or replaces the share flow  */}
+      {/* itself. Signed-in users only (see the hook for why); dismiss is session-only.  */}
+      <AnimatePresence>
+        {showReferralNudge && (
+          <motion.div
+            key="referral-nudge"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.25 }}
+            className="mt-3 flex items-center gap-3 rounded-2xl border border-[#d4a373]/20 bg-[#d4a373]/[0.05] px-4 py-3"
+            dir={uiHebrew ? 'rtl' : 'ltr'}
+          >
+            <Gift size={16} className="text-[#d4a373] shrink-0" />
+            <button
+              onClick={() => setShowReferralModal(true)}
+              className="flex-1 min-w-0 text-start text-[12px] font-bold text-[#d4a373]/90 hover:text-[#d4a373] transition-colors"
+            >
+              {uiHebrew ? 'אהבת? הזמן חבר וקבל פוסטר חינם' : 'Liked it? Invite a friend and get a free poster'}
+            </button>
+            <button
+              onClick={dismissReferralNudge}
+              aria-label={uiHebrew ? 'סגור' : 'Dismiss'}
+              className="shrink-0 p-1 text-[#d4a373]/40 hover:text-[#d4a373] transition-colors"
+            >
+              <X size={14} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <ReferralModal isOpen={showReferralModal} onClose={() => setShowReferralModal(false)} lang={lang} />
 
       {/* ── Poster cancel — sits BELOW the card so the loading overlay never ── */}
       {/* covers it. Lets the user back out while the poster is still rendering. ── */}

@@ -188,7 +188,19 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ delay: idx * 0.06, duration: 0.4, ease: 'easeOut' }}
                   onClick={onUpgrade}
-                  className="group bg-[#050710] border border-amber-500/10 rounded-[1.75rem] overflow-hidden hover:border-amber-500/30 hover:shadow-[0_8px_40px_rgba(245,158,11,0.09)] transition-all duration-400 cursor-pointer"
+                  // onUpgrade is omitted entirely on Capacitor (no purchase CTA in the
+                  // native app) — only expose this as a keyboard/AT control when it's
+                  // actually wired to something, so native builds don't get a focusable
+                  // card that does nothing on activation.
+                  role={onUpgrade ? 'button' : undefined}
+                  tabIndex={onUpgrade ? 0 : undefined}
+                  onKeyDown={onUpgrade ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onUpgrade(); }
+                  } : undefined}
+                  aria-label={onUpgrade ? (isHebrew
+                    ? `פאנל ${panel.panel} נעול — שדרג ל-Pro כדי לפתוח`
+                    : `Panel ${panel.panel} locked — upgrade to Pro to unlock`) : undefined}
+                  className="group bg-[#050710] border border-amber-500/10 rounded-[1.75rem] overflow-hidden hover:border-amber-500/30 hover:shadow-[0_8px_40px_rgba(245,158,11,0.09)] transition-all duration-400 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
                 >
                   {/* Image zone */}
                   <div className="relative aspect-[3/2] overflow-hidden bg-[#030409]">
