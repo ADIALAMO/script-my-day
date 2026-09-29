@@ -1,13 +1,13 @@
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../lib/auth.js';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import {
   Shield, Users, Activity, Check, AlertCircle,
   Loader2, ArrowLeft, RefreshCw, Film,
   FileText, Image as ImageIcon, BookOpen, Gauge, Crown, Wallet,
-  CreditCard, UserCog, ListChecks, Clock,
+  CreditCard, UserCog, ListChecks, Clock, Search, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
 // ── Server-side auth gate ──────────────────────────────────────────────────────
@@ -163,6 +163,25 @@ export default function AdminDashboard({ adminEmail }) {
   const [proUsers, setProUsers] = useState(null);
   const [proUsersLoading, setProUsersLoading] = useState(true);
 
+  // All Users — every signup, paginated
+  const ALL_USERS_LIMIT = 25;
+  const [allUsers, setAllUsers] = useState(null);
+  const [allUsersLoading, setAllUsersLoading] = useState(true);
+  const [allUsersOffset, setAllUsersOffset] = useState(0);
+  const [allUsersTier, setAllUsersTier] = useState('all');
+  const [allUsersSearch, setAllUsersSearch] = useState(''); // committed (submitted) search
+  const [allUsersSearchInput, setAllUsersSearchInput] = useState(''); // live input value
+
+  const fetchAllUsers = useCallback((offset, tier, email) => {
+    setAllUsersLoading(true);
+    const params = new URLSearchParams({ limit: String(ALL_USERS_LIMIT), offset: String(offset), tier });
+    if (email) params.set('email', email);
+    fetch(`/api/admin/users?${params}`)
+      .then(r => r.json())
+      .then(data => { setAllUsers(data); setAllUsersLoading(false); })
+      .catch(err => { setAllUsers({ _error: err.message }); setAllUsersLoading(false); });
+  }, []);
+
   const fetchHealth = useCallback(() => {
     setHealthLoading(true);
     fetch('/api/provider-health')
@@ -192,15 +211,59 @@ export default function AdminDashboard({ adminEmail }) {
 
   const refreshAll = useCallback(() => {
     fetchHealth(); fetchStats(); fetchProUsers();
-  }, [fetchHealth, fetchStats, fetchProUsers]);
+    // Keep whatever page/filter/search the admin is currently on rather than
+    // resetting to page 0 every 30s — that would be jarring mid-browse.
+    fetchAllUsers(allUsersOffset, allUsersTier, allUsersSearch);
+  }, [fetchHealth, fetchStats, fetchProUsers, fetchAllUsers, allUsersOffset, allUsersTier, allUsersSearch]);
+
+  // refreshAll's identity changes whenever the All Users filter/page state
+  // does (so it always fetches the page the admin is currently looking at).
+  // Keep a ref to the latest version so the mount-once interval below never
+  // calls a stale closure from whatever state was current on first render.
+  const refreshAllRef = useRef(refreshAll);
+  useEffect(() => { refreshAllRef.current = refreshAll; }, [refreshAll]);
 
   // Initial load + 30s auto-refresh for a live, real-time feel. The stats endpoint
   // is O(1) (one mget + one scard + one OpenRouter ping) so polling is cheap.
   useEffect(() => {
-    refreshAll();
-    const id = setInterval(refreshAll, 30_000);
+    refreshAllRef.current();
+    const id = setInterval(() => refreshAllRef.current(), 30_000);
     return () => clearInterval(id);
-  }, [refreshAll]);
+  }, []);
+
+  // ── All Users: filter/search/pagination handlers ─────────────────────────
+  const handleTierFilterChange = (tier) => {
+    setAllUsersTier(tier);
+    setAllUsersOffset(0);
+    fetchAllUsers(0, tier, allUsersSearch);
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    const email = allUsersSearchInput.trim();
+    setAllUsersSearch(email);
+    setAllUsersOffset(0);
+    fetchAllUsers(0, allUsersTier, email);
+  };
+
+  const handleClearSearch = () => {
+    setAllUsersSearchInput('');
+    setAllUsersSearch('');
+    setAllUsersOffset(0);
+    fetchAllUsers(0, allUsersTier, '');
+  };
+
+  const handlePrevPage = () => {
+    const next = Math.max(0, allUsersOffset - ALL_USERS_LIMIT);
+    setAllUsersOffset(next);
+    fetchAllUsers(next, allUsersTier, allUsersSearch);
+  };
+
+  const handleNextPage = () => {
+    const next = allUsersOffset + ALL_USERS_LIMIT;
+    setAllUsersOffset(next);
+    fetchAllUsers(next, allUsersTier, allUsersSearch);
+  };
 
   const handleSetTier = async (e) => {
     e.preventDefault();
@@ -223,6 +286,7 @@ export default function AdminDashboard({ adminEmail }) {
         });
         setTargetEmail('');
         fetchProUsers();
+        fetchAllUsers(allUsersOffset, allUsersTier, allUsersSearch);
       } else {
         setTierStatus({ success: false, message: data.error || 'Unknown error.' });
       }
@@ -523,6 +587,151 @@ export default function AdminDashboard({ adminEmail }) {
                       </span>
                     ))}
                   </div>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* ── All Users ─────────────────────────────────────────────────── */}
+          <section className="bg-[#0f1117] border border-white/8 rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+              <div className="flex items-center gap-2.5">
+                <Users size={14} className="text-[#d4a373]" />
+                <h2 className="font-black text-[11px] uppercase tracking-[0.3em] text-white/70">
+                  All Users
+                  {allUsers?.total != null && (
+                    <span className="text-white/25 normal-case tracking-normal"> · {allUsers.total} total</span>
+                  )}
+                </h2>
+              </div>
+              <button
+                onClick={() => fetchAllUsers(allUsersOffset, allUsersTier, allUsersSearch)}
+                disabled={allUsersLoading}
+                className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-white/25 hover:text-white/50 transition-colors disabled:opacity-30"
+              >
+                <RefreshCw size={11} className={allUsersLoading ? 'animate-spin' : ''} />
+                Refresh
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Tier filter + search */}
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+                <div className="flex gap-2">
+                  {['all', 'free', 'pro', 'admin'].map(t => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => handleTierFilterChange(t)}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${
+                        allUsersTier === t
+                          ? 'bg-[#d4a373]/15 border-[#d4a373]/40 text-[#d4a373]'
+                          : 'bg-white/[0.03] border-white/8 text-white/25 hover:text-white/50 hover:border-white/15'
+                      }`}
+                    >
+                      {t}
+                      {allUsers?.totalByTier && t !== 'all' && (
+                        <span className="opacity-60"> · {allUsers.totalByTier[t]}</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" />
+                    <input
+                      type="email"
+                      value={allUsersSearchInput}
+                      onChange={e => setAllUsersSearchInput(e.target.value)}
+                      placeholder="exact email…"
+                      autoComplete="off"
+                      className="bg-black/50 border border-white/8 rounded-lg pl-8 pr-3 py-1.5 text-[11px] text-white placeholder-white/15 focus:border-[#d4a373]/40 outline-none transition-colors font-mono w-44"
+                    />
+                  </div>
+                  {allUsersSearch && (
+                    <button
+                      type="button"
+                      onClick={handleClearSearch}
+                      className="text-[10px] font-black uppercase tracking-widest text-white/25 hover:text-white/50 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </form>
+              </div>
+
+              {/* Rows */}
+              {allUsersLoading ? (
+                <div className="flex items-center gap-2 text-white/25 text-xs">
+                  <Loader2 size={13} className="animate-spin" /> Loading…
+                </div>
+              ) : allUsers?._error ? (
+                <p className="text-red-400 text-xs font-mono">{allUsers._error}</p>
+              ) : !allUsers?.users?.length ? (
+                <p className="text-white/20 text-xs">
+                  {allUsersSearch ? 'No user found for that email.' : 'No users yet.'}
+                </p>
+              ) : (
+                <div className="divide-y divide-white/5">
+                  {allUsers.users.map(u => (
+                    <div key={u.userId} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                      <div className="min-w-0">
+                        <div className="text-sm font-mono text-white/70 truncate">
+                          {u.email || u.userId}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="text-[10px] uppercase tracking-widest text-white/25 font-black">
+                            {u.signupProvider || 'unknown'}
+                          </span>
+                          <span className="text-[10px] text-white/15">·</span>
+                          <span className="text-[10px] text-white/25 font-mono">
+                            signed up {timeAgo(u.signupAt) || 'before tracking started'}
+                          </span>
+                          {u.lastActiveAt && (
+                            <span className="flex items-center gap-1 text-[10px] text-white/25 font-mono">
+                              <Clock size={9} /> active {timeAgo(u.lastActiveAt)}
+                            </span>
+                          )}
+                          {u.alsoOnAllowlist && (
+                            <span className="text-[9px] uppercase tracking-widest text-sky-400/70 font-black">
+                              also on PRO_ALLOWLIST
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <span className={`shrink-0 px-2 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-widest ${
+                        u.tier === 'admin' ? 'bg-violet-500/15 border-violet-500/30 text-violet-400'
+                        : u.tier === 'pro' ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                        : 'bg-sky-500/15 border-sky-500/30 text-sky-400'
+                      }`}>
+                        {u.tier}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Pagination */}
+              {!allUsersSearch && (
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    onClick={handlePrevPage}
+                    disabled={allUsersLoading || allUsersOffset === 0}
+                    className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-white/25 hover:text-white/50 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft size={12} /> Prev
+                  </button>
+                  <span className="text-[10px] text-white/20 font-mono">
+                    {allUsersOffset + 1}–{allUsersOffset + (allUsers?.users?.length ?? 0)}
+                  </span>
+                  <button
+                    onClick={handleNextPage}
+                    disabled={allUsersLoading || !allUsers?.hasMore}
+                    className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-white/25 hover:text-white/50 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                  >
+                    Next <ChevronRight size={12} />
+                  </button>
                 </div>
               )}
             </div>

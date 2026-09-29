@@ -107,6 +107,20 @@ computed live from `PRO_ALLOWLIST` + cross-referenced against `user:email:*`). P
 dashboard's "Pro Users" view (`pages/api/admin/pro-users.js`); grants predating this mechanism
 show as `unknown`.
 
+**All-users index** ([lib/auth.js](lib/auth.js) `events.signIn`): `stats:users:all` is a Redis
+sorted set (score = signup unix-ms, member = userId), written once per new account alongside the
+plain `stats:users:total` counter — gives O(log N) newest-first pagination for the admin
+dashboard's "All Users" view (`pages/api/admin/users.js`), unlike a bare counter. `user:signup_provider:<userId>`
+(plain string, `'google'`\|`'email'`) is written the same call. Signups predating this mechanism
+were backfilled via `scripts/backfill-user-signups.js` (one-time `SCAN MATCH user:email:*`,
+`ZADD ... NX` with score `0` — sorts last, shown as "before tracking started"; their provider is
+left unset, shown as "Unknown" — same precedent as pro-source above). `user:last_active:<userId>`
+is stamped by `/api/me`, throttled to once per 24h. A deleted user (see
+[pages/api/request-deletion.js](pages/api/request-deletion.js) — logs the request for **manual**
+processing only, does not itself delete any keys) is detected at read time in `users.js` — a
+missing `user:<id>` record excludes it from the response and opportunistically `ZREM`s it, self-healing
+the index regardless of how the deletion actually happened.
+
 ### 5. Bilingual + RTL → skill `bilingual`
 Every user-facing string must exist in **both** `he` and `en`. Components branch on a
 `lang` prop (`lang === 'he' ? … : …`); data files use paired keys (`label: {he, en}`,

@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../../lib/auth.js';
 import { isAdminRequest } from '../../../lib/api-utils.js';
 import redis from '../../../lib/redis.js';
+import { parseAllowlist } from '../../../lib/pro-source.js';
 
 // Checks whether the session email is in the ADMIN_EMAILS allowlist.
 function isAllowedAdminSession(email) {
@@ -11,14 +12,6 @@ function isAllowedAdminSession(email) {
     .map(e => e.trim().toLowerCase())
     .filter(Boolean);
   return allowed.includes(email.toLowerCase());
-}
-
-function parseAllowlist() {
-  if (!process.env.PRO_ALLOWLIST) return [];
-  return process.env.PRO_ALLOWLIST
-    .split(',')
-    .map(e => e.trim().toLowerCase())
-    .filter(Boolean);
 }
 
 /**
