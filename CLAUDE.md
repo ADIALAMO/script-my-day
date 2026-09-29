@@ -100,6 +100,13 @@ midnight) / `usage:identity:<id>:<YYYY-MM>` (monthly) / `usage:identity:lifetime
 Pattern: check → 403/429 with a `CODES.*` → increment only on success → fail-open on Redis
 errors. Stripe `$9/mo` Pro; `userId` in both session + subscription metadata for the webhook.
 
+**Pro source tracking** ([lib/pro-source.js](lib/pro-source.js)): every Stripe or admin-dashboard
+Pro/admin grant writes `user:tier_source:<userId>` → `{source, by?, at}`. Three sources: `stripe`
+(webhook), `admin` (admin dashboard, `by` = granting admin's email), `allowlist` (never written —
+computed live from `PRO_ALLOWLIST` + cross-referenced against `user:email:*`). Powers the admin
+dashboard's "Pro Users" view (`pages/api/admin/pro-users.js`); grants predating this mechanism
+show as `unknown`.
+
 ### 5. Bilingual + RTL → skill `bilingual`
 Every user-facing string must exist in **both** `he` and `en`. Components branch on a
 `lang` prop (`lang === 'he' ? … : …`); data files use paired keys (`label: {he, en}`,

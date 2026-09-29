@@ -7,6 +7,7 @@ import {
   Shield, Users, Activity, Check, AlertCircle,
   Loader2, ArrowLeft, RefreshCw, Film,
   FileText, Image as ImageIcon, BookOpen, Gauge, Crown, Wallet,
+  CreditCard, UserCog, ListChecks, Clock,
 } from 'lucide-react';
 
 // ── Server-side auth gate ──────────────────────────────────────────────────────
@@ -108,6 +109,41 @@ function BudgetBar({ label, block }) {
   );
 }
 
+// ── Pro source badge ─────────────────────────────────────────────────────────────
+// Maps how a user got Pro (lib/pro-source.js + PRO_ALLOWLIST) to a color + label.
+const SOURCE_STYLES = {
+  stripe:    { label: 'Stripe',    icon: CreditCard,  className: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' },
+  admin:     { label: 'Admin',     icon: UserCog,      className: 'bg-violet-500/15 border-violet-500/30 text-violet-400' },
+  allowlist: { label: 'Allowlist', icon: ListChecks,   className: 'bg-sky-500/15 border-sky-500/30 text-sky-400' },
+  unknown:   { label: 'Unknown',   icon: AlertCircle,  className: 'bg-white/[0.06] border-white/15 text-white/40' },
+};
+
+function SourceBadge({ source }) {
+  const s = SOURCE_STYLES[source] || SOURCE_STYLES.unknown;
+  const Icon = s.icon;
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-widest ${s.className}`}>
+      <Icon size={10} />
+      {s.label}
+    </span>
+  );
+}
+
+// Relative time ("3h ago", "2d ago") for a Pro-grant ISO timestamp. Returns
+// null for falsy input — callers render nothing (e.g. allowlist/unknown rows
+// with no `since`) rather than a misleading "just now".
+function timeAgo(iso) {
+  if (!iso) return null;
+  const diffMs = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(diffMs) || diffMs < 0) return null;
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 60) return `${Math.max(mins, 0)}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 // ── Page component ─────────────────────────────────────────────────────────────
 export default function AdminDashboard({ adminEmail }) {
   // Live stats (users / activity / budget)
@@ -122,6 +158,10 @@ export default function AdminDashboard({ adminEmail }) {
   const [targetEmail, setTargetEmail] = useState('');
   const [selectedTier, setSelectedTier] = useState('pro');
   const [tierStatus, setTierStatus] = useState(null); // null | 'loading' | { success, message }
+
+  // Pro Users — who's Pro, and how
+  const [proUsers, setProUsers] = useState(null);
+  const [proUsersLoading, setProUsersLoading] = useState(true);
 
   const fetchHealth = useCallback(() => {
     setHealthLoading(true);
@@ -142,7 +182,17 @@ export default function AdminDashboard({ adminEmail }) {
       .catch(err => { setStats({ _error: err.message }); setStatsLoading(false); });
   }, []);
 
-  const refreshAll = useCallback(() => { fetchHealth(); fetchStats(); }, [fetchHealth, fetchStats]);
+  const fetchProUsers = useCallback(() => {
+    setProUsersLoading(true);
+    fetch('/api/admin/pro-users')
+      .then(r => r.json())
+      .then(data => { setProUsers(data); setProUsersLoading(false); })
+      .catch(err => { setProUsers({ _error: err.message }); setProUsersLoading(false); });
+  }, []);
+
+  const refreshAll = useCallback(() => {
+    fetchHealth(); fetchStats(); fetchProUsers();
+  }, [fetchHealth, fetchStats, fetchProUsers]);
 
   // Initial load + 30s auto-refresh for a live, real-time feel. The stats endpoint
   // is O(1) (one mget + one scard + one OpenRouter ping) so polling is cheap.
@@ -172,6 +222,7 @@ export default function AdminDashboard({ adminEmail }) {
           message: `${data.email} → ${data.tier.toUpperCase()} (id: ${data.userId.slice(0, 12)}…)`,
         });
         setTargetEmail('');
+        fetchProUsers();
       } else {
         setTierStatus({ success: false, message: data.error || 'Unknown error.' });
       }
@@ -400,6 +451,81 @@ export default function AdminDashboard({ adminEmail }) {
                 </div>
               )}
             </form>
+          </section>
+
+          {/* ── Pro Users ─────────────────────────────────────────────────── */}
+          <section className="bg-[#0f1117] border border-white/8 rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+              <div className="flex items-center gap-2.5">
+                <Crown size={14} className="text-[#d4a373]" />
+                <h2 className="font-black text-[11px] uppercase tracking-[0.3em] text-white/70">
+                  Pro Users <span className="text-white/25 normal-case tracking-normal">· who, and how</span>
+                </h2>
+              </div>
+              <button
+                onClick={fetchProUsers}
+                disabled={proUsersLoading}
+                className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-white/25 hover:text-white/50 transition-colors disabled:opacity-30"
+              >
+                <RefreshCw size={11} className={proUsersLoading ? 'animate-spin' : ''} />
+                Refresh
+              </button>
+            </div>
+
+            <div className="p-6">
+              {proUsersLoading ? (
+                <div className="flex items-center gap-2 text-white/25 text-xs">
+                  <Loader2 size={13} className="animate-spin" /> Loading…
+                </div>
+              ) : proUsers?._error ? (
+                <p className="text-red-400 text-xs font-mono">{proUsers._error}</p>
+              ) : !proUsers?.users?.length ? (
+                <p className="text-white/20 text-xs">No Pro users yet.</p>
+              ) : (
+                <div className="divide-y divide-white/5">
+                  {proUsers.users.map(u => (
+                    <div key={u.userId} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                      <div className="min-w-0">
+                        <div className="text-sm font-mono text-white/70 truncate">
+                          {u.email || u.userId}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {u.by && (
+                            <span className="text-[10px] text-white/25 font-mono">by {u.by}</span>
+                          )}
+                          {timeAgo(u.since) && (
+                            <span className="flex items-center gap-1 text-[10px] text-white/25 font-mono">
+                              <Clock size={9} /> {timeAgo(u.since)}
+                            </span>
+                          )}
+                          {u.alsoAllowlisted && u.source !== 'allowlist' && (
+                            <span className="text-[9px] uppercase tracking-widest text-sky-400/70 font-black">
+                              also on PRO_ALLOWLIST
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <SourceBadge source={u.source} />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {proUsers?.pendingAllowlist?.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-white/5">
+                  <div className="text-[10px] uppercase tracking-widest text-white/30 mb-2">
+                    On PRO_ALLOWLIST, never signed in
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {proUsers.pendingAllowlist.map(email => (
+                      <span key={email} className="text-[11px] font-mono text-white/40 bg-white/[0.03] border border-white/8 rounded-full px-2.5 py-1">
+                        {email}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </section>
 
           {/* ── Provider Health ──────────────────────────────────────────── */}

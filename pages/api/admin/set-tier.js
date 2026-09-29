@@ -3,6 +3,7 @@ import { authOptions } from '../../../lib/auth.js';
 import { isAdminRequest } from '../../../lib/api-utils.js';
 import redis from '../../../lib/redis.js';
 import { getSessionAndTier } from '../../../lib/auth.js';
+import { recordProSource, clearProSource } from '../../../lib/pro-source.js';
 
 // Checks whether the session email is in the ADMIN_EMAILS allowlist.
 // ADMIN_EMAILS env var: comma-separated list of authorised email addresses.
@@ -100,6 +101,13 @@ export default async function handler(req, res) {
     else                 await redis.sadd('stats:pro:members', userId);
   } catch (e) {
     console.warn(`⚠️ Pro member set update skipped (Redis): ${e.message}`);
+  }
+
+  // ── Record how this grant happened, for the "Pro Users" admin audit view ───
+  if (tier === 'free') {
+    await clearProSource(userId);
+  } else {
+    await recordProSource(userId, 'admin', sessionEmail || 'api-key');
   }
 
   return res.status(200).json({ success: true, userId, email: resolvedEmail, tier });

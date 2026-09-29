@@ -1,5 +1,6 @@
 import { getStripe } from '../../../lib/stripe.js';
 import redis from '../../../lib/redis.js';
+import { recordProSource, clearProSource } from '../../../lib/pro-source.js';
 
 // ── Critical: disable Next.js body parser ─────────────────────────────────────
 // Stripe signature verification requires the raw, un-parsed request body as a
@@ -33,6 +34,7 @@ async function activatePro(userId, stripeCustomerId) {
   // Keep the dashboard Pro member set (/api/admin/stats) in sync. Idempotent.
   try { await redis.sadd('stats:pro:members', userId); }
   catch (e) { console.warn(`⚠️ Pro member set add skipped (Redis): ${e.message}`); }
+  await recordProSource(userId, 'stripe');
   if (!stripeCustomerId) {
     console.warn(`⚠️ Stripe webhook: Pro activated for ${userId} — no customer ID, billing portal disabled`);
   }
@@ -43,6 +45,7 @@ async function revokePro(userId) {
   await redis.del(`user:tier:${userId}`);
   try { await redis.srem('stats:pro:members', userId); }
   catch (e) { console.warn(`⚠️ Pro member set remove skipped (Redis): ${e.message}`); }
+  await clearProSource(userId);
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
