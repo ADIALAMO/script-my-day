@@ -5,6 +5,9 @@ node_modules/
 .next/
 .env*.local
 
+# macOS Finder junk — matches at any depth, no need to gitignore per-folder
+.DS_Store
+
 # Internal working docs for Play Console submission prep — draft analysis of
 # privacy-policy/data-safety gaps, kept locally for filling out the forms, not
 # meant to live in a public repo's history. See store-listing/ for the actual
