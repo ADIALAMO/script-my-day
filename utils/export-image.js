@@ -9,7 +9,74 @@
  * cancel), false when file sharing is unsupported on this platform — letting the
  * caller fall back (e.g. open the asset in a new tab). Nothing here ever navigates
  * the page.
+ *
+ * ── Native Android (Capacitor) branch ─────────────────────────────────────────
+ * capacitor.config.json points the Android app's WebView at the live production
+ * site (no bundled build) — so the share buttons run inside Android's System
+ * WebView, NOT a real browser. Confirmed on-device: `navigator.share` and
+ * `navigator.canShare` are both `undefined` there — not partially supported,
+ * genuinely absent. The `<a download>` fallback below ALSO silently no-ops there —
+ * a bare WebView has no native download handler wired up for blob: URLs the way
+ * a real browser chrome does. Together those two facts are why poster/comic/reel
+ * sharing went completely silent on Android while working fine on iOS Safari.
+ *
+ * The fix: when `isCapacitorNative()`, skip the Web Share API entirely and go
+ * straight to the native `@capacitor/share` plugin, which fires a real Android
+ * share Intent — unaffected by WebView web-platform gaps. Its `files` option
+ * wants `file://` URIs, not raw Files, so each File is base64-encoded and
+ * written to the Capacitor `Cache` directory via `@capacitor/filesystem` first
+ * (see shareFilesNative). The web path (iOS Safari, desktop, the PWA) is
+ * completely untouched — same navigator.share call, same transient-activation
+ * handling in usePosterGeneration.js.
  */
+
+import { Share } from '@capacitor/share';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { isCapacitorNative } from './platform.js';
+
+// File → base64 (no `data:...;base64,` prefix) for Filesystem.writeFile, which
+// expects raw base64 when no `encoding` is given (binary data). FileReader is
+// used over arrayBuffer()+manual encoding because it's the simpler, well-tested
+// path and these payloads (a poster PNG, a short reel clip) are small enough
+// that the extra base64-string allocation is a non-issue.
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error || new Error('FileReader failed'));
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      resolve(result.split(',')[1] || '');
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Writes each File to a temp path in the Capacitor Cache directory (cleared
+// opportunistically by the OS under storage pressure — fine, these are
+// one-shot share payloads, not content the app needs to keep) and hands the
+// resulting file:// URIs to the native share sheet. Throws on failure; the
+// caller (shareFiles) already has the try/catch + sharePending latch that
+// every other share path shares, so errors are handled in one place.
+async function shareFilesNative(files, title, text) {
+  const uris = [];
+  for (const file of files) {
+    const base64 = await fileToBase64(file);
+    if (!base64) throw new Error('Could not read file for native share');
+    const path = `share/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name || 'lifescript.png'}`;
+    const { uri } = await Filesystem.writeFile({
+      path,
+      data: base64,
+      directory: Directory.Cache,
+      recursive: true,
+    });
+    uris.push(uri);
+  }
+  await Share.share({
+    ...(title ? { title, dialogTitle: title } : {}),
+    ...(text ? { text } : {}),
+    files: uris,
+  });
+}
 
 // Capability detection (never UA sniffing). Decides which export affordance to show:
 //   • isDesktop — a hover-capable, fine-pointer device (mouse/trackpad). On desktop an
@@ -23,12 +90,17 @@ export function exportCapabilities() {
   if (typeof navigator === 'undefined' || typeof window === 'undefined') {
     return { isDesktop: false, canShareFiles: false };
   }
-  let canShareFiles = false;
-  try {
-    const probe = new File([new Blob(['x'], { type: 'image/png' })], 'probe.png', { type: 'image/png' });
-    canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [probe] }));
-  } catch {
-    canShareFiles = false;
+  // Native Android/iOS: file sharing always goes through @capacitor/share (see
+  // shareFilesNative below), independent of whatever the WebView's Web Share
+  // API does or doesn't support — so it's unconditionally capable here.
+  let canShareFiles = isCapacitorNative();
+  if (!canShareFiles) {
+    try {
+      const probe = new File([new Blob(['x'], { type: 'image/png' })], 'probe.png', { type: 'image/png' });
+      canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [probe] }));
+    } catch {
+      canShareFiles = false;
+    }
   }
   const isDesktop = !!(window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches);
   return { isDesktop, canShareFiles };
@@ -199,18 +271,35 @@ let sharePending = false;
 // intentionally excluded: it means the transient-activation window expired (too
 // much async work between the tap and navigator.share), and callers must decide
 // whether to fall back to a download or retry.
+//
+// Native (@capacitor/share on Android) has no DOM error names at all — its
+// SharePlugin.java rejects with the literal string "Share canceled" when the
+// user dismisses the native chooser (confirmed on-device: without this check,
+// a cancel was indistinguishable from a real failure and triggered the same
+// <a download> fallback shareHandled exists to prevent on the web path).
 function shareHandled(err) {
-  return err?.name === 'AbortError' || err?.name === 'InvalidStateError';
+  return err?.name === 'AbortError' || err?.name === 'InvalidStateError'
+    || /^share canceled$/i.test(err?.message || '');
 }
 
 // Core: hand an array of Files to the OS share sheet. Optional `text` rides along in the
 // share payload (used to carry the referral link so every poster share seeds the loop).
 async function shareFiles(files, title, text) {
-  if (typeof navigator === 'undefined' || !navigator.share || !navigator.canShare) return false;
-  if (!files.length || !navigator.canShare({ files })) return false;
+  if (!files.length) return false;
+  const native = isCapacitorNative();
+  // Native: always "supported" — @capacitor/share doesn't need navigator.share to
+  // exist. Web: gate on the same navigator.canShare({files}) check as before,
+  // completely unchanged for iOS Safari / desktop / the PWA.
+  if (!native && (typeof navigator === 'undefined' || !navigator.share || !navigator.canShare || !navigator.canShare({ files }))) {
+    return false;
+  }
   if (sharePending) return true; // a sheet is already open/settling — swallow the re-tap
   sharePending = true;
   try {
+    if (native) {
+      await shareFilesNative(files, title, text);
+      return true;
+    }
     await navigator.share({ files, title, ...(text ? { text } : {}) });
     return true;
   } catch (err) {
@@ -218,6 +307,7 @@ async function shareFiles(files, title, text) {
     // NotAllowedError = activation window expired (async work took too long before
     // navigator.share was called). Return null so callers can distinguish "expired"
     // from "unsupported" (false) and choose the right fallback (download vs open tab).
+    // Native errors don't carry this DOM error shape, so they fall through to `false`.
     if (err?.name === 'NotAllowedError') return null;
     return false;
   } finally {
@@ -230,15 +320,18 @@ async function shareFiles(files, title, text) {
 // overlap and trip InvalidStateError. Returns true when handled (shared or dismissed),
 // false only when Web Share is unavailable so the caller can fall back (copy / email).
 export async function shareData({ title, text, url } = {}) {
-  if (typeof navigator === 'undefined' || !navigator.share) return false;
+  const native = isCapacitorNative();
+  if (!native && (typeof navigator === 'undefined' || !navigator.share)) return false;
   if (sharePending) return true; // a sheet is already open/settling — swallow the re-tap
   sharePending = true;
   try {
-    await navigator.share({
+    const payload = {
       ...(title ? { title } : {}),
       ...(text ? { text } : {}),
       ...(url ? { url } : {}),
-    });
+    };
+    if (native) await Share.share(payload);
+    else await navigator.share(payload);
     return true;
   } catch (err) {
     return shareHandled(err);

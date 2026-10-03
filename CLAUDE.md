@@ -129,6 +129,42 @@ classes. API errors return `CODES.*` symbols (localized client-side), not raw En
 Generated-content language is auto-detected (`detectLanguage` / `HEBREW_RANGE`) and the
 script LLM is hard-locked to the input language.
 
+### 6. Native (Capacitor) vs. web export/share
+`capacitor.config.json`'s `server.url` points the Android app's WebView at the **live
+production site** — there is no bundled build, so the native app is literally Android's
+System WebView rendering the same JS everyone else gets. That WebView's Web Share API
+support is unreliable: confirmed on-device (emulator, `Capacitor.isNativePlatform()`) that
+`navigator.share`/`navigator.canShare` are both `undefined` there — not partially broken,
+genuinely absent. The `<a download>` blob fallback in `usePosterGeneration.js` also silently
+no-ops in a bare WebView (no native download handler for `blob:` URLs the way a real browser
+has), which is why poster/comic/reel sharing went completely silent on Android while working
+fine on iOS Safari.
+
+Fix, in [utils/export-image.js](utils/export-image.js): `shareFiles`/`shareData` branch on
+[`isCapacitorNative()`](utils/platform.js) — native fires a real Android share Intent via
+`@capacitor/share` (`Share.share({ files })`, wanting `file://` URIs), writing each File to
+the Capacitor `Cache` directory as base64 via `@capacitor/filesystem` first
+(`shareFilesNative`/`fileToBase64`). The existing `sharePending` re-entrancy latch wraps both
+branches identically. The web path (iOS Safari, desktop, PWA) is byte-for-byte unchanged.
+One native-specific wrinkle: `@capacitor/share`'s Android plugin has no DOM error names — a
+user-dismissed chooser rejects with the literal string `"Share canceled"`, which `shareHandled()`
+now also recognizes (alongside the web's `AbortError`) so a cancel isn't mistaken for a real
+failure and doesn't trigger the broken download fallback.
+
+This relies on the `FileProvider` already declared in
+[android/app/src/main/AndroidManifest.xml](android/app/src/main/AndroidManifest.xml)
+(`${applicationId}.fileprovider`, authority required by `@capacitor/share`'s Android code) and
+[android/app/src/main/res/xml/file_paths.xml](android/app/src/main/res/xml/file_paths.xml)'s
+`<cache-path path=".">`, which covers `Directory.Cache` (`context.cacheDir`) — both were
+already present from the original native-wrapper setup, so no manifest changes were needed.
+
+**Pattern for any future native-only behavior:** branch on `isCapacitorNative()` from
+`utils/platform.js` (single source of truth — don't re-derive `Capacitor.isNativePlatform()`
+per file), keep the web/PWA path completely untouched, and if a Capacitor plugin's native
+rejection needs the same "this is a handled cancel, not a failure" treatment as a web
+`AbortError`, extend the shared check (`shareHandled()` here) rather than special-casing it
+at each call site.
+
 ## Conventions & gotchas
 - Provider errors are thrown as `"<Name> <httpStatus>: <body slice>"` so
   `extractStatusCode` can parse them for the circuit breaker. Preserve this shape.
