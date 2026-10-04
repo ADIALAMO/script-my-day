@@ -151,6 +151,21 @@ const nextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ['ioredis'],
 
+  // Permanent fix (NOT part of the temporary share-bug diagnostics — this
+  // stays). See pages/_app.js's resume listener and pages/api/build-version.js.
+  // The native Android app's Activity uses android:launchMode="singleTask",
+  // so re-opening it from the home-screen icon often just brings the SAME
+  // already-running WebView to the foreground (onResume) rather than a fresh
+  // navigation — no HTTP request happens at all, so Cache-Control is never
+  // even consulted, and whatever JS was loaded at the last real cold-start
+  // keeps running indefinitely, potentially forever. Baking the current
+  // deploy's commit SHA into the client bundle here lets the resume listener
+  // ask the server "has anything actually changed?" and reload only when the
+  // answer is yes — no reload on every resume, no time-based heuristic, exact.
+  env: {
+    NEXT_PUBLIC_BUILD_SHA: process.env.VERCEL_GIT_COMMIT_SHA || '',
+  },
+
   async headers() {
     return [
       {

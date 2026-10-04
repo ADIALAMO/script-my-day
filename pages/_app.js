@@ -8,9 +8,38 @@ import { useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
+import { App as CapacitorApp } from '@capacitor/app';
 import { SITE_URL } from '../lib/site.js';
 
 function MyApp({ Component, pageProps: { session, ...pageProps } }) {
+
+  // ── Reload on resume if a new deploy went out while backgrounded (Capacitor
+  // only) ─────────────────────────────────────────────────────────────────────
+  // android:launchMode="singleTask" (AndroidManifest.xml) means re-opening the
+  // app from the home-screen icon frequently just brings the SAME already-
+  // running WebView back to the foreground — no fresh navigation, no HTTP
+  // request, so a stale JS bundle from however long ago the last real
+  // cold-start was can keep running indefinitely. On resume, ask the server
+  // which commit is actually deployed right now (NEXT_PUBLIC_BUILD_SHA is
+  // baked into this bundle at build time, see next.config.js) and reload only
+  // if it's genuinely different — no reload at all on the common case (no new
+  // deploy), no time-based heuristic. A failed check (e.g. briefly offline
+  // right as the app resumes) is swallowed silently; it just tries again next
+  // resume rather than risk stranding the user on an error.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let sub;
+    CapacitorApp.addListener('resume', async () => {
+      try {
+        const res = await fetch('/api/build-version', { cache: 'no-store' });
+        const { sha } = await res.json();
+        if (sha && sha !== process.env.NEXT_PUBLIC_BUILD_SHA) {
+          window.location.reload();
+        }
+      } catch { /* offline or request failed — skip, try again next resume */ }
+    }).then(h => { sub = h; });
+    return () => sub?.remove();
+  }, []);
 
   // ── Native status bar styling (Capacitor only) ────────────────────────────
   // Unstyled, this renders as the OS default — a plain white/light bar with
