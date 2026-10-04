@@ -171,18 +171,32 @@ function loadImage(src) {
   });
 }
 
-// Burn the bilingual brand + CTA strip onto an image blob. Returns a NEW image/png blob,
-// or the ORIGINAL blob unchanged on any failure / non-image input (never throws).
-export async function compositeWatermark(blob, { lang = 'en' } = {}) {
+// Burn the bilingual brand + CTA strip onto an image blob. Returns a NEW blob
+// (image/png or image/jpeg, see `format`), or the ORIGINAL blob unchanged on
+// any failure / non-image input (never throws).
+//
+// format: 'png' (default, lossless — unchanged behavior for every existing
+// caller) or 'jpeg'. Real on-device diagnostics (Galaxy A13, a weak/budget
+// Android device) measured this function costing ~8.7s end to end, with
+// canvas.toBlob(..., 'image/png', ...) ALONE accounting for ~8.35s of that —
+// drawImage/gradient-fill/fillText (even with shadowBlur, initially
+// suspected) combined cost under 15ms. PNG's lossless deflate encoder is
+// known to be disproportionately slow on weak/software-rendered Canvas2D
+// implementations; JPEG's encoder is dramatically cheaper. The source images
+// here (AI-generated posters/panels) are fully opaque — drawn edge-to-edge
+// before anything else — so there's no alpha channel being lost by dropping
+// PNG. Callers choose 'jpeg' only where this was actually measured to matter
+// (see makeShareFile) — desktop's downloadBlob() is untouched (no evidence
+// of a problem there, and PNG stays lossless for anyone saving a file).
+export async function compositeWatermark(blob, { lang = 'en', format = 'png' } = {}) {
   if (typeof document === 'undefined' || !blob || !blob.type?.startsWith('image/')) {
     return blob; // SSR, missing blob, or a video (reel) → pass through untouched.
   }
-  // TEMP DIAGNOSTIC (share-bug) — fine-grained step timing. Real data from a
-  // weak device (Galaxy A13) showed this whole function costing ~3.6s, with
-  // drawImage/gradient/fillText individually expected to be cheap — testing
-  // the specific hypothesis that ctx.shadowBlur (a well-known expensive
-  // Canvas2D op) on the two fillText calls dominates that cost, before
-  // touching any actual rendering behavior.
+  const mime    = format === 'jpeg' ? 'image/jpeg' : 'image/png';
+  const quality = format === 'jpeg' ? 0.92 : 0.95; // quality is a no-op for PNG (lossless) — kept for parity with the prior literal.
+  // TEMP DIAGNOSTIC (share-bug) — fine-grained step timing, kept in place to
+  // confirm the toBlob fix actually worked once re-measured on the same
+  // device, directly comparable against the 8352ms PNG baseline above.
   const t0 = Date.now();
   let tPrev = t0;
   const steps = [];
@@ -244,9 +258,9 @@ export async function compositeWatermark(blob, { lang = 'en' } = {}) {
     ctx.fillText(`${copy.cta} ${arrow}  ·  ${copy.url}`, x, h - pad);
     mark('ctaTextWithShadow');
 
-    const out = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png', 0.95));
+    const out = await new Promise((resolve) => canvas.toBlob(resolve, mime, quality));
     mark('toBlob');
-    reportShareAttempt({ surface: 'composite-watermark', outcome: 'composite-complete', steps, extra: { w, h, totalMs: Date.now() - t0 } }); // TEMP DIAGNOSTIC (share-bug)
+    reportShareAttempt({ surface: 'composite-watermark', outcome: 'composite-complete', steps, extra: { w, h, format, totalMs: Date.now() - t0 } }); // TEMP DIAGNOSTIC (share-bug)
     return out || blob;
   } catch (err) {
     reportShareAttempt({ surface: 'composite-watermark', outcome: 'composite-thrown', steps, error: { name: err?.name, message: err?.message }, extra: { totalMs: Date.now() - t0 } }); // TEMP DIAGNOSTIC (share-bug)
@@ -376,14 +390,28 @@ export async function shareData({ title, text, url } = {}) {
   }
 }
 
+// Swaps a filename's extension to match an actual output format — used when
+// compositeWatermark's format differs from what the caller's filename assumed
+// (every caller still builds plain "*.png" names; only the format actually
+// written to disk/bridge should ever diverge from that).
+function withExtension(filename, format) {
+  const ext = format === 'jpeg' ? 'jpg' : 'png';
+  return filename.replace(/\.(png|jpe?g)$/i, '') + '.' + ext;
+}
+
 // Build the final, watermarked File for a blob WITHOUT sharing it. Lets callers pre-render
 // the share payload in the background (see usePosterGeneration's prewarm) so the eventual
 // navigator.share() fires INSIDE the iOS transient-activation window. On slow devices the
 // heavy prep (htmlToImage, network fetch, canvas watermark) between the tap and share()
 // otherwise overruns activation and throws NotAllowedError — even on the first tap.
+//
+// Native (Capacitor) gets JPEG instead of PNG — see compositeWatermark's doc comment
+// for why (canvas.toBlob('image/png') measured at ~8.3s on a weak Android device,
+// vs. a dramatically cheaper JPEG encode). Web/iOS Safari/desktop are untouched.
 export async function makeShareFile(blob, filename, { lang = 'en' } = {}) {
-  const stamped = await compositeWatermark(blob, { lang });
-  return new File([stamped], filename, { type: stamped.type || blob.type || 'image/png' });
+  const format = isCapacitorNative() ? 'jpeg' : 'png';
+  const stamped = await compositeWatermark(blob, { lang, format });
+  return new File([stamped], withExtension(filename, format), { type: stamped.type || blob.type || 'image/png' });
 }
 
 // Share an already-prepared File (e.g. one cached by makeShareFile). No compositing happens
@@ -404,9 +432,8 @@ export async function shareBlob(blob, filename, title, { lang = 'en', text } = {
 // Share many blobs at once (the tier-aware "Share all panels" action).
 // items: Array<{ blob, filename }> — the caller passes ONLY the assets the user owns.
 export async function shareBlobs(items, title, { lang = 'en' } = {}) {
-  const files = await Promise.all(items.map(async ({ blob, filename }) => {
-    const stamped = await compositeWatermark(blob, { lang });
-    return new File([stamped], filename, { type: stamped.type || blob.type || 'image/png' });
-  }));
+  // Reuses makeShareFile (instead of duplicating its compositeWatermark + File-wrap
+  // logic here, as this used to) so the native/JPEG decision lives in exactly one place.
+  const files = await Promise.all(items.map(({ blob, filename }) => makeShareFile(blob, filename, { lang })));
   return shareFiles(files, title);
 }
