@@ -405,13 +405,16 @@ function withExtension(filename, format) {
 // heavy prep (htmlToImage, network fetch, canvas watermark) between the tap and share()
 // otherwise overruns activation and throws NotAllowedError — even on the first tap.
 //
-// Native (Capacitor) gets JPEG instead of PNG — see compositeWatermark's doc comment
-// for why (canvas.toBlob('image/png') measured at ~8.3s on a weak Android device,
-// vs. a dramatically cheaper JPEG encode). Web/iOS Safari/desktop are untouched.
+// REVERTED (share-bug investigation): native briefly used JPEG instead of PNG here,
+// on the reasonable-sounding assumption that JPEG's encoder is cheaper than PNG's.
+// Real on-device measurement proved the opposite on this Android WebView/Skia build:
+// JPEG toBlob measured ~13.2s, WORSE than PNG's ~8.35s baseline. Back to PNG
+// everywhere (format/withExtension stay in compositeWatermark — harmless, and
+// useful scaffolding for whatever's tried next) until something is actually proven
+// better by real data, not by which codec sounds like it should be faster.
 export async function makeShareFile(blob, filename, { lang = 'en' } = {}) {
-  const format = isCapacitorNative() ? 'jpeg' : 'png';
-  const stamped = await compositeWatermark(blob, { lang, format });
-  return new File([stamped], withExtension(filename, format), { type: stamped.type || blob.type || 'image/png' });
+  const stamped = await compositeWatermark(blob, { lang });
+  return new File([stamped], filename, { type: stamped.type || blob.type || 'image/png' });
 }
 
 // Share an already-prepared File (e.g. one cached by makeShareFile). No compositing happens
