@@ -33,6 +33,7 @@
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { isCapacitorNative } from './platform.js';
+import { reportShareAttempt } from './share-diagnostics.js'; // TEMP DIAGNOSTIC (share-bug)
 
 // File → base64 (no `data:...;base64,` prefix) for Filesystem.writeFile, which
 // expects raw base64 when no `encoding` is given (binary data). FileReader is
@@ -58,24 +59,40 @@ function fileToBase64(file) {
 // caller (shareFiles) already has the try/catch + sharePending latch that
 // every other share path shares, so errors are handled in one place.
 async function shareFilesNative(files, title, text) {
-  const uris = [];
-  for (const file of files) {
-    const base64 = await fileToBase64(file);
-    if (!base64) throw new Error('Could not read file for native share');
-    const path = `share/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name || 'lifescript.png'}`;
-    const { uri } = await Filesystem.writeFile({
-      path,
-      data: base64,
-      directory: Directory.Cache,
-      recursive: true,
+  // TEMP DIAGNOSTIC (share-bug) — step trace + fire-and-forget report, both ways.
+  const t0 = Date.now();
+  let tPrev = t0;
+  const steps = [];
+  const mark = (step) => { const now = Date.now(); steps.push({ step, ms: now - tPrev }); tPrev = now; };
+  const totalBytes = files.reduce((n, f) => n + (f?.size || 0), 0);
+
+  try {
+    const uris = [];
+    for (const file of files) {
+      const base64 = await fileToBase64(file);
+      mark('base64');
+      if (!base64) throw new Error('Could not read file for native share');
+      const path = `share/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name || 'lifescript.png'}`;
+      const { uri } = await Filesystem.writeFile({
+        path,
+        data: base64,
+        directory: Directory.Cache,
+        recursive: true,
+      });
+      mark('writeFile');
+      uris.push(uri);
+    }
+    await Share.share({
+      ...(title ? { title, dialogTitle: title } : {}),
+      ...(text ? { text } : {}),
+      files: uris,
     });
-    uris.push(uri);
+    mark('share');
+    reportShareAttempt({ surface: 'share-files', outcome: 'native-success', steps, extra: { fileCount: files.length, totalBytes, durationMs: Date.now() - t0 } }); // TEMP DIAGNOSTIC (share-bug)
+  } catch (err) {
+    reportShareAttempt({ surface: 'share-files', outcome: 'native-thrown', steps, error: { name: err?.name, message: err?.message }, extra: { fileCount: files.length, totalBytes, durationMs: Date.now() - t0 } }); // TEMP DIAGNOSTIC (share-bug)
+    throw err; // unchanged behaviour — caller (shareFiles) still owns the try/catch + shareHandled logic
   }
-  await Share.share({
-    ...(title ? { title, dialogTitle: title } : {}),
-    ...(text ? { text } : {}),
-    files: uris,
-  });
 }
 
 // Capability detection (never UA sniffing). Decides which export affordance to show:

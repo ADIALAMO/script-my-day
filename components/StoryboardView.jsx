@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Check, X, Clapperboard, Film, Loader2, ChevronDown, Share2, Download, Lock, Crown, RefreshCw } from 'lucide-react';
 import { shareReadyFile, makeShareFile, shareBlobs, downloadBlob, downloadBlobs, exportCapabilities, urlToBlob } from '../utils/export-image.js';
+import { reportShareAttempt } from '../utils/share-diagnostics.js'; // TEMP DIAGNOSTIC (share-bug)
 
 export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade, onRegenerate, regensLeft = 0 }) {
   const isHebrew = lang === 'he';
@@ -78,7 +79,10 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
   // Never navigates the page (which previously refreshed the SPA and wiped state on iOS);
   // falls back to opening the image in a new tab where neither path is supported.
   const exportFrame = async (url, panelNum, mode) => {
-    if (!url) return;
+    if (!url) {
+      reportShareAttempt({ surface: 'comic-panel', outcome: 'guard-blocked', extra: { panelNum, mode } }); // TEMP DIAGNOSTIC (share-bug)
+      return;
+    }
     const filename = panelFilename(panelNum);
     try {
       if (mode === 'download') {
@@ -93,8 +97,11 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
         const blob = await fetchImageBlob(url);
         file = await makeShareFile(blob, filename, { lang });
       }
-      if (!await shareReadyFile(file, `Panel ${panelNum}`) && isDesktop) window.open(url, '_blank');
-    } catch {
+      const shared = await shareReadyFile(file, `Panel ${panelNum}`);
+      reportShareAttempt({ surface: 'comic-panel', outcome: `shared-${shared}`, extra: { panelNum, fileSize: file?.size, isDesktop } }); // TEMP DIAGNOSTIC (share-bug)
+      if (!shared && isDesktop) window.open(url, '_blank');
+    } catch (err) {
+      reportShareAttempt({ surface: 'comic-panel', outcome: 'outer-thrown', error: { name: err?.name, message: err?.message }, extra: { panelNum } }); // TEMP DIAGNOSTIC (share-bug)
       if (isDesktop) window.open(url, '_blank');
     }
   };
@@ -112,7 +119,10 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
   // Export every owned, fully-rendered panel at once. Desktop ⇒ download each file;
   // mobile ⇒ a single multi-file share sheet. mode defaults to the device affordance.
   const exportAllFrames = async (mode = isDesktop ? 'download' : 'share') => {
-    if (sharingAll || shareableIdxs.length === 0) return;
+    if (sharingAll || shareableIdxs.length === 0) {
+      reportShareAttempt({ surface: 'comic-all', outcome: 'guard-blocked', extra: { sharingAll, shareableCount: shareableIdxs.length, mode } }); // TEMP DIAGNOSTIC (share-bug)
+      return;
+    }
     setSharingAll(true);
     try {
       const items = [];
@@ -123,9 +133,11 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
       const ok = mode === 'download'
         ? await downloadBlobs(items, { lang })
         : await shareBlobs(items, isHebrew ? 'הסטוריבורד שלי' : 'My Comic Storyboard', { lang });
+      reportShareAttempt({ surface: 'comic-all', outcome: `shared-${ok}`, extra: { itemCount: items.length, isDesktop } }); // TEMP DIAGNOSTIC (share-bug)
       // Fallback when neither path is supported: open the first available panel.
       if (!ok && isDesktop && items.length) window.open(panelImages[shareableIdxs[0]].url, '_blank');
-    } catch {
+    } catch (err) {
+      reportShareAttempt({ surface: 'comic-all', outcome: 'outer-thrown', error: { name: err?.name, message: err?.message } }); // TEMP DIAGNOSTIC (share-bug)
       /* user dismissed the sheet or a fetch failed — no-op, state restored below */
     } finally {
       setSharingAll(false);

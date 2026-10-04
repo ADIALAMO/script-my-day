@@ -5,6 +5,7 @@ import { getMsg, CODES } from '../lib/messages.js';
 import { getGenreLabel } from '../constants/genres.js';
 import { useRotatingMessages } from './useRotatingMessages.js';
 import { shareReadyFile, makeShareFile, downloadBlob, exportCapabilities, urlToBlob } from '../utils/export-image.js';
+import { reportShareAttempt } from '../utils/share-diagnostics.js'; // TEMP DIAGNOSTIC (share-bug)
 
 const POSTER_MESSAGES_HE = [
   'מנתח את האסתטיקה של התסריט...',
@@ -279,7 +280,12 @@ export function usePosterGeneration({
 
   // mode: 'auto' (desktop ⇒ download, mobile ⇒ share) | 'download' | 'share'.
   const handleCapturePoster = useCallback(async (mode = 'auto') => {
-    if (!posterRef.current || !posterUrl) return;
+    if (!posterRef.current || !posterUrl) {
+      // TEMP DIAGNOSTIC (share-bug) — catches the hypothesis that this guard itself
+      // silently blocks the share on some devices before any share code even runs.
+      reportShareAttempt({ surface: 'poster', outcome: 'guard-blocked', extra: { hasPosterRef: !!posterRef.current, hasPosterUrl: !!posterUrl, mode } });
+      return;
+    }
 
     const { isDesktop } = exportCapabilities();
     // On mobile, <a download> either navigates the iOS tab or saves to the Downloads
@@ -347,7 +353,11 @@ export function usePosterGeneration({
       }
       // All paths failed — only open a new tab on desktop (iOS blocks window.open
       // in async handlers; a popup-blocked no-op looks like a frozen button to the user).
-      if (!file) { if (isDesktop && posterUrl) window.open(posterUrl, '_blank'); return; }
+      if (!file) {
+        reportShareAttempt({ surface: 'poster', outcome: 'file-never-resolved', extra: { isDesktop } }); // TEMP DIAGNOSTIC (share-bug)
+        if (isDesktop && posterUrl) window.open(posterUrl, '_blank');
+        return;
+      }
 
       // CRITICAL (iOS share behaviour): WhatsApp / iMessage downgrade a file share to a
       // *link card* — dropping the image entirely — the instant the share text contains a
@@ -357,6 +367,7 @@ export function usePosterGeneration({
       // the clickable, coded referral link has its own dedicated path in ReferralModal.
       const caption = isHebrew ? 'נוצר ב-LIFESCRIPT 🎬' : 'Made with LIFESCRIPT 🎬';
       const shared = await shareReadyFile(file, posterTitle || 'My Poster', { text: caption });
+      reportShareAttempt({ surface: 'poster', outcome: `shared-${shared}`, extra: { fileSize: file?.size, isDesktop } }); // TEMP DIAGNOSTIC (share-bug)
       if (shared === null && isDesktop) {
         // Activation window expired (desktop) — download the pre-watermarked file.
         const fileUrl = URL.createObjectURL(file);
@@ -382,6 +393,7 @@ export function usePosterGeneration({
     } catch (err) {
       captureSucceeded = false;
       console.error('Poster capture error:', err);
+      reportShareAttempt({ surface: 'poster', outcome: 'outer-thrown', error: { name: err?.name, message: err?.message } }); // TEMP DIAGNOSTIC (share-bug)
       if (isDesktop && posterUrl) window.open(posterUrl, '_blank');
     } finally {
       // Referral nudge: only for signed-in users (referralLinkRef only ever resolves to a

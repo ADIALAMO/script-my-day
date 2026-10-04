@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Share2, Download, Loader2, AlertCircle, Video, VolumeX, Volume2 } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { shareReadyFile, makeShareFile, exportCapabilities } from '../utils/export-image.js';
+import { reportShareAttempt } from '../utils/share-diagnostics.js'; // TEMP DIAGNOSTIC (share-bug)
 
 // ── Canvas dimensions ────────────────────────────────────────────────────────
 const CANVAS_W      = 720;
@@ -632,7 +633,10 @@ export default function MovieReelModal({
   }, [videoUrl, phase, prewarmReel]);
 
   const handleShare = useCallback(async () => {
-    if (!videoUrl) return;
+    if (!videoUrl) {
+      reportShareAttempt({ surface: 'reel', outcome: 'guard-blocked-no-videoUrl' }); // TEMP DIAGNOSTIC (share-bug)
+      return;
+    }
     const doDownload = (src, ext) => {
       const a = document.createElement('a');
       a.href = src; a.download = `lifescript-reel-${genre || 'film'}.${ext}`;
@@ -655,10 +659,15 @@ export default function MovieReelModal({
       }
 
       // Mobile: native share sheet (navigator.share).
-      if (!file) return; // prewarm failed — no safe fallback on iOS without navigating the SPA
-      await shareReadyFile(file, 'LifeScript Reel');
+      if (!file) {
+        reportShareAttempt({ surface: 'reel', outcome: 'file-never-resolved', extra: { hasVideoUrl: !!videoUrl, hasVideoBlob: !!videoBlobRef.current } }); // TEMP DIAGNOSTIC (share-bug)
+        return; // prewarm failed — no safe fallback on iOS without navigating the SPA
+      }
+      const shared = await shareReadyFile(file, 'LifeScript Reel');
+      reportShareAttempt({ surface: 'reel', outcome: `shared-${shared}`, extra: { fileSize: file?.size } }); // TEMP DIAGNOSTIC (share-bug)
       // null = activation expired, false = canShare returned false — both silent on mobile.
-    } catch {
+    } catch (err) {
+      reportShareAttempt({ surface: 'reel', outcome: 'outer-thrown', error: { name: err?.name, message: err?.message } }); // TEMP DIAGNOSTIC (share-bug)
       // Catch-all: on desktop, fall back to the raw blob URL download.
       if (isDesktop) doDownload(videoUrl, 'webm');
     }
