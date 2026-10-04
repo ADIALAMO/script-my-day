@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, VolumeX, Share2, Download } from 'lucide-react'; // וודא שאייקונים אלה מיובאים
 import * as htmlToImage from 'html-to-image'; // וודא שזה מיובא אם handleCapturePoster מועבר
 import { exportCapabilities } from '../utils/export-image.js';
+import { isCapacitorNative } from '../utils/platform.js';
 
 function PosterRenderer({
   posterUrl,
@@ -55,10 +56,21 @@ function PosterRenderer({
               // fanfare on history loads — just reveal the image silently.
               // Start share prewarm immediately on load. The old implementation used
               // html-to-image (heavy canvas render — deferred to avoid jank). The new
-              // implementation is a plain fetch + watermark: non-blocking, ~200-500 ms,
-              // safe to call straight from onLoad. Starting early maximises the head-start
-              // before the user can tap any share button or chip.
-              prewarmPosterShare?.();
+              // implementation is a plain fetch + watermark: non-blocking, ~200-500 ms
+              // on a fast device — safe to call straight from onLoad there, maximising
+              // the head-start before the user can tap any share button or chip.
+              //
+              // NOT on native (TEMP, pending confirmation — share-bug investigation):
+              // this unconditionally runs a full-resolution canvas composite
+              // (compositeWatermark) for EVERY poster shown, whether or not the user
+              // ever shares — on iOS Safari that's the point (navigator.share needs the
+              // file ready inside its transient-activation window, which this onLoad
+              // call is racing to beat). Native Android doesn't use navigator.share at
+              // all (see utils/export-image.js's Capacitor branch) and has no equivalent
+              // activation-window constraint, so there's no upside to paying this cost
+              // for every poster there — onPointerDown below already prewarms right
+              // before an actual share tap, which is the only case that needs it.
+              if (!isCapacitorNative()) prewarmPosterShare?.();
 
               if (posterUrl.startsWith('http')) {
                 setPosterLoading(false);
@@ -216,8 +228,17 @@ function PosterRenderer({
               }}
             className="relative flex-1 flex items-center justify-center gap-2.5 h-12 bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black rounded-xl font-black transition-all duration-300 overflow-hidden shadow-[0_8px_28px_rgba(212,163,115,0.3)]"
           >
-            {/* אפקט הברק (Shiny Sweep) */}
-            <motion.div animate={{ left: ['-100%', '200%'] }} transition={{ repeat: Infinity, duration: 3, ease: "linear" }} className="absolute top-0 bottom-0 w-12 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[35deg]" />
+            {/* אפקט הברק (Shiny Sweep) — animates `x` (transform: translateX), NOT `left`.
+                `left` forces a layout recalculation every frame (not GPU-composited);
+                `x` on a motion.div is a pure transform, composited on the GPU. The
+                element is now full-width so a -100%→100% translateX (relative to its
+                OWN width, same as `left`'s relative-to-container used to be) sweeps
+                it exactly off-screen-left to off-screen-right, same visual result,
+                independent of the button's actual width (varies with HE/EN label
+                length) — no magic-number pixel offsets needed. This ran continuously,
+                forever, on the whole poster-result screen — a real, if modest,
+                perf cost on weak devices even when the user never shares. */}
+            <motion.div animate={{ x: ['-100%', '100%'] }} transition={{ repeat: Infinity, duration: 3, ease: "linear" }} className="absolute top-0 bottom-0 left-0 w-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[35deg]" />
             {isDesktop ? <Download size={16} strokeWidth={2.5} /> : <Share2 size={16} strokeWidth={2.5} />}
             <span className="text-[11px] tracking-[0.2em] uppercase">
               {isDesktop

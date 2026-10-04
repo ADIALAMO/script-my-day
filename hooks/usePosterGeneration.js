@@ -270,10 +270,34 @@ export function usePosterGeneration({
     const src = posterUrl.startsWith('http')
       ? `/api/proxy-image?url=${encodeURIComponent(posterUrl)}`
       : posterUrl;
+    // TEMP DIAGNOSTIC (share-bug) — isolate network-fetch time from pure
+    // compositeWatermark/canvas time, to settle whether the auto-prewarm
+    // triggered from <img onLoad> in PosterRenderer.jsx is itself a
+    // meaningful main-thread cost on a weak device (unknown so far — the
+    // share-files report only covers base64/writeFile/share, not this).
+    const tPrewarmStart = Date.now();
+    let tFetched = null;
     prewarmRef.current = urlToBlob(src)
-      .then(blob => makeShareFile(blob, posterFilename(), { lang }))
-      .then(file => { shareFileRef.current = { url, file }; return file; })
-      .catch(() => null)
+      .then(blob => { tFetched = Date.now(); return makeShareFile(blob, posterFilename(), { lang }); })
+      .then(file => {
+        shareFileRef.current = { url, file };
+        const tDone = Date.now();
+        reportShareAttempt({
+          surface: 'poster-prewarm',
+          outcome: 'prewarm-complete',
+          extra: { fetchMs: tFetched - tPrewarmStart, compositeMs: tDone - tFetched, totalMs: tDone - tPrewarmStart, fileSize: file?.size },
+        }); // TEMP DIAGNOSTIC (share-bug)
+        return file;
+      })
+      .catch((err) => {
+        reportShareAttempt({
+          surface: 'poster-prewarm',
+          outcome: 'prewarm-failed',
+          error: { name: err?.name, message: err?.message },
+          extra: { elapsedMs: Date.now() - tPrewarmStart, reachedFetch: tFetched !== null },
+        }); // TEMP DIAGNOSTIC (share-bug)
+        return null;
+      })
       .finally(() => { prewarmRef.current = null; });
     return prewarmRef.current;
   }, [posterUrl, lang, posterFilename]);
