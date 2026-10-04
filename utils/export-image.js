@@ -175,20 +175,24 @@ function loadImage(src) {
 // (image/png or image/jpeg, see `format`), or the ORIGINAL blob unchanged on
 // any failure / non-image input (never throws).
 //
-// format: 'png' (default, lossless — unchanged behavior for every existing
-// caller) or 'jpeg'. Real on-device diagnostics (Galaxy A13, a weak/budget
-// Android device) measured this function costing ~8.7s end to end, with
+// format: 'png' (default, lossless — unchanged for every existing caller) or
+// 'jpeg'. Real on-device diagnostics (Galaxy A13, a weak/budget Android
+// device) measured this function costing ~8.7s end to end, with
 // canvas.toBlob(..., 'image/png', ...) ALONE accounting for ~8.35s of that —
 // drawImage/gradient-fill/fillText (even with shadowBlur, initially
-// suspected) combined cost under 15ms. PNG's lossless deflate encoder is
-// known to be disproportionately slow on weak/software-rendered Canvas2D
-// implementations; JPEG's encoder is dramatically cheaper. The source images
-// here (AI-generated posters/panels) are fully opaque — drawn edge-to-edge
-// before anything else — so there's no alpha channel being lost by dropping
-// PNG. Callers choose 'jpeg' only where this was actually measured to matter
-// (see makeShareFile) — desktop's downloadBlob() is untouched (no evidence
-// of a problem there, and PNG stays lossless for anyone saving a file).
-export async function compositeWatermark(blob, { lang = 'en', format = 'png' } = {}) {
+// suspected) combined cost under 15ms. The obvious next guess — JPEG's
+// encoder being cheaper than PNG's — was tried and measured WORSE (~13.2s)
+// on this exact WebView/Skia build, then reverted. Left here as a documented
+// dead end, not a recommendation: don't re-enter that loop without new data.
+//
+// scale: 1 (default, unchanged) or a factor < 1. Format-agnostic, unlike the
+// JPEG experiment above: encode time scales with pixel count regardless of
+// codec, and shared images get re-compressed by every social app anyway.
+// Multiplies both dimensions BEFORE anything else is computed — every other
+// value in this function (pad, brandSize, stripH, the canvas itself) is
+// already derived from w/h, so scaling them here is the only change needed;
+// drawImage resamples the source image into the smaller canvas for free.
+export async function compositeWatermark(blob, { lang = 'en', format = 'png', scale = 1 } = {}) {
   if (typeof document === 'undefined' || !blob || !blob.type?.startsWith('image/')) {
     return blob; // SSR, missing blob, or a video (reel) → pass through untouched.
   }
@@ -206,9 +210,14 @@ export async function compositeWatermark(blob, { lang = 'en', format = 'png' } =
   try {
     const img = await loadImage(url);
     mark('loadImage');
-    const w = img.naturalWidth || img.width;
-    const h = img.naturalHeight || img.height;
-    if (!w || !h) return blob;
+    const naturalW = img.naturalWidth || img.width;
+    const naturalH = img.naturalHeight || img.height;
+    if (!naturalW || !naturalH) return blob;
+    // Scaled once, here — every size below (pad, brandSize, stripH, the
+    // canvas, drawImage's destination) already derives from w/h, so nothing
+    // else in this function needs to know `scale` exists.
+    const w = Math.round(naturalW * scale);
+    const h = Math.round(naturalH * scale);
 
     const canvas = document.createElement('canvas');
     canvas.width = w;
@@ -260,7 +269,7 @@ export async function compositeWatermark(blob, { lang = 'en', format = 'png' } =
 
     const out = await new Promise((resolve) => canvas.toBlob(resolve, mime, quality));
     mark('toBlob');
-    reportShareAttempt({ surface: 'composite-watermark', outcome: 'composite-complete', steps, extra: { w, h, format, totalMs: Date.now() - t0 } }); // TEMP DIAGNOSTIC (share-bug)
+    reportShareAttempt({ surface: 'composite-watermark', outcome: 'composite-complete', steps, extra: { w, h, format, scale, totalMs: Date.now() - t0 } }); // TEMP DIAGNOSTIC (share-bug)
     return out || blob;
   } catch (err) {
     reportShareAttempt({ surface: 'composite-watermark', outcome: 'composite-thrown', steps, error: { name: err?.name, message: err?.message }, extra: { totalMs: Date.now() - t0 } }); // TEMP DIAGNOSTIC (share-bug)
@@ -405,15 +414,19 @@ function withExtension(filename, format) {
 // heavy prep (htmlToImage, network fetch, canvas watermark) between the tap and share()
 // otherwise overruns activation and throws NotAllowedError — even on the first tap.
 //
-// REVERTED (share-bug investigation): native briefly used JPEG instead of PNG here,
-// on the reasonable-sounding assumption that JPEG's encoder is cheaper than PNG's.
-// Real on-device measurement proved the opposite on this Android WebView/Skia build:
-// JPEG toBlob measured ~13.2s, WORSE than PNG's ~8.35s baseline. Back to PNG
-// everywhere (format/withExtension stay in compositeWatermark — harmless, and
-// useful scaffolding for whatever's tried next) until something is actually proven
-// better by real data, not by which codec sounds like it should be faster.
+// format stays PNG everywhere (see compositeWatermark's doc comment — JPEG was
+// tried here and measured WORSE on-device, reverted). Next hypothesis being
+// tested, format-agnostic this time: downscaling before encode. Native gets
+// scale: 0.75 (0.75² ≈ 56% of the original pixels) — applies to posters AND
+// comic panels (shareBlobs routes through this same function), since both
+// hit the identical toBlob bottleneck on the identical device class, with no
+// evidence either needs different treatment. Web/iOS Safari/desktop stay at
+// scale: 1 (full res) — no evidence of a problem there. Not yet confirmed to
+// help — see compositeWatermark's diagnostic report (now includes `scale`)
+// for the next real measurement before treating this as settled.
 export async function makeShareFile(blob, filename, { lang = 'en' } = {}) {
-  const stamped = await compositeWatermark(blob, { lang });
+  const scale = isCapacitorNative() ? 0.75 : 1;
+  const stamped = await compositeWatermark(blob, { lang, scale });
   return new File([stamped], filename, { type: stamped.type || blob.type || 'image/png' });
 }
 
