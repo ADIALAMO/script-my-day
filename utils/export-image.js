@@ -177,9 +177,21 @@ export async function compositeWatermark(blob, { lang = 'en' } = {}) {
   if (typeof document === 'undefined' || !blob || !blob.type?.startsWith('image/')) {
     return blob; // SSR, missing blob, or a video (reel) → pass through untouched.
   }
+  // TEMP DIAGNOSTIC (share-bug) — fine-grained step timing. Real data from a
+  // weak device (Galaxy A13) showed this whole function costing ~3.6s, with
+  // drawImage/gradient/fillText individually expected to be cheap — testing
+  // the specific hypothesis that ctx.shadowBlur (a well-known expensive
+  // Canvas2D op) on the two fillText calls dominates that cost, before
+  // touching any actual rendering behavior.
+  const t0 = Date.now();
+  let tPrev = t0;
+  const steps = [];
+  const mark = (step) => { const now = Date.now(); steps.push({ step, ms: now - tPrev }); tPrev = now; };
+
   const url = URL.createObjectURL(blob);
   try {
     const img = await loadImage(url);
+    mark('loadImage');
     const w = img.naturalWidth || img.width;
     const h = img.naturalHeight || img.height;
     if (!w || !h) return blob;
@@ -190,6 +202,7 @@ export async function compositeWatermark(blob, { lang = 'en' } = {}) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return blob;
     ctx.drawImage(img, 0, 0, w, h);
+    mark('drawImage');
 
     const isHe = lang === 'he';
     const copy = WATERMARK_COPY[isHe ? 'he' : 'en'];
@@ -206,6 +219,7 @@ export async function compositeWatermark(blob, { lang = 'en' } = {}) {
     grad.addColorStop(1, 'rgba(0,0,0,0.70)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, h - stripH, w, stripH);
+    mark('scrimGradient');
 
     // RTL Hebrew anchors to the right edge; LTR English to the left.
     ctx.textBaseline = 'alphabetic';
@@ -220,6 +234,7 @@ export async function compositeWatermark(blob, { lang = 'en' } = {}) {
     ctx.fillStyle = 'rgba(255,255,255,0.96)';
     ctx.shadowBlur = Math.round(brandSize * 0.25);
     ctx.fillText(copy.brand, x, h - pad - subSize * 1.25);
+    mark('brandTextWithShadow');
 
     // CTA + url (bottom line). Arrow points "forward" per reading direction.
     const arrow = isHe ? '←' : '→';
@@ -227,10 +242,14 @@ export async function compositeWatermark(blob, { lang = 'en' } = {}) {
     ctx.fillStyle = 'rgba(255,255,255,0.82)';
     ctx.shadowBlur = Math.round(subSize * 0.2);
     ctx.fillText(`${copy.cta} ${arrow}  ·  ${copy.url}`, x, h - pad);
+    mark('ctaTextWithShadow');
 
     const out = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png', 0.95));
+    mark('toBlob');
+    reportShareAttempt({ surface: 'composite-watermark', outcome: 'composite-complete', steps, extra: { w, h, totalMs: Date.now() - t0 } }); // TEMP DIAGNOSTIC (share-bug)
     return out || blob;
-  } catch {
+  } catch (err) {
+    reportShareAttempt({ surface: 'composite-watermark', outcome: 'composite-thrown', steps, error: { name: err?.name, message: err?.message }, extra: { totalMs: Date.now() - t0 } }); // TEMP DIAGNOSTIC (share-bug)
     return blob; // decode error / unexpected failure → original, unwatermarked, still shareable.
   } finally {
     URL.revokeObjectURL(url);
