@@ -33,7 +33,6 @@
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { isCapacitorNative } from './platform.js';
-import { reportShareAttempt } from './share-diagnostics.js'; // TEMP DIAGNOSTIC (share-bug)
 
 // File → base64 (no `data:...;base64,` prefix) for Filesystem.writeFile, which
 // expects raw base64 when no `encoding` is given (binary data). FileReader is
@@ -59,40 +58,26 @@ function fileToBase64(file) {
 // caller (shareFiles) already has the try/catch + sharePending latch that
 // every other share path shares, so errors are handled in one place.
 async function shareFilesNative(files, title, text) {
-  // TEMP DIAGNOSTIC (share-bug) — step trace + fire-and-forget report, both ways.
-  const t0 = Date.now();
-  let tPrev = t0;
-  const steps = [];
-  const mark = (step) => { const now = Date.now(); steps.push({ step, ms: now - tPrev }); tPrev = now; };
-  const totalBytes = files.reduce((n, f) => n + (f?.size || 0), 0);
-
-  try {
-    const uris = [];
-    for (const file of files) {
-      const base64 = await fileToBase64(file);
-      mark('base64');
-      if (!base64) throw new Error('Could not read file for native share');
-      const path = `share/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name || 'lifescript.png'}`;
-      const { uri } = await Filesystem.writeFile({
-        path,
-        data: base64,
-        directory: Directory.Cache,
-        recursive: true,
-      });
-      mark('writeFile');
-      uris.push(uri);
-    }
-    await Share.share({
-      ...(title ? { title, dialogTitle: title } : {}),
-      ...(text ? { text } : {}),
-      files: uris,
+  const uris = [];
+  for (const file of files) {
+    const base64 = await fileToBase64(file);
+    if (!base64) throw new Error('Could not read file for native share');
+    const path = `share/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name || 'lifescript.png'}`;
+    const { uri } = await Filesystem.writeFile({
+      path,
+      data: base64,
+      directory: Directory.Cache,
+      recursive: true,
     });
-    mark('share');
-    reportShareAttempt({ surface: 'share-files', outcome: 'native-success', steps, extra: { fileCount: files.length, totalBytes, durationMs: Date.now() - t0 } }); // TEMP DIAGNOSTIC (share-bug)
-  } catch (err) {
-    reportShareAttempt({ surface: 'share-files', outcome: 'native-thrown', steps, error: { name: err?.name, message: err?.message }, extra: { fileCount: files.length, totalBytes, durationMs: Date.now() - t0 } }); // TEMP DIAGNOSTIC (share-bug)
-    throw err; // unchanged behaviour — caller (shareFiles) still owns the try/catch + shareHandled logic
+    uris.push(uri);
   }
+  // Errors here propagate unchanged — caller (shareFiles) already owns the
+  // try/catch + shareHandled logic shared by every share path.
+  await Share.share({
+    ...(title ? { title, dialogTitle: title } : {}),
+    ...(text ? { text } : {}),
+    files: uris,
+  });
 }
 
 // Capability detection (never UA sniffing). Decides which export affordance to show:
@@ -198,18 +183,10 @@ export async function compositeWatermark(blob, { lang = 'en', format = 'png', sc
   }
   const mime    = format === 'jpeg' ? 'image/jpeg' : 'image/png';
   const quality = format === 'jpeg' ? 0.92 : 0.95; // quality is a no-op for PNG (lossless) — kept for parity with the prior literal.
-  // TEMP DIAGNOSTIC (share-bug) — fine-grained step timing, kept in place to
-  // confirm the toBlob fix actually worked once re-measured on the same
-  // device, directly comparable against the 8352ms PNG baseline above.
-  const t0 = Date.now();
-  let tPrev = t0;
-  const steps = [];
-  const mark = (step) => { const now = Date.now(); steps.push({ step, ms: now - tPrev }); tPrev = now; };
 
   const url = URL.createObjectURL(blob);
   try {
     const img = await loadImage(url);
-    mark('loadImage');
     const naturalW = img.naturalWidth || img.width;
     const naturalH = img.naturalHeight || img.height;
     if (!naturalW || !naturalH) return blob;
@@ -225,7 +202,6 @@ export async function compositeWatermark(blob, { lang = 'en', format = 'png', sc
     const ctx = canvas.getContext('2d');
     if (!ctx) return blob;
     ctx.drawImage(img, 0, 0, w, h);
-    mark('drawImage');
 
     const isHe = lang === 'he';
     const copy = WATERMARK_COPY[isHe ? 'he' : 'en'];
@@ -242,7 +218,6 @@ export async function compositeWatermark(blob, { lang = 'en', format = 'png', sc
     grad.addColorStop(1, 'rgba(0,0,0,0.70)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, h - stripH, w, stripH);
-    mark('scrimGradient');
 
     // RTL Hebrew anchors to the right edge; LTR English to the left.
     ctx.textBaseline = 'alphabetic';
@@ -257,7 +232,6 @@ export async function compositeWatermark(blob, { lang = 'en', format = 'png', sc
     ctx.fillStyle = 'rgba(255,255,255,0.96)';
     ctx.shadowBlur = Math.round(brandSize * 0.25);
     ctx.fillText(copy.brand, x, h - pad - subSize * 1.25);
-    mark('brandTextWithShadow');
 
     // CTA + url (bottom line). Arrow points "forward" per reading direction.
     const arrow = isHe ? '←' : '→';
@@ -265,14 +239,10 @@ export async function compositeWatermark(blob, { lang = 'en', format = 'png', sc
     ctx.fillStyle = 'rgba(255,255,255,0.82)';
     ctx.shadowBlur = Math.round(subSize * 0.2);
     ctx.fillText(`${copy.cta} ${arrow}  ·  ${copy.url}`, x, h - pad);
-    mark('ctaTextWithShadow');
 
     const out = await new Promise((resolve) => canvas.toBlob(resolve, mime, quality));
-    mark('toBlob');
-    reportShareAttempt({ surface: 'composite-watermark', outcome: 'composite-complete', steps, extra: { w, h, format, scale, totalMs: Date.now() - t0 } }); // TEMP DIAGNOSTIC (share-bug)
     return out || blob;
-  } catch (err) {
-    reportShareAttempt({ surface: 'composite-watermark', outcome: 'composite-thrown', steps, error: { name: err?.name, message: err?.message }, extra: { totalMs: Date.now() - t0 } }); // TEMP DIAGNOSTIC (share-bug)
+  } catch {
     return blob; // decode error / unexpected failure → original, unwatermarked, still shareable.
   } finally {
     URL.revokeObjectURL(url);
@@ -399,15 +369,6 @@ export async function shareData({ title, text, url } = {}) {
   }
 }
 
-// Swaps a filename's extension to match an actual output format — used when
-// compositeWatermark's format differs from what the caller's filename assumed
-// (every caller still builds plain "*.png" names; only the format actually
-// written to disk/bridge should ever diverge from that).
-function withExtension(filename, format) {
-  const ext = format === 'jpeg' ? 'jpg' : 'png';
-  return filename.replace(/\.(png|jpe?g)$/i, '') + '.' + ext;
-}
-
 // Build the final, watermarked File for a blob WITHOUT sharing it. Lets callers pre-render
 // the share payload in the background (see usePosterGeneration's prewarm) so the eventual
 // navigator.share() fires INSIDE the iOS transient-activation window. On slow devices the
@@ -415,15 +376,17 @@ function withExtension(filename, format) {
 // otherwise overruns activation and throws NotAllowedError — even on the first tap.
 //
 // format stays PNG everywhere (see compositeWatermark's doc comment — JPEG was
-// tried here and measured WORSE on-device, reverted). Next hypothesis being
-// tested, format-agnostic this time: downscaling before encode. Native gets
-// scale: 0.75 (0.75² ≈ 56% of the original pixels) — applies to posters AND
-// comic panels (shareBlobs routes through this same function), since both
-// hit the identical toBlob bottleneck on the identical device class, with no
-// evidence either needs different treatment. Web/iOS Safari/desktop stay at
-// scale: 1 (full res) — no evidence of a problem there. Not yet confirmed to
-// help — see compositeWatermark's diagnostic report (now includes `scale`)
-// for the next real measurement before treating this as settled.
+// tried here and measured WORSE on-device, reverted). Native gets scale: 0.75
+// (0.75² ≈ 56% of the original pixels) — applies to posters AND comic panels
+// (shareBlobs routes through this same function), since both hit the identical
+// toBlob bottleneck on the identical device class. On-device measurement
+// confirmed this helps substantially on newer/mid-range hardware (167ms-1.6s
+// toBlob). On old/weak devices (Galaxy Note9, Android 9) toBlob still varies
+// 2.7s-13.4s at the SAME resolution on the SAME device — a device/OS encoder
+// characteristic that further pixel-count reduction can't reliably fix, hence
+// the "Preparing..." UI indicator on the share buttons instead of chasing
+// more encode optimizations here. Web/iOS Safari/desktop stay at scale: 1
+// (full res) — no evidence of a problem there.
 export async function makeShareFile(blob, filename, { lang = 'en' } = {}) {
   const scale = isCapacitorNative() ? 0.75 : 1;
   const stamped = await compositeWatermark(blob, { lang, scale });

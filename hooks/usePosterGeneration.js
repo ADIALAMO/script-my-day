@@ -5,7 +5,6 @@ import { getMsg, CODES } from '../lib/messages.js';
 import { getGenreLabel } from '../constants/genres.js';
 import { useRotatingMessages } from './useRotatingMessages.js';
 import { shareReadyFile, makeShareFile, downloadBlob, exportCapabilities, urlToBlob } from '../utils/export-image.js';
-import { reportShareAttempt } from '../utils/share-diagnostics.js'; // TEMP DIAGNOSTIC (share-bug)
 
 const POSTER_MESSAGES_HE = [
   'מנתח את האסתטיקה של התסריט...',
@@ -283,46 +282,20 @@ export function usePosterGeneration({
     const src = posterUrl.startsWith('http')
       ? `/api/proxy-image?url=${encodeURIComponent(posterUrl)}`
       : posterUrl;
-    // TEMP DIAGNOSTIC (share-bug) — isolate network-fetch time from pure
-    // compositeWatermark/canvas time, to settle whether the auto-prewarm
-    // triggered from <img onLoad> in PosterRenderer.jsx is itself a
-    // meaningful main-thread cost on a weak device (unknown so far — the
-    // share-files report only covers base64/writeFile/share, not this).
-    const tPrewarmStart = Date.now();
-    let tFetched = null;
     prewarmRef.current = urlToBlob(src)
-      .then(blob => { tFetched = Date.now(); return makeShareFile(blob, posterFilename(), { lang }); })
+      .then(blob => makeShareFile(blob, posterFilename(), { lang }))
       .then(file => {
         shareFileRef.current = { url, file };
-        const tDone = Date.now();
-        reportShareAttempt({
-          surface: 'poster-prewarm',
-          outcome: 'prewarm-complete',
-          extra: { fetchMs: tFetched - tPrewarmStart, compositeMs: tDone - tFetched, totalMs: tDone - tPrewarmStart, fileSize: file?.size },
-        }); // TEMP DIAGNOSTIC (share-bug)
         return file;
       })
-      .catch((err) => {
-        reportShareAttempt({
-          surface: 'poster-prewarm',
-          outcome: 'prewarm-failed',
-          error: { name: err?.name, message: err?.message },
-          extra: { elapsedMs: Date.now() - tPrewarmStart, reachedFetch: tFetched !== null },
-        }); // TEMP DIAGNOSTIC (share-bug)
-        return null;
-      })
+      .catch(() => null)
       .finally(() => { prewarmRef.current = null; });
     return prewarmRef.current;
   }, [posterUrl, lang, posterFilename]);
 
   // mode: 'auto' (desktop ⇒ download, mobile ⇒ share) | 'download' | 'share'.
   const handleCapturePoster = useCallback(async (mode = 'auto') => {
-    if (!posterRef.current || !posterUrl) {
-      // TEMP DIAGNOSTIC (share-bug) — catches the hypothesis that this guard itself
-      // silently blocks the share on some devices before any share code even runs.
-      reportShareAttempt({ surface: 'poster', outcome: 'guard-blocked', extra: { hasPosterRef: !!posterRef.current, hasPosterUrl: !!posterUrl, mode } });
-      return;
-    }
+    if (!posterRef.current || !posterUrl) return;
     if (captureInProgressRef.current) return; // already handling a tap — swallow the re-tap
     captureInProgressRef.current = true;
 
@@ -399,7 +372,6 @@ export function usePosterGeneration({
       // All paths failed — only open a new tab on desktop (iOS blocks window.open
       // in async handlers; a popup-blocked no-op looks like a frozen button to the user).
       if (!file) {
-        reportShareAttempt({ surface: 'poster', outcome: 'file-never-resolved', extra: { isDesktop } }); // TEMP DIAGNOSTIC (share-bug)
         if (isDesktop && posterUrl) window.open(posterUrl, '_blank');
         return;
       }
@@ -412,7 +384,6 @@ export function usePosterGeneration({
       // the clickable, coded referral link has its own dedicated path in ReferralModal.
       const caption = isHebrew ? 'נוצר ב-LIFESCRIPT 🎬' : 'Made with LIFESCRIPT 🎬';
       const shared = await shareReadyFile(file, posterTitle || 'My Poster', { text: caption });
-      reportShareAttempt({ surface: 'poster', outcome: `shared-${shared}`, extra: { fileSize: file?.size, isDesktop } }); // TEMP DIAGNOSTIC (share-bug)
       if (shared === null && isDesktop) {
         // Activation window expired (desktop) — download the pre-watermarked file.
         const fileUrl = URL.createObjectURL(file);
@@ -438,7 +409,6 @@ export function usePosterGeneration({
     } catch (err) {
       captureSucceeded = false;
       console.error('Poster capture error:', err);
-      reportShareAttempt({ surface: 'poster', outcome: 'outer-thrown', error: { name: err?.name, message: err?.message } }); // TEMP DIAGNOSTIC (share-bug)
       if (isDesktop && posterUrl) window.open(posterUrl, '_blank');
     } finally {
       captureInProgressRef.current = false;
