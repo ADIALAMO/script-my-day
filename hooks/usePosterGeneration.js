@@ -201,6 +201,19 @@ export function usePosterGeneration({
   // background render so a tap and the eager pre-warm don't render twice.
   const shareFileRef = useRef({ url: null, file: null });
   const prewarmRef   = useRef(null);
+  // Guards handleCapturePoster against an overlapping second tap — a ref, not the
+  // `disabled` attribute, because `disabled` can only safely apply AFTER a click has
+  // already been received (see isPreparingShare below for why).
+  const captureInProgressRef = useRef(false);
+  // "Preparing..." for the share button — true only while the click handler is
+  // actively waiting on a file that wasn't ready yet, never on the fast/cached path.
+  // Deliberately NOT driven by prewarmPosterShare's own onPointerDown start: on
+  // native, that fires on pointerdown, and toggling `disabled` (or anything that
+  // pulls the element out from under an in-progress pointer gesture) between
+  // pointerdown and pointerup makes the browser swallow the click entirely —
+  // the first tap would never share at all. This only ever flips on from inside
+  // handleCapturePoster itself, i.e. after the click was already received.
+  const [isPreparingShare, setIsPreparingShare] = useState(false);
 
   const posterFilename = useCallback(
     () => `poster-${(posterTitle || 'movie-poster').replace(/\s+/g, '-')}.png`,
@@ -310,6 +323,8 @@ export function usePosterGeneration({
       reportShareAttempt({ surface: 'poster', outcome: 'guard-blocked', extra: { hasPosterRef: !!posterRef.current, hasPosterUrl: !!posterUrl, mode } });
       return;
     }
+    if (captureInProgressRef.current) return; // already handling a tap — swallow the re-tap
+    captureInProgressRef.current = true;
 
     const { isDesktop } = exportCapabilities();
     // On mobile, <a download> either navigates the iOS tab or saves to the Downloads
@@ -353,27 +368,33 @@ export function usePosterGeneration({
       // started), await/run it now — no worse than the pre-fix behaviour, and the result
       // is cached for the next tap.
       let file = (shareFileRef.current.url === posterUrl) ? shareFileRef.current.file : null;
-      if (!file) {
-        const p = prewarmPosterShare();
-        if (p) await p;
-        file = (shareFileRef.current.url === posterUrl) ? shareFileRef.current.file : null;
-      }
-      if (!file) {
-        if (isDesktop) {
-          // Desktop: html-to-image to capture the CSS title/credits overlay.
-          const blob = await renderPosterBlob();
-          if (blob) file = await makeShareFile(blob, posterFilename(), { lang });
-        } else {
-          // Mobile: fast direct fetch — no CSS overlays, but stays inside iOS's
-          // transient-activation window (html-to-image takes 2-3 s and kills it).
-          try {
-            const src = posterUrl.startsWith('http')
-              ? `/api/proxy-image?url=${encodeURIComponent(posterUrl)}`
-              : posterUrl;
-            const blob = await urlToBlob(src);
-            file = await makeShareFile(blob, posterFilename(), { lang });
-          } catch { /* silent */ }
+      const neededToWait = !file; // skip the indicator entirely on the already-cached path
+      if (neededToWait) setIsPreparingShare(true);
+      try {
+        if (!file) {
+          const p = prewarmPosterShare();
+          if (p) await p;
+          file = (shareFileRef.current.url === posterUrl) ? shareFileRef.current.file : null;
         }
+        if (!file) {
+          if (isDesktop) {
+            // Desktop: html-to-image to capture the CSS title/credits overlay.
+            const blob = await renderPosterBlob();
+            if (blob) file = await makeShareFile(blob, posterFilename(), { lang });
+          } else {
+            // Mobile: fast direct fetch — no CSS overlays, but stays inside iOS's
+            // transient-activation window (html-to-image takes 2-3 s and kills it).
+            try {
+              const src = posterUrl.startsWith('http')
+                ? `/api/proxy-image?url=${encodeURIComponent(posterUrl)}`
+                : posterUrl;
+              const blob = await urlToBlob(src);
+              file = await makeShareFile(blob, posterFilename(), { lang });
+            } catch { /* silent */ }
+          }
+        }
+      } finally {
+        if (neededToWait) setIsPreparingShare(false);
       }
       // All paths failed — only open a new tab on desktop (iOS blocks window.open
       // in async handlers; a popup-blocked no-op looks like a frozen button to the user).
@@ -420,6 +441,7 @@ export function usePosterGeneration({
       reportShareAttempt({ surface: 'poster', outcome: 'outer-thrown', error: { name: err?.name, message: err?.message } }); // TEMP DIAGNOSTIC (share-bug)
       if (isDesktop && posterUrl) window.open(posterUrl, '_blank');
     } finally {
+      captureInProgressRef.current = false;
       // Referral nudge: only for signed-in users (referralLinkRef only ever resolves to a
       // string for them — see ensureReferralLink above; anonymous/failed stays null), only
       // once per session, and only as a follow-up to a real share/download.
@@ -463,6 +485,7 @@ export function usePosterGeneration({
     generatePoster,
     handleCapturePoster,
     prewarmPosterShare,
+    isPreparingShare,
     resetPoster,
     cancelPoster,
     showReferralNudge,

@@ -17,6 +17,7 @@ function PosterRenderer({
   credits,
   handleCapturePoster,
   prewarmPosterShare,
+  isPreparingShare,
   onRetryGenerate,
   lang,
   genre,
@@ -209,6 +210,14 @@ function PosterRenderer({
         >
           {/* Primary action + secondary share (existing buttons) */}
           <div className="flex items-center justify-center gap-2.5 w-full">
+          {/* "Preparing..." shows only once the click handler is actually waiting on a
+              not-yet-ready file (handleCapturePoster decides this, not this component) —
+              never tied to onPointerDown's prewarm start. aria-disabled + pointer-events
+              (not the `disabled` attribute) because they only take effect once this
+              render happens AFTER the click was already received; `disabled` applied
+              between pointerdown and pointerup would make the browser swallow the click
+              outright — the first tap would never share at all. */}
+          {(() => { const showPreparing = isCapacitorNative() && isPreparingShare; return (
           <motion.button
             type="button"
             whileHover={{ scale: 1.02 }}
@@ -226,6 +235,8 @@ function PosterRenderer({
                   });
                 }
               }}
+            aria-disabled={showPreparing}
+            style={showPreparing ? { pointerEvents: 'none' } : undefined}
             className="relative flex-1 flex items-center justify-center gap-2.5 h-12 bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black rounded-xl font-black transition-all duration-300 overflow-hidden shadow-[0_8px_28px_rgba(212,163,115,0.3)]"
           >
             {/* אפקט הברק (Shiny Sweep) — animates `x` (transform: translateX), NOT `left`.
@@ -239,13 +250,25 @@ function PosterRenderer({
                 forever, on the whole poster-result screen — a real, if modest,
                 perf cost on weak devices even when the user never shares. */}
             <motion.div animate={{ x: ['-100%', '100%'] }} transition={{ repeat: Infinity, duration: 3, ease: "linear" }} className="absolute top-0 bottom-0 left-0 w-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[35deg]" />
-            {isDesktop ? <Download size={16} strokeWidth={2.5} /> : <Share2 size={16} strokeWidth={2.5} />}
-            <span className="text-[11px] tracking-[0.2em] uppercase">
-              {isDesktop
-                ? (isHebrew ? 'הורד פוסטר' : 'DOWNLOAD POSTER')
-                : (isHebrew ? 'שתף פוסטר' : 'SHARE POSTER')}
-            </span>
+            {showPreparing ? (
+              <>
+                <Loader2 size={16} strokeWidth={2.5} className="animate-spin" />
+                <span className="text-[11px] tracking-[0.2em] uppercase">
+                  {isHebrew ? 'מכין...' : 'PREPARING...'}
+                </span>
+              </>
+            ) : (
+              <>
+                {isDesktop ? <Download size={16} strokeWidth={2.5} /> : <Share2 size={16} strokeWidth={2.5} />}
+                <span className="text-[11px] tracking-[0.2em] uppercase">
+                  {isDesktop
+                    ? (isHebrew ? 'הורד פוסטר' : 'DOWNLOAD POSTER')
+                    : (isHebrew ? 'שתף פוסטר' : 'SHARE POSTER')}
+                </span>
+              </>
+            )}
           </motion.button>
+          ); })()}
 
           {/* שיתוף משני — דסקטופ בלבד (העתקה/שיתוף ישיר לרשתות) */}
           {isDesktop && (

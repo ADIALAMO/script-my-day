@@ -130,7 +130,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     posterUrl, setPosterUrl, posterLoading, setPosterLoading,
     posterError, setPosterError, showPoster, setShowPoster,
     triggerFlash, setTriggerFlash, posterRef,
-    currentPosterMessage, generatePoster, handleCapturePoster, prewarmPosterShare, resetPoster, cancelPoster,
+    currentPosterMessage, generatePoster, handleCapturePoster, prewarmPosterShare, isPreparingShare, resetPoster, cancelPoster,
     showReferralNudge, dismissReferralNudge,
   } = usePosterGeneration({ lang, genre, visualPrompt, posterTitle, isHebrew, finalProducerName, onPosterGenerated, onAuthRequired, characterImageUrl: activeCharacterUrl, onUnlockAudio: unlockFlashAudio });
 
@@ -747,6 +747,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               credits={credits}
               handleCapturePoster={handleCapturePoster}
               prewarmPosterShare={prewarmPosterShare}
+              isPreparingShare={isPreparingShare}
               onRetryGenerate={generatePoster}
               lang={lang}
               genre={genre}

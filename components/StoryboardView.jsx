@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Check, X, Clapperboard, Film, Loader2, ChevronDown, Share2, Download, Lock, Crown, RefreshCw } from 'lucide-react';
 import { shareReadyFile, makeShareFile, shareBlobs, downloadBlob, downloadBlobs, exportCapabilities, urlToBlob } from '../utils/export-image.js';
+import { isCapacitorNative } from '../utils/platform.js';
 import { reportShareAttempt } from '../utils/share-diagnostics.js'; // TEMP DIAGNOSTIC (share-bug)
 
 export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade, onRegenerate, regensLeft = 0 }) {
@@ -10,6 +11,14 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
   const [allCopied, setAllCopied] = useState(false);
   const [expandedPrompts, setExpandedPrompts] = useState({});
   const [sharingAll, setSharingAll] = useState(false);
+  // Guards a single panel's exportFrame against an overlapping second tap — a ref,
+  // not `disabled` (see PosterRenderer.jsx's note on why `disabled` can only safely
+  // apply after a click was already received, not between pointerdown and pointerup).
+  const exportingPanelsRef = useRef(new Set());
+  // "Preparing..." per panel — true only while exportFrame is actively waiting on a
+  // not-yet-ready file, set from inside the click handler itself (never from
+  // prewarmFrame's onPointerDown start).
+  const [preparingPanels, setPreparingPanels] = useState(() => new Set());
 
   // Desktop ⇒ download is the primary action; mobile ⇒ share only. Detected after mount
   // to avoid an SSR/hydration mismatch (defaults to the mobile/share affordance).
@@ -78,12 +87,22 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
   // Export a single panel. Desktop ⇒ clean `<a download>`; mobile ⇒ Web Share API.
   // Never navigates the page (which previously refreshed the SPA and wiped state on iOS);
   // falls back to opening the image in a new tab where neither path is supported.
+  //
+  // Double-tap guard + "preparing" indicator are both click-triggered, never
+  // pointerdown-triggered — prewarmFrame keeps running silently on pointerdown with no
+  // UI change. Toggling `disabled` (or setting state) between pointerdown and pointerup
+  // would make the browser drop the click event for that first tap, so the guard lives
+  // in a ref checked at the top of this handler, and `preparingPanels` only gets a panel
+  // added to it once we're actually inside the click and found no cached file yet.
   const exportFrame = async (url, panelNum, mode) => {
     if (!url) {
       reportShareAttempt({ surface: 'comic-panel', outcome: 'guard-blocked', extra: { panelNum, mode } }); // TEMP DIAGNOSTIC (share-bug)
       return;
     }
+    if (exportingPanelsRef.current.has(panelNum)) return; // already handling a tap on this panel — swallow the re-tap
+    exportingPanelsRef.current.add(panelNum);
     const filename = panelFilename(panelNum);
+    let neededToWait = false;
     try {
       if (mode === 'download') {
         const blob = await fetchImageBlob(url);
@@ -92,6 +111,8 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
       }
       // Prefer the pre-warmed File (instant share); otherwise render now and cache it.
       let file = shareFilesRef.current.get(url);
+      neededToWait = !file;
+      if (neededToWait) setPreparingPanels(prev => new Set(prev).add(panelNum));
       if (!file) { const p = prewarmFrame(url, panelNum); file = p ? await p : null; }
       if (!file) {
         const blob = await fetchImageBlob(url);
@@ -103,6 +124,11 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
     } catch (err) {
       reportShareAttempt({ surface: 'comic-panel', outcome: 'outer-thrown', error: { name: err?.name, message: err?.message }, extra: { panelNum } }); // TEMP DIAGNOSTIC (share-bug)
       if (isDesktop) window.open(url, '_blank');
+    } finally {
+      exportingPanelsRef.current.delete(panelNum);
+      if (neededToWait) {
+        setPreparingPanels(prev => { const next = new Set(prev); next.delete(panelNum); return next; });
+      }
     }
   };
 
@@ -381,10 +407,34 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                           <span>{isHebrew ? 'החלף' : 'Replace'}{regensLeft > 0 ? ` ${regensLeft}` : ''}</span>
                         </button>
                       )}
-                      <button type="button" onPointerDown={() => prewarmFrame(imgUrl, panel.panel)} onClick={() => exportFrame(imgUrl, panel.panel, isDesktop ? 'download' : 'share')} className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200">
-                        {isDesktop ? <Download size={10} /> : <Share2 size={10} />}
-                        <span>{isDesktop ? (isHebrew ? 'הורד' : 'Download') : (isHebrew ? 'שתף' : 'Share')}</span>
-                      </button>
+                      {(() => {
+                        // Only native Android share (not download) waits on compositeWatermark
+                        // long enough to need this; see exportFrame's comment above for why the
+                        // guard/indicator are click-triggered and use aria-disabled, not `disabled`.
+                        const showPreparing = isCapacitorNative() && preparingPanels.has(panel.panel);
+                        return (
+                          <button
+                            type="button"
+                            onPointerDown={() => prewarmFrame(imgUrl, panel.panel)}
+                            onClick={() => exportFrame(imgUrl, panel.panel, isDesktop ? 'download' : 'share')}
+                            aria-disabled={showPreparing}
+                            style={showPreparing ? { pointerEvents: 'none' } : undefined}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200"
+                          >
+                            {showPreparing ? (
+                              <>
+                                <Loader2 size={10} className="animate-spin" />
+                                <span>{isHebrew ? 'מכין...' : 'Preparing...'}</span>
+                              </>
+                            ) : (
+                              <>
+                                {isDesktop ? <Download size={10} /> : <Share2 size={10} />}
+                                <span>{isDesktop ? (isHebrew ? 'הורד' : 'Download') : (isHebrew ? 'שתף' : 'Share')}</span>
+                              </>
+                            )}
+                          </button>
+                        );
+                      })()}
                       {isDesktop && (
                         <button type="button" onClick={() => exportFrame(imgUrl, panel.panel, 'share')} aria-label={isHebrew ? 'שתף' : 'Share'} className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200">
                           <Share2 size={10} />
