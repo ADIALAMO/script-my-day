@@ -346,6 +346,17 @@ export default function MovieReelModal({
   }, [isOpen]);
 
   // ── Cleanup on close ────────────────────────────────────────────────────
+  // This component stays mounted for the whole session (ScriptOutput renders it
+  // unconditionally; isOpen only toggles visibility), so refs are NOT reclaimed
+  // just because the modal closes. Without explicitly clearing them here, a
+  // finished reel's video Blob (10-30 MB) stayed pinned in videoBlobRef/chunksRef/
+  // shareFileRef for the rest of the session the moment the user closed the modal
+  // normally (the X/backdrop) instead of tapping "Generate New Reel" — the only
+  // other place that cleared them. A second reel generated later in the same
+  // session would then build on top of that leaked memory instead of starting
+  // clean. Confirmed in code; not what caused the specific crash this was found
+  // while investigating (that crash was on a session's first reel, before any
+  // blob could have leaked), but a real hazard for any later reel in a session.
   useEffect(() => {
     if (!isOpen) {
       cancelledRef.current = true;
@@ -355,6 +366,10 @@ export default function MovieReelModal({
       setLabel('');
       setErrorMsg('');
       if (videoUrl) { URL.revokeObjectURL(videoUrl); setVideoUrl(null); }
+      shareFileRef.current = { url: null, file: null };
+      prewarmRef.current = null;
+      chunksRef.current = [];
+      videoBlobRef.current = null;
     } else {
       cancelledRef.current = false;
     }
