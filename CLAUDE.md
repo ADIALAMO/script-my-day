@@ -56,14 +56,22 @@ Two independent cascades, each tries providers in order and returns the first su
   (parallel race across flash models, winner aborts the rest) → 2 OpenRouter **Gemma 3**
   → 3 **Cohere** Command R+ → 4 **DeepSeek** → 5 OpenRouter **free** models. ~60s budget.
 - **Image** ([pages/api/generate-poster.js](pages/api/generate-poster.js)): P1 **Cloudflare**
-  Workers AI flux-1-schnell → P2 **OpenRouter** flux.2-klein → P3 **HuggingFace** FLUX.1-schnell
+  Workers AI flux-1-schnell → P2 **HuggingFace** FLUX.1-schnell → P3 **OpenRouter** flux.2-klein
   → P4 **Pollinations** (anonymous, throttled 1 req/15s, last resort). All fail → placeholder
   SVG at HTTP 200 (never a JSON error).
 - **Circuit breaker** ([lib/circuit-breaker.js](lib/circuit-breaker.js)): Redis `circuit:img:*`,
-  status-aware open durations (429→45s, 503→20s, 402/403→until UTC midnight, default 15s),
+  status-aware open durations (429→45s, 503→20s, 402/403/410→until UTC midnight, default 15s),
   **config errors (no HTTP status) never trip the circuit**. Fail-open. `PROVIDER_KEY` +
   `PROVIDERS` must include every runner by `fn.name`.
 - **Dead ends (don't relitigate):** Prodia (paywall) removed; Pollinations stays last.
+  HuggingFace's `hf-inference` route for FLUX.1-schnell returns a permanent HTTP 410 as of
+  ~July 2026 (model pulled, confirmed via HF's own community forum — not a quota issue, won't
+  self-heal) — kept in the cascade behind the 410→midnight circuit rather than removed, since
+  the account may still see a genuine 402/403 quota error on some other model later and that
+  escape hatch should stay intact. Don't propose removing `runHuggingFace` without a confirmed,
+  tested replacement model — the free `hf-inference` tier has shifted mostly to CPU-only
+  inference (per HF's own docs) and SD3-medium is the only text-to-image model currently listed
+  there; untested for latency/availability on a free account as of this writing.
 
 ### 2. FLUX image prompting → skill `flux-prompt`
 All image providers are FLUX-family. **FLUX wants clean positive prose, not keyword
