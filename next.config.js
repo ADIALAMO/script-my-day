@@ -193,6 +193,22 @@ const nextConfig = {
         headers: STATIC_ASSET_HEADERS,
       },
       {
+        // Covers both the background-music originals (/audio/*_bg.m4a, read by
+        // useBackgroundAudio.js) and the reel's trimmed copies (/audio/reel/*),
+        // which were previously served with no override at all — falling back
+        // to max-age=0, must-revalidate (confirmed against production), i.e.
+        // every single fetch re-validated with the server. Filenames aren't
+        // versioned and these files DO get edited in place occasionally (this
+        // investigation alone replaced comedy/horror's reel copies twice), so
+        // this intentionally stays well short of the STATIC_ASSET_HEADERS
+        // (immutable, 1y) treatment used for icons/splash above — an in-place
+        // edit is fully stale for at most an hour, not up to a year.
+        source: '/audio/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=3600, stale-while-revalidate=86400' },
+        ],
+      },
+      {
         // Homepage only — deliberately NOT applied broadly via /:path*.
         // pages/index.js has no getStaticProps/getServerSideProps and its
         // "live" numbers (e.g. the script counter) are fetched client-side
