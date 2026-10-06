@@ -134,10 +134,21 @@ async function runCloudflareAI(prompt, seed, opts = {}) {
   const token = process.env.CLOUDFLARE_API_TOKEN;
   if (!accountId || !token) throw new Error('CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN not configured');
 
-  const body = { prompt, seed, steps: 6 };
-  if (opts.negativePrompt) body.negative_prompt = opts.negativePrompt;
+  // Confirmed empirically against the real API (Oct 2026, three direct curl calls,
+  // free tier — no cost): this model's enforced schema accepts ONLY prompt and
+  // steps. Both `seed` and `negative_prompt` reject with "Additional or
+  // unevaluated properties '/seed' at '/' not allowed" (code 5006) — the
+  // previous version sent `seed` unconditionally, so EVERY call here 400'd,
+  // before and after the old retry-without-negative_prompt fallback (which
+  // never stripped seed either, so the retry 400'd too). `seed` and
+  // opts.negativePrompt are still accepted as parameters for call-site
+  // uniformity with the other cascade providers (HF, OpenRouter Klein,
+  // Pollinations all genuinely use seed) but are intentionally unused here —
+  // Cloudflare has never been able to honor either, so dropping them loses
+  // nothing that was actually working.
+  const body = { prompt, steps: 6 };
 
-  const post = (payload) => fetch(
+  const res = await fetch(
     `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/black-forest-labs/flux-1-schnell`,
     {
       method: 'POST',
@@ -148,18 +159,10 @@ async function runCloudflareAI(prompt, seed, opts = {}) {
       // steps:6 (up from schnell's default 4, CF max is 8) — gives the model more refinement
       // passes for fine details like hands/anatomy. Costs ~85 neurons/img vs ~58 (still ~115/day
       // within the 10K free budget).
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(35000),
     }
   );
-
-  let res = await post(body);
-  // Workers AI model schemas can lag behind provider features. Retry cleanly if
-  // negative_prompt is not accepted by the deployed Flux endpoint.
-  if (!res.ok && opts.negativePrompt && (res.status === 400 || res.status === 422)) {
-    console.warn('⚠️ Cloudflare rejected negative_prompt — retrying without it');
-    res = await post({ prompt, seed, steps: 6 });
-  }
 
   if (!res.ok) {
     const err = await res.text();
