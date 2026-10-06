@@ -273,21 +273,32 @@ const IDENTITY_CASCADE_VALUE = [
 // Cloudflare leads over HuggingFace for SPEED: CF returns in ~2-3s, whereas HF's
 // x-wait-for-model:true blocks on cold-start and can take 15-20s on the first call.
 //   P1 Cloudflare       → FLUX.1-schnell @ steps:6, free ~170 img/day (10K neurons), fast
-//   P2 HuggingFace      → FLUX.1-schnell, free HF token, x-wait-for-model absorbs cold-start
+//   P2 HuggingFace      → FLUX.1-schnell, free HF token, x-wait-for-model absorbs cold-start.
+//                         OMITTED unless HF_PROVIDER_ENABLED='true' — hf-inference's
+//                         FLUX.1-schnell route returns a permanent HTTP 410 as of ~July
+//                         2026 (confirmed via HF's own forum, model pulled, won't self-
+//                         heal). The 410→midnight circuit (circuit-breaker.js) already
+//                         capped this to one wasted hop/day, but skipping it outright
+//                         avoids even that single guaranteed-failing call. Flip the flag
+//                         back on only after swapping runHuggingFace to a model confirmed
+//                         to actually work on the free hf-inference tier.
 //   P3 OpenRouter Klein → FLUX.2-klein (paid). Auto-dropped once DAILY_IMAGE_BUDGET is hit
 //                         (see filter below) so a viral day can never produce a billing surprise.
 //   P4 Pollinations     → anonymous, 1 req/15s throttled — final safety net.
 
+const HF_ENABLED = process.env.HF_PROVIDER_ENABLED === 'true';
+const HF_ENTRY = { fn: runHuggingFace, key: 'huggingface' };
+
 const POSTER_CASCADE = [
   { fn: runCloudflareAI,    key: 'cloudflare' },
-  { fn: runHuggingFace,     key: 'huggingface' },
+  ...(HF_ENABLED ? [HF_ENTRY] : []),
   { fn: runOpenRouterKlein, key: 'openrouter' },
   { fn: runPollinationsFlux, key: 'pollinations' },
 ];
 
 const COMIC_CASCADE = [
   { fn: runCloudflareAI,    key: 'cloudflare' },
-  { fn: runHuggingFace,     key: 'huggingface' },
+  ...(HF_ENABLED ? [HF_ENTRY] : []),
   { fn: runOpenRouterKlein, key: 'openrouter' },
   { fn: runPollinationsFlux, key: 'pollinations' },
 ];

@@ -56,22 +56,30 @@ Two independent cascades, each tries providers in order and returns the first su
   (parallel race across flash models, winner aborts the rest) → 2 OpenRouter **Gemma 3**
   → 3 **Cohere** Command R+ → 4 **DeepSeek** → 5 OpenRouter **free** models. ~60s budget.
 - **Image** ([pages/api/generate-poster.js](pages/api/generate-poster.js)): P1 **Cloudflare**
-  Workers AI flux-1-schnell → P2 **HuggingFace** FLUX.1-schnell → P3 **OpenRouter** flux.2-klein
+  Workers AI flux-1-schnell → P2 **HuggingFace** FLUX.1-schnell (OMITTED from the cascade
+  unless `HF_PROVIDER_ENABLED='true'` — see dead ends below) → P3 **OpenRouter** flux.2-klein
   → P4 **Pollinations** (anonymous, throttled 1 req/15s, last resort). All fail → placeholder
-  SVG at HTTP 200 (never a JSON error).
+  SVG at HTTP 200 (never a JSON error). Cloudflare's request body is `{ prompt, steps: 6 }`
+  ONLY — confirmed empirically against the real API that `seed` and `negative_prompt` are both
+  rejected as unknown properties (code 5006); every call 400'd before this was fixed.
 - **Circuit breaker** ([lib/circuit-breaker.js](lib/circuit-breaker.js)): Redis `circuit:img:*`,
   status-aware open durations (429→45s, 503→20s, 402/403/410→until UTC midnight, default 15s),
-  **config errors (no HTTP status) never trip the circuit**. Fail-open. `PROVIDER_KEY` +
-  `PROVIDERS` must include every runner by `fn.name`.
+  **config errors (no HTTP status) never trip the circuit**. Fail-open. Cascade entries are
+  `{ fn, key }` pairs — `key` is a plain string literal that must exactly match one of
+  circuit-breaker.js's own `PROVIDERS` entries (asserted at module load). Do NOT key anything
+  off `fn.name`/`Function.prototype.name` — Next's production minifier renames every top-level
+  function declaration (confirmed: `runHuggingFace` compiled to `function q`), so that silently
+  broke the circuit breaker AND `DAILY_IMAGE_BUDGET` tracking for a long stretch before this was
+  caught and fixed.
 - **Dead ends (don't relitigate):** Prodia (paywall) removed; Pollinations stays last.
   HuggingFace's `hf-inference` route for FLUX.1-schnell returns a permanent HTTP 410 as of
   ~July 2026 (model pulled, confirmed via HF's own community forum — not a quota issue, won't
-  self-heal) — kept in the cascade behind the 410→midnight circuit rather than removed, since
-  the account may still see a genuine 402/403 quota error on some other model later and that
-  escape hatch should stay intact. Don't propose removing `runHuggingFace` without a confirmed,
-  tested replacement model — the free `hf-inference` tier has shifted mostly to CPU-only
-  inference (per HF's own docs) and SD3-medium is the only text-to-image model currently listed
-  there; untested for latency/availability on a free account as of this writing.
+  self-heal) — gated behind `HF_PROVIDER_ENABLED` (default unset/disabled) rather than removed
+  outright, so the escape hatch stays available without a deploy if the account ever needs it
+  (e.g. a genuine 402/403 on some other model) — flip the flag only after swapping
+  `runHuggingFace` to a model confirmed to actually work on the free `hf-inference` tier (SD3-
+  medium is the only text-to-image model currently listed there per HF's own docs; untested for
+  latency/availability as of this writing — the free tier has shifted mostly to CPU inference).
 
 ### 2. FLUX image prompting → skill `flux-prompt`
 All image providers are FLUX-family. **FLUX wants clean positive prose, not keyword
