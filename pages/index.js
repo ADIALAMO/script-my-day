@@ -350,7 +350,13 @@ function HomePage() {
   const currentEntryIdRef = useRef(null);
   const scriptOutputRef = useRef(null);
 
-  const { history, addEntry, updateEntry, deleteEntry } = useScriptHistory();
+  const { history, addEntry, updateEntry, deleteEntry, saveFailed } = useScriptHistory();
+
+  // Sticky until dismissed — saveFailed itself flips back to false the moment any
+  // later save succeeds, but we don't want the banner to vanish out from under the
+  // user before they've seen it just because an unrelated field happened to save.
+  const [showSaveFailedNotice, setShowSaveFailedNotice] = useState(false);
+  useEffect(() => { if (saveFailed) setShowSaveFailedNotice(true); }, [saveFailed]);
 
   // Protagonist gender — single source of truth shared by the script (ScriptForm,
   // below) and the poster/comic Identity Track (ScriptOutput). Auto-detected in
@@ -1379,7 +1385,16 @@ function HomePage() {
                 gender={gender}
                 setGender={setGender}
                 journalEntry={journalText}
-                onPosterGenerated={(url) => { updateEntry(currentEntryIdRef.current, { posterUrl: url }); setInitialPosterUrl(url); }}
+                onPosterGenerated={(url) => {
+                  // Only persist the lightweight CDN URL to history — never the raw
+                  // data: URI (Phase 1 of poster generation calls this with one before
+                  // the R2 upload resolves). A multi-MB base64 string left sitting in
+                  // localStorage is exactly what blows the save quota for every entry.
+                  // Live display state (setInitialPosterUrl) is unaffected — this only
+                  // changes what gets written to disk.
+                  if (!url.startsWith('data:')) updateEntry(currentEntryIdRef.current, { posterUrl: url });
+                  setInitialPosterUrl(url);
+                }}
                 onScriptEdited={(text) => updateEntry(currentEntryIdRef.current, { script: text })}
                 onPanelsGenerated={(panels) => updateEntry(currentEntryIdRef.current, { panels: panels.filter(p => !p.isLocked) })}
                 onAuthRequired={openAuthModal}
@@ -1576,6 +1591,36 @@ function HomePage() {
         onDelete={deleteEntry}
         lang={lang}
       />
+
+      {/* Non-blocking notice: this session's work couldn't be saved locally (storage
+          full even after pruning old entries). Informational only — nothing in the
+          current session is lost, only its ability to survive a reload/restart. */}
+      <AnimatePresence>
+        {showSaveFailedNotice && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.25 }}
+            dir={lang === 'he' ? 'rtl' : 'ltr'}
+            className="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:left-auto z-[2500] max-w-sm flex items-start gap-2.5 px-4 py-3 rounded-2xl bg-[#1a1006]/95 border border-amber-500/25 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+          >
+            <AlertCircle size={15} className="text-amber-400 shrink-0 mt-0.5" />
+            <p className="flex-1 text-amber-100/90 text-[11.5px] leading-relaxed">
+              {lang === 'he'
+                ? 'אין מקום פנוי לשמור את זה באופן מקומי. העבודה הנוכחית שלך בטוחה כל עוד החלון פתוח, אך לא תישמר להמשך.'
+                : "Not enough local storage to save this. Your current work is safe while this stays open, but it won't be saved for next time."}
+            </p>
+            <button
+              onClick={() => setShowSaveFailedNotice(false)}
+              aria-label={lang === 'he' ? 'סגור' : 'Dismiss'}
+              className="shrink-0 p-1 -m-1 text-amber-400/50 hover:text-amber-300 transition-colors"
+            >
+              <X size={13} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* GA4 Consent Mode v2 banner — Accept Analytics / Essential Only */}
       <CookieConsent lang={lang} />
