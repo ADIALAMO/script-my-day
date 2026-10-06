@@ -70,7 +70,11 @@ Two independent cascades, each tries providers in order and returns the first su
   off `fn.name`/`Function.prototype.name` — Next's production minifier renames every top-level
   function declaration (confirmed: `runHuggingFace` compiled to `function q`), so that silently
   broke the circuit breaker AND `DAILY_IMAGE_BUDGET` tracking for a long stretch before this was
-  caught and fixed.
+  caught and fixed. `KLEIN_COST_USD` (same file, env-overridable via `KLEIN_COST_USD`) feeds the
+  `DAILY_IMAGE_BUDGET` maxCalls math directly — it must track OpenRouter's real per-image price
+  for `flux.2-klein-4b`, not a stale estimate (it drifted to 0.0035 against a real $0.014 for a
+  long stretch, silently under-counting spend 4x). Verify the live figure at openrouter.ai/logs
+  before trusting this constant.
 - **Dead ends (don't relitigate):** Prodia (paywall) removed; Pollinations stays last.
   HuggingFace's `hf-inference` route for FLUX.1-schnell returns a permanent HTTP 410 as of
   ~July 2026 (model pulled, confirmed via HF's own community forum — not a quota issue, won't
@@ -104,10 +108,10 @@ Single source of truth: `TIER_LIMITS` in [lib/quota.js](lib/quota.js). Always us
 
 | feature | anon | free | pro | admin | period |
 |---|---|---|---|---|---|
-| script | 2 | 3 | ∞ | ∞ | daily |
-| poster | 0 | 1 | 3 | ∞ | daily |
+| script | 2 | 5 | ∞ | ∞ | daily |
+| poster | 1 | 2 | 3 | ∞ | daily |
 | comic | 0 | 1 | 2 | ∞ | daily |
-| unlockedPanels | 0 | 2 | 7 | ∞ | per comic |
+| unlockedPanels | 0 | 7 | 7 | ∞ | per comic |
 | identity | 0 | 1 | 30 | ∞ | monthly (free = **lifetime, no expiry**) |
 
 Redis keys: `usage:<feature>:<identifier>:<YYYY-MM-DD>` (daily, `expireat` next UTC

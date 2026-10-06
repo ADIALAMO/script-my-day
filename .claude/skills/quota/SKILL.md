@@ -19,11 +19,11 @@ and the rules are subtle. The single source of truth for limits is
 ## Tiers & limits (`TIER_LIMITS`)
 | feature | anonymous | free | pro | admin | period |
 |---|---|---|---|---|---|
-| script | 2 | 3 | ∞ | ∞ | **daily** |
-| poster | 0 | 1 | 3 | ∞ | **daily** |
+| script | 2 | 5 | ∞ | ∞ | **daily** |
+| poster | 1 | 2 | 3 | ∞ | **daily** |
 | comic | 0 | 1 | 2 | ∞ | **daily** |
 | maxPanels | 0 | 7 | 7 | 7 | (LLM plan size) |
-| unlockedPanels | 0 | 2 | 7 | ∞ | per comic |
+| unlockedPanels | 0 | 7 | 7 | ∞ | per comic |
 | identity | 0 | 1 | 30 | ∞ | **monthly** (free = **lifetime**) |
 
 `limitFor(tier, feature)` is the only accessor — use it; never read `TIER_LIMITS`
