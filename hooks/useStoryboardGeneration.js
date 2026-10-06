@@ -427,7 +427,14 @@ export function useStoryboardGeneration({
           'Content-Type': 'application/json',
           'x-device-id':  deviceId,
         },
-        body: JSON.stringify({ script: cleanScript, lang, genre, comicStyle, deviceId, heroDescriptor: heroDescriptor || undefined }),
+        body: JSON.stringify({
+          script: cleanScript, lang, genre, comicStyle, deviceId,
+          heroDescriptor: heroDescriptor || undefined,
+          // Lets the server decide this comic's provider mode (comic:mode:<seed>)
+          // once here, instead of racing the decision per panel — comicSeedRef was
+          // already generated above but never sent to this endpoint before.
+          comicSeed: comicSeedRef.current,
+        }),
       });
       const data = await response.json();
 

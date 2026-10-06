@@ -1,6 +1,6 @@
 import redis from '../../lib/redis.js';
 import { CODES } from '../../lib/messages.js';
-import { nextMidnightUTC, isAdminRequest } from '../../lib/api-utils.js';
+import { nextMidnightUTC, isAdminRequest, isValidComicSeed } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { limitFor } from '../../lib/quota.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
@@ -303,10 +303,31 @@ const COMIC_CASCADE = [
   { fn: runPollinationsFlux, key: 'pollinations' },
 ];
 
+// Comic-consistency modes (see generate-storyboard.js, which decides this ONCE
+// per comic and writes comic:mode:<comicSeed>, read below). 'klein' puts
+// OpenRouter Klein first so every panel shares its seed-honored look; 'free'
+// excludes Klein ENTIRELY for the whole comic (not just per-call budget
+// filtering) so a mid-comic style switch never happens. Pollinations stays
+// last in both — it has no client-side throttling of its own, and its "1 req/
+// 15s" limit is enforced by Pollinations' own server, not us: 7 panels firing
+// in parallel would mean at most ~1 lands inside that window, so it can't
+// serve as a primary fallback for a multi-panel comic despite honoring seed.
+const COMIC_CASCADE_KLEIN_FIRST = [
+  { fn: runOpenRouterKlein, key: 'openrouter' },
+  { fn: runCloudflareAI,    key: 'cloudflare' },
+  ...(HF_ENABLED ? [HF_ENTRY] : []),
+  { fn: runPollinationsFlux, key: 'pollinations' },
+];
+const COMIC_CASCADE_FREE_ONLY = [
+  { fn: runCloudflareAI,    key: 'cloudflare' },
+  ...(HF_ENABLED ? [HF_ENTRY] : []),
+  { fn: runPollinationsFlux, key: 'pollinations' },
+];
+
 // Guard against ever reintroducing the circuit:img:undefined bug via a typo —
 // every cascade entry's key must exist in circuit-breaker.js's own PROVIDERS
 // list, checked once at module load (cheap, runs on cold start only).
-for (const cascade of [POSTER_CASCADE, COMIC_CASCADE, IDENTITY_CASCADE_QUALITY, IDENTITY_CASCADE_VALUE]) {
+for (const cascade of [POSTER_CASCADE, COMIC_CASCADE, COMIC_CASCADE_KLEIN_FIRST, COMIC_CASCADE_FREE_ONLY, IDENTITY_CASCADE_QUALITY, IDENTITY_CASCADE_VALUE]) {
   for (const { key } of cascade) {
     if (!PROVIDERS_SET.has(key)) {
       throw new Error(`generate-poster.js: cascade key "${key}" is not in circuit-breaker.js's PROVIDERS`);
@@ -478,7 +499,22 @@ export default async function handler(req, res) {
   }
   const useIdentity = gate.mode === 'identity';
 
-  const baseCascade = isComic ? COMIC_CASCADE : POSTER_CASCADE;
+  // Read this comic's provider mode, decided once by generate-storyboard.js.
+  // Missing (expired past its 24h TTL, or never written — e.g. an older
+  // client build) or a Redis error both fall back to today's existing
+  // COMIC_CASCADE unchanged — this lookup must never fail a panel.
+  let comicBaseCascade = COMIC_CASCADE;
+  if (isComic && isValidComicSeed(comicSeed)) {
+    try {
+      const mode = await redis.get(`comic:mode:${comicSeed}`);
+      if (mode === 'klein') comicBaseCascade = COMIC_CASCADE_KLEIN_FIRST;
+      else if (mode === 'free') comicBaseCascade = COMIC_CASCADE_FREE_ONLY;
+    } catch (e) {
+      console.warn(`⚠️ Comic mode lookup skipped (Redis unavailable): ${e.message}`);
+    }
+  }
+
+  const baseCascade = isComic ? comicBaseCascade : POSTER_CASCADE;
   // Free taste (gate.isLifetime) runs the VALUE cascade (Gemini first) to cap cost;
   // Pro+/admin run QUALITY (Grok first). Identity providers run FIRST — if both fail the
   // loop continues into the faceless cascade so the user still gets an image sans face.

@@ -1,7 +1,8 @@
 import { sanitize } from '../../utils/input-processor';
 import redis from '../../lib/redis.js';
 import { CODES } from '../../lib/messages.js';
-import { nextMidnightUTC, isAdminRequest, extractDevTier } from '../../lib/api-utils.js';
+import { nextMidnightUTC, isAdminRequest, extractDevTier, isValidComicSeed } from '../../lib/api-utils.js';
+import { paidImageBudgetReached, getOpenProviders } from '../../lib/circuit-breaker.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { limitFor } from '../../lib/quota.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
@@ -258,7 +259,7 @@ export default async function handler(req, res) {
   if (await enforceRateLimit(req, res, 'generate-storyboard')) return;
 
   try {
-    const { script, lang, genre, comicStyle, heroDescriptor: rawHeroDescriptor } = req.body;
+    const { script, lang, genre, comicStyle, heroDescriptor: rawHeroDescriptor, comicSeed } = req.body;
 
     // Hero descriptor is only honoured when the client signals an active Identity Track.
     // Sanitized + length-capped; never trusted as free text into the prompt.
@@ -387,6 +388,31 @@ export default async function handler(req, res) {
       await pipeline.exec();
     } catch (err) {
       console.warn(`⚠️ Comic stats counter skipped (Redis unavailable): ${err.message}`);
+    }
+
+    // ── Decide this comic's provider mode ONCE, here, instead of letting each of
+    // up to 7 panel requests race the same decision independently ─────────────
+    // 'klein': OpenRouter Klein is available (not budget-capped, circuit closed)
+    //   → every panel tries Klein first, giving the whole comic a consistent,
+    //     seed-honored look.
+    // 'free': Klein is unavailable right now → every panel skips it ENTIRELY
+    //   (not just filtered per-call) so a mid-comic style switch never happens —
+    //   the whole comic uses the free cascade instead.
+    // 24h TTL (not 30 min) so a later single-panel "Replace" still reads the
+    // same decision the rest of the comic was generated under.
+    if (isValidComicSeed(comicSeed)) {
+      try {
+        const [paidImageCapped, openProviders] = await Promise.all([
+          paidImageBudgetReached(redis),
+          getOpenProviders(redis),
+        ]);
+        const mode = (!paidImageCapped && !openProviders.has('openrouter')) ? 'klein' : 'free';
+        await redis.set(`comic:mode:${comicSeed}`, mode, { ex: 24 * 60 * 60 });
+      } catch (err) {
+        // Best-effort — a missing mode key just makes generate-poster.js fall
+        // back to its existing default cascade, never fails anything here.
+        console.warn(`⚠️ Comic mode decision skipped (Redis unavailable): ${err.message}`);
+      }
     }
 
     // Resolve the effective unlock count.
