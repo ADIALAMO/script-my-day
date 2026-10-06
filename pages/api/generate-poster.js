@@ -499,7 +499,16 @@ export default async function handler(req, res) {
     if (paidImageCapped && entry.key === 'openrouter') return false;
     return true;
   });
-  const liveCascade    = activeCascade.length ? activeCascade : cascade;
+  // Fail-open fallback: if every provider got filtered out for being open-
+  // circuited, try the whole cascade anyway rather than attempt nothing — but
+  // a cost-capped OpenRouter must stay excluded even here. Without this, the
+  // one scenario where every OTHER provider is simultaneously open-circuited
+  // is exactly the scenario that silently re-included the ONE provider
+  // DAILY_IMAGE_BUDGET was specifically set up to stop spending on. Cloudflare
+  // and Pollinations are never filtered by the budget cap, so this can never
+  // end up empty.
+  const budgetSafeCascade = paidImageCapped ? cascade.filter((e) => e.key !== 'openrouter') : cascade;
+  const liveCascade = activeCascade.length ? activeCascade : budgetSafeCascade;
 
   for (const provider of liveCascade) {
     try {
