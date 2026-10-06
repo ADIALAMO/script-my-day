@@ -5,7 +5,7 @@ import { getSessionAndTier } from '../../lib/auth.js';
 import { limitFor } from '../../lib/quota.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 import {
-  PROVIDER_KEY,
+  PROVIDERS,
   extractStatusCode,
   getOpenProviders,
   recordFailure,
@@ -13,6 +13,8 @@ import {
   paidImageBudgetReached,
   recordPaidImage,
 } from '../../lib/circuit-breaker.js';
+
+const PROVIDERS_SET = new Set(PROVIDERS);
 import {
   grokImageFromReference,
   geminiImageFromReference,
@@ -240,8 +242,25 @@ async function runGeminiIdentity(prompt, seed, opts) {
 //   VALUE   (Free taste): Gemini first ($0.039, identity-parity) to cap the cost of the
 //                         one-time free poster → Grok only if Gemini fails.
 // On exhaustion either cascade degrades further to the free faceless cascade.
-const IDENTITY_CASCADE_QUALITY = [runGrokIdentity, runGeminiIdentity];
-const IDENTITY_CASCADE_VALUE   = [runGeminiIdentity, runGrokIdentity];
+// Each cascade entry is { fn, key } rather than a bare function reference.
+// Function.prototype.name is NOT reliable here: Next's production build
+// minifies these declarations (confirmed by inspecting the compiled output —
+// runHuggingFace became `function q`, runOpenRouterKlein became `function s`,
+// etc.), so every provider.name-based lookup (PROVIDER_KEY[provider.name],
+// provider.name === 'runOpenRouterKlein') silently resolved to undefined/false
+// in production. The circuit breaker never actually opened a circuit (writes
+// went to the dead key circuit:img:undefined, never read by anything), and
+// recordPaidImage() never fired even on a real paid OpenRouter success. `key`
+// is a plain string literal, immune to minification, and must exactly match
+// one of lib/circuit-breaker.js's PROVIDERS entries — asserted below.
+const IDENTITY_CASCADE_QUALITY = [
+  { fn: runGrokIdentity,   key: 'grok_identity' },
+  { fn: runGeminiIdentity, key: 'gemini_identity' },
+];
+const IDENTITY_CASCADE_VALUE = [
+  { fn: runGeminiIdentity, key: 'gemini_identity' },
+  { fn: runGrokIdentity,   key: 'grok_identity' },
+];
 
 // ─── Cascade definitions ─────────────────────────────────────────────────────
 //
@@ -257,18 +276,29 @@ const IDENTITY_CASCADE_VALUE   = [runGeminiIdentity, runGrokIdentity];
 //   P4 Pollinations     → anonymous, 1 req/15s throttled — final safety net.
 
 const POSTER_CASCADE = [
-  runCloudflareAI,
-  runHuggingFace,
-  runOpenRouterKlein,
-  runPollinationsFlux,
+  { fn: runCloudflareAI,    key: 'cloudflare' },
+  { fn: runHuggingFace,     key: 'huggingface' },
+  { fn: runOpenRouterKlein, key: 'openrouter' },
+  { fn: runPollinationsFlux, key: 'pollinations' },
 ];
 
 const COMIC_CASCADE = [
-  runCloudflareAI,
-  runHuggingFace,
-  runOpenRouterKlein,
-  runPollinationsFlux,
+  { fn: runCloudflareAI,    key: 'cloudflare' },
+  { fn: runHuggingFace,     key: 'huggingface' },
+  { fn: runOpenRouterKlein, key: 'openrouter' },
+  { fn: runPollinationsFlux, key: 'pollinations' },
 ];
+
+// Guard against ever reintroducing the circuit:img:undefined bug via a typo —
+// every cascade entry's key must exist in circuit-breaker.js's own PROVIDERS
+// list, checked once at module load (cheap, runs on cold start only).
+for (const cascade of [POSTER_CASCADE, COMIC_CASCADE, IDENTITY_CASCADE_QUALITY, IDENTITY_CASCADE_VALUE]) {
+  for (const { key } of cascade) {
+    if (!PROVIDERS_SET.has(key)) {
+      throw new Error(`generate-poster.js: cascade key "${key}" is not in circuit-breaker.js's PROVIDERS`);
+    }
+  }
+}
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
 
@@ -450,21 +480,21 @@ export default async function handler(req, res) {
   // separately by DAILY_IDENTITY_BUDGET (lib/identity.js).
   const paidImageCapped = await paidImageBudgetReached(redis);
   const openProviders  = await getOpenProviders(redis);
-  const activeCascade  = cascade.filter((fn) => {
-    if (openProviders.has(PROVIDER_KEY[fn.name])) return false;
-    if (paidImageCapped && fn.name === 'runOpenRouterKlein') return false;
+  const activeCascade  = cascade.filter((entry) => {
+    if (openProviders.has(entry.key)) return false;
+    if (paidImageCapped && entry.key === 'openrouter') return false;
     return true;
   });
   const liveCascade    = activeCascade.length ? activeCascade : cascade;
 
   for (const provider of liveCascade) {
     try {
-      const result = await provider(finalPrompt, seed, { characterImageUrl, negativePrompt });
-      await recordSuccess(redis, PROVIDER_KEY[provider.name]);
+      const result = await provider.fn(finalPrompt, seed, { characterImageUrl, negativePrompt });
+      await recordSuccess(redis, provider.key);
       // Count every successful PAID faceless call toward the daily image budget so the
       // kill-switch above can trip once DAILY_IMAGE_BUDGET is reached. Klein is the only
       // paid provider in the faceless cascade (identity spend is metered separately).
-      if (provider.name === 'runOpenRouterKlein') await recordPaidImage(redis);
+      if (provider.key === 'openrouter') await recordPaidImage(redis);
       await trackUsage();
       // Consume an identity credit ONLY when the winning provider actually applied
       // the face — a degraded (faceless) result must not cost the user a credit.
@@ -484,8 +514,8 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, ...result, referralGranted });
     } catch (e) {
       const code = extractStatusCode(e.message);
-      await recordFailure(redis, PROVIDER_KEY[provider.name], code);
-      console.warn(`⚠️ ${provider.name} failed: ${e.message}`);
+      await recordFailure(redis, provider.key, code);
+      console.warn(`⚠️ ${provider.key} failed: ${e.message}`);
     }
   }
 
