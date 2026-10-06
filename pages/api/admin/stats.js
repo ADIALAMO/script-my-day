@@ -2,13 +2,8 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../../lib/auth.js';
 import { isAdminRequest } from '../../../lib/api-utils.js';
 import redis from '../../../lib/redis.js';
-
-// ── Cost constants (mirrors of the private kill-switch rates) ────────────────────
-// Kept in sync with lib/circuit-breaker.js (KLEIN_COST_USD) and lib/identity.js
-// (IDENTITY_MAX_COST_USD). Pricing every call at the worst case makes the dollar
-// figures a TRUE upper bound on real spend — we can only undershoot.
-const KLEIN_COST_USD     = 0.0035; // per paid faceless image (OpenRouter Klein)
-const IDENTITY_COST_USD  = 0.06;   // per identity call (Grok worst case)
+import { KLEIN_COST_USD } from '../../../lib/circuit-breaker.js';
+import { IDENTITY_MAX_COST_USD } from '../../../lib/identity.js';
 
 function isAllowedAdminSession(email) {
   if (!email || !process.env.ADMIN_EMAILS) return false;
@@ -125,7 +120,7 @@ export default async function handler(req, res) {
     },
     budget: {
       image:    budgetBlock(c[7], process.env.DAILY_IMAGE_BUDGET,    KLEIN_COST_USD),
-      identity: budgetBlock(c[8], process.env.DAILY_IDENTITY_BUDGET, IDENTITY_COST_USD),
+      identity: budgetBlock(c[8], process.env.DAILY_IDENTITY_BUDGET, IDENTITY_MAX_COST_USD),
       openrouter: orBalance, // live prepaid balance, or null if unreachable
     },
   });
