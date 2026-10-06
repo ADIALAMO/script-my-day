@@ -64,27 +64,42 @@ function memorySnapshot() {
   }
 }
 
-// Returns true when the browser actually queued the send (sendBeacon's own
-// return value — true only means "queued," not "delivered") so callers can
-// decide whether it's safe to clear the trail. Bug found and confirmed by
-// reproduction: sendBeacon(url, <string>) sends Content-Type: text/plain —
-// the server's default body parser then never JSON-parses it, so every
-// breadcrumb was silently 400-ing until this was caught. Passing a Blob with
-// an explicit type is the only way to control the Content-Type a beacon
-// actually sends.
-function send(trail, flag) {
+// Calls onSettled(true) once we know the send is safe to consider delivered
+// — synchronously if sendBeacon queued it, asynchronously once the fetch
+// fallback's response is known. Never throws. Kept as a callback (not a
+// Promise) so reelBreadcrumb/recoverOrphanedReelTrail can stay fully
+// synchronous — only this one function needs to know about the async
+// fallback path.
+//
+// Falls back to fetch(keepalive) whenever sendBeacon is unavailable, returns
+// false (e.g. over the browser's pending-beacon budget), or throws (some
+// older WebView) — not just when it's missing entirely. Bug found and
+// confirmed by reproduction: sendBeacon(url, <string>) sends
+// Content-Type: text/plain — the server's default body parser then never
+// JSON-parses it, so every breadcrumb was silently 400-ing until this was
+// caught. Passing a Blob with an explicit type is the only way to control
+// the Content-Type a beacon actually sends.
+function send(trail, flag, onSettled) {
   try {
     const url = '/api/reel-diagnostic';
     const body = JSON.stringify({ flag, trail });
+
+    let beaconQueued = false;
     if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-      const blob = new Blob([body], { type: 'application/json' });
-      return navigator.sendBeacon(url, blob);
+      try {
+        beaconQueued = navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+      } catch {
+        beaconQueued = false;
+      }
     }
-    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
-    return true; // fetch has no synchronous queued/not-queued signal — optimistic
+    if (beaconQueued) { onSettled(true); return; }
+
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true })
+      .then((resp) => onSettled(resp.ok))
+      .catch(() => onSettled(false));
   } catch {
     // a diagnostic must never throw into the real reel flow
-    return false;
+    onSettled(false);
   }
 }
 
@@ -142,7 +157,7 @@ export function reelBreadcrumb(stage, extra = {}) {
       // Only clear once the browser actually queued the send — otherwise the
       // trail stays in localStorage and recoverOrphanedReelTrail retries it
       // on the next launch rather than silently losing it.
-      if (send(trail, flag)) clearTrail();
+      send(trail, flag, (ok) => { if (ok) clearTrail(); });
     }
   } catch {
     // never throw into the reel flow
@@ -165,7 +180,7 @@ export function recoverOrphanedReelTrail() {
     // Only clear once queued — if the browser couldn't even queue the beacon
     // (e.g. over its pending-beacon size budget), leave the trail in place so
     // the NEXT launch tries again instead of losing it silently.
-    if (send(trail, 'recovered-after-kill')) clearTrail();
+    send(trail, 'recovered-after-kill', (ok) => { if (ok) clearTrail(); });
   } catch {
     // never throw
   }
