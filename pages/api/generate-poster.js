@@ -536,9 +536,22 @@ export default async function handler(req, res) {
       console.log(`🎨 Poster generated successfully by: ${result.provider}`);
       return res.status(200).json({ success: true, ...result, referralGranted });
     } catch (e) {
-      const code = extractStatusCode(e.message);
-      await recordFailure(redis, provider.key, code);
-      console.warn(`⚠️ ${provider.key} failed: ${e.message}`);
+      // Cloudflare's own prompt-content filter (error code 8007, "Input prompt
+      // contains NSFW content") rejects a specific PROMPT, not the provider
+      // itself — it's not a signal that Cloudflare is unhealthy. Tripping the
+      // circuit over it would needlessly push OTHER, unrelated concurrent
+      // requests (e.g. every other panel in the same comic) onto paid Klein
+      // for the circuit's whole open duration, over a single prompt's wording.
+      // Recognized by the literal body content, not HTTP status — Cloudflare
+      // returns this as a plain 400, identical to a real schema/request error.
+      const isContentFilterReject = provider.key === 'cloudflare' && /\b8007\b|NSFW/i.test(e.message);
+      if (isContentFilterReject) {
+        console.warn(`⚠️ cloudflare content-filter reject, falling through: ${e.message}`);
+      } else {
+        const code = extractStatusCode(e.message);
+        await recordFailure(redis, provider.key, code);
+        console.warn(`⚠️ ${provider.key} failed: ${e.message}`);
+      }
     }
   }
 
