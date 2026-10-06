@@ -23,11 +23,21 @@ const PREVIEW_H = Math.round(PREVIEW_W * CANVAS_H / CANVAS_W); // 320
 
 // ── Director configuration ───────────────────────────────────────────────────
 
+// comedy/horror point at trimmed (≤30s, loop=true anyway makes the longer
+// originals pointless to decode in full), loudness-matched copies in
+// /audio/reel/ — see utils/reel-diagnostics.js's audio-decoded breadcrumb
+// for the measured effect (decodeAudioData's full-file PCM decode was ~30MB
+// for comedy and ~133MB for horror's uncompensated 6ch source; both land at
+// the same ~11MB now). drama/action were already short, already stereo, and
+// gain nothing from a copy — they keep using the shared /audio/*_bg.m4a
+// files the background-music hook (useBackgroundAudio.js) also uses; do NOT
+// repoint those two, and do NOT touch useBackgroundAudio — it must keep
+// reading the originals regardless of what the reel does.
 const SOUNDTRACKS = [
   { key: 'drama',   emoji: '🎭', label: 'Hollywood Drama',       labelHe: 'דרמה הוליוודית',       file: '/audio/drama_bg.m4a'   },
   { key: 'action',  emoji: '🏎️', label: 'Adrenaline Rush',       labelHe: 'אדרנלין מוחלט',        file: '/audio/action_bg.m4a'  },
-  { key: 'comedy',  emoji: '🍿', label: 'Sitcom Energy',         labelHe: 'אנרגיית סיטקום',       file: '/audio/comedy_bg.m4a'  },
-  { key: 'horror',  emoji: '👁️', label: 'Psychological Thriller', labelHe: 'מתח פסיכולוגי',       file: '/audio/horror_bg.m4a'  },
+  { key: 'comedy',  emoji: '🍿', label: 'Sitcom Energy',         labelHe: 'אנרגיית סיטקום',       file: '/audio/reel/comedy_bg.m4a' },
+  { key: 'horror',  emoji: '👁️', label: 'Psychological Thriller', labelHe: 'מתח פסיכולוגי',       file: '/audio/reel/horror_bg.m4a' },
 ];
 
 const VISUAL_GRADES = [
