@@ -84,6 +84,19 @@ const TERMINAL_STAGES = {
   'reel-cancelled': 'cancelled',
 };
 
+// Stages that must NEVER be evicted by the rolling cap below — the one-off
+// early stages (carrying mount's comicSource/data-URI census, the panel/audio
+// decode timings) plus the three terminal stages. Only 'frame' (the periodic
+// progress marker, many per reel) is actually meant to roll. A full 7-panel
+// reel at the current marker cadence produces ~19 total steps — under the cap
+// today — but pinning these explicitly means that stays true even if panel
+// count or marker frequency changes later, instead of relying on that margin.
+const PINNED_STAGES = new Set([
+  'tap', 'mount', 'generate-start', 'panels-decoded', 'audio-decoded', 'recorder-start',
+  'reel-finished', 'reel-error', 'reel-cancelled',
+]);
+const MAX_ROLLING_STEPS = 24; // 'frame' markers only
+
 /**
  * Appends one breadcrumb to the current trail. `extra` is a small, plain
  * object of metadata only (counts, byte sizes, booleans, short strings) —
@@ -105,7 +118,13 @@ export function reelBreadcrumb(stage, extra = {}) {
     }
 
     trail.steps.push({ stage, ts: Date.now(), memory: memorySnapshot(), ...extra });
-    if (trail.steps.length > 30) trail.steps = trail.steps.slice(-30); // breadcrumb, not a full log
+    // Cap only the ROLLING (non-pinned) steps — i.e. 'frame' markers — so the
+    // one-off early/terminal stages above are never the ones evicted in a
+    // late crash during a long render.
+    const pinned = trail.steps.filter(s => PINNED_STAGES.has(s.stage));
+    let rolling = trail.steps.filter(s => !PINNED_STAGES.has(s.stage));
+    if (rolling.length > MAX_ROLLING_STEPS) rolling = rolling.slice(-MAX_ROLLING_STEPS);
+    trail.steps = [...pinned, ...rolling].sort((a, b) => a.ts - b.ts);
     writeTrail(trail);
 
     const flag = TERMINAL_STAGES[stage];

@@ -416,6 +416,7 @@ export default function MovieReelModal({
       }
     });
     reelBreadcrumb('mount', {
+      genre,
       panelCount: totalCount,
       readyCount,
       comicSource: comicSource || 'unknown',
@@ -495,6 +496,7 @@ export default function MovieReelModal({
       // 2. Audio (fail-open) ───────────────────────────────────────────────
       let audioDest = null; let audioSrc = null;
       const audioStart = Date.now(); // TEMP DIAGNOSTIC (reel-crash)
+      let decodedBuf = null; // TEMP DIAGNOSTIC (reel-crash) — decodeAudioData's AudioBuffer, for sizing below
       try {
         if (audioCtx) {
           audioDest = audioCtx.createMediaStreamDestination();
@@ -505,6 +507,7 @@ export default function MovieReelModal({
           const resp = await fetch(audioFile);
           if (resp.ok) {
             const buf  = await audioCtx.decodeAudioData(await resp.arrayBuffer());
+            decodedBuf = buf; // TEMP DIAGNOSTIC (reel-crash)
             const gain = audioCtx.createGain();
             gain.gain.value = 0.45;
             audioSrc = audioCtx.createBufferSource();
@@ -518,7 +521,24 @@ export default function MovieReelModal({
       } catch {
         audioCtx = null; audioDest = null;
       }
-      reelBreadcrumb('audio-decoded', { ok: !!audioCtx, ms: Date.now() - audioStart }); // TEMP DIAGNOSTIC (reel-crash)
+      // TEMP DIAGNOSTIC (reel-crash) — decodeAudioData decodes the WHOLE file to raw
+      // Float32 PCM regardless of how much of it the ~25s reel actually plays, and
+      // regardless of the source file's own channel count (a 5.1/6ch source stays
+      // 6ch decoded, not downmixed). bytes = length(frames) * channels * 4 — this is
+      // genre-dependent: comedy_bg.m4a (85.8s, 2ch) decodes to ~30MB; horror_bg.m4a
+      // (115s, 6ch/48kHz) decodes to ~133MB, over 4x comedy despite a SMALLER file on
+      // disk (1.87MB vs 2.84MB) — channel count and duration matter far more than
+      // on-disk size. See also the separate (not yet actioned) item on caching/
+      // re-encoding these files.
+      reelBreadcrumb('audio-decoded', {
+        ok: !!audioCtx,
+        ms: Date.now() - audioStart,
+        genre,
+        duration: decodedBuf?.duration ?? null,
+        numberOfChannels: decodedBuf?.numberOfChannels ?? null,
+        length: decodedBuf?.length ?? null,
+        decodedBytes: decodedBuf ? decodedBuf.length * decodedBuf.numberOfChannels * 4 : null,
+      }); // TEMP DIAGNOSTIC (reel-crash)
 
       if (cancelledRef.current) { try { audioCtx?.close(); } catch {} return; }
 
