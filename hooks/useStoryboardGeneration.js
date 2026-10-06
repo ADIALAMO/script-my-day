@@ -222,6 +222,19 @@ export function useStoryboardGeneration({
       const data = await resp.json();
       if (!storyboardActiveRef.current) return;
 
+      // A placeholder (all providers exhausted) is server-shaped like a success
+      // (success: true, a real imageUrl — the placeholder SVG) but no image was
+      // actually generated. Must be treated as a failure here: never uploaded to
+      // R2, never persisted to history, never shown as if it were a real panel.
+      if (data.isPlaceholder) {
+        dispatchPanelImages({
+          type: 'SET_PANEL', idx,
+          payload: { loading: false, url: null, error: true },
+        });
+        onSettled?.();
+        return;
+      }
+
       if (data.success && data.imageUrl) {
         // ── Phase 2: show data URI immediately (instant UX) ────────────
         dispatchPanelImages({
