@@ -4,7 +4,7 @@ import { Copy, Check, X, Clapperboard, Film, Loader2, ChevronDown, Share2, Downl
 import { shareReadyFile, makeShareFile, shareBlobs, downloadBlob, downloadBlobs, exportCapabilities, urlToBlob } from '../utils/export-image.js';
 import { isCapacitorNative } from '../utils/platform.js';
 
-export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade, onRegenerate, regensLeft = 0 }) {
+export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade, onRegenerate, onRetryRateLimited, regensLeft = 0 }) {
   const isHebrew = lang === 'he';
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [allCopied, setAllCopied] = useState(false);
@@ -164,6 +164,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
     if (!s) return 'pending';
     if (s.loading) return 'loading';
     if (s.url) return 'loaded';
+    if (s.rateLimited) return 'rateLimited';
     if (s.error) return 'error';
     return 'pending';
   };
@@ -359,6 +360,25 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                             {isHebrew ? 'שגיאת פריים' : 'Frame Lost'}
                           </span>
                         </div>
+                      </motion.div>
+                    )}
+
+                    {/* Distinct from "Frame Lost" — no image was ever generated here, the
+                        server's sliding-window rate limiter just asked us to slow down.
+                        Not the panel's fault, so it gets its own amber/retry treatment
+                        rather than being lumped in with a genuine generation failure. */}
+                    {imgState === 'rateLimited' && (
+                      <motion.div
+                        key="rate-limited-state"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="absolute inset-0 flex items-center justify-center bg-[#0a0702]"
+                      >
+                        <RateLimitedRetry
+                          isHebrew={isHebrew}
+                          retryAvailableAt={panelImages?.[idx]?.retryAvailableAt}
+                          onRetry={() => onRetryRateLimited?.(idx)}
+                        />
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -604,5 +624,49 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
         <span className="text-[#d4a373]/25 text-[8px] font-black uppercase tracking-[0.25em]">LIFESCRIPT STUDIO</span>
       </div>
     </motion.div>
+  );
+}
+
+// ── Sub-components (co-located, not exported) ────────────────────────────────
+
+// Amber "try again" tile for a panel that hit the sliding-window rate limiter —
+// never a real generation failure, so no image/prompt data to show, just a
+// countdown (from the server's Retry-After header, or an 8s default) before
+// the retry becomes tappable. No auto-retry: always a deliberate user tap.
+function RateLimitedRetry({ isHebrew, retryAvailableAt, onRetry }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const secondsLeft = Math.max(0, Math.ceil(((retryAvailableAt || 0) - now) / 1000));
+  const ready = secondsLeft <= 0;
+
+  return (
+    <div className="flex flex-col items-center gap-2.5 px-4" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <RefreshCw size={20} className="text-amber-400/70" />
+      <span className="text-amber-200/70 text-[9px] font-mono uppercase tracking-widest text-center">
+        {isHebrew ? 'יותר מדי בקשות' : 'Too many requests'}
+      </span>
+      <button
+        type="button"
+        onClick={onRetry}
+        disabled={!ready}
+        aria-label={isHebrew ? 'נסה שוב ליצור את הפאנל' : 'Retry generating this panel'}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all duration-200 ${
+          ready
+            ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25'
+            : 'bg-white/[0.03] border-white/10 text-white/25 cursor-not-allowed'
+        }`}
+      >
+        <RefreshCw size={10} />
+        <span>
+          {ready
+            ? (isHebrew ? 'נסה שוב' : 'Retry')
+            : (isHebrew ? `נסה שוב בעוד ${secondsLeft}` : `Retry in ${secondsLeft}s`)}
+        </span>
+      </button>
+    </div>
   );
 }

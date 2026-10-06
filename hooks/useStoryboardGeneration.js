@@ -174,6 +174,114 @@ export function useStoryboardGeneration({
   }, [script, initialPanels]);
 
   // ── Panel image generation + R2 upload ───────────────────────────────────
+  //
+  // Shared by the initial fire-and-forget generation loop AND the rate-limit
+  // retry path below — both need the identical sequence: call generate-poster
+  // for ONE panel, then either show the image + kick off the R2 upload +
+  // history persist, flag it as rate-limited (not a real failure — no image
+  // was ever generated, nothing to blame the provider cascade for), or flag a
+  // genuine failure. `allPanels` is passed explicitly rather than read from
+  // `storyboardPanels` state: for the FIRST generation, the state update from
+  // setStoryboardPanels in generateStoryboard may not have committed yet by
+  // the time a fast response comes back, so the literal array argument is
+  // used there; the retry path passes the (by-then-settled) state instead.
+  const generatePanelImage = useCallback(async (idx, panel, sessionId, allPanels, onSettled) => {
+    try {
+      const resp = await fetch('/api/generate-poster', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt:      panel.visual,
+          genre,
+          lang,
+          requestType: 'comic',
+          panelIndex:  idx,
+          comicSeed:   comicSeedRef.current,
+          // Selective Framing: only HERO panels carry the identity reference.
+          // Non-hero panels send no reference → the server degrades them to the
+          // free faceless cascade automatically (objects/locations/secondaries).
+          characterImageUrl: (panel.hero && characterImageUrlRef.current) ? characterImageUrlRef.current : undefined,
+        }),
+      });
+
+      if (resp.status === 429) {
+        if (!storyboardActiveRef.current) return;
+        const retryAfterSec = parseInt(resp.headers.get('Retry-After'), 10);
+        dispatchPanelImages({
+          type: 'SET_PANEL', idx,
+          payload: {
+            loading: false, url: null, error: false,
+            rateLimited: true,
+            retryAvailableAt: Date.now() + (Number.isFinite(retryAfterSec) ? retryAfterSec : 8) * 1000,
+          },
+        });
+        onSettled?.();
+        return;
+      }
+
+      const data = await resp.json();
+      if (!storyboardActiveRef.current) return;
+
+      if (data.success && data.imageUrl) {
+        // ── Phase 2: show data URI immediately (instant UX) ────────────
+        dispatchPanelImages({
+          type: 'SET_PANEL', idx,
+          payload: { loading: false, url: data.imageUrl, error: false },
+        });
+        onSettled?.();
+
+        // ── Phase 3: background R2 upload (does NOT block the image) ───
+        // Determine extension from data URI prefix.
+        const ext = data.imageUrl.startsWith('data:image/png') ? 'png' : 'jpg';
+        const key = `panels/${sessionId}_${String(idx).padStart(2, '0')}.${ext}`;
+
+        fetch('/api/upload-panel', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageData: data.imageUrl, key }),
+        })
+          .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+          .then(({ url: cdnUrl }) => {
+            if (!cdnUrl || !storyboardActiveRef.current) return;
+
+            // ── Phase 4: hot-swap data URI → permanent CDN URL ──────────
+            dispatchPanelImages({
+              type: 'SET_PANEL', idx,
+              payload: { loading: false, url: cdnUrl, error: false },
+            });
+
+            // ── Phase 5: persist updated panels to history ──────────────
+            // Build the full merged array with all CDN URLs known so far.
+            panelCdnUrlsRef.current[idx] = cdnUrl;
+            const merged = allPanels.map((p, i) => ({
+              ...p,
+              imageUrl: panelCdnUrlsRef.current[i] ?? null,
+            }));
+            onPanelsGeneratedRef.current?.(merged);
+          })
+          .catch((err) => {
+            // Upload failed silently — the data URI keeps displaying for
+            // the current session; history entry has imageUrl: null for
+            // this panel and can be regenerated later.
+            console.warn(`⚠️ R2 upload skipped for panel ${idx}: ${err.message}`);
+          });
+
+      } else {
+        dispatchPanelImages({
+          type: 'SET_PANEL', idx,
+          payload: { loading: false, url: null, error: true },
+        });
+        onSettled?.();
+      }
+    } catch {
+      if (!storyboardActiveRef.current) return;
+      dispatchPanelImages({
+        type: 'SET_PANEL', idx,
+        payload: { loading: false, url: null, error: true },
+      });
+      onSettled?.();
+    }
+  }, [genre, lang]); // onPanelsGeneratedRef is a ref — intentionally excluded from deps
 
   const generateStoryboardImages = useCallback(async (panels, unlocked, sessionId) => {
     // Only initialise loading state for panels that will actually receive images.
@@ -182,9 +290,10 @@ export function useStoryboardGeneration({
     dispatchPanelImages({ type: 'INIT_ALL', count: unlocked });
 
     // TEMP DIAGNOSTIC (reel-crash) — marks comicCompletedAtRef once every unlocked
-    // panel has reached a terminal state (image shown or errored). Deliberately NOT
-    // waiting on the background R2 upload (Phase 3-5 below) — that's already excluded
-    // from "finished" everywhere else in this file (see getImageState's own definition).
+    // panel has reached a terminal state (image shown, errored, or rate-limited —
+    // all three mean the panel is no longer stuck loading). Deliberately NOT
+    // waiting on the background R2 upload (Phase 3-5 above) — that's already
+    // excluded from "finished" everywhere else in this file (see getImageState).
     let completedCount = 0;
     const markPanelComplete = () => {
       completedCount++;
@@ -199,90 +308,18 @@ export function useStoryboardGeneration({
       if (!storyboardActiveRef.current) break;
 
       // Each panel is fire-and-forget so they render progressively.
-      (async () => {
-        try {
-          // ── Phase 1: AI image generation ──────────────────────────────────
-          const resp = await fetch('/api/generate-poster', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              prompt:      panel.visual,
-              genre,
-              lang,
-              requestType: 'comic',
-              panelIndex:  idx,
-              comicSeed:   comicSeedRef.current,
-              // Selective Framing: only HERO panels carry the identity reference.
-              // Non-hero panels send no reference → the server degrades them to the
-              // free faceless cascade automatically (objects/locations/secondaries).
-              characterImageUrl: (panel.hero && characterImageUrlRef.current) ? characterImageUrlRef.current : undefined,
-            }),
-          });
-          const data = await resp.json();
-          if (!storyboardActiveRef.current) return;
-
-          if (data.success && data.imageUrl) {
-            // ── Phase 2: show data URI immediately (instant UX) ────────────
-            dispatchPanelImages({
-              type: 'SET_PANEL', idx,
-              payload: { loading: false, url: data.imageUrl, error: false },
-            });
-            markPanelComplete(); // TEMP DIAGNOSTIC (reel-crash)
-
-            // ── Phase 3: background R2 upload (does NOT block the image) ───
-            // Determine extension from data URI prefix.
-            const ext = data.imageUrl.startsWith('data:image/png') ? 'png' : 'jpg';
-            const key = `panels/${sessionId}_${String(idx).padStart(2, '0')}.${ext}`;
-
-            fetch('/api/upload-panel', {
-              method:  'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ imageData: data.imageUrl, key }),
-            })
-              .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-              .then(({ url: cdnUrl }) => {
-                if (!cdnUrl || !storyboardActiveRef.current) return;
-
-                // ── Phase 4: hot-swap data URI → permanent CDN URL ──────────
-                dispatchPanelImages({
-                  type: 'SET_PANEL', idx,
-                  payload: { loading: false, url: cdnUrl, error: false },
-                });
-
-                // ── Phase 5: persist updated panels to history ──────────────
-                // Build the full merged array with all CDN URLs known so far.
-                panelCdnUrlsRef.current[idx] = cdnUrl;
-                const merged = panels.map((p, i) => ({
-                  ...p,
-                  imageUrl: panelCdnUrlsRef.current[i] ?? null,
-                }));
-                onPanelsGeneratedRef.current?.(merged);
-              })
-              .catch((err) => {
-                // Upload failed silently — the data URI keeps displaying for
-                // the current session; history entry has imageUrl: null for
-                // this panel and can be regenerated later.
-                console.warn(`⚠️ R2 upload skipped for panel ${idx}: ${err.message}`);
-              });
-
-          } else {
-            dispatchPanelImages({
-              type: 'SET_PANEL', idx,
-              payload: { loading: false, url: null, error: true },
-            });
-            markPanelComplete(); // TEMP DIAGNOSTIC (reel-crash)
-          }
-        } catch {
-          if (!storyboardActiveRef.current) return;
-          dispatchPanelImages({
-            type: 'SET_PANEL', idx,
-            payload: { loading: false, url: null, error: true },
-          });
-          markPanelComplete(); // TEMP DIAGNOSTIC (reel-crash)
-        }
-      })();
+      generatePanelImage(idx, panel, sessionId, panels, markPanelComplete);
     }
-  }, [genre, lang]); // onPanelsGeneratedRef is a ref — intentionally excluded from deps
+  }, [generatePanelImage]);
+
+  // ── Retry a single rate-limited panel (not a budget-consuming regen — no
+  // image was ever generated, so nothing should be spent) ────────────────────
+  const retryRateLimitedPanel = useCallback((idx) => {
+    const panel = storyboardPanels[idx];
+    if (!panel || !panelImages[idx]?.rateLimited) return;
+    dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: true, url: null, error: false } });
+    generatePanelImage(idx, panel, panelSessionRef.current, storyboardPanels);
+  }, [storyboardPanels, panelImages, generatePanelImage]);
 
   // ── Replace a single panel image (user-initiated, budget-limited) ──────────
   // Re-runs image generation for ONE unlocked panel with the same visual prompt (a fresh
@@ -466,6 +503,7 @@ export function useStoryboardGeneration({
     currentStoryboardMessage: currentMessage,
     generateStoryboard,
     regeneratePanel,
+    retryRateLimitedPanel,
     regensLeft,
     regenLimit: REGEN_LIMIT,
     closeStoryboard,

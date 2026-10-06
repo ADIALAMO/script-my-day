@@ -145,7 +145,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     unlockedPanels,
     comicStyle, setComicStyle, currentStoryboardMessage,
     generateStoryboard, closeStoryboard, cancelStoryboard,
-    regeneratePanel, regensLeft,
+    regeneratePanel, retryRateLimitedPanel, regensLeft,
     comicSource, comicCompletedAtRef, // TEMP DIAGNOSTIC (reel-crash)
   } = useStoryboardGeneration({
     lang, genre, cleanScript, script, onAuthRequired, onPanelsGenerated, initialPanels,
@@ -920,6 +920,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               // CTA in the native app, per the mobile-wrapper plan).
               onUpgrade={isCapacitorNative() ? undefined : () => onAuthRequired('upgrade')}
               onRegenerate={regeneratePanel}
+              onRetryRateLimited={retryRateLimitedPanel}
               regensLeft={regensLeft}
             />
           </div>
