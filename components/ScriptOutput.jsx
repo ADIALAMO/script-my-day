@@ -19,6 +19,7 @@ import { usePosterGeneration } from '../hooks/usePosterGeneration.js';
 import { useStoryboardGeneration } from '../hooks/useStoryboardGeneration.js';
 import { useCharacter } from '../hooks/useCharacter.js';
 import { shareData } from '../utils/export-image.js';
+import { reelBreadcrumb } from '../utils/reel-diagnostics.js'; // TEMP DIAGNOSTIC (reel-crash)
 
 // ── Interaction-gated views — code-split out of the initial bundle ─────────
 // Each only renders after an explicit user action (generating a comic, opening
@@ -145,6 +146,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     comicStyle, setComicStyle, currentStoryboardMessage,
     generateStoryboard, closeStoryboard, cancelStoryboard,
     regeneratePanel, regensLeft,
+    comicSource, comicCompletedAtRef, // TEMP DIAGNOSTIC (reel-crash)
   } = useStoryboardGeneration({
     lang, genre, cleanScript, script, onAuthRequired, onPanelsGenerated, initialPanels,
     characterImageUrl: activeCharacterUrl,
@@ -936,7 +938,10 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
             className="mx-2 md:mx-4"
           >
             <button
-              onClick={() => setShowReelModal(true)}
+              onClick={() => {
+                reelBreadcrumb('tap', { panelCount: storyboardPanels.length }); // TEMP DIAGNOSTIC (reel-crash)
+                setShowReelModal(true);
+              }}
               className="group w-full relative overflow-hidden flex items-center justify-center gap-3 py-4 px-6 rounded-[1.75rem] border border-[#d4a373]/30 bg-[#030712]/80 hover:border-[#d4a373]/70 hover:bg-[#d4a373]/8 transition-all duration-500"
             >
               {/* Sweep shimmer */}
@@ -978,6 +983,9 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
         lang={lang}
         genre={genre}
         producerName={finalProducerName}
+        posterUrl={posterUrl}                       /* TEMP DIAGNOSTIC (reel-crash) */
+        comicSource={comicSource}                   /* TEMP DIAGNOSTIC (reel-crash) */
+        comicCompletedAtRef={comicCompletedAtRef}    /* TEMP DIAGNOSTIC (reel-crash) */
       />
 
       {/* ── Character modal (Identity Track) ──────────────────────────── */}

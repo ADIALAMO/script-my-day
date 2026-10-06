@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Share2, Download, Loader2, AlertCircle, Video, VolumeX, Volume2 } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { shareReadyFile, makeShareFile, exportCapabilities } from '../utils/export-image.js';
+import { reelBreadcrumb } from '../utils/reel-diagnostics.js'; // TEMP DIAGNOSTIC (reel-crash)
 
 // ── Canvas dimensions ────────────────────────────────────────────────────────
 const CANVAS_W      = 720;
@@ -291,6 +292,7 @@ export default function MovieReelModal({
   isOpen, onClose,
   panels, panelImages,
   lang, genre, producerName,
+  posterUrl, comicSource, comicCompletedAtRef, // TEMP DIAGNOSTIC (reel-crash)
 }) {
   const isHebrew = lang === 'he';
   const [isDesktop, setIsDesktop] = useState(false);
@@ -359,6 +361,11 @@ export default function MovieReelModal({
   // blob could have leaked), but a real hazard for any later reel in a session.
   useEffect(() => {
     if (!isOpen) {
+      // TEMP DIAGNOSTIC (reel-crash) — closing mid-render is a normal user cancel,
+      // not a crash; mark it explicitly so an orphaned trail on next launch means
+      // an actual hard kill, not every ordinary "closed the modal while it was
+      // still generating" case.
+      if (phase === 'generating') reelBreadcrumb('reel-cancelled', {});
       cancelledRef.current = true;
       try { recorderRef.current?.stop(); } catch {}
       setPhase('idle');
@@ -392,6 +399,33 @@ export default function MovieReelModal({
   const readyCount = usablePanelData.length;
   const totalCount = panels.length;
 
+  // TEMP DIAGNOSTIC (reel-crash) — snapshot of what's actually held in memory
+  // the moment the modal opens: a data: URI census (poster + any panel still
+  // mid-swap from its own data URI to a CDN url) and any stale blob left over
+  // from a previous reel in this session (should be ~0 after the leak fix).
+  useEffect(() => {
+    if (!isOpen) return;
+    let dataUriCount = 0;
+    let dataUriTotalBytes = 0;
+    if (typeof posterUrl === 'string' && posterUrl.startsWith('data:')) {
+      dataUriCount++; dataUriTotalBytes += posterUrl.length;
+    }
+    Object.values(panelImages || {}).forEach((p) => {
+      if (p?.url && typeof p.url === 'string' && p.url.startsWith('data:')) {
+        dataUriCount++; dataUriTotalBytes += p.url.length;
+      }
+    });
+    reelBreadcrumb('mount', {
+      panelCount: totalCount,
+      readyCount,
+      comicSource: comicSource || 'unknown',
+      msSinceComicFinished: comicCompletedAtRef?.current ? (Date.now() - comicCompletedAtRef.current) : null,
+      dataUriCount,
+      dataUriTotalBytes,
+      staleBlobSize: videoBlobRef.current?.size || 0,
+    });
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Main generation pipeline ────────────────────────────────────────────
   const generate = useCallback(async () => {
     if (readyCount === 0) {
@@ -404,6 +438,7 @@ export default function MovieReelModal({
     setProgress(0);
     cancelledRef.current = false;
     chunksRef.current    = [];
+    reelBreadcrumb('generate-start', { readyCount }); // TEMP DIAGNOSTIC (reel-crash)
 
     // Create AudioContext synchronously while still in the user-gesture call stack.
     // Browsers require this for autoplay policy compliance — creating it after any
@@ -434,12 +469,14 @@ export default function MovieReelModal({
       }
       frameCount++;
       setProgress(Math.min(99, Math.round((frameCount / totalFrames) * 100)));
+      if (frameCount % 60 === 0) reelBreadcrumb('frame', { frameCount, totalFrames }); // TEMP DIAGNOSTIC (reel-crash)
       await sleep(MS_PER_FRAME);
     };
 
     try {
       // 1. Load resources ──────────────────────────────────────────────────
       setLabel(isHebrew ? 'טוען תמונות...' : 'Loading images...');
+      const decodeStart = Date.now(); // TEMP DIAGNOSTIC (reel-crash)
       const [panelImgs, logoImg] = await Promise.all([
         Promise.all(usablePanelData.map(d => loadImg(d.url).catch(() => null))),
         loadImg('/icon.png').catch(() => null),
@@ -448,10 +485,16 @@ export default function MovieReelModal({
 
       const validItems = usablePanelData.filter((_, i) => panelImgs[i] !== null);
       const validImgs  = panelImgs.filter(Boolean);
+      reelBreadcrumb('panels-decoded', { // TEMP DIAGNOSTIC (reel-crash)
+        attempted: usablePanelData.length,
+        decoded: validImgs.length,
+        ms: Date.now() - decodeStart,
+      });
       if (validItems.length === 0) throw new Error('All panel images failed to decode.');
 
       // 2. Audio (fail-open) ───────────────────────────────────────────────
       let audioDest = null; let audioSrc = null;
+      const audioStart = Date.now(); // TEMP DIAGNOSTIC (reel-crash)
       try {
         if (audioCtx) {
           audioDest = audioCtx.createMediaStreamDestination();
@@ -475,6 +518,7 @@ export default function MovieReelModal({
       } catch {
         audioCtx = null; audioDest = null;
       }
+      reelBreadcrumb('audio-decoded', { ok: !!audioCtx, ms: Date.now() - audioStart }); // TEMP DIAGNOSTIC (reel-crash)
 
       if (cancelledRef.current) { try { audioCtx?.close(); } catch {} return; }
 
@@ -497,6 +541,7 @@ export default function MovieReelModal({
       recorderRef.current = recorder;
       recorder.ondataavailable = e => { if (e.data?.size > 0) chunksRef.current.push(e.data); };
       recorder.start();
+      reelBreadcrumb('recorder-start', { mimeType }); // TEMP DIAGNOSTIC (reel-crash)
 
       // 4. Render panel frames ─────────────────────────────────────────────
       for (let pi = 0; pi < validItems.length; pi++) {
@@ -585,6 +630,7 @@ export default function MovieReelModal({
       setVideoUrl(url);
       setProgress(100);
       setPhase('done');
+      reelBreadcrumb('reel-finished', { blobSize: blob.size }); // TEMP DIAGNOSTIC (reel-crash)
 
       track('Reel Generated', {
         genre, language: lang,
@@ -598,6 +644,7 @@ export default function MovieReelModal({
       if (!cancelledRef.current) {
         setErrorMsg(isHebrew ? `שגיאה: ${err.message}` : `Failed: ${err.message}`);
         setPhase('error');
+        reelBreadcrumb('reel-error', { message: err?.message || '?' }); // TEMP DIAGNOSTIC (reel-crash)
       }
     }
   }, [usablePanelData, soundtrack, visualGrade, genre, lang, producerName, isHebrew, readyCount]);

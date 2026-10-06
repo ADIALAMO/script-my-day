@@ -94,6 +94,14 @@ export function useStoryboardGeneration({
   const [unlockedPanels,      setUnlockedPanels]       = useState(0);
   const [regensLeft,          setRegensLeft]           = useState(REGEN_LIMIT);
 
+  // TEMP DIAGNOSTIC (reel-crash) — 'fresh' | 'restored' | null, plus the
+  // timestamp the comic's images all reached a terminal state (success or
+  // error, not waiting on the background R2 upload). Read by MovieReelModal
+  // at mount time to tell a just-generated comic apart from a history
+  // restore, and to compute how long ago it finished.
+  const [comicSource, setComicSource] = useState(null);
+  const comicCompletedAtRef = useRef(null);
+
   // Tracks whether the current generation session is still active.
   // Set to false on reset / close so in-flight callbacks self-abort.
   const storyboardActiveRef = useRef(false);
@@ -154,7 +162,10 @@ export function useStoryboardGeneration({
       setUnlockedPanels(ownedPanels.length);
       setShowStoryboard(true);
       dispatchPanelImages({ type: 'INIT_FROM_HISTORY', panels: ownedPanels });
+      setComicSource('restored'); // TEMP DIAGNOSTIC (reel-crash)
+      comicCompletedAtRef.current = Date.now(); // TEMP DIAGNOSTIC (reel-crash) — already "finished"
     } else {
+      setComicSource(null); comicCompletedAtRef.current = null; // TEMP DIAGNOSTIC (reel-crash)
       setShowStoryboard(false);
       setStoryboardPanels([]);
       setUnlockedPanels(0);
@@ -169,6 +180,16 @@ export function useStoryboardGeneration({
     // Locked panels (idx >= unlocked) are rendered by StoryboardView as upgrade
     // teasers and never touch panelImages, so there is no need to track their state.
     dispatchPanelImages({ type: 'INIT_ALL', count: unlocked });
+
+    // TEMP DIAGNOSTIC (reel-crash) — marks comicCompletedAtRef once every unlocked
+    // panel has reached a terminal state (image shown or errored). Deliberately NOT
+    // waiting on the background R2 upload (Phase 3-5 below) — that's already excluded
+    // from "finished" everywhere else in this file (see getImageState's own definition).
+    let completedCount = 0;
+    const markPanelComplete = () => {
+      completedCount++;
+      if (completedCount >= unlocked) comicCompletedAtRef.current = Date.now();
+    };
 
     // Fire requests only for unlocked panels.
     // panel.isLocked guards against edge-cases where the index check alone might
@@ -206,6 +227,7 @@ export function useStoryboardGeneration({
               type: 'SET_PANEL', idx,
               payload: { loading: false, url: data.imageUrl, error: false },
             });
+            markPanelComplete(); // TEMP DIAGNOSTIC (reel-crash)
 
             // ── Phase 3: background R2 upload (does NOT block the image) ───
             // Determine extension from data URI prefix.
@@ -248,6 +270,7 @@ export function useStoryboardGeneration({
               type: 'SET_PANEL', idx,
               payload: { loading: false, url: null, error: true },
             });
+            markPanelComplete(); // TEMP DIAGNOSTIC (reel-crash)
           }
         } catch {
           if (!storyboardActiveRef.current) return;
@@ -255,6 +278,7 @@ export function useStoryboardGeneration({
             type: 'SET_PANEL', idx,
             payload: { loading: false, url: null, error: true },
           });
+          markPanelComplete(); // TEMP DIAGNOSTIC (reel-crash)
         }
       })();
     }
@@ -383,6 +407,7 @@ export function useStoryboardGeneration({
         // Unique session ID scopes all R2 keys for this generation run (and later replaces).
         const sessionId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         panelSessionRef.current = sessionId;
+        setComicSource('fresh'); comicCompletedAtRef.current = null; // TEMP DIAGNOSTIC (reel-crash)
         generateStoryboardImages(data.panels, unlocked, sessionId);
 
       } else {
@@ -446,5 +471,7 @@ export function useStoryboardGeneration({
     closeStoryboard,
     cancelStoryboard,
     isQuotaError,
+    comicSource,          // TEMP DIAGNOSTIC (reel-crash)
+    comicCompletedAtRef,  // TEMP DIAGNOSTIC (reel-crash)
   };
 }

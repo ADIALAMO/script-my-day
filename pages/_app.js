@@ -10,8 +10,14 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { App as CapacitorApp } from '@capacitor/app';
 import { SITE_URL } from '../lib/site.js';
+import { recoverOrphanedReelTrail } from '../utils/reel-diagnostics.js'; // TEMP DIAGNOSTIC (reel-crash)
 
 function MyApp({ Component, pageProps: { session, ...pageProps } }) {
+
+  // TEMP DIAGNOSTIC (reel-crash) — see utils/reel-diagnostics.js. Runs once per
+  // app launch; a no-op unless a PREVIOUS session left an unfinished reel trail
+  // behind (the hard-kill recovery path).
+  useEffect(() => { recoverOrphanedReelTrail(); }, []);
 
   // ── Reload on resume if a new deploy went out while backgrounded (Capacitor
   // only) ─────────────────────────────────────────────────────────────────────
