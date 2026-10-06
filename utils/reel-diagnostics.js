@@ -64,17 +64,27 @@ function memorySnapshot() {
   }
 }
 
+// Returns true when the browser actually queued the send (sendBeacon's own
+// return value — true only means "queued," not "delivered") so callers can
+// decide whether it's safe to clear the trail. Bug found and confirmed by
+// reproduction: sendBeacon(url, <string>) sends Content-Type: text/plain —
+// the server's default body parser then never JSON-parses it, so every
+// breadcrumb was silently 400-ing until this was caught. Passing a Blob with
+// an explicit type is the only way to control the Content-Type a beacon
+// actually sends.
 function send(trail, flag) {
   try {
     const url = '/api/reel-diagnostic';
     const body = JSON.stringify({ flag, trail });
     if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-      navigator.sendBeacon(url, body);
-    } else {
-      fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+      const blob = new Blob([body], { type: 'application/json' });
+      return navigator.sendBeacon(url, blob);
     }
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+    return true; // fetch has no synchronous queued/not-queued signal — optimistic
   } catch {
     // a diagnostic must never throw into the real reel flow
+    return false;
   }
 }
 
@@ -129,8 +139,10 @@ export function reelBreadcrumb(stage, extra = {}) {
 
     const flag = TERMINAL_STAGES[stage];
     if (flag) {
-      send(trail, flag);
-      clearTrail();
+      // Only clear once the browser actually queued the send — otherwise the
+      // trail stays in localStorage and recoverOrphanedReelTrail retries it
+      // on the next launch rather than silently losing it.
+      if (send(trail, flag)) clearTrail();
     }
   } catch {
     // never throw into the reel flow
@@ -150,8 +162,10 @@ export function recoverOrphanedReelTrail() {
     if (typeof window === 'undefined' || !isCapacitorNative()) return;
     const trail = readTrail();
     if (!trail) return;
-    send(trail, 'recovered-after-kill');
-    clearTrail();
+    // Only clear once queued — if the browser couldn't even queue the beacon
+    // (e.g. over its pending-beacon size budget), leave the trail in place so
+    // the NEXT launch tries again instead of losing it silently.
+    if (send(trail, 'recovered-after-kill')) clearTrail();
   } catch {
     // never throw
   }

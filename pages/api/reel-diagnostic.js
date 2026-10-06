@@ -30,7 +30,25 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const { flag, trail } = req.body || {};
+  // navigator.sendBeacon(url, <string>) sends Content-Type: text/plain — Next's
+  // default body parser only JSON-parses recognized content types, so req.body
+  // arrives as the raw string in that case, not an object. The client now sends
+  // a Blob with an explicit application/json type instead (which parses
+  // normally), but this handles any already-deployed client still sending the
+  // old shape, and any other caller that sends text/plain.
+  let parsedBody = req.body;
+  if (typeof parsedBody === 'string') {
+    if (parsedBody.length > 20_000) {
+      return res.status(413).json({ message: 'Payload too large' });
+    }
+    try {
+      parsedBody = JSON.parse(parsedBody);
+    } catch {
+      return res.status(400).json({ message: 'Invalid JSON body' });
+    }
+  }
+
+  const { flag, trail } = parsedBody || {};
   if (!flag || !trail) {
     return res.status(400).json({ message: 'flag and trail are required' });
   }
