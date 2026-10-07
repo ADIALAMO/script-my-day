@@ -612,6 +612,7 @@ export default function MovieReelModal({
     let frameCount = 0;
     const totalFrames = usablePanelData.length * panelFrames + endFrames;
     let heartbeatInterval = null; // TEMP DIAGNOSTIC (reel-crash) — cleared in the finally below
+    let lowTierPrefetch = null; // low tier only — { idx, promise } for the next panel's bitmap; closed in the finally below if never consumed
 
     const advance = async () => {
       // Low tier: copy the just-composited full-res frame down into the smaller
@@ -800,15 +801,48 @@ export default function MovieReelModal({
           }
         }
       } else {
-        // Low tier — progressive decode: one panel's bitmap alive at a time, closed
-        // immediately after its own frames finish. A panel that fails to decode is
-        // skipped cleanly (no frames rendered for it, same as a panel that failed
-        // the upfront Promise.all on the high tier today) — total duration simply
-        // shortens by that panel's share, exactly matching today's existing
-        // shortfall-tolerant behavior, just discovered progressively instead of
-        // upfront. `renderedIdx` (successes only) feeds applyKenBurns/drawPanelText
-        // so the alternating zoom/pan direction matches the high tier's semantics
+        // Low tier — progressive decode: one panel's bitmap alive at a time
+        // during its own render, closed immediately after. A panel that fails
+        // to decode is skipped cleanly (no frames rendered for it, same as a
+        // panel that failed the upfront Promise.all on the high tier today) —
+        // total duration simply shortens by that panel's share, exactly
+        // matching today's existing shortfall-tolerant behavior, just
+        // discovered progressively instead of upfront. `renderedIdx`
+        // (successes only) feeds applyKenBurns/drawPanelText so the
+        // alternating zoom/pan direction matches the high tier's semantics
         // (indexed into the FILTERED list of panels that actually rendered).
+        //
+        // Prefetch: panel i+1's decode starts as soon as panel i's own decode
+        // resolves, running IN PARALLEL with panel i's ~3s of frame rendering
+        // below — so by the time the loop reaches i+1, its bitmap is usually
+        // already there instead of adding another decode-time pause at every
+        // panel boundary. At most 2 bitmaps alive at once (current + the one
+        // prefetching).
+        //
+        // Cleanup lives in generate()'s own outer `finally` (lowTierPrefetch),
+        // NOT inside this promise chain — an EARLIER version closed the bitmap
+        // from within a .then() attached at start time, gated on a "consumed"
+        // flag the main loop only sets once it actually reaches that index.
+        // That fires far too early: the prefetch's decode (~300-500ms) finishes
+        // well before the current panel's ~3s of frames are done rendering, so
+        // the .then() ran — and closed the bitmap — while the main loop was
+        // still mid-render on the PREVIOUS panel, long before it ever reached
+        // the one being prefetched. Confirmed on-device (headless Chromium):
+        // "Failed to execute 'drawImage' ... The image source is detached" —
+        // applyKenBurns handed an already-closed bitmap. Checking only ONCE,
+        // at generate()'s actual exit, for a prefetch that was started but
+        // never consumed (the loop broke/threw/cancelled before reaching its
+        // index) is the only correctly-timed abandonment signal — there is at
+        // most one outstanding prefetch at a time (nulled out immediately on
+        // consumption, by the index-reuse below), so one check suffices.
+        // loadPanelImageLowTier itself never rejects (see its own doc comment),
+        // so this chain can't produce an unhandled rejection either way.
+        const startPrefetch = (idx) => {
+          if (cancelledRef.current || idx >= usablePanelData.length) return;
+          lowTierPrefetch = { idx, promise: loadPanelImageLowTier(usablePanelData[idx].url).catch(() => null) };
+        };
+        startPrefetch(0);
+
         let renderedIdx = 0;
         let decodedCount = 0;
         let decodeMsAccum = 0; // sum of only the decode calls themselves, not the frame-render time between them
@@ -817,8 +851,18 @@ export default function MovieReelModal({
           const { panel, url } = usablePanelData[pi];
 
           const panelDecodeStart = Date.now();
-          let img = await loadPanelImageLowTier(url);
+          let img;
+          if (lowTierPrefetch && lowTierPrefetch.idx === pi) {
+            img = await lowTierPrefetch.promise;
+            lowTierPrefetch = null; // consumed — nothing left for the finally to clean up here
+          } else {
+            // Shouldn't normally happen (every panel is prefetched one step
+            // ahead) — defensive fallback, e.g. if startPrefetch skipped due
+            // to cancellation right as this panel came up.
+            img = await loadPanelImageLowTier(url).catch(() => null);
+          }
           decodeMsAccum += Date.now() - panelDecodeStart;
+          startPrefetch(pi + 1); // overlaps with this panel's frame loop below
           if (!img) { continue; } // skip cleanly — no frames for this panel
           decodedCount++;
 
@@ -925,6 +969,17 @@ export default function MovieReelModal({
       }
     } finally {
       if (heartbeatInterval) clearInterval(heartbeatInterval); // TEMP DIAGNOSTIC (reel-crash) — every exit path, success/error/cancel alike
+      // Low tier only: a prefetch left non-null here means generate() is
+      // exiting (break/throw/cancel) before the render loop ever reached that
+      // panel's index to consume it — close whatever bitmap it produces once
+      // its decode settles, so an abandoned prefetch can never leak one.
+      if (lowTierPrefetch) {
+        lowTierPrefetch.promise.then((bitmap) => {
+          if (bitmap && typeof bitmap.close === 'function') {
+            try { bitmap.close(); } catch { /* never let cleanup itself throw */ }
+          }
+        });
+      }
     }
   }, [usablePanelData, soundtrack, visualGrade, genre, lang, producerName, isHebrew, readyCount]);
 
