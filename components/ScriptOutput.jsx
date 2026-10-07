@@ -10,6 +10,8 @@ import { track } from '@vercel/analytics';
 import { getMsg, CODES, isQuotaError } from '../lib/messages.js';
 import { getGenreLabel } from '../constants/genres.js';
 import { isCapacitorNative } from '../utils/platform.js';
+import { shareBlob } from '../utils/export-image.js';
+import { Toast } from '@capacitor/toast';
 import { HEBREW_RANGE } from '../constants/language.js';
 import PosterRenderer from './PosterRenderer';
 import CinematicLoader from './CinematicLoader';
@@ -275,6 +277,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
   const [showShareModal, setShowShareModal] = useState(false);
   const [showReelModal,  setShowReelModal]  = useState(false);
   const [isCopied,       setIsCopied]       = useState(false);
+  const [isDownloaded,   setIsDownloaded]   = useState(false);
 
   // Body scroll lock for Distribution Hub modal.
   // MovieReelModal owns its own scroll lock internally.
@@ -511,21 +514,45 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
                   <div className="h-px bg-white/5 mx-3" />
 
                   <button
-                    onClick={() => {
+                    onClick={async () => {
+                      const filename = `${posterTitle || 'script'}.txt`;
                       const blob = new Blob([currentScriptText], { type: 'text/plain;charset=utf-8' });
+
+                      if (isCapacitorNative()) {
+                        // No native download handler for blob: URLs in a bare WebView — the
+                        // old <a download> below silently did nothing on Android. Share the
+                        // file via a real Android Intent instead (same proven path as poster/
+                        // comic/reel sharing); shareBlob's watermarking step no-ops on a
+                        // non-image blob, so this is a plain file hand-off.
+                        const handled = await shareBlob(blob, filename, uiHebrew ? 'התסריט שלי' : 'My Script', { lang });
+                        Toast.show({
+                          text: handled
+                            ? (uiHebrew ? 'בחר היכן לשמור' : 'Choose where to save')
+                            : (uiHebrew ? 'לא ניתן לשתף את התסריט' : 'Could not share the script'),
+                          duration: 'short',
+                        }).catch(() => {});
+                        setShowExportMenu(false);
+                        track('Script Exported', { format: 'txt', genre, language: lang, native: true });
+                        return;
+                      }
+
                       const url  = URL.createObjectURL(blob);
                       const link = document.createElement('a');
-                      link.href = url; link.download = `${posterTitle || 'script'}.txt`;
+                      link.href = url; link.download = filename;
                       document.body.appendChild(link); link.click();
                       setTimeout(() => { document.body.removeChild(link); URL.revokeObjectURL(url); }, 200);
-                      setShowExportMenu(false);
+                      // Keep the menu open briefly so "Saved!" is actually visible —
+                      // closing it immediately (like the Copy button does) would hide
+                      // the confirmation before the user ever sees it.
+                      setIsDownloaded(true);
                       track('Script Exported', { format: 'txt', genre, language: lang });
+                      setTimeout(() => { setIsDownloaded(false); setShowExportMenu(false); }, 1400);
                     }}
                     className="flex items-center gap-3 w-full px-4 py-3 text-[10.5px] font-bold uppercase tracking-wider text-gray-300 hover:text-[#d4a373] hover:bg-[#d4a373]/8 transition-colors duration-150"
                     style={{ textAlign: uiHebrew ? 'right' : 'left' }}
                   >
-                    <FileText size={13} className="text-[#d4a373]/50 shrink-0" />
-                    {uiHebrew ? 'הורד .txt' : 'Download .txt'}
+                    {isDownloaded ? <Check size={13} className="text-green-400 shrink-0" /> : <FileText size={13} className="text-[#d4a373]/50 shrink-0" />}
+                    {isDownloaded ? (uiHebrew ? 'נשמר!' : 'Saved!') : (uiHebrew ? 'הורד .txt' : 'Download .txt')}
                   </button>
 
                   <div className="h-px bg-white/5 mx-3" />
