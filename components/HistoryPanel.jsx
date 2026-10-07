@@ -218,11 +218,12 @@ const HistoryItem = memo(function HistoryItem({ entry, onReload, onDelete, lang,
 
       {/* ── Delete button — absolute, outside div[role=button] ─────────────── */}
       <button
+        type="button"
         className={`close-button absolute top-1/2 -translate-y-1/2 right-3 z-[2]
           p-[7px] rounded-lg transition-all duration-250
           ${isConfirming
             ? 'bg-red-500/18 text-red-400 scale-110'
-            : 'text-gray-700 opacity-60 md:opacity-0 md:group-hover:opacity-100 hover:text-red-400 hover:bg-red-500/12'
+            : 'text-gray-700 opacity-60 md:opacity-0 md:group-hover:opacity-100 [@media(hover:hover)]:hover:text-red-400 [@media(hover:hover)]:hover:bg-red-500/12'
           }`}
         onClick={handleDeleteClick}
         title={
@@ -337,9 +338,10 @@ function HistoryPanel({ isOpen, onClose, history, onReload, onDelete, lang }) {
               </div>
 
               <button
+                type="button"
                 onClick={onClose}
-                className="close-button p-2 rounded-xl text-gray-600
-                  hover:text-[#d4a373] hover:bg-[#d4a373]/10
+                className="close-button relative p-2 rounded-xl text-gray-600
+                  [@media(hover:hover)]:hover:text-[#d4a373] [@media(hover:hover)]:hover:bg-[#d4a373]/10
                   transition-all duration-300"
                 aria-label={lang === 'he' ? 'סגור' : 'Close'}
               >

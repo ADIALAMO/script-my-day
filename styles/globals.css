@@ -135,14 +135,20 @@ button {
 .nav-controls-scroll::-webkit-scrollbar { display: none; }
 
 /* ── Close Button (mobile hit-area expansion) ───────────────────────────────── */
+/* `position` and `z-index` are deliberately NOT set here: this class and
+   Tailwind's own `.relative`/`.absolute`/`.z-*` utilities have identical
+   specificity, and this rule used to sit after Tailwind's utilities in the
+   compiled stylesheet — so `position: relative` was silently winning over
+   every usage's intended `absolute`, breaking the actual on-screen position
+   (confirmed: a 446px-wide misplaced bar instead of a floating pill). Each
+   usage now sets its own `relative`/`absolute` + `z-*` via Tailwind classes;
+   this rule only owns the properties that never conflict. */
 .close-button {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   touch-action: manipulation;
-  z-index: 160;
 }
 
 @media (max-width: 768px) {

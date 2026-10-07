@@ -834,8 +834,10 @@ export default function MovieReelModal({
                 {/* Close — always reachable */}
                 {phase !== 'generating' && (
                   <button
+                    type="button"
                     onClick={onClose}
-                    className="close-button absolute top-4 right-4 sm:top-5 sm:right-5 w-8 h-8 flex items-center justify-center rounded-full bg-white/[0.06] hover:bg-white/[0.14] text-gray-500 hover:text-white transition-all duration-200"
+                    aria-label={isHebrew ? 'סגור' : 'Close'}
+                    className="close-button absolute top-4 right-4 sm:top-5 sm:right-5 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/[0.06] [@media(hover:hover)]:hover:bg-white/[0.14] text-gray-500 [@media(hover:hover)]:hover:text-white transition-all duration-200"
                   >
                     <X size={14} />
                   </button>

@@ -171,11 +171,13 @@ function PosterLightbox({ poster, onClose, lang }) {
         >
           {/* Close */}
           <button
+            type="button"
             onClick={e => { e.stopPropagation(); onClose(); }}
-            className="close-button absolute right-5 text-white/38 hover:text-[#d4a373] transition-all duration-300 z-[200] p-3.5 bg-black/25 backdrop-blur-md rounded-full group"
+            aria-label={lang === 'he' ? 'סגור' : 'Close'}
+            className="close-button absolute right-5 text-white/38 [@media(hover:hover)]:hover:text-[#d4a373] transition-all duration-300 z-[200] p-3.5 bg-black/25 backdrop-blur-md rounded-full group"
             style={{ top: 'calc(var(--sat,0px) + 14px)', touchAction: 'manipulation' }}
           >
-            <X size={20} className="group-hover:rotate-90 transition-transform duration-450" />
+            <X size={20} className="[@media(hover:hover)]:group-hover:rotate-90 transition-transform duration-450" />
           </button>
 
           {/* Hero — parallax scale */}
@@ -1016,7 +1018,12 @@ function HomePage() {
                     <h2 className="text-[#d4a373] text-2xl font-black uppercase tracking-tighter italic">
                       {MODAL_DATA[modalContent][lang].title}
                     </h2>
-                    <button onClick={() => setModalContent(null)} className="close-button text-white/20 hover:text-[#d4a373] transition-colors p-2">
+                    <button
+                      type="button"
+                      onClick={() => setModalContent(null)}
+                      aria-label={lang === 'he' ? 'סגור' : 'Close'}
+                      className="close-button relative text-white/20 [@media(hover:hover)]:hover:text-[#d4a373] transition-colors p-2"
+                    >
                       <X size={28} />
                     </button>
                   </div>
@@ -1449,8 +1456,10 @@ function HomePage() {
                   className="w-full h-full object-cover"
                 />
                 <button
+                  type="button"
                   onClick={() => setSelectedReel(null)}
-                  className="close-button absolute top-3.5 right-3.5 w-9 h-9 rounded-full flex items-center justify-center bg-black/65 border border-white/15 text-white/60 hover:text-white hover:bg-black/85 transition-all z-10"
+                  aria-label={lang === 'he' ? 'סגור' : 'Close'}
+                  className="close-button absolute top-3.5 right-3.5 w-9 h-9 rounded-full flex items-center justify-center bg-black/65 border border-white/15 text-white/60 [@media(hover:hover)]:hover:text-white [@media(hover:hover)]:hover:bg-black/85 transition-all z-10"
                   style={{ backdropFilter: 'blur(6px)' }}
                 >
                   <X size={14} />
