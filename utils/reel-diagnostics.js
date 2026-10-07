@@ -111,16 +111,19 @@ const TERMINAL_STAGES = {
 
 // Stages that must NEVER be evicted by the rolling cap below — the one-off
 // early stages (carrying mount's comicSource/data-URI census, the panel/audio
-// decode timings) plus the three terminal stages. Only 'frame' (the periodic
-// progress marker, many per reel) is actually meant to roll. A full 7-panel
-// reel at the current marker cadence produces ~19 total steps — under the cap
-// today — but pinning these explicitly means that stays true even if panel
-// count or marker frequency changes later, instead of relying on that margin.
+// decode timings) plus the three terminal stages. 'frame' and 'rec-heartbeat'
+// (low-tier-only, every ~2s during recording — see MovieReelModal.jsx) are the
+// ones actually meant to roll; intentionally NOT pinned despite being the most
+// recently useful data in a crash, since pinning a stage that fires repeatedly
+// would defeat the rolling cap's purpose for it specifically. A full 7-panel low-
+// tier reel now produces roughly ~13 heartbeats + ~8 pinned stage crumbs — safely
+// under the raised cap below with real headroom, where the OLD 24 cap (sized
+// for 'frame' markers alone, ~12 for a 7-panel reel) would have left very little.
 const PINNED_STAGES = new Set([
   'tap', 'mount', 'generate-start', 'panels-decoded', 'audio-decoded', 'recorder-start',
   'reel-finished', 'reel-error', 'reel-cancelled',
 ]);
-const MAX_ROLLING_STEPS = 24; // 'frame' markers only
+const MAX_ROLLING_STEPS = 48; // 'frame' + 'rec-heartbeat' markers
 
 /**
  * Appends one breadcrumb to the current trail. `extra` is a small, plain

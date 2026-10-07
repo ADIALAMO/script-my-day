@@ -21,6 +21,80 @@ const BRAND_GOLD    = '#d4a373';
 const PREVIEW_W = 180;
 const PREVIEW_H = Math.round(PREVIEW_W * CANVAS_H / CANVAS_W); // 320
 
+// ── Low-end device tier ─────────────────────────────────────────────────────
+// TEMP DIAGNOSTIC (reel-crash) investigation surfaced the root cause: a Galaxy
+// Note 8 (Android 9, deviceMemory 4GB) recorded a recovered-after-kill trail
+// ending cleanly at recorder-start (mimeType=video/mp4) with a tiny JS heap
+// (12/1136MB) — the process dies natively, in the hardware H.264 encoder/GPU
+// path, not in JS. 'high' is byte-for-byte today's existing behavior (full
+// 720x1280 canvas, 30fps, browser-default bitrate, mp4-first mimeType order) —
+// every high-tier code path below is untouched. 'low' composites at the SAME
+// full 720x1280 resolution (none of the drawing helpers below are
+// resolution-agnostic — they mix CANVAS_W/H ratios with absolute pixel offsets
+// tuned for 720x1280, e.g. end-card text baselines — rewriting them to be
+// resolution-independent would be a much larger, riskier change for the same
+// goal) and only downscales the FINAL captured/encoded stream into a second,
+// smaller offscreen canvas. 576x1024 (not 540x960): hardware H.264 encoders
+// are commonly picky about dimensions that aren't multiples of 16; 576 and
+// 1024 both are, 540 isn't.
+const LOW_TIER = {
+  key: 'low',
+  canvasW: 576,
+  canvasH: 1024,
+  fps: 24,
+  videoBitsPerSecond: 2_000_000,
+  // vp8 first: the software VP8 encoder avoids the hardware H.264 path
+  // entirely on this tier — slower per-frame, but doesn't compete for the
+  // same limited encoder/GPU resource suspected of killing the process.
+  mimeTypeCandidates: [
+    'video/webm;codecs=vp8,opus',
+    'video/mp4',
+    'video/webm;codecs=vp9,opus',
+    'video/webm',
+  ],
+};
+const HIGH_TIER = {
+  key: 'high',
+  canvasW: CANVAS_W,
+  canvasH: CANVAS_H,
+  fps: FPS,
+  videoBitsPerSecond: undefined, // unset — browser/OS default, exactly as today
+  mimeTypeCandidates: [
+    'video/mp4',
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm',
+  ],
+};
+
+// navigator.deviceMemory is the primary signal (already confirmed reliable on
+// the actual device this investigation is about: reported 4). Fallback, only
+// when deviceMemory is unavailable: parse the Android major version already
+// present in navigator.userAgent (no new native dependency/plugin needed —
+// @capacitor/device isn't installed, and adding it would mean a new AAB cycle
+// for this alone). Chrome is known to freeze/reduce the OS version reported in
+// the UA string on some builds going forward, so this fallback is strictly
+// best-effort, not authoritative. ?reelTier=low|high always wins, for testing
+// on any device without needing the real hardware.
+function resolveReelTier() {
+  if (typeof window === 'undefined') return HIGH_TIER;
+  try {
+    const override = new URLSearchParams(window.location.search).get('reelTier');
+    if (override === 'low') return LOW_TIER;
+    if (override === 'high') return HIGH_TIER;
+  } catch { /* malformed query string — fall through to device detection */ }
+
+  const mem = typeof navigator !== 'undefined' ? navigator.deviceMemory : undefined;
+  if (typeof mem === 'number') return mem <= 4 ? LOW_TIER : HIGH_TIER;
+
+  try {
+    const m = /Android (\d+)/.exec((typeof navigator !== 'undefined' && navigator.userAgent) || '');
+    if (m && parseInt(m[1], 10) <= 9) return LOW_TIER;
+  } catch { /* best-effort only */ }
+
+  return HIGH_TIER;
+}
+
 // ── Director configuration ───────────────────────────────────────────────────
 
 // comedy/horror point at trimmed (≤30s, loop=true anyway makes the longer
@@ -72,6 +146,42 @@ function loadImg(src) {
   });
 }
 
+// TEMP DIAGNOSTIC (reel-crash) — low-tier-only panel decode. Downscales AT DECODE
+// TIME via createImageBitmap so the full-resolution source pixels are never held in
+// memory — paired with the progressive one-panel-at-a-time loop in generate(), only
+// ONE panel's bitmap is ever alive at once on this tier, instead of all 7 for the
+// whole recording. Caps the LONGER side at LOW_TIER_MAX_DIM, preserving the source's
+// native aspect ratio and never upscaling: createImageBitmap's resize STRETCHES to
+// exactly the given width+height when BOTH are specified, ignoring the source's own
+// ratio — distorting any source that isn't already a perfect match (these AI-generated
+// panels aren't guaranteed to be 9:16). Decoding once at native size first to read the
+// real dimensions, then resizing a second time only if needed, avoids that distortion
+// and avoids ever upscaling a source already smaller than the cap. Returns an
+// ImageBitmap (caller must call .close() once done with it), or falls back to the same
+// plain <img> path the high tier uses if createImageBitmap is unsupported or anything
+// here throws — so a decode failure degrades the same way on both tiers, not a crash.
+const LOW_TIER_MAX_DIM = 1280; // matches CANVAS_H — compositing still happens at full 720x1280
+async function loadPanelImageLowTier(url) {
+  try {
+    const src = url.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(url)}` : url;
+    const resp = await fetch(src);
+    if (!resp.ok) throw new Error(`fetch ${resp.status}`);
+    const blob = await resp.blob();
+    const full = await createImageBitmap(blob);
+    if (full.width <= LOW_TIER_MAX_DIM && full.height <= LOW_TIER_MAX_DIM) return full;
+    const scale = LOW_TIER_MAX_DIM / Math.max(full.width, full.height);
+    const resized = await createImageBitmap(full, {
+      resizeWidth:  Math.round(full.width * scale),
+      resizeHeight: Math.round(full.height * scale),
+      resizeQuality: 'medium',
+    });
+    full.close();
+    return resized;
+  } catch {
+    return loadImg(url).catch(() => null); // same plain-<img> fallback the high tier uses
+  }
+}
+
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /** Break `text` into wrapped lines no wider than `maxW` at current ctx font. */
@@ -120,7 +230,11 @@ function applyKenBurns(ctx, img, panelIdx, t) {
   ctx.translate(CANVAS_W / 2 + panX, CANVAS_H / 2);
   ctx.scale(scale, scale);
 
-  const imgR    = img.naturalWidth / img.naturalHeight;
+  // naturalWidth/Height (HTMLImageElement) vs width/height (ImageBitmap, used
+  // by the low-tier progressive decode path) — supports both source types.
+  const srcW    = img.naturalWidth ?? img.width;
+  const srcH    = img.naturalHeight ?? img.height;
+  const imgR    = srcW / srcH;
   const canvasR = CANVAS_W / CANVAS_H;
   const drawW   = imgR > canvasR ? (CANVAS_H / scale) * imgR : CANVAS_W / scale;
   const drawH   = imgR > canvasR ? CANVAS_H / scale           : (CANVAS_W / scale) / imgR;
@@ -445,11 +559,23 @@ export default function MovieReelModal({
       return;
     }
 
+    const tier = resolveReelTier(); // TEMP DIAGNOSTIC (reel-crash) — low-end-device investigation
+    const isLow = tier.key === 'low';
+    // Derived TOGETHER from tier.fps so wall-clock duration (and therefore audio
+    // sync, since audio plays on its own independent real-time clock regardless
+    // of frame count) is identical across tiers — only frame COUNT changes, never
+    // PANEL_SECS/END_CARD_SECS. High tier: fps=30 → byte-identical to the former
+    // module-level FPS/MS_PER_FRAME/PANEL_FRAMES/END_FRAMES constants.
+    const fps         = tier.fps;
+    const msPerFrame  = Math.round(1000 / fps);
+    const panelFrames = fps * PANEL_SECS;
+    const endFrames   = fps * END_CARD_SECS;
+
     setPhase('generating');
     setProgress(0);
     cancelledRef.current = false;
     chunksRef.current    = [];
-    reelBreadcrumb('generate-start', { readyCount }); // TEMP DIAGNOSTIC (reel-crash)
+    reelBreadcrumb('generate-start', { readyCount, tier: tier.key }); // TEMP DIAGNOSTIC (reel-crash)
 
     // Create AudioContext synchronously while still in the user-gesture call stack.
     // Browsers require this for autoplay policy compliance — creating it after any
@@ -465,43 +591,85 @@ export default function MovieReelModal({
     const canvas = canvasRef.current;
     const ctx    = canvas.getContext('2d');
 
+    // Low tier only: compositing still happens on the full 720x1280 `canvas` above
+    // (none of applyKenBurns/drawVignettes/drawPanelText/drawWatermark/drawEndCard
+    // are resolution-agnostic — rewriting all five to be was a larger, riskier
+    // change for the same goal) — this second, smaller canvas is what actually gets
+    // captured/encoded, fed one proportional downscale draw per frame. High tier
+    // never allocates this at all; captures directly from the full-res canvas, same
+    // as before.
+    const captureCanvas = isLow ? document.createElement('canvas') : canvas;
+    if (isLow) {
+      captureCanvas.width  = tier.canvasW;
+      captureCanvas.height = tier.canvasH;
+    }
+    const captureCtx = isLow ? captureCanvas.getContext('2d') : null;
+
     // Resolve selected grade filter.
     const gradeFilter = VISUAL_GRADES.find(g => g.key === visualGrade)?.filter || 'none';
     const filterSupported = 'filter' in ctx;
 
     let frameCount = 0;
-    const totalFrames = usablePanelData.length * PANEL_FRAMES + END_FRAMES;
+    const totalFrames = usablePanelData.length * panelFrames + endFrames;
+    let heartbeatInterval = null; // TEMP DIAGNOSTIC (reel-crash) — cleared in the finally below
 
     const advance = async () => {
-      // Mirror to preview every 6 frames (~5 fps refresh rate).
+      // Low tier: copy the just-composited full-res frame down into the smaller
+      // capture canvas actually being recorded. High tier: no-op, captures the
+      // full-res canvas directly, unchanged.
+      if (isLow) captureCtx.drawImage(canvas, 0, 0, tier.canvasW, tier.canvasH);
+
+      // Mirror to preview every 6 frames (~5 fps refresh rate) — always from the
+      // full-res canvas regardless of tier, cheap either way (PREVIEW_W/H are tiny).
       if (frameCount % 6 === 0 && previewRef.current) {
         const pCtx = previewRef.current.getContext('2d');
         pCtx.drawImage(canvas, 0, 0, PREVIEW_W, PREVIEW_H);
       }
       frameCount++;
       setProgress(Math.min(99, Math.round((frameCount / totalFrames) * 100)));
-      if (frameCount % 60 === 0) reelBreadcrumb('frame', { frameCount, totalFrames }); // TEMP DIAGNOSTIC (reel-crash)
-      await sleep(MS_PER_FRAME);
+      // TEMP DIAGNOSTIC (reel-crash) — the heartbeat below replaces this on the low
+      // tier (same information, on a wall-clock timer that keeps reporting even if
+      // the render loop itself stalls, which a frame-count-gated crumb cannot).
+      if (!isLow && frameCount % 60 === 0) reelBreadcrumb('frame', { frameCount, totalFrames });
+      await sleep(msPerFrame);
     };
 
     try {
       // 1. Load resources ──────────────────────────────────────────────────
+      // High tier: unchanged — decode all panels + the logo upfront via Promise.all.
+      // Low tier: only the logo is decoded upfront (small, needed much later for the
+      // end card anyway); panel images decode ONE AT A TIME inside the render loop
+      // below (step 4) so only ever one panel's bitmap is held in memory at once,
+      // instead of all 7 simultaneously for the whole ~25s recording.
       setLabel(isHebrew ? 'טוען תמונות...' : 'Loading images...');
       const decodeStart = Date.now(); // TEMP DIAGNOSTIC (reel-crash)
-      const [panelImgs, logoImg] = await Promise.all([
-        Promise.all(usablePanelData.map(d => loadImg(d.url).catch(() => null))),
-        loadImg('/icon.png').catch(() => null),
-      ]);
-      if (cancelledRef.current) return;
 
-      const validItems = usablePanelData.filter((_, i) => panelImgs[i] !== null);
-      const validImgs  = panelImgs.filter(Boolean);
-      reelBreadcrumb('panels-decoded', { // TEMP DIAGNOSTIC (reel-crash)
-        attempted: usablePanelData.length,
-        decoded: validImgs.length,
-        ms: Date.now() - decodeStart,
-      });
-      if (validItems.length === 0) throw new Error('All panel images failed to decode.');
+      let validItems = [];
+      let validImgs  = [];
+      let logoImg    = null;
+
+      if (!isLow) {
+        const [panelImgs, logo] = await Promise.all([
+          Promise.all(usablePanelData.map(d => loadImg(d.url).catch(() => null))),
+          loadImg('/icon.png').catch(() => null),
+        ]);
+        logoImg = logo;
+        if (cancelledRef.current) return;
+
+        validItems = usablePanelData.filter((_, i) => panelImgs[i] !== null);
+        validImgs  = panelImgs.filter(Boolean);
+        reelBreadcrumb('panels-decoded', { // TEMP DIAGNOSTIC (reel-crash)
+          attempted: usablePanelData.length,
+          decoded: validImgs.length,
+          ms: Date.now() - decodeStart,
+        });
+        if (validItems.length === 0) throw new Error('All panel images failed to decode.');
+      } else {
+        logoImg = await loadImg('/icon.png').catch(() => null);
+        if (cancelledRef.current) return;
+        // Decoded count/ms are only known once the panel loop (step 4) finishes on
+        // this tier — the panels-decoded crumb fires there instead, same shape.
+      }
 
       // 2. Audio (fail-open) ───────────────────────────────────────────────
       let audioDest = null; let audioSrc = null;
@@ -555,83 +723,161 @@ export default function MovieReelModal({
       // 3. MediaRecorder ───────────────────────────────────────────────────
       await document.fonts.ready;
 
-      const mimeType = [
-        'video/mp4',
-        'video/webm;codecs=vp9,opus',
-        'video/webm;codecs=vp8,opus',
-        'video/webm',
-      ].find(m => { try { return MediaRecorder.isTypeSupported(m); } catch { return false; } }) || '';
+      const mimeType = tier.mimeTypeCandidates
+        .find(m => { try { return MediaRecorder.isTypeSupported(m); } catch { return false; } }) || '';
 
-      const videoStream    = canvas.captureStream(30);
+      const videoStream    = captureCanvas.captureStream(fps);
       const combinedStream = audioCtx
         ? new MediaStream([...videoStream.getVideoTracks(), ...audioDest.stream.getAudioTracks()])
         : videoStream;
 
-      const recorder = new MediaRecorder(combinedStream, mimeType ? { mimeType } : {});
+      const recorderOptions = {};
+      if (mimeType) recorderOptions.mimeType = mimeType;
+      if (tier.videoBitsPerSecond) recorderOptions.videoBitsPerSecond = tier.videoBitsPerSecond;
+
+      const recorder = new MediaRecorder(combinedStream, recorderOptions);
       recorderRef.current = recorder;
       recorder.ondataavailable = e => { if (e.data?.size > 0) chunksRef.current.push(e.data); };
       recorder.start();
-      reelBreadcrumb('recorder-start', { mimeType }); // TEMP DIAGNOSTIC (reel-crash)
+      const recordingStartTs = Date.now(); // TEMP DIAGNOSTIC (reel-crash)
+      reelBreadcrumb('recorder-start', { // TEMP DIAGNOSTIC (reel-crash)
+        mimeType,
+        tier: tier.key,
+        canvasW: tier.canvasW,
+        canvasH: tier.canvasH,
+        fps,
+        videoBitsPerSecond: tier.videoBitsPerSecond ?? null,
+        deviceMemory: (typeof navigator !== 'undefined' ? navigator.deviceMemory : undefined) ?? null,
+      });
+
+      // TEMP DIAGNOSTIC (reel-crash) — wall-clock heartbeat, independent of the render
+      // loop's own progress: a stalled/hung loop would stop advancing frameCount but
+      // this keeps firing regardless, showing exactly how far recording got before a
+      // hard kill instead of just "died somewhere after recorder-start". Throttled to
+      // one write per 2s by the interval itself; reelBreadcrumb already wraps every
+      // write in try/catch, so a diagnostic failure here can't affect real recording.
+      heartbeatInterval = setInterval(() => {
+        reelBreadcrumb('rec-heartbeat', {
+          t: Date.now() - recordingStartTs,
+          frameCount, totalFrames,
+        });
+      }, 2000);
 
       // 4. Render panel frames ─────────────────────────────────────────────
-      for (let pi = 0; pi < validItems.length; pi++) {
-        if (cancelledRef.current) break;
-        const { panel } = validItems[pi];
-        const img       = validImgs[pi];
-
-        setLabel(
-          isHebrew
-            ? `מרנדר פאנל ${pi + 1} מתוך ${validItems.length}...`
-            : `Rendering panel ${pi + 1} of ${validItems.length}...`
-        );
-
-        for (let f = 0; f < PANEL_FRAMES; f++) {
+      if (!isLow) {
+        // High tier — unchanged.
+        for (let pi = 0; pi < validItems.length; pi++) {
           if (cancelledRef.current) break;
+          const { panel } = validItems[pi];
+          const img       = validImgs[pi];
 
-          const t = PANEL_FRAMES > 1 ? f / (PANEL_FRAMES - 1) : 0;
+          setLabel(
+            isHebrew
+              ? `מרנדר פאנל ${pi + 1} מתוך ${validItems.length}...`
+              : `Rendering panel ${pi + 1} of ${validItems.length}...`
+          );
 
-          // Clear canvas.
-          ctx.fillStyle = '#000';
-          ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-
-          // ── Cinematic grade applied to image only ──
-          if (filterSupported && gradeFilter !== 'none') ctx.filter = gradeFilter;
-          applyKenBurns(ctx, img, pi, t);
-          if (filterSupported) ctx.filter = 'none'; // Reset — overlays must stay crisp
-
-          // Overlays: vignettes, mattes, text, watermark.
-          drawVignettes(ctx);
-          drawPanelText(ctx, panel, pi);
-          drawWatermark(ctx);
-
-          // Fade-to-black transition at panel boundaries.
-          const fadeIn  = f < FADE_FRAMES ? 1 - f / FADE_FRAMES : 0;
-          const fadeOut = f > PANEL_FRAMES - FADE_FRAMES
-            ? (f - (PANEL_FRAMES - FADE_FRAMES)) / FADE_FRAMES : 0;
-          const blackAlpha = Math.min(1, Math.max(fadeIn, fadeOut));
-          if (blackAlpha > 0.01) {
-            ctx.fillStyle = `rgba(0,0,0,${blackAlpha})`;
+          for (let f = 0; f < panelFrames; f++) {
+            if (cancelledRef.current) break;
+            const t = panelFrames > 1 ? f / (panelFrames - 1) : 0;
+            ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+            if (filterSupported && gradeFilter !== 'none') ctx.filter = gradeFilter;
+            applyKenBurns(ctx, img, pi, t);
+            if (filterSupported) ctx.filter = 'none';
+            drawVignettes(ctx);
+            drawPanelText(ctx, panel, pi);
+            drawWatermark(ctx);
+            const fadeIn  = f < FADE_FRAMES ? 1 - f / FADE_FRAMES : 0;
+            const fadeOut = f > panelFrames - FADE_FRAMES
+              ? (f - (panelFrames - FADE_FRAMES)) / FADE_FRAMES : 0;
+            const blackAlpha = Math.min(1, Math.max(fadeIn, fadeOut));
+            if (blackAlpha > 0.01) {
+              ctx.fillStyle = `rgba(0,0,0,${blackAlpha})`;
+              ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+            }
+            await advance();
+          }
+        }
+      } else {
+        // Low tier — progressive decode: one panel's bitmap alive at a time, closed
+        // immediately after its own frames finish. A panel that fails to decode is
+        // skipped cleanly (no frames rendered for it, same as a panel that failed
+        // the upfront Promise.all on the high tier today) — total duration simply
+        // shortens by that panel's share, exactly matching today's existing
+        // shortfall-tolerant behavior, just discovered progressively instead of
+        // upfront. `renderedIdx` (successes only) feeds applyKenBurns/drawPanelText
+        // so the alternating zoom/pan direction matches the high tier's semantics
+        // (indexed into the FILTERED list of panels that actually rendered).
+        let renderedIdx = 0;
+        let decodedCount = 0;
+        let decodeMsAccum = 0; // sum of only the decode calls themselves, not the frame-render time between them
+        for (let pi = 0; pi < usablePanelData.length; pi++) {
+          if (cancelledRef.current) break;
+          const { panel, url } = usablePanelData[pi];
+
+          const panelDecodeStart = Date.now();
+          let img = await loadPanelImageLowTier(url);
+          decodeMsAccum += Date.now() - panelDecodeStart;
+          if (!img) { continue; } // skip cleanly — no frames for this panel
+          decodedCount++;
+
+          setLabel(
+            isHebrew
+              ? `מרנדר פאנל ${renderedIdx + 1}...`
+              : `Rendering panel ${renderedIdx + 1}...`
+          );
+
+          for (let f = 0; f < panelFrames; f++) {
+            if (cancelledRef.current) break;
+            const t = panelFrames > 1 ? f / (panelFrames - 1) : 0;
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+            if (filterSupported && gradeFilter !== 'none') ctx.filter = gradeFilter;
+            applyKenBurns(ctx, img, renderedIdx, t);
+            if (filterSupported) ctx.filter = 'none';
+            drawVignettes(ctx);
+            drawPanelText(ctx, panel, renderedIdx);
+            drawWatermark(ctx);
+            const fadeIn  = f < FADE_FRAMES ? 1 - f / FADE_FRAMES : 0;
+            const fadeOut = f > panelFrames - FADE_FRAMES
+              ? (f - (panelFrames - FADE_FRAMES)) / FADE_FRAMES : 0;
+            const blackAlpha = Math.min(1, Math.max(fadeIn, fadeOut));
+            if (blackAlpha > 0.01) {
+              ctx.fillStyle = `rgba(0,0,0,${blackAlpha})`;
+              ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+            }
+            await advance();
           }
 
-          await advance();
+          if (typeof img.close === 'function') img.close(); // ImageBitmap only — releases native memory now, not at GC's leisure
+          img = null;
+          renderedIdx++;
         }
+
+        reelBreadcrumb('panels-decoded', { // TEMP DIAGNOSTIC (reel-crash) — same shape as the high tier's, just computed progressively
+          attempted: usablePanelData.length,
+          decoded: decodedCount,
+          ms: decodeMsAccum, // sum of decode-only time, matching what the high tier's `ms` measures — NOT the whole loop (which also includes ~21s of frame rendering/pacing)
+        });
+        if (decodedCount === 0) throw new Error('All panel images failed to decode.');
+        validItems = { length: decodedCount }; // only .length is read below (panel_count analytics)
       }
 
       // 5. Render end card ─────────────────────────────────────────────────
       if (!cancelledRef.current) {
         setLabel(isHebrew ? 'מרנדר קרדיטים...' : 'Rendering end card...');
-        for (let f = 0; f < END_FRAMES; f++) {
+        for (let f = 0; f < endFrames; f++) {
           if (cancelledRef.current) break;
-          drawEndCard(ctx, producerName, logoImg, f / (END_FRAMES - 1));
+          drawEndCard(ctx, producerName, logoImg, f / (endFrames - 1));
           await advance();
         }
 
         // Hold the final end-card frame for two extra capture intervals before
-        // stopping the recorder.  canvas.captureStream(30) samples on its own
-        // independent timer; without this pause the last 1–2 drawn frames may
-        // not be sampled before recorder.stop() finalises the stream.
-        if (!cancelledRef.current) await sleep(MS_PER_FRAME * 2);
+        // stopping the recorder. captureStream(fps) samples on its own independent
+        // timer; without this pause the last 1–2 drawn frames may not be sampled
+        // before recorder.stop() finalises the stream.
+        if (!cancelledRef.current) await sleep(msPerFrame * 2);
       }
 
       // 6. Finalize ────────────────────────────────────────────────────────
@@ -660,13 +906,14 @@ export default function MovieReelModal({
       setVideoUrl(url);
       setProgress(100);
       setPhase('done');
-      reelBreadcrumb('reel-finished', { blobSize: blob.size }); // TEMP DIAGNOSTIC (reel-crash)
+      reelBreadcrumb('reel-finished', { blobSize: blob.size, tier: tier.key }); // TEMP DIAGNOSTIC (reel-crash)
 
       track('Reel Generated', {
         genre, language: lang,
         panel_count: validItems.length,
         soundtrack, visual_grade: visualGrade,
         producer: producerName || 'Guest',
+        reel_tier: tier.key,
       });
 
     } catch (err) {
@@ -674,8 +921,10 @@ export default function MovieReelModal({
       if (!cancelledRef.current) {
         setErrorMsg(isHebrew ? `שגיאה: ${err.message}` : `Failed: ${err.message}`);
         setPhase('error');
-        reelBreadcrumb('reel-error', { message: err?.message || '?' }); // TEMP DIAGNOSTIC (reel-crash)
+        reelBreadcrumb('reel-error', { message: err?.message || '?', tier: tier.key }); // TEMP DIAGNOSTIC (reel-crash)
       }
+    } finally {
+      if (heartbeatInterval) clearInterval(heartbeatInterval); // TEMP DIAGNOSTIC (reel-crash) — every exit path, success/error/cancel alike
     }
   }, [usablePanelData, soundtrack, visualGrade, genre, lang, producerName, isHebrew, readyCount]);
 
@@ -690,7 +939,9 @@ export default function MovieReelModal({
   // Web Share API only — lets mobile users "Save to Photos" or post to IG/TikTok.
   // Never navigates the page (an <a download> at a blob: URL makes iOS Safari NAVIGATE,
   // tearing down the SPA). Falls back to opening the video where sharing is unsupported.
-  // The .mp4 filename is preserved: QuickTime / mobile players codec-detect from it.
+  // The filename's extension is derived from the ACTUAL recorded blob.type — the low
+  // tier prefers vp8/webm first (see resolveReelTier), so a hardcoded .mp4 here would
+  // mislabel a real webm file. QuickTime / mobile players codec-detect from it.
   // Cache of the share-ready reel File, tagged with the videoUrl it was built from so a
   // stale render is never shared. Pre-warmed on pointer-down so navigator.share() fires
   // inside iOS's transient-activation window (consistent with poster/panel sharing).
@@ -706,11 +957,12 @@ export default function MovieReelModal({
     if (shareFileRef.current.url === videoUrl && shareFileRef.current.file) return null;
     if (prewarmRef.current) return prewarmRef.current;
     const url = videoUrl;
-    const filename = `lifescript-reel-${genre || 'film'}.mp4`;
     // Strip codec params (e.g. "video/mp4;codecs=h264,aac" → "video/mp4").
     // navigator.canShare on some iOS versions rejects the semicolon-qualified
     // type and returns false, causing the share to silently no-op on mobile.
-    const baseType = (videoBlobRef.current.type || 'video/mp4').split(';')[0].trim();
+    const baseType = (videoBlobRef.current.type || 'video/webm').split(';')[0].trim();
+    const ext = baseType.includes('mp4') ? 'mp4' : 'webm';
+    const filename = `lifescript-reel-${genre || 'film'}.${ext}`;
     const file = new File([videoBlobRef.current], filename, { type: baseType });
     shareFileRef.current = { url, file };
     return Promise.resolve(file);
@@ -751,8 +1003,13 @@ export default function MovieReelModal({
       await shareReadyFile(file, 'LifeScript Reel');
       // null = activation expired, false = canShare returned false — both silent on mobile.
     } catch {
-      // Catch-all: on desktop, fall back to the raw blob URL download.
-      if (isDesktop) doDownload(videoUrl, 'webm');
+      // Catch-all: on desktop, fall back to the raw blob URL download. videoBlobRef
+      // is still in scope here even though prewarm failed, so the extension can
+      // still be derived from the real recorded type rather than assumed.
+      if (isDesktop) {
+        const fallbackExt = (videoBlobRef.current?.type || '').includes('mp4') ? 'mp4' : 'webm';
+        doDownload(videoUrl, fallbackExt);
+      }
     }
   }, [videoUrl, prewarmReel, genre, isDesktop]);
 
