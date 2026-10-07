@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
+// How close to the bottom still counts as "following" — within this, the
+// auto-scroll stays active; past it, the user is considered to have
+// deliberately moved away and auto-scroll stays off until they scroll back.
+const BOTTOM_THRESHOLD_PX = 40;
+
 /**
  * Drives the character-by-character typewriter animation for the script display.
  * Owns all display text, typing state, auto-scroll, and the skip action.
@@ -15,7 +20,6 @@ export function useTypewriter({ cleanScript, setIsTypingGlobal, playSound }) {
 
   const scrollRef          = useRef(null);
   const isAutoScrollPaused = useRef(false);
-  const pauseTimerRef      = useRef(null);
   const timerRef           = useRef(null);
 
   // Main typing effect — re-runs every time a new cleanScript arrives.
@@ -27,6 +31,7 @@ export function useTypewriter({ cleanScript, setIsTypingGlobal, playSound }) {
     setDisplayText('');
     setIsTyping(true);
     setIsTypingGlobal?.(true);
+    isAutoScrollPaused.current = false; // a fresh script always starts followed
 
     let i = 0;
     const typeChar = () => {
@@ -46,8 +51,17 @@ export function useTypewriter({ cleanScript, setIsTypingGlobal, playSound }) {
         playSound();
       }
 
+      // behavior: 'auto' — NOT 'smooth'. A SMOOTH scrollTo re-issued every 40ms
+      // is a repeating animation that fights the user's own scroll momentum
+      // (confirmed: dragging mid-animation visibly stutters against the next
+      // queued smooth-scroll). An instant jump either lands before the next
+      // user gesture starts or doesn't persist long enough to fight one. This
+      // only works because the container no longer sets CSS scroll-behavior:
+      // smooth (see ScriptOutput.jsx) — scrollTo's 'auto' means "use the
+      // element's CSS scroll-behavior", so it would silently still animate if
+      // that CSS property were still set.
       if (i > 15 && scrollRef.current && !isAutoScrollPaused.current) {
-        scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+        scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'auto' });
       }
 
       i++;
@@ -71,14 +85,31 @@ export function useTypewriter({ cleanScript, setIsTypingGlobal, playSound }) {
     setIsTypingGlobal?.(false);
   }, [cleanScript, setIsTypingGlobal]);
 
-  /** Call from the scroll container's onWheel handler to pause auto-scroll temporarily. */
-  const handleScroll = useCallback(() => {
+  // Immediate pause — wired to onWheel/onTouchStart/onPointerDown on the
+  // scroll container, so auto-scroll stops the INSTANT the user starts
+  // interacting via any input method, before any scroll delta even registers.
+  // This is what stops the fight with user-driven momentum at its source;
+  // handleScrollPosition below (input-agnostic, position-based) is what keeps
+  // it paused — or resumes it — for as long as the interaction continues.
+  const pauseAutoScroll = useCallback(() => {
     isAutoScrollPaused.current = true;
-    clearTimeout(pauseTimerRef.current);
-    pauseTimerRef.current = setTimeout(() => {
-      isAutoScrollPaused.current = false;
-    }, 4000);
   }, []);
 
-  return { displayText, isTyping, skip, scrollRef, handleScroll };
+  // Position-based pause/resume — call from the scroll container's onScroll.
+  // Input-agnostic: fires for touch, wheel, keyboard, scrollbar dragging, and
+  // assistive tech alike, since all of them move scrollTop the same way.
+  // Pauses once the user is more than BOTTOM_THRESHOLD_PX from the bottom;
+  // resumes only once they're back within it — matching "resume only if the
+  // user scrolls back to the bottom", not a timer. No separate flag is needed
+  // to distinguish this from the typewriter's OWN programmatic scrolls: those
+  // always land exactly at the bottom, so this check naturally evaluates to
+  // "not paused" immediately afterward either way.
+  const handleScrollPosition = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    isAutoScrollPaused.current = distanceFromBottom > BOTTOM_THRESHOLD_PX;
+  }, []);
+
+  return { displayText, isTyping, skip, scrollRef, pauseAutoScroll, handleScrollPosition };
 }

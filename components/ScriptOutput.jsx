@@ -84,7 +84,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
   // ── Custom hooks ───────────────────────────────────────────────────────────
   const { isMuted, setIsMuted, playSound, playFlashSound, unlockFlashAudio } = useCinematicAudio();
 
-  const { displayText, isTyping, skip, scrollRef, handleScroll } = useTypewriter({
+  const { displayText, isTyping, skip, scrollRef, pauseAutoScroll, handleScrollPosition } = useTypewriter({
     cleanScript,
     setIsTypingGlobal,
     playSound,
@@ -611,9 +611,24 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
       >
         <div
           ref={scrollRef}
-          className="h-[500px] md:h-[650px] overflow-y-auto p-10 md:p-20 custom-scrollbar relative"
-          style={{ scrollBehavior: 'smooth' }}
-          onWheel={handleScroll}
+          // overscroll-y-auto is the browser default already — added here only
+          // as explicit documentation of intent (this box should let scroll
+          // chain to the page once it hits its own boundary), NOT a fix for
+          // anything. It does not address the separate Android WebView
+          // scroll-chaining flakiness at this boundary (tracked separately —
+          // see the typewriter auto-scroll fix in this same commit for the
+          // part that IS fixed here).
+          //
+          // No CSS scroll-behavior here (was `smooth` via inline style) —
+          // useTypewriter's auto-scroll now explicitly requests behavior:
+          // 'auto' per character, which only means "instant" because this
+          // element has no competing scroll-behavior override; restoring one
+          // here would silently re-smooth it.
+          className="h-[500px] md:h-[650px] overflow-y-auto overscroll-y-auto p-10 md:p-20 custom-scrollbar relative"
+          onWheel={pauseAutoScroll}
+          onTouchStart={pauseAutoScroll}
+          onPointerDown={pauseAutoScroll}
+          onScroll={handleScrollPosition}
         >
           {showJournal ? (
             <div
