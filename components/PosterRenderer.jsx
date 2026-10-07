@@ -170,41 +170,45 @@ function PosterRenderer({
 
         {/* 4. שכבת הטיפוגרפיה (Overlay) - רק כשיש תמונה */}
         {!posterLoading && posterUrl && !posterError && (
-          <div className="absolute inset-0 flex flex-col items-center justify-between z-20 pointer-events-none p-8 md:p-12">
-            {/* גרדיאנטים להגנת קריאות */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/40 -z-10" />
-            
-            {/* כותרת עליונה */}
-            <div className="w-full text-center mt-4">
-              <h1 
-                className="text-white font-black uppercase italic drop-shadow-[0_10px_30px_rgba(0,0,0,1)]"
-                style={{ 
-                  fontSize: 'clamp(1.1rem, 5vw, 2.5rem)', 
-                  lineHeight: '1.1',
-                  maxWidth: '90%',
-                  margin: '0 auto'
-                }}
-              >
-                {posterTitle}
-              </h1>
-              <div className="h-[1px] w-1/3 mx-auto mt-4 bg-gradient-to-r from-transparent via-[#d4a373]/50 to-transparent" />
-            </div>
-
-            {/* קרדיטים תחתונים */}
-            <div className="w-full text-center mb-4">
-              <p className="text-[#d4a373] font-black uppercase tracking-[0.3em] text-[9px] md:text-[14px] mb-4">
-                {credits.comingSoon}
-              </p>
-              <div className="w-full border-t border-white/20 pt-4 flex flex-col gap-1 font-bold uppercase text-white/90">
-                <p className="text-[7px] md:text-[10px] tracking-[0.1em] italic">{credits.line1}</p>
-                <p className="text-[6px] md:text-[8px] tracking-[0.1em] opacity-70">{credits.line2}</p>
-                <p className="text-[6px] md:text-[8px] tracking-[0.1em] opacity-70 mb-2">{credits.line3}</p>
-                <p className="text-[#d4a373]/40 text-[5px] md:text-[7px] tracking-[0.4em] font-black italic">
-                  MY-LIFE-SCRIPT.VERCEL.APP
-                </p>
+          <>
+            {/* כותרת עליונה — unchanged, still floats over the artwork with a
+                readability scrim. Credits moved OUT of this padded overlay into
+                their own flush dark band below, so they stop competing with the
+                image instead of just fading over it. */}
+            <div className="absolute inset-0 flex flex-col items-center z-20 pointer-events-none p-8 md:p-12">
+              {/* Dark band below now handles the bottom edge on its own —
+                  this scrim only needs to protect the TITLE at the top. */}
+              <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-transparent to-transparent -z-10" />
+              <div className="w-full text-center mt-4">
+                <h1
+                  className="text-white font-black uppercase italic drop-shadow-[0_10px_30px_rgba(0,0,0,1)]"
+                  style={{
+                    fontSize: 'clamp(1.1rem, 5vw, 2.5rem)',
+                    lineHeight: '1.1',
+                    maxWidth: '90%',
+                    margin: '0 auto'
+                  }}
+                >
+                  {posterTitle}
+                </h1>
+                <div className="h-[1px] w-1/3 mx-auto mt-4 bg-gradient-to-r from-transparent via-[#d4a373]/50 to-transparent" />
               </div>
             </div>
-          </div>
+
+            {/* קרדיטים — compressed to two short lines, inside a SOLID dark band flush
+                against the bottom edge (not a gradient fade over the art). The image
+                itself is untouched (object-cover fills the same fixed aspect-ratio
+                container); the band sits on top of its bottom edge, same as the old
+                gradient did, it just no longer lets the artwork show through. */}
+            <div className="absolute bottom-0 left-0 right-0 z-20 bg-[#030712] px-4 py-2.5 text-center pointer-events-none">
+              <p className="text-[#d4a373] font-black uppercase tracking-[0.18em] text-[8px] md:text-[11px] leading-tight truncate">
+                {credits.comingSoon}
+              </p>
+              <p className="text-white/65 font-bold uppercase tracking-[0.04em] text-[6.5px] md:text-[9px] leading-tight mt-0.5 truncate">
+                {credits.line1}
+              </p>
+            </div>
+          </>
         )}
       </div>
 
