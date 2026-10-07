@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, VolumeX, Share2, Download } from 'lucide-react'; // וודא שאייקונים אלה מיובאים
+import { Loader2, VolumeX, Share2, Download, X } from 'lucide-react'; // וודא שאייקונים אלה מיובאים
 import * as htmlToImage from 'html-to-image'; // וודא שזה מיובא אם handleCapturePoster מועבר
 import { exportCapabilities } from '../utils/export-image.js';
 import { isCapacitorNative } from '../utils/platform.js';
@@ -15,6 +15,7 @@ function PosterRenderer({
   posterRef,
   posterTitle,
   credits,
+  identityNotice,
   handleCapturePoster,
   prewarmPosterShare,
   isPreparingShare,
@@ -35,6 +36,12 @@ function PosterRenderer({
   React.useEffect(() => {
     setIsDesktop(exportCapabilities().isDesktop);
   }, []);
+
+  // Dismissible, not tied to posterError — a degraded (faceless) poster is still a
+  // SUCCESS, so this must never block or hide the result above it. Re-arms whenever
+  // a new notice comes in (e.g. a different generation also degrades).
+  const [identityNoticeDismissed, setIdentityNoticeDismissed] = React.useState(false);
+  React.useEffect(() => { setIdentityNoticeDismissed(false); }, [identityNotice]);
 
   return (
     <motion.div 
@@ -200,6 +207,27 @@ function PosterRenderer({
           </div>
         )}
       </div>
+
+      {/* ── Identity-degraded notice — non-blocking, dismissible. The poster above is a
+          real success; this only explains why it came out without the user's face. ── */}
+      {identityNotice && !identityNoticeDismissed && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          className="flex items-start gap-2.5 mt-4 mx-auto max-w-[380px] px-4 py-3 rounded-2xl bg-[#d4a373]/[0.07] border border-[#d4a373]/25 text-[11px] leading-snug text-white/75"
+        >
+          <span className="flex-1">{identityNotice}</span>
+          <button
+            type="button"
+            onClick={() => setIdentityNoticeDismissed(true)}
+            aria-label={isHebrew ? 'סגור' : 'Dismiss'}
+            className="close-button relative shrink-0 text-white/40 hover:text-white transition-colors"
+          >
+            <X size={14} />
+          </button>
+        </motion.div>
+      )}
 
       {/* פעולת הייצוא — דסקטופ: הורדה ראשית + שיתוף משני · מובייל: שיתוף נייטיב בלבד */}
       {!posterLoading && posterUrl && (

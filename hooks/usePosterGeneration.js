@@ -57,6 +57,10 @@ export function usePosterGeneration({
   const [posterError,   setPosterError]   = useState('');
   const [showPoster,    setShowPoster]    = useState(false);
   const [triggerFlash,  setTriggerFlash]  = useState(false);
+  // Non-blocking — the poster still generated and shows normally; this only explains
+  // why it came out faceless (identity quota exhausted). Not a posterError: must never
+  // hide the result or block the UI, just a dismissible aside.
+  const [identityNotice, setIdentityNotice] = useState('');
 
   // Post-share referral nudge — shown once after a successful share/download, only to
   // signed-in users (referralLinkRef only ever resolves to a string for them; see below).
@@ -104,6 +108,7 @@ export function usePosterGeneration({
     posterActiveRef.current = true;
     setPosterLoading(true);
     setPosterError('');
+    setIdentityNotice('');
     setShowPoster(true);
     ensureReferralLink(); // warm the referral link in the background for share-time
 
@@ -150,6 +155,12 @@ export function usePosterGeneration({
         // Phase 1: show the data URI immediately — zero extra wait.
         setPosterUrl(data.imageUrl);
         onPosterGenerated?.(data.imageUrl);
+
+        // Had a face, but this user's own identity quota was exhausted — the poster
+        // still generated (faceless), just show why rather than leaving it unexplained.
+        if (data.identityDegraded) {
+          setIdentityNotice(getMsg(data.code || CODES.QUOTA_IDENTITY, lang));
+        }
 
         // GA4 viral-funnel: this poster activated a pending referral (rewarded the inviter).
         if (data.referralGranted && typeof window !== 'undefined' && window.gtag) {
@@ -448,6 +459,7 @@ export function usePosterGeneration({
     posterUrl,    setPosterUrl,
     posterLoading, setPosterLoading,
     posterError,  setPosterError,
+    identityNotice, setIdentityNotice,
     showPoster,   setShowPoster,
     triggerFlash, setTriggerFlash,
     posterRef,

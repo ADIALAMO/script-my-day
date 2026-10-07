@@ -570,7 +570,15 @@ export default async function handler(req, res) {
         if (referralGranted) console.log(`🎁 Referral reward granted (referee=${refereeUserId})`);
       }
       console.log(`🎨 Poster generated successfully by: ${result.provider}`);
-      return res.status(200).json({ success: true, ...result, referralGranted });
+      return res.status(200).json({
+        success: true,
+        ...result,
+        referralGranted,
+        // The user had a face but their own identity quota was exhausted — this poster
+        // generated faceless instead of failing outright (see resolveIdentityGate). Lets
+        // the client show a non-blocking "why no face" notice instead of a silent swap.
+        ...(gate.identityDegraded ? { identityDegraded: true, code: gate.code } : {}),
+      });
     } catch (e) {
       // Cloudflare's own prompt-content filter (error code 8007, "Input prompt
       // contains NSFW content") rejects a specific PROMPT, not the provider

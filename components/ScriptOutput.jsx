@@ -131,7 +131,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
 
   const {
     posterUrl, setPosterUrl, posterLoading, setPosterLoading,
-    posterError, setPosterError, showPoster, setShowPoster,
+    posterError, setPosterError, identityNotice, showPoster, setShowPoster,
     triggerFlash, setTriggerFlash, posterRef,
     currentPosterMessage, generatePoster, handleCapturePoster, prewarmPosterShare, isPreparingShare, resetPoster, cancelPoster,
     showReferralNudge, dismissReferralNudge,
@@ -769,6 +769,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               posterLoading={posterLoading}
               posterError={posterError}
               setPosterError={setPosterError}
+              identityNotice={identityNotice}
               setPosterUrl={setPosterUrl}
               triggerFlash={triggerFlash}
               posterRef={posterRef}
