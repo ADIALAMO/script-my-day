@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Copy, Download, Check, Volume2, VolumeX, Film, Users, X } from 'lucide-react';
+import { Sparkles, Copy, Download, Check, Film, Users, X } from 'lucide-react';
 import { GenreSelector } from './GenreSelector';
 import { InspirationModal } from './InspirationModal';
 import { detectGender } from '../lib/gender-detect';
@@ -18,12 +18,11 @@ const GENDER_PILLS = [
   { value: 'neutral', he: 'הם',  en: 'They' },
 ];
 
-const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProducerName, gender, setGender, suggestGender, genderTouched, isTypingGlobal, onInputChange, showTips, setShowTips }) => {
+const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProducerName, gender, setGender, suggestGender, genderTouched, isTypingGlobal, onInputChange, showTips, setShowTips, isMusicMuted = false }) => {
   const [journalEntry, setJournalEntry] = useState('');
   const [activeGenre, setActiveGenre] = useState('drama');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
-  const [isMusicMuted, setIsMusicMuted] = useState(false);
   const clapperRef = useRef(null); // ref so we can stop a prior clapper before replaying
 
   // First-run "how it works" strip — shown once until dismissed, so visitors
@@ -327,44 +326,8 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
       <div>
         <div className="flex justify-between items-center mb-6 px-2">
           <label className="text-[#d4a373] text-[10px] md:text-xs font-black uppercase tracking-[0.3em] italic">{lang === 'he' ? 'בחר סגנון קולנועי' : 'Select Cinematic Style'}</label>
-          <button
-            type="button"
-            onClick={() => {
-              if (isLocked) return;
-              const next = !isMusicMuted;
-              setIsMusicMuted(next);
-              // Synchronous, gesture-time play() attempt: this tap is a real
-              // user gesture, so it's the one reliable place to (re)start
-              // playback on unmute. useBackgroundAudio.js's own play() calls
-              // run inside effects (not synchronously inside a click), which
-              // iOS Safari does not count as gesture-triggered — confirmed via
-              // this app's own play-log capture, where an effect-triggered
-              // call came back rejected with NotAllowedError.
-              //
-              // Muting via volume=0 doesn't work on iPhone Safari at all —
-              // iOS silently ignores JS writes to HTMLMediaElement.volume,
-              // locking it to the hardware volume buttons instead (a
-              // long-documented WebKit restriction, iPhone-only — Mac/iPad
-              // Safari and Android Chrome both allow it normally, confirmed
-              // via direct property testing on the latter). `.muted` IS
-              // respected on iOS and silences output without pausing or
-              // touching the volume level, so it's used here instead —
-              // volume stays fixed at the target level; muted is the actual
-              // on/off switch on every platform.
-              const audio = document.getElementById('main-bg-music');
-              if (audio) {
-                audio.volume = 0.5;
-                audio.muted = next;
-                if (!next && audio.paused) audio.play().catch(() => {});
-              }
-            }}
-            disabled={isLocked}
-            className={`p-2.5 rounded-xl border transition-all duration-300 ${isMusicMuted ? 'border-white/10 bg-white/5 text-gray-500' : 'border-[#d4a373]/50 bg-[#d4a373]/10 text-[#d4a373]'} ${isLocked ? 'opacity-30' : ''}`}
-          >
-            {isMusicMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-          </button>
         </div>
-        
+
         <GenreSelector activeGenre={activeGenre} onGenreChange={setActiveGenre} isLocked={isLocked} lang={lang} />
       </div>
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Film, Languages, Clapperboard, LogOut, Crown, ChevronDown, User, CreditCard, Loader2, Gift } from 'lucide-react';
+import { Film, Languages, Clapperboard, LogOut, Crown, ChevronDown, User, CreditCard, Loader2, Gift, Volume2, VolumeX } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import LaunchTicket from './LaunchTicket';
 import ReferralModal from './ReferralModal';
@@ -222,7 +222,7 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, 
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHistoryOpen, onOpenAuthModal, tierRefreshToken = 0, onDropdownToggle, closeDropdownRef }) {
+export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHistoryOpen, onOpenAuthModal, tierRefreshToken = 0, onDropdownToggle, closeDropdownRef, isMusicMuted, onToggleMute, isMuteLocked = false }) {
   const { data: session, status } = useSession();
   const isAuthenticated = status === 'authenticated';
   const tier = useTier(isAuthenticated, tierRefreshToken);
@@ -293,6 +293,27 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
           doesn't look like a stray UI element. */}
       <div className="flex items-center gap-1.5 md:gap-3 min-w-0 overflow-x-auto nav-controls-scroll">
         <LaunchTicket lang={lang} />
+
+        {/* Ambience mute — lifted here from ScriptForm so it stays reachable across the
+            whole flow (script/poster/comic), not just while the input form is on screen. */}
+        {onToggleMute && (
+          <button
+            type="button"
+            onClick={onToggleMute}
+            disabled={isMuteLocked}
+            aria-label={isHe ? (isMusicMuted ? 'בטל השתקה' : 'השתק מוזיקה') : (isMusicMuted ? 'Unmute music' : 'Mute music')}
+            className={`group relative flex items-center justify-center w-8 h-8 md:w-9 md:h-9 border rounded-xl transition-all duration-300 shrink-0 ${
+              isMusicMuted
+                ? 'border-white/15 [@media(hover:hover)]:hover:border-[#d4a373]/40 [@media(hover:hover)]:hover:bg-[#d4a373]/8'
+                : 'border-[#d4a373]/40 bg-[#d4a373]/10'
+            } ${isMuteLocked ? 'opacity-30' : ''}`}
+          >
+            {isMusicMuted
+              ? <VolumeX size={14} className="text-[#d4a373]/55 md:w-[15px] md:h-[15px] transition-colors duration-300" />
+              : <Volume2 size={14} className="text-[#d4a373] md:w-[15px] md:h-[15px] transition-colors duration-300" />}
+            <IconTooltip label={isHe ? (isMusicMuted ? 'בטל השתקה' : 'השתק מוזיקה') : (isMusicMuted ? 'Unmute music' : 'Mute music')} />
+          </button>
+        )}
 
         {/* History */}
         <button

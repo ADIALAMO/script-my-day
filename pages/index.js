@@ -347,6 +347,26 @@ function HomePage() {
   const [galleryMode,    setGalleryMode]    = useState('grid'); // 'grid' | 'filmstrip'
   const [producerName, setProducerName] = useState('');
 
+  // Ambience mute — lifted up from ScriptForm so the toggle lives in the fixed Navbar
+  // and stays reachable across the whole flow, not just while the input form is visible.
+  const [isMusicMuted, setIsMusicMuted] = useState(false);
+  const toggleMute = useCallback(() => {
+    const next = !isMusicMuted;
+    setIsMusicMuted(next);
+    // Synchronous, gesture-time play() attempt: this tap is a real user gesture, so
+    // it's the one reliable place to (re)start playback on unmute — an effect-triggered
+    // call is NOT counted as gesture-triggered on iOS Safari (confirmed via this app's
+    // own play-log capture; came back rejected with NotAllowedError). Muting via
+    // volume=0 doesn't work on iPhone Safari at all (JS writes to .volume are silently
+    // ignored there), so `.muted` is used instead — respected on every platform.
+    const audio = document.getElementById('main-bg-music');
+    if (audio) {
+      audio.volume = 0.5;
+      audio.muted = next;
+      if (!next && audio.paused) audio.play().catch(() => {});
+    }
+  }, [isMusicMuted]);
+
   const abortControllerRef = useRef(null);
   const lastJournalEntryRef = useRef({ entry: '', genre: '' });
   const currentEntryIdRef = useRef(null);
@@ -827,6 +847,9 @@ function HomePage() {
         tierRefreshToken={tierVersion}
         onDropdownToggle={setDropdownOpenMirror}
         closeDropdownRef={closeDropdownRef}
+        isMusicMuted={isMusicMuted}
+        onToggleMute={toggleMute}
+        isMuteLocked={scriptLoading}
       />
 
       <main className="container mx-auto pt-4 md:pt-8 pb-12 px-6 max-w-5xl flex-grow relative">
@@ -1161,6 +1184,7 @@ function HomePage() {
               onCancel={handleCancelGeneration}
               loading={scriptLoading}
               lang={lang}
+              isMusicMuted={isMusicMuted}
               producerName={producerName}
               setProducerName={setProducerName}
               gender={gender}
