@@ -197,6 +197,10 @@ at each call site.
   `EMAIL_SERVER_PASSWORD` in Vercel (Production and Preview), then redeploy. Changing the
   Google account password revokes App Passwords. Failed sends alert Telegram
   ([lib/auth-alerts.js](lib/auth-alerts.js), max one per error code per 30 min).
+- **Temporary diagnostics:** `/api/reel-diagnostic` is rate-limited (30/h per IP, 100/h global; see
+  `lib/rate-limit.js`, `lib/alert-throttle.js`) but is still unauthenticated and must be removed
+  after the Google Play production access request (~Oct 20-21). Find everything with
+  `grep "TEMP DIAGNOSTIC (reel-crash)"`.
 
 ## Project stage & growth
 LIFESCRIPT is **deployed and live**; the current bottleneck is **distribution +
