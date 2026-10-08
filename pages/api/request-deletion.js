@@ -1,6 +1,7 @@
 import redis from '../../lib/redis.js';
 import { extractIdentifier } from '../../lib/api-utils.js';
 import { sanitize } from '../../utils/input-processor.js';
+import { escapeMarkdownV1, sendTelegram } from '../../lib/telegram.js';
 
 /**
  * POST /api/request-deletion  { email, note, lang }
@@ -55,20 +56,9 @@ export default async function handler(req, res) {
   }
 
   // ── Notify via Telegram (best-effort) ───────────────────────────────────────
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId   = process.env.TELEGRAM_CHAT_ID;
-  if (botToken && chatId) {
-    const message = `🗑️ *Data deletion request!*\n------------------------\n📧 ${clean}\n🌐 ${lang === 'he' ? 'Hebrew 🇮🇱' : 'English 🇺🇸'}${cleanNote ? `\n📝 ${cleanNote}` : ''}`;
-    try {
-      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'Markdown' }),
-      });
-    } catch (e) {
-      console.warn('Deletion Telegram notify failed:', e.message);
-    }
-  }
+  // The email/note are user input: escape them (an "_" in an address used to make
+  // Telegram reject the message, silently dropping the notification).
+  await sendTelegram(`🗑️ *Data deletion request!*\n------------------------\n📧 ${escapeMarkdownV1(clean)}\n🌐 ${lang === 'he' ? 'Hebrew 🇮🇱' : 'English 🇺🇸'}${cleanNote ? `\n📝 ${escapeMarkdownV1(cleanNote)}` : ''}`);
 
   return res.status(200).json({ success: true });
 }

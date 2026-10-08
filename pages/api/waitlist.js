@@ -1,5 +1,6 @@
 import redis from '../../lib/redis.js';
 import { extractIdentifier } from '../../lib/api-utils.js';
+import { escapeMarkdownV1, sendTelegram } from '../../lib/telegram.js';
 
 /**
  * POST /api/waitlist  { email, lang }
@@ -54,20 +55,7 @@ export default async function handler(req, res) {
 
   // ── Notify via Telegram (best-effort) ───────────────────────────────────────
   if (!alreadyOnList) {
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    const chatId   = process.env.TELEGRAM_CHAT_ID;
-    if (botToken && chatId) {
-      const message = `🎟️ *New Pro waitlist signup!*\n------------------------\n📧 ${clean}\n🌐 ${lang === 'he' ? 'Hebrew 🇮🇱' : 'English 🇺🇸'}`;
-      try {
-        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'Markdown' }),
-        });
-      } catch (e) {
-        console.warn('Waitlist Telegram notify failed:', e.message);
-      }
-    }
+    await sendTelegram(`🎟️ *New Pro waitlist signup!*\n------------------------\n📧 ${escapeMarkdownV1(clean)}\n🌐 ${lang === 'he' ? 'Hebrew 🇮🇱' : 'English 🇺🇸'}`);
   }
 
   return res.status(200).json({ success: true, alreadyOnList });

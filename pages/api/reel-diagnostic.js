@@ -1,5 +1,6 @@
 import redis from '../../lib/redis.js';
 import { extractIdentifier } from '../../lib/api-utils.js';
+import { escapeMarkdownV1, sendTelegram } from '../../lib/telegram.js';
 
 /**
  * TEMP DIAGNOSTIC (reel-crash) — see utils/reel-diagnostics.js for the client
@@ -70,9 +71,8 @@ export default async function handler(req, res) {
   }
 
   // ── Forward to Telegram ───────────────────────────────────────────────────
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId   = process.env.TELEGRAM_CHAT_ID;
-
+  // Client-supplied (untrusted) fields all go through escapeMarkdownV1.
+  const e = escapeMarkdownV1;
   const stepsLine = Array.isArray(trail.steps) && trail.steps.length
     ? trail.steps.map((s) => {
         const mem = s.memory
@@ -82,35 +82,25 @@ export default async function handler(req, res) {
           .filter(([k]) => !['stage', 'ts', 'memory'].includes(k))
           .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
           .join(' ');
-        return `${s.stage}${mem}${bits ? ' ' + bits : ''}`;
+        return e(`${s.stage}${mem}${bits ? ' ' + bits : ''}`);
       }).join('\n')
     : '—';
 
   const message = `
 🎬 *Reel Diagnostic (temp — crash investigation)*
 -------------------------
-🏷 *Flag:* ${flag}
-🆔 *Session:* ${trail.sessionId || '?'}
-⏱ *App start → tap:* ${trail.msSinceAppStart ?? '?'}ms
-📱 *UA:* ${trail.device?.userAgent || '?'}
-💾 *deviceMemory:* ${trail.device?.deviceMemory ?? '?'}GB  ·  *cores:* ${trail.device?.hardwareConcurrency ?? '?'}
+🏷 *Flag:* ${e(flag)}
+🆔 *Session:* ${e(trail.sessionId || '?')}
+⏱ *App start → tap:* ${e(trail.msSinceAppStart ?? '?')}ms
+📱 *UA:* ${e(trail.device?.userAgent || '?')}
+💾 *deviceMemory:* ${e(trail.device?.deviceMemory ?? '?')}GB  ·  *cores:* ${e(trail.device?.hardwareConcurrency ?? '?')}
 🪜 *Trail:*
 ${stepsLine}
 -------------------------
   `;
 
-  try {
-    if (botToken && chatId) {
-      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'Markdown' }),
-      });
-    }
-  } catch (e) {
-    console.error('reel-diagnostic Telegram forward failed:', e.message);
-    // Still 200 — fire-and-forget, never worth a client-visible error.
-  }
+  // Fire-and-forget on the client side; sendTelegram never throws and logs failures.
+  await sendTelegram(message);
 
   return res.status(200).json({ success: true });
 }
