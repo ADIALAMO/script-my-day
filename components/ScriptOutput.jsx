@@ -61,7 +61,7 @@ const getCinematicTitle = (text) => {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, gender, setGender, onPosterGenerated, onScriptEdited, onAuthRequired, onPanelsGenerated, initialPanels, initialPosterUrl, journalEntry, onCharacterModalToggle, closeCharacterModalRef }) {
+function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, gender, setGender, onPosterGenerated, onScriptEdited, onAuthRequired, onPanelsGenerated, initialPanels, initialPosterUrl, journalEntry, onCharacterModalToggle, closeCharacterModalRef, instant = false }) {
   const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST');
 
   // ── Language: UI chrome vs generated content ────────────────────────────────
@@ -88,6 +88,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     cleanScript,
     setIsTypingGlobal,
     playSound,
+    instant,
   });
 
   const posterTitle = useMemo(() => getCinematicTitle(displayText || cleanScript), [displayText, cleanScript]);

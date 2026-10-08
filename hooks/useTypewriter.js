@@ -13,8 +13,10 @@ const BOTTOM_THRESHOLD_PX = 40;
  * @param {string}   opts.cleanScript       - The fully parsed script text to animate.
  * @param {Function} opts.setIsTypingGlobal - Parent callback to sync typing state upward.
  * @param {Function} opts.playSound         - Typewriter sound callback fired per character.
+ * @param {boolean}  [opts.instant]         - Show the full text immediately (saved/history scripts):
+ *                                            no animation, no sound, no auto-scroll, never "typing".
  */
-export function useTypewriter({ cleanScript, setIsTypingGlobal, playSound }) {
+export function useTypewriter({ cleanScript, setIsTypingGlobal, playSound, instant = false }) {
   const [displayText, setDisplayText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
 
@@ -25,6 +27,18 @@ export function useTypewriter({ cleanScript, setIsTypingGlobal, playSound }) {
   // Main typing effect — re-runs every time a new cleanScript arrives.
   useEffect(() => {
     if (!cleanScript) return;
+
+    // Instant path: a script the user already has (opened from history) is shown whole,
+    // right away. Nothing animates, so there is no sound, no auto-scroll to fight, and
+    // the global typing flag stays false. Any previous animation is cancelled first.
+    if (instant) {
+      clearTimeout(timerRef.current);
+      setIsTyping(false);
+      setIsTypingGlobal?.(false);
+      isAutoScrollPaused.current = false;
+      if (scrollRef.current) scrollRef.current.scrollTop = 0;
+      return;
+    }
 
     // Clear previous animation and reset display before starting.
     clearTimeout(timerRef.current);
@@ -111,5 +125,10 @@ export function useTypewriter({ cleanScript, setIsTypingGlobal, playSound }) {
     isAutoScrollPaused.current = distanceFromBottom > BOTTOM_THRESHOLD_PX;
   }, []);
 
-  return { displayText, isTyping, skip, scrollRef, pauseAutoScroll, handleScrollPosition };
+  // In instant mode the text is derived, not stored, so there is no empty first frame.
+  return {
+    displayText: instant ? cleanScript : displayText,
+    isTyping: instant ? false : isTyping,
+    skip, scrollRef, pauseAutoScroll, handleScrollPosition,
+  };
 }

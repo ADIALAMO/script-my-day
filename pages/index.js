@@ -327,6 +327,9 @@ function HomePage() {
   const [selectedGenre, setSelectedGenre] = useState(null);
   // isTyping: true while ScriptOutput's typewriter animation is running
   const [isTyping, setIsTyping] = useState(false);
+  // 'fresh' = just generated (typewriter animates); 'history' = reopened from the archive
+  // (shown whole, instantly — the user has already read it).
+  const [scriptSource, setScriptSource] = useState('fresh');
   const [modalContent, setModalContent] = useState(null);
   const [showTips, setShowTips] = useState(false);
   // Bridge for ScriptOutput's own showCharacterModal state (see the
@@ -689,6 +692,7 @@ function HomePage() {
 
     setShowGallery(false);
     setScriptLoading(true);
+    setScriptSource('fresh');
     setError('');
     setScript('');
     setSelectedGenre(genre);
@@ -1412,6 +1416,7 @@ function HomePage() {
                 lang={lang}
                 genre={selectedGenre}
                 setIsTypingGlobal={setIsTyping}
+                instant={scriptSource === 'history'}
                 producerName={producerName}
                 gender={gender}
                 setGender={setGender}
@@ -1612,6 +1617,7 @@ function HomePage() {
         onClose={() => setShowHistory(false)}
         history={history}
         onReload={(entry) => {
+          setScriptSource('history');
           setScript(entry.script);
           setSelectedGenre(entry.genre);
           setShowGallery(false);
