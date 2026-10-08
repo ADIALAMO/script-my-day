@@ -318,6 +318,10 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     track('Script Shared', { platform: 'facebook', genre, language: lang });
   }, [genre, lang]);
 
+  // window.print() does nothing in an Android WebView (no print support in the Capacitor shell),
+  // so the print/PDF entry points are web-only.
+  const canPrint = !isCapacitorNative();
+
   const handlePrintIframe = useCallback(() => {
     // Everything interpolated into the print document is user/LLM text (the script can
     // be hand-edited, the producer name is free text) and the iframe is same-origin, so
@@ -562,13 +566,28 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
 
                   <div className="h-px bg-white/5 mx-3" />
 
+                  {/* One tap → the print dialog (Save as PDF). Hidden on native: window.print()
+                      is a no-op inside an Android WebView, so the item would do nothing. */}
+                  {canPrint && (
+                    <button
+                      onClick={() => { setShowExportMenu(false); handlePrintIframe(); }}
+                      className="flex items-center gap-3 w-full px-4 py-3 text-[10.5px] font-bold uppercase tracking-wider text-gray-300 hover:text-[#d4a373] hover:bg-[#d4a373]/8 transition-colors duration-150"
+                      style={{ textAlign: uiHebrew ? 'right' : 'left' }}
+                    >
+                      <Printer size={13} className="text-[#d4a373]/50 shrink-0" />
+                      {uiHebrew ? 'ייצוא PDF / הדפסה' : 'Export PDF / Print'}
+                    </button>
+                  )}
+
+                  {/* The Distribution Hub (WhatsApp, Facebook, Email, share text, and Print on web)
+                      used to be reachable only through the item above — keep a way in on every platform. */}
                   <button
                     onClick={() => { setShowExportMenu(false); setShowShareModal(true); }}
                     className="flex items-center gap-3 w-full px-4 py-3 text-[10.5px] font-bold uppercase tracking-wider text-gray-300 hover:text-[#d4a373] hover:bg-[#d4a373]/8 transition-colors duration-150"
                     style={{ textAlign: uiHebrew ? 'right' : 'left' }}
                   >
-                    <Printer size={13} className="text-[#d4a373]/50 shrink-0" />
-                    {uiHebrew ? 'ייצוא PDF / הדפסה' : 'Export PDF / Print'}
+                    <Share2 size={13} className="text-[#d4a373]/50 shrink-0" />
+                    {uiHebrew ? 'שתף…' : 'Share…'}
                   </button>
                 </motion.div>
               )}
@@ -1093,10 +1112,10 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
                   {[
                     { onClick: () => { handleWhatsApp(); setShowShareModal(false); }, color: '#25D366', icon: <WhatsAppIcon />, label: uiHebrew ? 'שלח בוואטסאפ' : 'Send via WhatsApp', sub: uiHebrew ? 'שתף עם חברים ישירות' : 'Share directly with friends' },
                     { onClick: () => { handleFacebook(); setShowShareModal(false); }, color: '#1877F2', icon: <FacebookIcon />, label: uiHebrew ? 'שתף בפייסבוק' : 'Share on Facebook', sub: uiHebrew ? 'פרסם את ההפקה בפיד' : 'Post your production to your feed' },
-                    { onClick: () => { handlePrintIframe(); setShowShareModal(false); }, color: '#d4a373', icon: <Printer size={19} />, label: uiHebrew ? 'הדפסה / שמור כ-PDF' : 'Print / Save as PDF', sub: uiHebrew ? 'פורמט תסריט הוליוודי סטנדרטי' : 'Hollywood-standard screenplay format' },
+                    { onClick: () => { handlePrintIframe(); setShowShareModal(false); }, color: '#d4a373', icon: <Printer size={19} />, label: uiHebrew ? 'הדפסה / שמור כ-PDF' : 'Print / Save as PDF', sub: uiHebrew ? 'פורמט תסריט הוליוודי סטנדרטי' : 'Hollywood-standard screenplay format', webOnly: true },
                     { onClick: () => { handleEmail(); setShowShareModal(false); }, color: '#8b5cf6', icon: <Mail size={19} />, label: uiHebrew ? 'שלח באימייל' : 'Send via Email', sub: uiHebrew ? 'פתח אפליקציית דואר עם התסריט' : 'Open your mail app with the script' },
                     { onClick: () => { handleNativeShare(); setShowShareModal(false); }, color: '#38bdf8', icon: <NotebookPen size={19} />, label: uiHebrew ? 'שמור / שתף טקסט' : 'Save to Notes / Share Text', sub: uiHebrew ? 'שיתוף נייטיב או העתקה לקליפבורד' : 'Native share sheet or clipboard copy' },
-                  ].map((item, i) => (
+                  ].filter((item) => canPrint || !item.webOnly).map((item, i) => (
                     <button
                       key={i}
                       onClick={item.onClick}
