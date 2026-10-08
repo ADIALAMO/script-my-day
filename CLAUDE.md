@@ -193,6 +193,10 @@ at each call site.
 - Never trust client-supplied tier/userId — resolve via `getSessionAndTier`.
 - R2 character assets are immutable (`max-age=…, immutable`); Redis stores only pointers.
 - `.env.example` documents every required env var.
+- If magic links fail with 535 BadCredentials, create a new Gmail App Password and update
+  `EMAIL_SERVER_PASSWORD` in Vercel (Production and Preview), then redeploy. Changing the
+  Google account password revokes App Passwords. Failed sends alert Telegram
+  ([lib/auth-alerts.js](lib/auth-alerts.js), max one per error code per 30 min).
 
 ## Project stage & growth
 LIFESCRIPT is **deployed and live**; the current bottleneck is **distribution +
