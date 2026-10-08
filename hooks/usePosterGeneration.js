@@ -46,6 +46,7 @@ export function usePosterGeneration({
   posterTitle,
   isHebrew,
   finalProducerName,
+  credits, // { comingSoon, line1, line2, line3 } — same object the on-screen credits block renders
   onPosterGenerated,
   onAuthRequired,
   characterImageUrl, // Identity Track — null/undefined → standard generation
@@ -209,8 +210,12 @@ export function usePosterGeneration({
   // tagged with the posterUrl it was built from so a stale render (from a previous poster)
   // is never shared. shareFileRef holds the finished File; prewarmRef dedupes an in-flight
   // background render so a tap and the eager pre-warm don't render twice.
-  const shareFileRef = useRef({ url: null, file: null });
-  const prewarmRef   = useRef(null);
+  // `key` fingerprints everything burned into the file (poster, UI language, title, producer
+  // name, credits language) — a cached/in-flight render is only reused when ALL of it still
+  // matches, so changing the name or switching language can never share a stale file.
+  const shareFileRef = useRef({ url: null, key: null, file: null });
+  const prewarmRef   = useRef(null); // { key, promise } while a render is in flight
+  const shareKey = `${posterUrl}|${lang}|${posterTitle}|${finalProducerName}|${isHebrew ? 'he' : 'en'}`;
   // Guards handleCapturePoster against an overlapping second tap — a ref, not the
   // `disabled` attribute, because `disabled` can only safely apply AFTER a click has
   // already been received (see isPreparingShare below for why).
@@ -229,6 +234,20 @@ export function usePosterGeneration({
     () => `poster-${(posterTitle || 'movie-poster').replace(/\s+/g, '-')}.png`,
     [posterTitle],
   );
+
+  // Title + credits to burn into the shared/downloaded image (drawn on the canvas in
+  // utils/export-image.js — same strings as the on-screen block, scaled off its width).
+  const buildOverlay = useCallback(() => {
+    if (typeof window === 'undefined') return null;
+    const rect = posterRef.current?.getBoundingClientRect();
+    return {
+      title: posterTitle,
+      credits,
+      rtl: isHebrew,
+      cssWidth: rect?.width || 450,
+      viewportWidth: window.innerWidth,
+    };
+  }, [posterTitle, credits, isHebrew]);
 
   // Render the poster DOM to a PNG blob. This is the expensive part (img.decode +
   // settle + two html-to-image passes); it MUST run before the user gesture on slow
@@ -280,8 +299,9 @@ export function usePosterGeneration({
   const prewarmPosterShare = useCallback(() => {
     if (typeof window === 'undefined' || !posterUrl) return null;
     if (exportCapabilities().isDesktop) return null;
-    if (shareFileRef.current.url === posterUrl && shareFileRef.current.file) return null; // ready
-    if (prewarmRef.current) return prewarmRef.current; // already rendering
+    const key = shareKey;
+    if (shareFileRef.current.key === key && shareFileRef.current.file) return null; // ready
+    if (prewarmRef.current?.key === key) return prewarmRef.current.promise; // already rendering this exact file
 
     const url = posterUrl;
     // Fetch the poster source directly instead of running html-to-image.
@@ -289,20 +309,23 @@ export function usePosterGeneration({
     // canvas draws), causing visible UI jank and expiring iOS's transient-activation
     // window so navigator.share() always throws NotAllowedError.  A same-origin
     // fetch completes in <200 ms for data URIs and <500 ms for proxied CDN URLs —
-    // the share file is ready long before the user's tap.
+    // the share file is ready long before the user's tap. The title + credits are drawn
+    // on the canvas in the same step (makeShareFile -> compositeWatermark), no DOM render.
     const src = posterUrl.startsWith('http')
       ? `/api/proxy-image?url=${encodeURIComponent(posterUrl)}`
       : posterUrl;
-    prewarmRef.current = urlToBlob(src)
-      .then(blob => makeShareFile(blob, posterFilename(), { lang }))
+    const overlay = buildOverlay();
+    const promise = urlToBlob(src)
+      .then(blob => makeShareFile(blob, posterFilename(), { lang, overlay }))
       .then(file => {
-        shareFileRef.current = { url, file };
+        shareFileRef.current = { url, key, file };
         return file;
       })
       .catch(() => null)
-      .finally(() => { prewarmRef.current = null; });
-    return prewarmRef.current;
-  }, [posterUrl, lang, posterFilename]);
+      .finally(() => { if (prewarmRef.current?.key === key) prewarmRef.current = null; });
+    prewarmRef.current = { key, promise };
+    return promise;
+  }, [posterUrl, lang, posterFilename, shareKey, buildOverlay]);
 
   // mode: 'auto' (desktop ⇒ download, mobile ⇒ share) | 'download' | 'share'.
   const handleCapturePoster = useCallback(async (mode = 'auto') => {
@@ -331,10 +354,21 @@ export function usePosterGeneration({
     try {
       // Desktop ⇒ clean `<a download>` of the composited poster (never navigates the SPA).
       if (wantDownload) {
+        // Same canvas renderer as the mobile/native share (title + credits + brand strip).
+        // `strict` makes it throw instead of silently returning an un-overlaid image, so
+        // html-to-image below stays a true fallback for when the canvas path fails.
+        try {
+          const srcUrl = posterUrl.startsWith('http')
+            ? `/api/proxy-image?url=${encodeURIComponent(posterUrl)}`
+            : posterUrl;
+          const raw = await urlToBlob(srcUrl);
+          if (await downloadBlob(raw, posterFilename(), { lang, overlay: buildOverlay(), strict: true })) return;
+        } catch { /* fall through to the html-to-image fallback */ }
+
         let blob = await renderPosterBlob();
         if (!blob) {
-          // html-to-image failed (canvas taint, zero-size element, etc.) — fall back to
-          // fetching the raw poster image directly.  The CSS title/credits overlay is lost
+          // html-to-image failed too (canvas taint, zero-size element, etc.) — fall back to
+          // fetching the raw poster image directly.  The title/credits overlay is lost
           // but the user still gets the AI-generated image with the watermark applied.
           try {
             const src = posterUrl.startsWith('http')
@@ -351,20 +385,29 @@ export function usePosterGeneration({
       // instantly inside the activation window. If the pre-warm hasn't finished (or never
       // started), await/run it now — no worse than the pre-fix behaviour, and the result
       // is cached for the next tap.
-      let file = (shareFileRef.current.url === posterUrl) ? shareFileRef.current.file : null;
+      let file = (shareFileRef.current.key === shareKey) ? shareFileRef.current.file : null;
       const neededToWait = !file; // skip the indicator entirely on the already-cached path
       if (neededToWait) setIsPreparingShare(true);
       try {
         if (!file) {
           const p = prewarmPosterShare();
           if (p) await p;
-          file = (shareFileRef.current.url === posterUrl) ? shareFileRef.current.file : null;
+          file = (shareFileRef.current.key === shareKey) ? shareFileRef.current.file : null;
         }
         if (!file) {
           if (isDesktop) {
-            // Desktop: html-to-image to capture the CSS title/credits overlay.
-            const blob = await renderPosterBlob();
-            if (blob) file = await makeShareFile(blob, posterFilename(), { lang });
+            // Desktop: same canvas renderer as everywhere else (title + credits + brand
+            // strip). strict → on failure fall back to html-to-image, which captures the CSS overlay.
+            try {
+              const srcUrl = posterUrl.startsWith('http')
+                ? `/api/proxy-image?url=${encodeURIComponent(posterUrl)}`
+                : posterUrl;
+              const raw = await urlToBlob(srcUrl);
+              file = await makeShareFile(raw, posterFilename(), { lang, overlay: buildOverlay(), strict: true });
+            } catch {
+              const blob = await renderPosterBlob();
+              if (blob) file = await makeShareFile(blob, posterFilename(), { lang });
+            }
           } else {
             // Mobile: fast direct fetch — no CSS overlays, but stays inside iOS's
             // transient-activation window (html-to-image takes 2-3 s and kills it).
@@ -373,7 +416,7 @@ export function usePosterGeneration({
                 ? `/api/proxy-image?url=${encodeURIComponent(posterUrl)}`
                 : posterUrl;
               const blob = await urlToBlob(src);
-              file = await makeShareFile(blob, posterFilename(), { lang });
+              file = await makeShareFile(blob, posterFilename(), { lang, overlay: buildOverlay() });
             } catch { /* silent */ }
           }
         }
@@ -430,13 +473,13 @@ export function usePosterGeneration({
         setShowReferralNudge(true);
       }
     }
-  }, [posterUrl, posterTitle, isHebrew, finalProducerName, genre, lang, renderPosterBlob, posterFilename, prewarmPosterShare]);
+  }, [posterUrl, posterTitle, isHebrew, finalProducerName, genre, lang, renderPosterBlob, posterFilename, prewarmPosterShare, shareKey, buildOverlay]);
 
   // ── Reset (called by ScriptOutput when a new script arrives) ────────────────
 
   const resetPoster = useCallback(() => {
     posterActiveRef.current = false;
-    shareFileRef.current = { url: null, file: null }; // drop the stale share render
+    shareFileRef.current = { url: null, key: null, file: null }; // drop the stale share render
     prewarmRef.current = null;
     setShowPoster(false);
     setPosterUrl('');

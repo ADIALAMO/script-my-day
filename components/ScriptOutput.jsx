@@ -136,7 +136,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     triggerFlash, setTriggerFlash, posterRef,
     currentPosterMessage, generatePoster, handleCapturePoster, prewarmPosterShare, isPreparingShare, resetPoster, cancelPoster,
     showReferralNudge, dismissReferralNudge,
-  } = usePosterGeneration({ lang, genre, visualPrompt, posterTitle, isHebrew, finalProducerName, onPosterGenerated, onAuthRequired, characterImageUrl: activeCharacterUrl, onUnlockAudio: unlockFlashAudio });
+  } = usePosterGeneration({ lang, genre, visualPrompt, posterTitle, isHebrew, finalProducerName, credits, onPosterGenerated, onAuthRequired, characterImageUrl: activeCharacterUrl, onUnlockAudio: unlockFlashAudio });
 
   // Referral modal, opened from the post-share nudge below. Reuses the same modal the
   // Navbar's "Invite friends" menu item opens — no new referral UI is built here.

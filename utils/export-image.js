@@ -156,6 +156,153 @@ function loadImage(src) {
   });
 }
 
+// ─── Poster overlay: title + credits, drawn on the canvas ───────────────────────
+// The on-screen poster (components/PosterRenderer.jsx) draws its title and credits
+// as CSS over the artwork. The mobile/native share path fetches the RAW image (html-to-image
+// takes 2-3 s and would kill iOS's transient activation), so without this the shared file had
+// no title and no credits. This redraws the same block on the canvas, from the same strings,
+// scaled off the poster's on-screen width so it matches what the user sees.
+//
+// Layout constants are CSS px at the on-screen poster width (`cssWidth`) and mirror the
+// Tailwind classes in PosterRenderer.jsx (sm = phone sizes, md = viewport >= 768px).
+// Keep the two in sync when editing either.
+const OVERLAY_FONT = '"Heebo", system-ui, -apple-system, "Segoe UI", sans-serif';
+const OVERLAY_URL_LINE = 'MY-LIFE-SCRIPT.VERCEL.APP';
+
+// Heebo is loaded by a stylesheet in _document; make sure the weights we draw with are
+// actually available before touching the canvas (an unloaded face silently falls back).
+// Bounded so a slow font fetch can never hold up a share.
+async function ensureOverlayFonts() {
+  if (typeof document === 'undefined' || !document.fonts?.load) return;
+  try {
+    await Promise.race([
+      Promise.all([
+        document.fonts.load('900 16px Heebo'),
+        document.fonts.load('italic 900 16px Heebo'),
+        document.fonts.load('700 16px Heebo'),
+        document.fonts.load('italic 700 16px Heebo'),
+      ]),
+      new Promise((resolve) => setTimeout(resolve, 800)),
+    ]);
+  } catch { /* fall back to system fonts */ }
+}
+
+/**
+ * Draws the poster title (top) and credits block (bottom) onto `ctx`.
+ * spec: { title, credits: { comingSoon, line1, line2, line3 }, rtl, cssWidth, viewportWidth }
+ * `stripH` is the height of the brand strip drawn afterwards at the very bottom; the credits
+ * sit directly above it. Returns layout metrics (pixels) — also used by tests.
+ */
+export function drawPosterOverlay(ctx, w, h, spec, stripH = 0) {
+  const { title = '', credits = {}, rtl = false, cssWidth = 450, viewportWidth = 390 } = spec || {};
+  const k  = w / (cssWidth || 450);               // CSS px -> canvas px
+  const md = viewportWidth >= 768;
+  const hasLS = 'letterSpacing' in ctx;
+  const cx = w / 2;
+
+  ctx.save();
+  ctx.direction = rtl ? 'rtl' : 'ltr';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const font = (weight, italic, px) => { ctx.font = `${italic ? 'italic ' : ''}${weight} ${px * k}px ${OVERLAY_FONT}`; };
+  const track = (px) => { if (hasLS) ctx.letterSpacing = `${px * k}px`; };
+  const width = (t, trackPx) => ctx.measureText(t).width + (hasLS ? 0 : trackPx * k * [...t].length);
+  const wrap = (text, maxW, trackPx) => {
+    const words = String(text ?? '').split(/\s+/).filter(Boolean);
+    const lines = []; let cur = '';
+    for (const word of words) {
+      const t = cur ? `${cur} ${word}` : word;
+      if (cur && width(t, trackPx) > maxW) { lines.push(cur); cur = word; } else cur = t;
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  };
+
+  // ── Top scrim (title readability) — from-black/55 via-transparent ──
+  const topScrim = ctx.createLinearGradient(0, 0, 0, h);
+  topScrim.addColorStop(0, 'rgba(0,0,0,0.55)');
+  topScrim.addColorStop(0.5, 'rgba(0,0,0,0)');
+  topScrim.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = topScrim;
+  ctx.fillRect(0, 0, w, h);
+
+  // ── Title: clamp(1.1rem, 5vw, 2.5rem), line-height 1.1, max-width 90% of the padded box ──
+  const padCss  = md ? 48 : 32;                    // p-8 / md:p-12
+  const innerW  = (cssWidth - 2 * padCss) * k;
+  const titlePx = Math.min(40, Math.max(17.6, viewportWidth * 0.05));
+  let titleBottom = padCss * k + 16 * k;           // pad + mt-4
+  const titleText = String(title || '').toUpperCase();
+  if (titleText) {
+    font(900, true, titlePx); track(0);
+    const lines = wrap(titleText, innerW * 0.9, 0);
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = 'rgba(0,0,0,1)';
+    ctx.shadowBlur = 30 * k; ctx.shadowOffsetY = 10 * k;
+    const lineH = titlePx * 1.1 * k;
+    lines.forEach((line, i) => ctx.fillText(line, cx, titleBottom + lineH * i + lineH / 2));
+    titleBottom += lineH * lines.length;
+    ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    // gold hairline under the title: h-px, w-1/3, mt-4
+    const lw = innerW / 3;
+    const hair = ctx.createLinearGradient(cx - lw / 2, 0, cx + lw / 2, 0);
+    hair.addColorStop(0, 'rgba(212,163,115,0)');
+    hair.addColorStop(0.5, 'rgba(212,163,115,0.5)');
+    hair.addColorStop(1, 'rgba(212,163,115,0)');
+    ctx.fillStyle = hair;
+    ctx.fillRect(cx - lw / 2, titleBottom + 16 * k, lw, Math.max(1, k));
+  }
+
+  // ── Credits block, bottom-anchored just above the brand strip ──
+  const padX   = (md ? 24 : 8) * k;                // px-2 / md:px-6
+  const availW = w - 2 * padX;
+  const rows = [
+    { text: credits.comingSoon, px: md ? 14 : 9, weight: 900, italic: false, tr: 0.3,  fill: '#d4a373',                after: 6 },   // mb-1.5
+    { divider: true, after: 6 },                                                                                                // border-t + pt-1.5
+    { text: credits.line1, px: md ? 10 : 7, weight: 700, italic: true,  tr: 0.1,  fill: 'rgba(255,255,255,0.9)',  after: 2 },
+    { text: credits.line2, px: md ? 8 : 6,  weight: 700, italic: false, tr: 0.1,  fill: 'rgba(255,255,255,0.63)', after: 2 },
+    { text: credits.line3, px: md ? 8 : 6,  weight: 700, italic: false, tr: 0.1,  fill: 'rgba(255,255,255,0.63)', after: 6 },   // mb-1 (4) + flex gap (2)
+    { text: OVERLAY_URL_LINE, px: md ? 7 : 5, weight: 900, italic: true, tr: 0.4, fill: 'rgba(212,163,115,0.4)', after: 0 },
+  ];
+  const LEADING = 1.2;
+  // Measure first (top-down heights), then place bottom-up.
+  const laid = rows.map((r) => {
+    if (r.divider) return { ...r, h: Math.max(1, k), lines: [] };
+    font(r.weight, r.italic, r.px); track(r.tr * r.px);
+    const lines = wrap(String(r.text ?? '').toUpperCase(), availW, r.tr * r.px);
+    return { ...r, lines, h: lines.length * r.px * LEADING * k };
+  });
+  const blockH = laid.reduce((s, r) => s + r.h + r.after * k, 0) - (laid.length ? laid[laid.length - 1].after * k : 0);
+  const bottom = h - stripH - 2 * k;
+  const blockTop = bottom - blockH;
+
+  // soft bottom gradient (from-black/90 via-black/65 via-45% to-transparent), with 24 css px (pt-6) of fade-in headroom
+  const gTop = blockTop - 24 * k;
+  const g = ctx.createLinearGradient(0, gTop, 0, h);
+  g.addColorStop(0, 'rgba(0,0,0,0)');
+  g.addColorStop(0.55, 'rgba(0,0,0,0.65)');   // via-black/65 at 45% from the bottom
+  g.addColorStop(1, 'rgba(0,0,0,0.9)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, gTop, w, h - gTop);
+
+  let y = blockTop;
+  for (const r of laid) {
+    if (r.divider) {
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.fillRect(padX, y, availW, r.h);
+    } else {
+      font(r.weight, r.italic, r.px); track(r.tr * r.px);
+      ctx.fillStyle = r.fill;
+      const lineH = r.px * LEADING * k;
+      r.lines.forEach((line, i) => ctx.fillText(line, cx, y + lineH * i + lineH / 2));
+    }
+    y += r.h + r.after * k;
+  }
+  ctx.restore();
+
+  return { blockTop, blockHeight: blockH, blockBottom: bottom, titleBottom, canvasH: h };
+}
+
 // Burn the bilingual brand + CTA strip onto an image blob. Returns a NEW blob
 // (image/png or image/jpeg, see `format`), or the ORIGINAL blob unchanged on
 // any failure / non-image input (never throws).
@@ -177,7 +324,12 @@ function loadImage(src) {
 // value in this function (pad, brandSize, stripH, the canvas itself) is
 // already derived from w/h, so scaling them here is the only change needed;
 // drawImage resamples the source image into the smaller canvas for free.
-export async function compositeWatermark(blob, { lang = 'en', format = 'png', scale = 1 } = {}) {
+//
+// overlay (optional, posters only): { title, credits, rtl, cssWidth, viewportWidth } — also draws the
+// poster title and credits block (see drawPosterOverlay). Omitted → output is byte-identical to before.
+// strict (optional): rethrow failures instead of returning the untouched blob, so a caller that
+// needs the overlay can fall back to another renderer. Default false = never throws, as before.
+export async function compositeWatermark(blob, { lang = 'en', format = 'png', scale = 1, overlay = null, strict = false } = {}) {
   if (typeof document === 'undefined' || !blob || !blob.type?.startsWith('image/')) {
     return blob; // SSR, missing blob, or a video (reel) → pass through untouched.
   }
@@ -200,7 +352,7 @@ export async function compositeWatermark(blob, { lang = 'en', format = 'png', sc
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return blob;
+    if (!ctx) { if (strict) throw new Error('no 2d context'); return blob; }
     ctx.drawImage(img, 0, 0, w, h);
 
     const isHe = lang === 'he';
@@ -211,6 +363,16 @@ export async function compositeWatermark(blob, { lang = 'en', format = 'png', sc
     const brandSize = Math.max(18, Math.round(w * 0.040));
     const subSize   = Math.max(12, Math.round(w * 0.023));
     const stripH    = Math.round(brandSize + subSize + pad * 1.6);
+
+    // Poster title + credits (posters only). Drawn before the brand strip, which sits below them.
+    if (overlay) {
+      try {
+        await ensureOverlayFonts();
+        drawPosterOverlay(ctx, w, h, overlay, stripH);
+      } catch (e) {
+        if (strict) throw e; // otherwise: ship the image + strip without the overlay
+      }
+    }
 
     // Legibility scrim: transparent → dark gradient along the bottom edge.
     const grad = ctx.createLinearGradient(0, h - stripH, 0, h);
@@ -241,8 +403,10 @@ export async function compositeWatermark(blob, { lang = 'en', format = 'png', sc
     ctx.fillText(`${copy.cta} ${arrow}  ·  ${copy.url}`, x, h - pad);
 
     const out = await new Promise((resolve) => canvas.toBlob(resolve, mime, quality));
+    if (!out && strict) throw new Error('toBlob returned null');
     return out || blob;
-  } catch {
+  } catch (err) {
+    if (strict) throw err;
     return blob; // decode error / unexpected failure → original, unwatermarked, still shareable.
   } finally {
     URL.revokeObjectURL(url);
@@ -253,10 +417,10 @@ export async function compositeWatermark(blob, { lang = 'en', format = 'png', sc
 // watermark onto images first (videos pass through). Uses an object URL so the composited
 // poster/panel is saved, not the raw source image. Returns a boolean so callers can fall
 // back. Do NOT call this on touch devices — see the iOS note at the top of this file.
-export async function downloadBlob(blob, filename, { lang = 'en' } = {}) {
+export async function downloadBlob(blob, filename, { lang = 'en', overlay = null, strict = false } = {}) {
   if (typeof document === 'undefined') return false;
   try {
-    const stamped = await compositeWatermark(blob, { lang });
+    const stamped = await compositeWatermark(blob, { lang, overlay, strict });
     const url = URL.createObjectURL(stamped);
     const a = document.createElement('a');
     a.href = url;
@@ -387,9 +551,9 @@ export async function shareData({ title, text, url } = {}) {
 // the "Preparing..." UI indicator on the share buttons instead of chasing
 // more encode optimizations here. Web/iOS Safari/desktop stay at scale: 1
 // (full res) — no evidence of a problem there.
-export async function makeShareFile(blob, filename, { lang = 'en' } = {}) {
+export async function makeShareFile(blob, filename, { lang = 'en', overlay = null, strict = false } = {}) {
   const scale = isCapacitorNative() ? 0.75 : 1;
-  const stamped = await compositeWatermark(blob, { lang, scale });
+  const stamped = await compositeWatermark(blob, { lang, scale, overlay, strict });
   return new File([stamped], filename, { type: stamped.type || blob.type || 'image/png' });
 }
 

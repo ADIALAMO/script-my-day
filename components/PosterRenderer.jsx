@@ -195,18 +195,24 @@ function PosterRenderer({
               </div>
             </div>
 
-            {/* קרדיטים — compressed to two short lines, inside a SOLID dark band flush
-                against the bottom edge (not a gradient fade over the art). The image
-                itself is untouched (object-cover fills the same fixed aspect-ratio
-                container); the band sits on top of its bottom edge, same as the old
-                gradient did, it just no longer lets the artwork show through. */}
-            <div className="absolute bottom-0 left-0 right-0 z-20 bg-[#030712] px-4 py-2.5 text-center pointer-events-none">
-              <p className="text-[#d4a373] font-black uppercase tracking-[0.18em] text-[8px] md:text-[11px] leading-tight truncate">
+            {/* קרדיטים — the pre-7b1c427 block (coming soon, three credit lines, URL, divider),
+                restored: no solid band, no truncate (lines wrap as before). Pinned to the very
+                bottom edge with tight spacing and a soft bottom gradient (pt-6 is just the
+                fade-in headroom above the text) so it covers as little artwork as possible.
+                MIRROR any change here in drawPosterOverlay (utils/export-image.js), which
+                redraws this block on the canvas for the shared/downloaded file. */}
+            <div className="absolute bottom-0 inset-x-0 z-20 pointer-events-none px-2 md:px-6 pt-6 pb-2 text-center bg-gradient-to-t from-black/90 via-black/65 via-45% to-transparent">
+              <p className="text-[#d4a373] font-black uppercase tracking-[0.3em] text-[9px] md:text-[14px] leading-[1.2] mb-1.5">
                 {credits.comingSoon}
               </p>
-              <p className="text-white/65 font-bold uppercase tracking-[0.04em] text-[6.5px] md:text-[9px] leading-tight mt-0.5 truncate">
-                {credits.line1}
-              </p>
+              <div className="w-full border-t border-white/20 pt-1.5 flex flex-col gap-[2px] font-bold uppercase text-white/90">
+                <p className="text-[7px] md:text-[10px] tracking-[0.1em] leading-[1.2] italic">{credits.line1}</p>
+                <p className="text-[6px] md:text-[8px] tracking-[0.1em] leading-[1.2] opacity-70">{credits.line2}</p>
+                <p className="text-[6px] md:text-[8px] tracking-[0.1em] leading-[1.2] opacity-70 mb-1">{credits.line3}</p>
+                <p className="text-[#d4a373]/40 text-[5px] md:text-[7px] tracking-[0.4em] leading-[1.2] font-black italic">
+                  MY-LIFE-SCRIPT.VERCEL.APP
+                </p>
+              </div>
             </div>
           </>
         )}
