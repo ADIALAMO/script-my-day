@@ -291,7 +291,7 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
           unusually wide localized string, or a very narrow device makes it too
           wide to fit. nav-controls-scroll (globals.css) hides the scrollbar so it
           doesn't look like a stray UI element. */}
-      <div className="flex items-center gap-1.5 md:gap-3 min-w-0 overflow-x-auto nav-controls-scroll">
+      <div className="flex items-center gap-1.5 max-[380px]:gap-1 md:gap-3 min-w-0 overflow-x-auto nav-controls-scroll">
         <LaunchTicket lang={lang} />
 
         {/* Ambience mute — lifted here from ScriptForm so it stays reachable across the
@@ -352,7 +352,7 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
             <button
               onClick={() => handleOpenAuthModal('invite')}
               aria-label={isHe ? 'הזמן חברים' : 'Invite friends'}
-              className="group relative flex items-center justify-center w-8 h-8 md:w-9 md:h-9 border border-[#d4a373]/25 rounded-xl hover:border-[#d4a373]/50 hover:bg-[#d4a373]/8 transition-all duration-300 shrink-0"
+              className="group relative flex items-center justify-center max-[380px]:hidden w-8 h-8 md:w-9 md:h-9 border border-[#d4a373]/25 rounded-xl hover:border-[#d4a373]/50 hover:bg-[#d4a373]/8 transition-all duration-300 shrink-0"
             >
               <Gift size={14} className="text-[#d4a373]/65 md:w-[15px] md:h-[15px]" />
               <IconTooltip label={isHe ? 'הזמן חברים' : 'Invite friends'} />

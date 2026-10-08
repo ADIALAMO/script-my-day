@@ -45,7 +45,7 @@ export default function LaunchTicket({ lang = 'he' }) {
         e.stopPropagation();
         setIsOpen(true);
       }}
-      className="relative z-10 flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 hover:border-amber-500/40 transition-all duration-300 active:scale-95 cursor-pointer"
+      className="relative z-10 flex items-center gap-2 px-3 max-[380px]:px-2 max-[340px]:hidden py-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 hover:border-amber-500/40 transition-all duration-300 active:scale-95 cursor-pointer"
     >
       <span className="relative flex h-1.5 w-1.5">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75"></span>
