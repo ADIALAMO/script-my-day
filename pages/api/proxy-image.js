@@ -32,10 +32,19 @@ export default async function handler(req, res) {
     const upstream = await fetch(url, { signal: AbortSignal.timeout(12000) });
     if (!upstream.ok) return res.status(upstream.status).end();
 
-    const contentType = upstream.headers.get('content-type') || 'image/jpeg';
+    // Only ever re-serve real raster images from our own origin. Anything else
+    // (text/html, SVG, …) would execute as same-origin content, so refuse it.
+    const contentType = (upstream.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    if (!contentType.startsWith('image/') || contentType === 'image/svg+xml') {
+      return res.status(415).end();
+    }
     const buffer = Buffer.from(await upstream.arrayBuffer());
 
     res.setHeader('Content-Type', contentType);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    // Defence in depth: even if a non-image slipped through, the sandbox CSP
+    // blocks scripts and gives it an opaque origin.
+    res.setHeader('Content-Security-Policy', 'sandbox');
     res.setHeader('Access-Control-Allow-Origin', '*');
     // Browser cache: served from disk on repeat visits within 1 year.
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');

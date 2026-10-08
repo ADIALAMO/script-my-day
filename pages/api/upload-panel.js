@@ -2,6 +2,8 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import redis from '../../lib/redis.js';
 import { isAdminRequest } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
+import { enforceRateLimit } from '../../lib/rate-limit.js';
+import { MAX_IMAGE_BYTES, sniffImage, decodeDataUriBytes, buildObjectKey } from '../../lib/upload-image.js';
 
 // ── R2 client singleton ───────────────────────────────────────────────────────
 // Reuses the same HTTP connection pool across warm serverless invocations.
@@ -52,33 +54,39 @@ export const config = {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
+  // Shared sliding-window limiter, before any parsing or storage work.
+  if (await enforceRateLimit(req, res, 'upload-panel')) return;
+
   const { imageData, key } = req.body ?? {};
 
   // ── Input validation ──────────────────────────────────────────────────────
   if (!imageData || typeof imageData !== 'string') {
     return res.status(400).json({ error: 'imageData is required and must be a string.' });
   }
-  if (!key || typeof key !== 'string') {
-    return res.status(400).json({ error: 'key is required and must be a string.' });
-  }
-  // Guard against path traversal and arbitrary key shapes.
-  if (!key.match(/^(panels|posters)\//) || key.includes('..') || key.length > 200) {
-    return res.status(400).json({ error: 'Invalid key format.' });
-  }
 
-  // Asset type is derived deterministically from the validated key prefix.
+  // The client's `key` is no longer used as a storage path (it could overwrite
+  // objects or pick arbitrary paths). Only its prefix is read, as a hint for
+  // which folder + quota bucket this asset belongs to; older clients keep
+  // sending it and keep working unchanged.
   const assetType = /** @type {'panels'|'posters'} */ (
-    key.startsWith('panels/') ? 'panels' : 'posters'
+    typeof key === 'string' && key.startsWith('panels/') ? 'panels' : 'posters'
   );
 
-  // ── Parse data URI ────────────────────────────────────────────────────────
-  // Expected format: "data:image/jpeg;base64,/9j/..."
-  const match = imageData.match(/^data:([^;]+);base64,(.+)$/s);
-  if (!match) {
+  // ── Decode + verify the bytes ─────────────────────────────────────────────
+  // The claimed MIME type is ignored: only real png/jpeg/webp content (checked
+  // by magic bytes) is accepted, and the stored type comes from those bytes.
+  const imageBuffer = decodeDataUriBytes(imageData);
+  if (!imageBuffer) {
     return res.status(400).json({ error: 'imageData must be a valid base64 data URI.' });
   }
-  const [, mimeType, b64] = match;
-  const imageBuffer = Buffer.from(b64, 'base64');
+  if (imageBuffer.length > MAX_IMAGE_BYTES) {
+    return res.status(413).json({ error: 'Image too large.' });
+  }
+  const sniffed = sniffImage(imageBuffer);
+  if (!sniffed) {
+    return res.status(400).json({ error: 'Unsupported image type. Only PNG, JPEG and WebP are accepted.' });
+  }
+  const mimeType = sniffed.mime;
 
   // ── R2 config ─────────────────────────────────────────────────────────────
   const bucket    = process.env.R2_BUCKET_NAME;
@@ -102,9 +110,12 @@ export default async function handler(req, res) {
   //      return a synthetic 200 so the UI stays unbroken.  The in-session data
   //      URI the client already holds keeps the image visible; the history entry
   //      simply won't carry a CDN url for this asset.
+  let ownerId = 'admin'; // feeds the (hashed) owner segment of the generated key
   if (!isAdminRequest(req)) {
+    ownerId = 'unknown';
     try {
       const { tier, identifier } = await getSessionAndTier(req, res);
+      ownerId = identifier;
       // Admin (resolved via session tier, not the x-admin-key header) bypasses the storage
       // gate entirely — same as a header admin. Without this an admin fell through to the
       // anonymous caps (20 panels / 5 posters) and uploads silently returned url:null, so
@@ -138,21 +149,23 @@ export default async function handler(req, res) {
   }
 
   // ── R2 write ──────────────────────────────────────────────────────────────
+  // Server-generated key: unguessable, unique per upload, never overwrites.
+  const objectKey = buildObjectKey(assetType, ownerId, sniffed.ext);
   try {
     await getS3().send(new PutObjectCommand({
       Bucket:       bucket,
-      Key:          key,
+      Key:          objectKey,
       Body:         imageBuffer,
       ContentType:  mimeType,
       // Assets are immutable once generated — aggressive CDN caching is safe.
       CacheControl: 'public, max-age=31536000, immutable',
     }));
 
-    const url = `${publicUrl}/${key}`;
+    const url = `${publicUrl}/${objectKey}`;
     return res.status(200).json({ url });
 
   } catch (err) {
-    console.error('🔴 R2 upload failed:', { key, message: err.message, code: err.Code });
+    console.error('🔴 R2 upload failed:', { key: objectKey, message: err.message, code: err.Code });
     return res.status(500).json({ error: 'Upload to R2 failed. Panel stored in session only.' });
   }
 }
