@@ -94,15 +94,6 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
     };
   }, []);
 
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('admin') === 'true') {
-      localStorage.setItem('lifescript_admin_key', 'LifeScript_Admin_2025_Success');
-
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, []);
-
   // ── Auth API warmup ────────────────────────────────────────────────────────
   // In iOS Standalone PWA mode, WKWebView kills the network process when
   // backgrounded. Each foreground restore is a true cold start: TCP, TLS, and
