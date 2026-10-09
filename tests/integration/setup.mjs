@@ -78,7 +78,16 @@ export async function boot({ env = {}, nodeEnv = 'test', startAt = '2026-10-15T1
   // 5. senders ----------------------------------------------------------------------------------
   const require = createRequire(import.meta.url);
   const { S3Client } = await import('@aws-sdk/client-s3');
-  S3Client.prototype.send = async function recordedSend(cmd) { providers.s3puts.push({ key: cmd?.input?.Key, bytes: cmd?.input?.Body?.length ?? 0 }); return {}; };
+  S3Client.prototype.send = async function recordedSend(cmd) {
+    if (cmd?.constructor?.name === 'DeleteObjectCommand') {
+      providers.s3deletes.push({ key: cmd.input.Key });
+      if (providers.mode.s3delete) throw new Error(`R2 delete failed (mock ${providers.mode.s3delete})`);
+      return {};
+    }
+    if (providers.mode.s3putSheet && String(cmd?.input?.Key).endsWith('-sheet.jpg')) throw new Error('R2 put failed (mock sheet)');
+    providers.s3puts.push({ key: cmd?.input?.Key, bytes: cmd?.input?.Body?.length ?? 0 });
+    return {};
+  };
   const mails = [];
   const nodemailerPaths = new Set();
   for (const from of [ROOT, path.dirname(require.resolve('next-auth'))]) {

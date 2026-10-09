@@ -55,3 +55,12 @@ test('legacy owner segment (sha256[:16]) is still computable for the deletion to
   const m = await load({ OBJECT_KEY_SECRET: 's' });
   assert.equal(m.legacyOwnerSegment('1.2.3.4'), createHash('sha256').update('1.2.3.4').digest('hex').slice(0, 16));
 });
+
+test('keyFromPublicUrl maps only our own public URLs back to object keys', async () => {
+  process.env.R2_PUBLIC_URL = 'https://pub-test.r2.dev/';
+  const { keyFromPublicUrl } = await import(`../lib/blob-store.js?${Math.random()}`);
+  assert.equal(keyFromPublicUrl('https://pub-test.r2.dev/characters/a/b-raw.jpg'), 'characters/a/b-raw.jpg');
+  assert.equal(keyFromPublicUrl('https://evil.example/characters/a.jpg'), null);
+  assert.equal(keyFromPublicUrl('https://pub-test.r2.dev.evil.example/x'), null);
+  assert.equal(keyFromPublicUrl(null), null);
+});
