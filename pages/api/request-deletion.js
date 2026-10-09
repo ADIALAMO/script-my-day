@@ -1,7 +1,7 @@
 import redis from '../../lib/redis.js';
 import { extractIdentifier } from '../../lib/api-utils.js';
 import { sanitize } from '../../utils/input-processor.js';
-import { escapeMarkdownV1, sendTelegram } from '../../lib/telegram.js';
+import { escapeMarkdownV1, maskEmail, sendTelegram } from '../../lib/telegram.js';
 
 /**
  * POST /api/request-deletion  { email, note, lang }
@@ -58,7 +58,7 @@ export default async function handler(req, res) {
   // ── Notify via Telegram (best-effort) ───────────────────────────────────────
   // The email/note are user input: escape them (an "_" in an address used to make
   // Telegram reject the message, silently dropping the notification).
-  await sendTelegram(`🗑️ *Data deletion request!*\n------------------------\n📧 ${escapeMarkdownV1(clean)}\n🌐 ${lang === 'he' ? 'Hebrew 🇮🇱' : 'English 🇺🇸'}${cleanNote ? `\n📝 ${escapeMarkdownV1(cleanNote)}` : ''}`);
+  await sendTelegram(`🗑️ *Data deletion request!*\n------------------------\n📧 ${escapeMarkdownV1(maskEmail(clean))} (full address: Redis deletion-request:*, 30 days)\n🌐 ${lang === 'he' ? 'Hebrew 🇮🇱' : 'English 🇺🇸'}${cleanNote ? `\n📝 ${escapeMarkdownV1(cleanNote)}` : ''}`);
 
   return res.status(200).json({ success: true });
 }
