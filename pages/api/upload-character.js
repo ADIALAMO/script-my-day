@@ -26,6 +26,7 @@ import { reserveIdentityBudget, releaseIdentityBudget } from '../../lib/budget.j
 import { reserveSheetQuota, releaseSheetQuota } from '../../lib/sheet-quota.js';
 import { blobConfigured, putImage, decodeDataUri, deleteObject } from '../../lib/blob-store.js';
 import { buildCharacterKeys, objectKeySecretConfigured } from '../../lib/upload-image.js';
+import { RETENTION } from '../../config/limits.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 
 export const maxDuration = 60;
@@ -183,8 +184,8 @@ export default async function handler(req, res) {
       }
     }
 
-    // (7) Persist pointer (URLs only) with 90-day TTL.
-    const ninetyDays = Math.floor(Date.now() / 1000) + 90 * 86400;
+    // (7) Persist pointer (URLs only) with RETENTION.characterPointerDays TTL (default 90) — set once, never refreshed on use.
+    const ninetyDays = Math.floor(Date.now() / 1000) + RETENTION.characterPointerDays * 86400;
     try {
       const pipe = redis.pipeline();
       pipe.set(`character:${identifier}`, JSON.stringify({

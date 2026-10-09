@@ -1,4 +1,5 @@
-import { termsPlansHe, termsPlansEn, faqPlansHe, faqPlansEn, uploadsSentenceHe, uploadsSentenceEn } from './limits-copy.js';
+import { RETENTION } from '../config/limits.js';
+import { termsPlansHe, termsPlansEn, faqPlansHe, faqPlansEn, uploadsSentenceHe, uploadsSentenceEn, privacyFaceHe, privacyFaceEn, privacyUsageHe, privacyUsageEn, termsFaceHe, termsFaceEn } from './limits-copy.js';
 
 import { privacyAccountHe, privacyAccountEn, privacyProvidersHe, privacyProvidersEn, privacySharingHe, privacySharingEn } from './ai-provider-copy.js';
 
@@ -28,7 +29,7 @@ export const MODAL_DATA = {
         },
         {
           h: '5. "לככב בסיפור" — תמונות פנים ומידע ביומטרי',
-          p: 'פיצ\'ר "לככב בסיפור" מעבד תמונת פנים, שעשויה להיחשב מידע ביומטרי לפי דינים מסוימים. בעת ההעלאה תתבקש לאשר אקטיבית כי (א) זו תמונה שלך או של אדם שנתן הסכמה מפורשת ומדעת, (ב) אינה של קטין, ו-(ג) אתה מבין שהיא תעובד ל"גיליון דמות". התמונה נשלחת לספקי AI חיצוניים ונשמרת באחסון ענן (Cloudflare R2); הקישור אליה אצלנו נמחק אוטומטית לאחר 90 יום, והקבצים עצמם נמחקים לפי בקשה. אנחנו לא משתמשים בה לאימון מודלים, לא מוכרים אותה ולא משתפים אותה מעבר לעיבוד הנדרש. תוכל לבקש מחיקה בכל עת. העלאה ללא ההרשאות הללו אסורה ועלולה להוביל לחסימת חשבון. פירוט במדיניות הפרטיות.',
+          p: termsFaceHe(),
         },
         {
           h: '6. ביצועי השירות ואדפטציה דינמית',
@@ -70,7 +71,7 @@ export const MODAL_DATA = {
         },
         {
           h: '5. "Star Yourself" — Face Photos & Biometric Data',
-          p: 'The "Star Yourself" feature processes a face photo, which may be considered biometric data under certain laws. On upload you will be asked to actively confirm that (a) it is a photo of you or of a person who gave explicit, informed consent, (b) it is not of a minor, and (c) you understand it will be processed into a "Character Sheet". The photo is sent to external AI providers and stored in cloud storage (Cloudflare R2); our link to it is deleted automatically after 90 days, and the files themselves are deleted on request. We do not use it to train models, sell it, or share it beyond the processing required. You can request deletion at any time. Uploading without these permissions is prohibited and may lead to account suspension. Details are in the Privacy Policy.',
+          p: termsFaceEn(),
         },
         {
           h: '6. Service Performance & Dynamic Adaptation',
@@ -96,7 +97,7 @@ export const MODAL_DATA = {
   // ─── Privacy Policy ────────────────────────────────────────────────────────
 
   // TODO(OWNER-CONFIRM — DRAFT, NOT FINAL): the privacy / AI-provider wording below (privacy §1, §2, §4, §7 and
-  // terms §5) is a DRAFT based on the providers' public terms (Google https://ai.google.dev/gemini-api/terms ; OpenRouter https://openrouter.ai/docs/features/privacy-and-logging and /provider-routing ; Cloudflare https://developers.cloudflare.com/workers-ai/platform/data-usage/ ; Cohere https://cohere.com/privacy).
+  // terms §5; the retention numbers are built from config/limits.js RETENTION / GUEST_RETENTION) is a DRAFT based on the providers' public terms (Google https://ai.google.dev/gemini-api/terms ; OpenRouter https://openrouter.ai/docs/features/privacy-and-logging and /provider-routing ; Cloudflare https://developers.cloudflare.com/workers-ai/platform/data-usage/ ; Cohere https://cohere.com/privacy).
   // The FINAL text must be confirmed by the owner AFTER (1) billing is enabled on the Google project (Gemini API
   // unpaid tier may use content to improve products + human review; EEA/UK/CH users require paid services),
   // (2) OpenRouter provider data policies are reviewed (account privacy settings / provider routing), and
@@ -113,7 +114,7 @@ export const MODAL_DATA = {
         },
         {
           h: '2. תמונות "לככב בסיפור"',
-          p: 'כשאתה מעלה תמונת פנים לפיצ\'ר "לככב בסיפור", היא נשלחת לספקי AI (ראה סעיף 7) לבדיקת תוכן וליצירת "גיליון דמות", ונשמרת באחסון ענן (Cloudflare R2) יחד עם גיליון הדמות. אצלנו נשמר רק קישור אליהן, והקישור נמחק אוטומטית לאחר 90 יום. מחיקת הקבצים עצמם מהאחסון מתבצעת לפי בקשה (סעיף 9). אנחנו לא משתמשים בתמונה לאימון מודלים או לכל מטרה אחרת; מדיניות הספקים החיצוניים מתוארת בסעיף 7.',
+          p: privacyFaceHe(),
         },
         {
           h: '3. חשבון והתחברות',
@@ -121,7 +122,7 @@ export const MODAL_DATA = {
         },
         {
           h: '4. נתוני שימוש ומכסות',
-          p: 'כדי לאכוף את המגבלות ההוגנות, אנחנו שומרים (ב-Redis) מוני שימוש: מונים יומיים עד חצות UTC, חודשיים עד כמה ימים לאחר סוף החודש, ומונים של קרדיטי "לככב בסיפור" שחלקם לכל החיים. עבור גולשים שאינם רשומים המונים נשמרים לפי כתובת ה-IP (ב-IPv6 לפי תחילית /64); מונה פוסטר האורח נשמר עד 90 יום מהשימוש האחרון. לחשבון רשום נשמרים גם מצב המנוי, מזהה לקוח של Stripe, מועד פעילות אחרון ונתוני הזמנת חברים. פעילות הקומיקס הפתוחה נשמרת עד 24 שעות. בקשות מחיקה נשמרות 30 יום לצורך תיעוד.',
+          p: privacyUsageHe(),
         },
         {
           h: '5. תשלומים',
@@ -129,7 +130,7 @@ export const MODAL_DATA = {
         },
         {
           h: '6. עוגיות ואנליטיקה',
-          p: 'אנחנו משתמשים בעוגיות חיוניות לשמירת ההתחברות שלך, ובעוגיית הזמנה (ls_ref) לזיהוי החבר שהזמין אותך (נמחקת לאחר 30 יום). בנוסף אנחנו משתמשים ב-Google Analytics וב-Vercel Analytics לאיסוף נתוני שימוש מצטברים ואנונימיים שעוזרים לנו לשפר את השירות. נתונים אלו אינם מזהים אותך אישית.',
+          p: 'אנחנו משתמשים בעוגיות חיוניות לשמירת ההתחברות שלך, ובעוגיית הזמנה (ls_ref) לזיהוי החבר שהזמין אותך (נמחקת לאחר ' + RETENTION.referralCookieDays + ' יום). בנוסף אנחנו משתמשים ב-Google Analytics וב-Vercel Analytics לאיסוף נתוני שימוש מצטברים ואנונימיים שעוזרים לנו לשפר את השירות. נתונים אלו אינם מזהים אותך אישית.',
         },
         {
           h: '7. עיבוד על ידי ספקי AI חיצוניים',
@@ -155,7 +156,7 @@ export const MODAL_DATA = {
         },
         {
           h: '2. "Star Yourself" Photos',
-          p: 'When you upload a face photo for "Star Yourself", it is sent to AI providers (see section 7) for a content check and to create a "Character Sheet", and is stored in cloud storage (Cloudflare R2) together with the sheet. We keep only a link to them, and that link is deleted automatically after 90 days. Deleting the files themselves from storage is done on request (section 9). We do not use the photo to train models or for any other purpose; the external providers\' policies are described in section 7.',
+          p: privacyFaceEn(),
         },
         {
           h: '3. Account & Sign-In',
@@ -163,7 +164,7 @@ export const MODAL_DATA = {
         },
         {
           h: '4. Usage & Quota Data',
-          p: 'To enforce fair limits we keep (in Redis) usage counters: daily counters until UTC midnight, monthly counters until a few days after the month ends, and "Star Yourself" credit counters, some of which are lifetime. For visitors who are not signed in the counters are keyed by IP address (IPv6: its /64 prefix); the guest-poster counter is kept for up to 90 days after the last use. For a registered account we also keep the subscription state, a Stripe customer ID, last-active time and friend-invite data. An open comic session is kept for up to 24 hours. Deletion requests are logged for 30 days for audit.',
+          p: privacyUsageEn(),
         },
         {
           h: '5. Payments',
@@ -171,7 +172,7 @@ export const MODAL_DATA = {
         },
         {
           h: '6. Cookies & Analytics',
-          p: 'We use essential cookies to keep you signed in, and a referral cookie (ls_ref) to recognize the friend who invited you (deleted after 30 days). We also use Google Analytics and Vercel Analytics to collect aggregate, anonymous usage data that helps us improve the service. This data does not personally identify you.',
+          p: 'We use essential cookies to keep you signed in, and a referral cookie (ls_ref) to recognize the friend who invited you (deleted after ' + RETENTION.referralCookieDays + ' days). We also use Google Analytics and Vercel Analytics to collect aggregate, anonymous usage data that helps us improve the service. This data does not personally identify you.',
         },
         {
           h: '7. Processing by External AI Providers',
