@@ -3,7 +3,7 @@ import { authOptions } from '../../../lib/auth.js';
 import { isAdminRequest } from '../../../lib/api-utils.js';
 import redis from '../../../lib/redis.js';
 import { getSessionAndTier } from '../../../lib/auth.js';
-import { recordProSource, clearProSource } from '../../../lib/pro-source.js';
+import { setTierByAdmin } from '../../../lib/plan.js';
 
 // Checks whether the session email is in the ADMIN_EMAILS allowlist.
 // ADMIN_EMAILS env var: comma-separated list of authorised email addresses.
@@ -83,32 +83,8 @@ export default async function handler(req, res) {
     });
   }
 
-  // ── Write tier to Redis ────────────────────────────────────────────────────
-  const key = `user:tier:${userId}`;
-  if (tier === 'free') {
-    await redis.del(key);
-  } else {
-    await redis.set(key, tier);
-  }
-
-  // ── Maintain the Pro member set for the dashboard (/api/admin/stats) ────────
-  // SADD/SREM are idempotent so SCARD stays accurate no matter how often a tier
-  // is re-applied. 'admin' counts as Pro for the paying-users headline. VIPs lifted
-  // via PRO_ALLOWLIST aren't stored here (resolved at session time) — known caveat.
-  // Best-effort: a counter hiccup must never fail the actual tier write above.
-  try {
-    if (tier === 'free') await redis.srem('stats:pro:members', userId);
-    else                 await redis.sadd('stats:pro:members', userId);
-  } catch (e) {
-    console.warn(`⚠️ Pro member set update skipped (Redis): ${e.message}`);
-  }
-
-  // ── Record how this grant happened, for the "Pro Users" admin audit view ───
-  if (tier === 'free') {
-    await clearProSource(userId);
-  } else {
-    await recordProSource(userId, 'admin', sessionEmail || 'api-key');
-  }
+  // ── Write tier (+ Pro member set + grant source) through the single plan module ───
+  await setTierByAdmin(userId, tier, sessionEmail || 'api-key');
 
   return res.status(200).json({ success: true, userId, email: resolvedEmail, tier });
 }

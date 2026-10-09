@@ -4,7 +4,7 @@ import { Copy, Check, X, Clapperboard, Film, Loader2, ChevronDown, Share2, Downl
 import { shareReadyFile, makeShareFile, shareBlobs, downloadBlob, downloadBlobs, exportCapabilities, urlToBlob } from '../utils/export-image.js';
 import { isCapacitorNative } from '../utils/platform.js';
 
-export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade, onRegenerate, onRetryRateLimited, regensLeft = 0 }) {
+export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade, onRegenerate, onRetryRateLimited, regensLeft = 0, notice = '' }) {
   const isHebrew = lang === 'he';
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [allCopied, setAllCopied] = useState(false);
@@ -198,6 +198,17 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
           <X size={15} />
         </button>
       </div>
+
+      {/* ── Budget / degradation notice — honest, non-blocking (e.g. identity or image capacity) ── */}
+      {notice && (
+        <p
+          role="status"
+          dir={isHebrew ? 'rtl' : 'ltr'}
+          className="mx-5 md:mx-7 mt-5 px-4 py-3 rounded-2xl bg-[#d4a373]/[0.07] border border-[#d4a373]/25 text-[11px] leading-snug text-white/75"
+        >
+          {notice}
+        </p>
+      )}
 
       {/* ── Panel Grid ─────────────────────────────────────────── */}
       <div className="p-5 md:p-7">

@@ -55,4 +55,4 @@ Confirmed present in `copy-he.md`: פוסטר קולנועי, קומיקס, תס
 
 ## Notes / things NOT to claim
 - Don't use "face swap" as a headline term in the actual listing copy — it overpromises a different technical capability (LifeScript builds a consistent character from a reference photo via image-generation models, not real-time face-swapping) and could draw a misleading-claims flag in review. Fine to have in mind for search-intent overlap only.
-- Don't claim "unlimited free" anywhere — free tier has real daily limits (5 scripts/2 posters/1 comic at time of writing, per `lib/quota.js`). Keep "free to start" framing, not "free forever" or "unlimited free."
+- Don't claim "unlimited free" anywhere — free tier has real daily limits (5 scripts and 2 posters per day, 3 comics per month — see `config/limits.js`). Keep "free to start" framing, not "free forever" or "unlimited free."

@@ -14,17 +14,20 @@ description: >-
 
 Quota bugs silently break either revenue (gate too loose) or UX (gate too tight),
 and the rules are subtle. The single source of truth for limits is
-[lib/quota.js](lib/quota.js); read it before changing anything.
+[config/limits.js](config/limits.js) (re-exported through [lib/quota.js](lib/quota.js)); read it
+before changing anything. Newer limits (comic month/panels, regen, sheet uploads, magic-link, proxy) and
+their env overrides are defined there too.
 
 ## Tiers & limits (`TIER_LIMITS`)
 | feature | anonymous | free | pro | admin | period |
 |---|---|---|---|---|---|
-| script | 2 | 5 | ∞ | ∞ | **daily** |
-| poster | 1 | 2 | 3 | ∞ | **daily** |
-| comic | 0 | 1 | 2 | ∞ | **daily** |
+| script | 2 | 5 | 20 | ∞ | **daily** |
+| poster | 1 (lifetime) | 2 | 3 | ∞ | **daily** |
+| comic | 0 | 3 | 2 | ∞ | free = **monthly**, pro = **daily** |
 | maxPanels | 0 | 7 | 7 | 7 | (LLM plan size) |
-| unlockedPanels | 0 | 7 | 7 | ∞ | per comic |
+| unlockedPanels | 0 | 7 (1st comic ever) / 3 (later) | 7 | ∞ | per comic (stored in `comic:meta:<seed>`) |
 | identity | 0 | 1 | 30 | ∞ | **monthly** (free = **lifetime**) |
+| character-sheet uploads | 0 | 3 | 30 | ∞ | **monthly** (`usage:sheet:<id>:<YYYY-MM>`) |
 
 `limitFor(tier, feature)` is the only accessor — use it; never read `TIER_LIMITS`
 directly in routes. `Infinity` means uncapped (skip increment). Note `maxPanels` is
@@ -50,12 +53,12 @@ an anonymous identifier). Always resolve tier+identifier through `lib/auth.js`,
 never trust client-supplied tier/userId.
 
 ## Ownership rule that bites people
-**Comic/storyboard quota is owned by [generate-storyboard.js](pages/api/generate-storyboard.js).**
-Panel image calls in generate-poster.js (`requestType === 'comic'|'storyboard'`) do
-**NOT** increment any poster counter — they only enforce the per-panel
-`unlockedPanels` gate (a second, independent paywall layer so direct API calls
-can't bypass it). If you add comic-cost logic, put it in the storyboard route, not
-the poster route.
+**Comic/storyboard quota is owned by [generate-storyboard.js](pages/api/generate-storyboard.js)**
+(Free: monthly, Pro: daily — `lib/comic-quota.js`). Panel image calls in generate-poster.js
+(`requestType === 'comic'|'storyboard'`) never touch that counter; they go through
+`lib/comic-guard.js` instead (owner + this comic's unlocked count + per-user daily panel cap +
+replacement budget), so direct API calls can't reach a locked panel or regenerate one repeatedly.
+If you add comic-cost logic, put it in the storyboard route or comic-guard, not the poster route.
 
 ## The standard gate pattern (match it exactly)
 1. `const { tier, identifier } = await getSessionAndTier(req, res)`
@@ -117,3 +120,16 @@ idempotent (one attribution per referee via `set(..., {nx:true})`).
 4. Increment only on success; fail-open on check.
 5. Put comic accounting in the storyboard route.
 6. If it's paywalled, verify both the Stripe grant and revoke paths.
+
+## Hardening additions (branch hardening/quota-and-abuse)
+- **Reserve, don't read-then-write.** Script, comic, character-sheet and panel counters now use
+  `INCR` then compare, and `DECR` on refusal / failure (lib/script-quota.js, comic-quota.js,
+  sheet-quota.js, comic-guard.js, budget.js `reserveIdentityBudget`). Concurrent requests can no
+  longer all pass the check.
+- **Comic panels** are gated by lib/comic-guard.js: the storyboard opens `comic:meta:<seed>`
+  (owner + unlocked count); every panel request needs it, spends the per-user daily panel cap and
+  the per-comic replacement budget (`COMIC.regenLimit`). The browser limit is display only.
+- **Plan/Pro flag**: read and written ONLY via lib/plan.js (`resolvePlan`, `grantPaidPro`,
+  `revokePaidPro`, `setTierByAdmin`). Payment events never touch `admin` or admin-granted Pro.
+- **Budgets** (`DAILY_IMAGE_BUDGET`, `DAILY_IDENTITY_BUDGET`): once-per-day log + Telegram alert via
+  lib/budget-alerts.js; users get `IDENTITY_BUDGET_REACHED` / `IMAGE_BUDGET_REACHED` messages.

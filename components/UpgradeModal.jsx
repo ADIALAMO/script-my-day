@@ -3,13 +3,14 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Crown, Check, Minus, Zap, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { TIER_LIMITS } from '../lib/quota.js';
+import { COMIC, SCRIPT_MONTHLY_LIMITS } from '../config/limits.js';
 
 // Feature rows — values read from TIER_LIMITS so this stays in sync automatically.
 const FEATURES = [
-  { labelEn: 'Scripts per day',       labelHe: 'תסריטים ביום',      free: TIER_LIMITS.free.script,    pro: TIER_LIMITS.pro.script    },
+  { labelEn: 'Scripts',               labelHe: 'תסריטים',           free: { en: `${TIER_LIMITS.free.script} / day`, he: `${TIER_LIMITS.free.script} ביום` }, pro: { en: `${TIER_LIMITS.pro.script} / day (${SCRIPT_MONTHLY_LIMITS.pro} / month)`, he: `${TIER_LIMITS.pro.script} ביום (${SCRIPT_MONTHLY_LIMITS.pro} בחודש)` } },
   { labelEn: 'Movie posters per day', labelHe: 'פוסטרים ביום',      free: TIER_LIMITS.free.poster,    pro: TIER_LIMITS.pro.poster    },
-  { labelEn: 'Comic books per day',   labelHe: 'קומיקס ביום',       free: TIER_LIMITS.free.comic,     pro: TIER_LIMITS.pro.comic     },
-  { labelEn: 'Max comic panels',      labelHe: 'מקסימום פאנלים',    free: TIER_LIMITS.free.unlockedPanels, pro: TIER_LIMITS.pro.unlockedPanels },
+  { labelEn: 'Comic books',           labelHe: 'קומיקס',            free: { en: `${TIER_LIMITS.free.comic} / month`, he: `${TIER_LIMITS.free.comic} בחודש` }, pro: { en: `${TIER_LIMITS.pro.comic} / day (${COMIC.proPerMonth} / month)`, he: `${TIER_LIMITS.pro.comic} ביום (${COMIC.proPerMonth} בחודש)` } },
+  { labelEn: 'Unlocked comic panels', labelHe: 'פאנלים פתוחים',     free: { en: `${COMIC.freeFirstComicPanels} (1st comic), then ${COMIC.freeLaterComicPanels}`, he: `${COMIC.freeFirstComicPanels} (קומיקס ראשון), אחר כך ${COMIC.freeLaterComicPanels}` }, pro: TIER_LIMITS.pro.unlockedPanels },
   { labelEn: 'Reels generation',      labelHe: 'יצירת רילז',        free: false,                      pro: true                      },
   { labelEn: 'Priority queue',        labelHe: 'תור עיבוד מועדף',   free: false,                      pro: true                      },
 ];
@@ -20,6 +21,7 @@ function FeatureValue({ value, isHe }) {
       {isHe ? 'ללא הגבלה' : 'Unlimited'}
     </span>
   );
+  if (value && typeof value === 'object') return <span className="text-white/70 font-bold text-[11px] leading-tight">{isHe ? value.he : value.en}</span>;
   if (value === true)  return <Check size={13} className="text-emerald-400 mx-auto" />;
   if (value === false) return <Minus size={13} className="text-white/15 mx-auto" />;
   return <span className="text-white/70 font-bold text-[12px]">{value}</span>;

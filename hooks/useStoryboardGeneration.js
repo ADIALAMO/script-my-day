@@ -33,8 +33,9 @@ function panelImagesReducer(state, action) {
 const STORYBOARD_MESSAGES_HE = ['סורק סצנות...', 'ממפה פאנלים...', 'מדפיס קווי דיו...', 'מסיים ציורים...'];
 const STORYBOARD_MESSAGES_EN = ['Scanning scenes...', 'Mapping panels...', 'Inking drawings...', 'Composing frames...'];
 
-// Max user-initiated panel image replacements per comic. A small budget keeps the
-// "try again" cost bounded — each replace is a fresh image generation.
+// Display fallback for the number of replacements per comic. The REAL limit is enforced by the
+// server (lib/comic-guard.js, config COMIC.regenLimit) and arrives with the storyboard response
+// (`regenLimit`); this browser counter only mirrors it for the UI and is never the guard.
 const REGEN_LIMIT = 2;
 
 function makeClientComicSeed() {
@@ -93,6 +94,9 @@ export function useStoryboardGeneration({
   const [panelImages, dispatchPanelImages]             = useReducer(panelImagesReducer, {});
   const [unlockedPanels,      setUnlockedPanels]       = useState(0);
   const [regensLeft,          setRegensLeft]           = useState(REGEN_LIMIT);
+  const [regenLimit,          setRegenLimit]           = useState(REGEN_LIMIT);
+  // Honest, non-blocking note when a spend budget degraded or stopped part of this comic.
+  const [comicNotice,         setComicNotice]          = useState('');
 
   // TEMP DIAGNOSTIC (reel-crash) — 'fresh' | 'restored' | null, plus the
   // timestamp the comic's images all reached a terminal state (success or
@@ -145,6 +149,8 @@ export function useStoryboardGeneration({
     panelSessionRef.current     = null;
     comicSeedRef.current        = null;
     setRegensLeft(REGEN_LIMIT);
+    setRegenLimit(REGEN_LIMIT);
+    setComicNotice('');
     setStoryboardError('');
     setStoryboardErrorCode('');
 
@@ -206,6 +212,14 @@ export function useStoryboardGeneration({
 
       if (resp.status === 429) {
         if (!storyboardActiveRef.current) return;
+        // Only the sliding-window limiter is a "wait a moment and retry" case. A quota answer
+        // (daily panel cap, replacements used up) will not clear by retrying — show a failure.
+        const limited = await resp.clone().json().catch(() => ({}));
+        if (limited?.code && limited.code !== CODES.RATE_LIMITED) {
+          dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: false, url: null, error: true } });
+          onSettled?.();
+          return;
+        }
         const retryAfterSec = parseInt(resp.headers.get('Retry-After'), 10);
         dispatchPanelImages({
           type: 'SET_PANEL', idx,
@@ -227,6 +241,7 @@ export function useStoryboardGeneration({
       // actually generated. Must be treated as a failure here: never uploaded to
       // R2, never persisted to history, never shown as if it were a real panel.
       if (data.isPlaceholder) {
+        if (data.code === CODES.IMAGE_BUDGET_REACHED) setComicNotice(getMsg(data.code, lang));
         dispatchPanelImages({
           type: 'SET_PANEL', idx,
           payload: { loading: false, url: null, error: true },
@@ -236,6 +251,9 @@ export function useStoryboardGeneration({
       }
 
       if (data.success && data.imageUrl) {
+        // A hero panel that came out without the user's face because identity is capped/used up:
+        // say why (once per comic) instead of leaving a silent substitution.
+        if (data.identityDegraded && data.code) setComicNotice((n) => n || getMsg(data.code, lang));
         // ── Phase 2: show data URI immediately (instant UX) ────────────
         dispatchPanelImages({
           type: 'SET_PANEL', idx,
@@ -368,6 +386,10 @@ export function useStoryboardGeneration({
       const data = await resp.json();
       if (!storyboardActiveRef.current) return;  // user closed the storyboard mid-flight
 
+      // The server is the authority on the replacement budget: when it says the budget is
+      // used up, stop offering "Replace" for this comic.
+      if (data.code === CODES.QUOTA_PANEL_REGEN) setRegensLeft(0);
+
       // A placeholder/failure must NOT replace a good image or burn a replacement.
       if (!data.success || !data.imageUrl || data.isPlaceholder) {
         dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: false, url: oldUrl, error: !oldUrl } });
@@ -414,6 +436,7 @@ export function useStoryboardGeneration({
     panelCdnUrlsRef.current     = {};
     comicSeedRef.current        = makeClientComicSeed();
     dispatchPanelImages({ type: 'RESET' });
+    setComicNotice('');
     setStoryboardLoading(true);
     setStoryboardError('');
     setStoryboardErrorCode('');
@@ -452,6 +475,11 @@ export function useStoryboardGeneration({
           : data.panels.length;
 
         storyboardActiveRef.current = true;
+        // The server may have issued the seed (older clients) — panel requests must carry it.
+        if (typeof data.comicSeed === 'string' && data.comicSeed) comicSeedRef.current = data.comicSeed;
+        const serverRegenLimit = Number.isFinite(data.regenLimit) ? data.regenLimit : REGEN_LIMIT;
+        setRegenLimit(serverRegenLimit);
+        setRegensLeft(serverRegenLimit);
         setStoryboardPanels(data.panels);
         setUnlockedPanels(unlocked);
         setShowStoryboard(true);
@@ -525,7 +553,8 @@ export function useStoryboardGeneration({
     regeneratePanel,
     retryRateLimitedPanel,
     regensLeft,
-    regenLimit: REGEN_LIMIT,
+    regenLimit,
+    comicNotice,
     closeStoryboard,
     cancelStoryboard,
     isQuotaError,

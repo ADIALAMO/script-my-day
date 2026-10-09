@@ -1,6 +1,5 @@
 import { getStripe } from '../../../lib/stripe.js';
-import redis from '../../../lib/redis.js';
-import { recordProSource, clearProSource } from '../../../lib/pro-source.js';
+import { grantPaidPro, revokePaidPro } from '../../../lib/plan.js';
 
 // ── Critical: disable Next.js body parser ─────────────────────────────────────
 // Stripe signature verification requires the raw, un-parsed request body as a
@@ -23,29 +22,21 @@ function collectRawBody(req) {
   });
 }
 
-// ── Tier helpers ──────────────────────────────────────────────────────────────
+// ── Tier changes ──────────────────────────────────────────────────────────────
+// All Pro grants/revokes go through lib/plan.js, which never overwrites `admin`, never touches
+// Pro that an admin granted, and never revokes Pro of unknown origin without a payment customer.
 
 async function activatePro(userId, stripeCustomerId) {
-  const ops = [redis.set(`user:tier:${userId}`, 'pro')];
-  if (stripeCustomerId) {
-    ops.push(redis.set(`user:stripe_customer:${userId}`, stripeCustomerId));
-  }
-  await Promise.all(ops);
-  // Keep the dashboard Pro member set (/api/admin/stats) in sync. Idempotent.
-  try { await redis.sadd('stats:pro:members', userId); }
-  catch (e) { console.warn(`⚠️ Pro member set add skipped (Redis): ${e.message}`); }
-  await recordProSource(userId, 'stripe');
+  const out = await grantPaidPro(userId, stripeCustomerId);
+  if (!out.changed) console.warn(`ℹ️ Stripe webhook: Pro grant for ${userId} left unchanged (${out.reason})`);
   if (!stripeCustomerId) {
     console.warn(`⚠️ Stripe webhook: Pro activated for ${userId} — no customer ID, billing portal disabled`);
   }
 }
 
 async function revokePro(userId) {
-  // del removes the key entirely; getSessionAndTier defaults absent keys to 'free'.
-  await redis.del(`user:tier:${userId}`);
-  try { await redis.srem('stats:pro:members', userId); }
-  catch (e) { console.warn(`⚠️ Pro member set remove skipped (Redis): ${e.message}`); }
-  await clearProSource(userId);
+  const out = await revokePaidPro(userId);
+  if (!out.changed) console.warn(`ℹ️ Stripe webhook: Pro revoke for ${userId} skipped (${out.reason})`);
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -123,6 +114,18 @@ export default async function handler(req, res) {
         }
 
         await revokePro(userId);
+        break;
+      }
+
+      // ── A renewal payment failed ─────────────────────────────────────────────
+      // Logged only. Stripe retries the charge itself and sends customer.subscription.deleted if it
+      // finally gives up — that event (handled above) is what ends Pro. Deliberately no change to
+      // the product's behavior here, and nothing in this branch may throw: ids only, no user data.
+      case 'invoice.payment_failed': {
+        const invoice = event.data?.object ?? {};
+        const subRef = invoice.subscription ?? invoice.parent?.subscription_details?.subscription;
+        const subscriptionId = typeof subRef === 'string' ? subRef : (subRef?.id ?? 'n/a');
+        console.warn(`⚠️ Stripe invoice.payment_failed (invoice=${invoice.id ?? 'n/a'}, subscription=${subscriptionId}, attempt=${invoice.attempt_count ?? 'n/a'}) — logged only, Pro unchanged.`);
         break;
       }
 

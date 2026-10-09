@@ -5,6 +5,9 @@ import { nextMidnightUTC, isAdminRequest, extractDevTier, isValidComicSeed } fro
 import { paidImageBudgetReached, getOpenProviders } from '../../lib/circuit-breaker.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { limitFor } from '../../lib/quota.js';
+import { reserveComicQuota, releaseComicQuota, unlockedPanelsForNewComic } from '../../lib/comic-quota.js';
+import { openComicSession } from '../../lib/comic-guard.js';
+import { COMIC } from '../../config/limits.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 
 export const maxDuration = 60;
@@ -258,8 +261,14 @@ export default async function handler(req, res) {
   // ── Rate limiting (sliding window, before quota gate) ─────────────────────
   if (await enforceRateLimit(req, res, 'generate-storyboard')) return;
 
+  let comicReservationKey = null;
   try {
-    const { script, lang, genre, comicStyle, heroDescriptor: rawHeroDescriptor, comicSeed } = req.body;
+    const { script, lang, genre, comicStyle, heroDescriptor: rawHeroDescriptor, comicSeed: rawComicSeed } = req.body;
+    // The comic session needs a valid seed. Older clients never sent one — mint it server-side
+    // and hand it back so the browser uses the same value for its panel requests.
+    const comicSeed = isValidComicSeed(rawComicSeed)
+      ? rawComicSeed
+      : `${Date.now()}${Math.floor(Math.random() * 1e9)}`;
 
     // Hero descriptor is only honoured when the client signals an active Identity Track.
     // Sanitized + length-capped; never trusted as free text into the prompt.
@@ -272,21 +281,22 @@ export default async function handler(req, res) {
     // specific tier's unlockedPanels without touching real quota counters.
     const devTier = isAdmin ? extractDevTier(req) : null;
 
-    // Storyboard is the single quota gate for the entire comic flow.
-    // generate-poster.js skips comic quota checks — panel calls are unrestricted once the
-    // storyboard step is approved and counted here.
-    let usageKey      = null;
-    let comicLimit    = 0;
-    let maxPanels     = 7;   // always generate the full story arc for all tiers
+    // Storyboard is the single quota gate for the entire comic flow: it reserves the comic
+    // (Free: per month, Pro: per day — config/limits.js) and opens the comic SESSION that the
+    // panel route (lib/comic-guard.js) later checks. Panel image calls never touch this counter.
+    let tier           = 'admin';
+    let identifier     = 'admin';
+    let comicLimit     = 0;
+    let maxPanels      = 7;   // always generate the full story arc for all tiers
     let unlockedPanels = null; // null → admin default (all panels visible)
 
     if (!isAdmin) {
-      const { tier, identifier } = await getSessionAndTier(req, res);
+      const ctx = await getSessionAndTier(req, res);
+      tier           = ctx.tier;
+      identifier     = ctx.identifier;
       comicLimit     = limitFor(tier, 'comic');
       maxPanels      = limitFor(tier, 'maxPanels');
       unlockedPanels = limitFor(tier, 'unlockedPanels');
-      const today = new Date().toISOString().split('T')[0];
-      usageKey    = `usage:comic:${identifier}:${today}`;
 
       if (comicLimit === 0) {
         return res.status(403).json({
@@ -294,20 +304,6 @@ export default async function handler(req, res) {
           code: CODES.NEEDS_ACCOUNT,
           message: 'Sign in to unlock comic generation.',
         });
-      }
-
-      try {
-        const currentUsage = await redis.get(usageKey);
-        const used = parseInt(currentUsage, 10) || 0;
-        if (comicLimit !== Infinity && used >= comicLimit) {
-          return res.status(429).json({
-            success: false,
-            code: CODES.QUOTA_COMIC,
-            message: 'Daily comic quota reached. Come back tomorrow.',
-          });
-        }
-      } catch (e) {
-        console.warn(`⚠️ Comic quota check skipped (Redis unavailable): ${e.message}`);
       }
     }
 
@@ -317,6 +313,28 @@ export default async function handler(req, res) {
 
     if (!cleanScript || cleanScript.length < 20) {
       return res.status(400).json({ success: false, code: CODES.INPUT_TOO_SHORT, message: 'Script text too short.' });
+    }
+
+    // Reserve this comic atomically (INCR then compare) now that the input is valid; given back
+    // below if no storyboard can be produced. Redis trouble fails open, like the other quotas.
+    if (!isAdmin && comicLimit !== Infinity) {
+      try {
+        const r = await reserveComicQuota(tier, identifier);
+        if (!r.ok) {
+          return res.status(429).json({
+            success: false,
+            code: r.period === 'pro-month' ? CODES.QUOTA_COMIC_PRO_MONTH
+                : r.period === 'month'     ? CODES.QUOTA_COMIC_MONTH
+                :                            CODES.QUOTA_COMIC,
+            limit: r.limit,
+            resetsAt: r.resetsAt,
+            message: 'Comic quota reached.',
+          });
+        }
+        comicReservationKey = r;
+      } catch (e) {
+        console.warn(`⚠️ Comic quota reservation skipped (Redis unavailable): ${e.message}`);
+      }
     }
 
     const staticInstruction = buildStaticInstruction(lang || 'en', maxPanels, heroDescriptor);
@@ -355,25 +373,13 @@ export default async function handler(req, res) {
     }
 
     if (!enrichedPanels) {
+      await releaseComicQuota(comicReservationKey); // nothing was produced → no comic spent
       return res.status(500).json({ success: false, code: CODES.STORYBOARD_FAIL, message: 'All storyboard engines offline.' });
     }
 
     // Selective Framing: enforce the hard hero cap server-side so a model overshoot
     // (or a tampered client) can never push more than MAX_HERO paid identity panels.
     enrichedPanels = applyHeroCap(enrichedPanels);
-
-    // Increment comic quota only after a successful storyboard generation.
-    // This is the single consumption point for the entire comic flow (panel image calls are unrestricted).
-    if (!isAdmin && usageKey && comicLimit !== Infinity) {
-      try {
-        const pipeline = redis.pipeline();
-        pipeline.incr(usageKey);
-        pipeline.expireat(usageKey, nextMidnightUTC());
-        await pipeline.exec();
-      } catch (err) {
-        console.warn(`⚠️ Comic quota increment skipped (Redis unavailable): ${err.message}`);
-      }
-    }
 
     // ── Global activity counters (all tiers) — powers /api/admin/stats ─────────
     // Outside the quota guard so Pro/admin comics are counted too. One storyboard
@@ -417,9 +423,14 @@ export default async function handler(req, res) {
 
     // Resolve the effective unlock count.
     // devTier lets an admin preview the free/pro experience without affecting real quotas.
-    const effectiveUnlocked = devTier
+    // Free: the user's FIRST comic ever unlocks every panel, later ones fewer (config/limits.js).
+    // Computed once per successful comic (lifetime ordinal in Redis), never from the client.
+    let effectiveUnlocked = devTier
       ? limitFor(devTier, 'unlockedPanels')
       : unlockedPanels; // null = admin (all panels)
+    if (!isAdmin && !devTier && unlockedPanels !== Infinity) {
+      effectiveUnlocked = await unlockedPanelsForNewComic(tier, identifier);
+    }
 
     // Hard-cap to the LLM target ceiling (prevents rare overshoots above 7).
     const panelCeiling = (maxPanels > 0 && maxPanels < enrichedPanels.length)
@@ -444,9 +455,20 @@ export default async function handler(req, res) {
       return p;
     });
 
+    // Open the comic SESSION the panel route enforces (owner + this comic's unlocked count +
+    // per-panel/replacement counters). Admins are exempt there.
+    if (!isAdmin) await openComicSession(comicSeed, identifier, unlockedCount);
+
     console.log(`🦸‍♂️ Comic Panel generated successfully via: ${storyboardEngine}`);
-    return res.status(200).json({ success: true, panels: cappedPanels, unlockedPanels: unlockedCount });
+    return res.status(200).json({
+      success: true,
+      panels: cappedPanels,
+      unlockedPanels: unlockedCount,
+      comicSeed,                       // the seed the panel requests must carry
+      regenLimit: COMIC.regenLimit,    // replacements allowed for this comic (server-enforced)
+    });
   } catch (err) {
+    await releaseComicQuota(comicReservationKey);
     console.error('generate-storyboard unhandled error:', err.message, err.stack);
     return res.status(500).json({ success: false, code: CODES.SERVER_ERROR, message: 'Internal server error.' });
   }

@@ -148,7 +148,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     unlockedPanels,
     comicStyle, setComicStyle, currentStoryboardMessage,
     generateStoryboard, closeStoryboard, cancelStoryboard,
-    regeneratePanel, retryRateLimitedPanel, regensLeft,
+    regeneratePanel, retryRateLimitedPanel, regensLeft, comicNotice,
     comicSource, comicCompletedAtRef, // TEMP DIAGNOSTIC (reel-crash)
   } = useStoryboardGeneration({
     lang, genre, cleanScript, script, onAuthRequired, onPanelsGenerated, initialPanels,
@@ -989,6 +989,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               onRegenerate={regeneratePanel}
               onRetryRateLimited={retryRateLimitedPanel}
               regensLeft={regensLeft}
+              notice={comicNotice}
             />
           </div>
         )}

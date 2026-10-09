@@ -25,8 +25,8 @@ const CONTEXT_COPY = {
     he: 'התחבר כדי לקבל קישור הזמנה אישי — על כל חבר שמצטרף תקבל פוסטר "לככב בסיפור" חינם.',
   },
   upgrade: {
-    en: 'Upgrade to Pro for unlimited scripts, 3 posters/day, and full comic books.',
-    he: 'שדרג לפרו לתסריטים ללא הגבלה, 3 פוסטרים ביום וקומיקס מלא.',
+    en: 'Upgrade to Pro for more scripts, more posters, and a full comic book every day.',
+    he: 'שדרג לפרו ליותר תסריטים, יותר פוסטרים וקומיקס מלא בכל יום.',
   },
   general: {
     en: 'Sign in to save your scripts and unlock visual features.',
@@ -310,7 +310,13 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
       // redirect: false returns {ok, error} without leaving the page so our
       // modal can display the confirmation state directly.
       const result = await signIn('email', { email: trimmed, redirect: false, callbackUrl });
-      if (result?.error) {
+      if (result?.status === 429) {
+        // Too many sign-in e-mails requested (per address or per network) — say so honestly.
+        setEmailState('error');
+        setEmailError(isHe
+          ? 'נשלחו יותר מדי בקשות התחברות. נסה שוב בעוד כשעה.'
+          : 'Too many sign-in requests. Please try again in about an hour.');
+      } else if (result?.error) {
         setEmailState('error');
         setEmailError(isHe ? 'שגיאה בשליחת המייל. נסה שוב.' : 'Failed to send email. Please try again.');
       } else {

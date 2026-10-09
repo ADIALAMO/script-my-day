@@ -3,6 +3,7 @@ import { authOptions } from '../../../lib/auth.js';
 import { isAdminRequest } from '../../../lib/api-utils.js';
 import redis from '../../../lib/redis.js';
 import { parseAllowlist } from '../../../lib/pro-source.js';
+import { parseGrantSource } from '../../../lib/plan.js';
 
 // Checks whether the session email is in the ADMIN_EMAILS allowlist.
 function isAllowedAdminSession(email) {
@@ -65,15 +66,10 @@ export default async function handler(req, res) {
           : null;
         const email = userObj?.email ?? null;
 
-        let source = 'unknown';
-        let by     = undefined;
-        let since  = null;
-        if (rawSource) {
-          const parsed = typeof rawSource === 'object' ? rawSource : JSON.parse(rawSource);
-          source = parsed.source || 'unknown';
-          by     = parsed.by;
-          since  = parsed.at || null;
-        }
+        const grant  = parseGrantSource(rawSource);
+        const source = grant.source || 'unknown';
+        const by     = grant.by;
+        const since  = grant.at;
 
         return {
           userId,

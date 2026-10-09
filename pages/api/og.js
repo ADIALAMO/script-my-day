@@ -1,4 +1,6 @@
 import { ImageResponse } from 'next/og';
+import { OG_IMAGE } from '../../config/limits.js';
+import { SITE_URL } from '../../lib/site.js';
 
 export const config = { runtime: 'edge' };
 
@@ -10,12 +12,28 @@ const FONT_URLS = [
   'https://cdn.jsdelivr.net/npm/@fontsource/heebo/files/heebo-latin-700-normal.woff',
 ];
 
+// Outbound fetches are limited to a fixed host allowlist, never follow a redirect blindly (a
+// redirect to a private range is the classic SSRF bypass) and are size-capped — the card only
+// ever needs two small font files and our own logo.
+const ALLOWED_ASSET_HOSTS = new Set(['cdn.jsdelivr.net', new URL(SITE_URL).hostname]);
+
+async function fetchAsset(url) {
+  const u = new URL(url);
+  if (u.protocol !== 'https:' || !ALLOWED_ASSET_HOSTS.has(u.hostname)) throw new Error('asset host not allowed');
+  const res = await fetch(u, { redirect: 'manual', signal: AbortSignal.timeout(5000) });
+  if (!res.ok) throw new Error(`asset HTTP ${res.status}`); // includes 3xx: redirects are refused
+  const declared = parseInt(res.headers.get('content-length'), 10);
+  if (Number.isFinite(declared) && declared > OG_IMAGE.maxAssetBytes) throw new Error('asset too large');
+  const buf = await res.arrayBuffer();
+  if (buf.byteLength > OG_IMAGE.maxAssetBytes) throw new Error('asset too large');
+  return buf;
+}
+
 async function loadFonts() {
   const fonts = [];
   for (const url of FONT_URLS) {
     try {
-      const res = await fetch(url);
-      if (res.ok) fonts.push({ name: 'Heebo', data: await res.arrayBuffer(), weight: 700, style: 'normal' });
+      fonts.push({ name: 'Heebo', data: await fetchAsset(url), weight: 700, style: 'normal' });
     } catch { /* one subset failed — render with whatever loaded (graceful degradation) */ }
   }
   return fonts;
@@ -52,19 +70,56 @@ function bufToBase64(buf) {
   return btoa(binary);
 }
 
-async function loadLogo(origin) {
+async function loadLogo() {
   try {
-    const res = await fetch(`${origin}/icon.png`);
-    if (!res.ok) return null;
-    return `data:image/png;base64,${bufToBase64(await res.arrayBuffer())}`;
+    // Always OUR site (SITE_URL), never an origin derived from the request's Host header.
+    return `data:image/png;base64,${bufToBase64(await fetchAsset(`${SITE_URL}/icon.png`))}`;
   } catch {
     return null;
   }
 }
 
+// ── Per-IP rate limit ─────────────────────────────────────────────────────────────────────────
+// Edge-safe fixed window straight over Upstash's REST API (no Node-only client in the edge
+// bundle): INCR + EXPIRE in one pipeline call, 1-minute buckets. FAIL-OPEN on any problem.
+async function overLimit(ip) {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return false;
+  const bucket = Math.floor(Date.now() / 60_000);
+  const key = `rl:og:${ip}:${bucket}`;
+  try {
+    const r = await fetch(`${url.replace(/\/$/, '')}/pipeline`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify([['INCR', key], ['EXPIRE', key, 120]]),
+      signal: AbortSignal.timeout(1500),
+    });
+    if (!r.ok) return false;
+    const out = await r.json();
+    const count = Number(out?.[0]?.result);
+    return Number.isFinite(count) && count > OG_IMAGE.perIpPerMinute;
+  } catch {
+    return false;
+  }
+}
+
+function clientIp(req) {
+  const real = req.headers.get('x-real-ip');
+  if (real && real.trim()) return real.trim();
+  const fwd = req.headers.get('x-forwarded-for');
+  if (fwd) { const last = fwd.split(',').map((x) => x.trim()).filter(Boolean).pop(); if (last) return last; }
+  return 'unknown';
+}
+
 export default async function handler(req) {
-  const { searchParams, origin } = new URL(req.url);
-  const name = (searchParams.get('name') || '').slice(0, 40);
+  if (await overLimit(clientIp(req))) {
+    return new Response('Too many requests', { status: 429, headers: { 'Retry-After': '60' } });
+  }
+
+  const { searchParams } = new URL(req.url);
+  // Only the invitee's first name (capped) and a two-value language reach the card.
+  const name = (searchParams.get('name') || '').replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 40);
   const isHe = (searchParams.get('lang') || 'he') !== 'en';
 
   const rawHeadline = isHe
@@ -77,7 +132,7 @@ export default async function handler(req) {
   const sub      = isHe ? reshapeHebrew(rawSub)      : rawSub;
   const chip     = isHe ? reshapeHebrew(rawChip)     : rawChip;
 
-  const [fonts, logo] = await Promise.all([loadFonts(), loadLogo(origin)]);
+  const [fonts, logo] = await Promise.all([loadFonts(), loadLogo()]);
 
   return new ImageResponse(
     (

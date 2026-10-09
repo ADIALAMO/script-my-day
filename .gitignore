@@ -5,6 +5,10 @@ node_modules/
 .next/
 .env*.local
 
+# Every local env file (e.g. .envprod from `vercel env pull`); only the documented template is tracked
+.env*
+!.env.example
+
 # macOS Finder junk — matches at any depth, no need to gitignore per-folder
 .DS_Store
 
@@ -14,3 +18,20 @@ node_modules/
 # (public-facing) store listing copy, which IS tracked.
 store-listing/privacy-policy-gaps.md
 store-listing/data-safety.md
+
+# local integration-suite run artefacts (tests/integration)
+tests/integration/.results/
+
+# Private working docs / audit and eval reports — this repo is PUBLIC, never commit these.
+# Keep them in docs-private/ (ignored); the explicit names guard against one landing in the root.
+docs-private/
+quality-eval*
+secrets-audit.md
+model-inventory.md
+test-run-report.md
+work-plan.md
+verification-report.md
+implementation-report.md
+preview-test-checklist.md
+project-status-report.md
+ai-cost-report.md
