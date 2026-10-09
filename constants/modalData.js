@@ -119,7 +119,7 @@ export const MODAL_DATA = {
         },
         {
           h: '4. נתוני שימוש ומכסות',
-          p: 'כדי לאכוף את המגבלות ההוגנות, אנחנו שומרים (ב-Redis) מוני שימוש: מונים יומיים עד חצות UTC, חודשיים עד כמה ימים לאחר סוף החודש, ומונים של קרדיטי "לככב בסיפור" שחלקם לכל החיים. עבור גולשים שאינם רשומים המונים נשמרים לפי כתובת ה-IP, וחלקם (פוסטר האורח) ללא תפוגה. לחשבון רשום נשמרים גם מצב המנוי, מזהה לקוח של Stripe, מועד פעילות אחרון ונתוני הזמנת חברים. פעילות הקומיקס הפתוחה נשמרת עד 24 שעות. בקשות מחיקה נשמרות 30 יום לצורך תיעוד.',
+          p: 'כדי לאכוף את המגבלות ההוגנות, אנחנו שומרים (ב-Redis) מוני שימוש: מונים יומיים עד חצות UTC, חודשיים עד כמה ימים לאחר סוף החודש, ומונים של קרדיטי "לככב בסיפור" שחלקם לכל החיים. עבור גולשים שאינם רשומים המונים נשמרים לפי כתובת ה-IP (ב-IPv6 לפי תחילית /64); מונה פוסטר האורח נשמר עד 90 יום מהשימוש האחרון. לחשבון רשום נשמרים גם מצב המנוי, מזהה לקוח של Stripe, מועד פעילות אחרון ונתוני הזמנת חברים. פעילות הקומיקס הפתוחה נשמרת עד 24 שעות. בקשות מחיקה נשמרות 30 יום לצורך תיעוד.',
         },
         {
           h: '5. תשלומים',
@@ -161,7 +161,7 @@ export const MODAL_DATA = {
         },
         {
           h: '4. Usage & Quota Data',
-          p: 'To enforce fair limits we keep (in Redis) usage counters: daily counters until UTC midnight, monthly counters until a few days after the month ends, and "Star Yourself" credit counters, some of which are lifetime. For visitors who are not signed in the counters are keyed by IP address, and some (the guest poster) have no expiry. For a registered account we also keep the subscription state, a Stripe customer ID, last-active time and friend-invite data. An open comic session is kept for up to 24 hours. Deletion requests are logged for 30 days for audit.',
+          p: 'To enforce fair limits we keep (in Redis) usage counters: daily counters until UTC midnight, monthly counters until a few days after the month ends, and "Star Yourself" credit counters, some of which are lifetime. For visitors who are not signed in the counters are keyed by IP address (IPv6: its /64 prefix); the guest-poster counter is kept for up to 90 days after the last use. For a registered account we also keep the subscription state, a Stripe customer ID, last-active time and friend-invite data. An open comic session is kept for up to 24 hours. Deletion requests are logged for 30 days for audit.',
         },
         {
           h: '5. Payments',

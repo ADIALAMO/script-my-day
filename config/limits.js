@@ -68,7 +68,7 @@ export const COMIC_PERIOD = { anonymous: 'day', free: 'month', pro: 'day', admin
 //                 lib/comic-quota.js). Locked panels never generate images.
 // script (Pro):   daily cap ON TOP of the sliding-window rate limit (was unlimited).
 // identity:       monthly (Pro); Free = LIFETIME (no expiry). comic: see COMIC_PERIOD.
-// ANONYMOUS poster is a LIFETIME allowance (1, no expiry) — see generate-poster.js.
+// ANONYMOUS poster is a LIFETIME allowance (1) per IP, kept GUEST_RETENTION.ipDays after the last use — see lib/poster-quota.js.
 export const TIER_LIMITS = {
   anonymous: { script: 2,        poster: 1,        comic: 0,                 maxPanels: 0, unlockedPanels: 0,                          identity: 0        },
   free:      { script: 5,        poster: 2,        comic: COMIC.freePerMonth, maxPanels: 7, unlockedPanels: COMIC.freeLaterComicPanels, identity: 1        },
