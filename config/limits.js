@@ -132,6 +132,15 @@ export const SCRIPT_GEMINI = {
   totalBudgetMs:    envInt('SCRIPT_TOTAL_BUDGET_MS', 52000), // whole generateScript() cascade; keep ≥8 s under maxDuration
 };
 
+// ─── Guest IP retention ───────────────────────────────────────────────────────────────
+// Guests are identified by IP (IPv6: /64). The one counter that outlives a day — the lifetime guest poster
+// (usage:poster:lifetime:<ip>) — used to have NO expiry, i.e. an IP was stored forever. It now expires after
+// GUEST_IP_RETENTION_DAYS (default 90) and the clock is REFRESHED on every use (including refused attempts), so a
+// guest who keeps coming back keeps the same (spent) allowance; only a guest silent for the whole period gets a new one.
+export const GUEST_RETENTION = {
+  ipDays: envInt('GUEST_IP_RETENTION_DAYS', 90),
+};
+
 // ─── Global daily budget for GUEST (anonymous) script generation ─────────────────────
 // Every guest script is a paid-or-free-tier Gemini call; the per-IP limit (2/day) does not bound the
 // AGGREGATE (many IPs). This caps all guests together per UTC day. Signed-in users are never counted

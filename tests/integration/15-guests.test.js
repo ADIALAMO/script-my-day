@@ -80,3 +80,20 @@ scenario('N5', 'guests cannot reach any other paid feature: storyboard, comic pa
     assert.deepEqual(UPLOAD_LIMITS.anonymous, { panels: 20, posters: 5 });
     return { actual: 'storyboard 403; guest R2 uploads ≤ 20 panels + 5 posters per 30 days per IP' };
   });
+
+scenario('N5', 'guest IP retention: the lifetime guest-poster key expires after 90 days, refreshed on every use; a guest silent for 90 days gets a new allowance, one who returns earlier does not',
+  'TTL ≈ 90 d; day-80 return refreshes it (still 429 at day 100); 90 d of silence → key gone → new poster allowed', async () => {
+    const DAY = 86400_000; const ip = '203.0.113.77'; const key = `usage:poster:lifetime:${ip}`;
+    ctx.setNow('2026-11-01T12:00:00Z');
+    assert.equal((await guestPoster(ip)).status, 200);
+    const ttl0 = fake.ttl(key); assert.ok(ttl0 > 89 * 86400 && ttl0 <= 90 * 86400, `ttl ${ttl0}`);
+    ctx.setNow(new Date(Date.UTC(2026, 10, 1, 12) + 80 * DAY).toISOString());      // day 80: back again
+    assert.equal((await guestPoster(ip)).status, 429, 'allowance not reset early');
+    assert.ok(fake.ttl(key) > 89 * 86400, 'the refused attempt refreshed the expiry');
+    ctx.setNow(new Date(Date.UTC(2026, 10, 1, 12) + 100 * DAY).toISOString());     // day 100: only 20 days since the last visit
+    assert.equal((await guestPoster(ip)).status, 429, 'still the same spent allowance 100 days after the first poster');
+    ctx.setNow(new Date(Date.UTC(2026, 10, 1, 12) + 100 * DAY + 91 * DAY).toISOString()); // 91 days of silence
+    assert.equal(fake.num(key), 0, 'the IP key is gone after 90 days without use');
+    assert.equal((await guestPoster(ip)).status, 200, 'a guest back after 90+ days gets a fresh allowance (accepted)');
+    return { actual: 'ttl 90 d; refreshed by every attempt; expires only after 90 days of silence; new allowance afterwards', evidence: 'lib/poster-quota.js + config/limits.js GUEST_RETENTION.ipDays' };
+  });
