@@ -4,7 +4,7 @@ import { isAdminRequest } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 import { UPLOAD_LIMITS } from '../../config/limits.js';
-import { MAX_IMAGE_BYTES, sniffImage, decodeDataUriBytes, buildObjectKey } from '../../lib/upload-image.js';
+import { MAX_IMAGE_BYTES, sniffImage, decodeDataUriBytes, buildObjectKey, objectKeySecretConfigured } from '../../lib/upload-image.js';
 
 // ── R2 client singleton ───────────────────────────────────────────────────────
 // Reuses the same HTTP connection pool across warm serverless invocations.
@@ -80,6 +80,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Unsupported image type. Only PNG, JPEG and WebP are accepted.' });
   }
   const mimeType = sniffed.mime;
+
+  if (!objectKeySecretConfigured()) {
+    console.error('❌ upload-panel: OBJECT_KEY_SECRET is not configured — refusing to store images');
+    return res.status(500).json({ error: 'Storage key secret not configured.' });
+  }
 
   // ── R2 config ─────────────────────────────────────────────────────────────
   const bucket    = process.env.R2_BUCKET_NAME;

@@ -25,6 +25,7 @@ import { moderateImage, grokImageFromReference, geminiImageFromReference, identi
 import { reserveIdentityBudget, releaseIdentityBudget } from '../../lib/budget.js';
 import { reserveSheetQuota, releaseSheetQuota } from '../../lib/sheet-quota.js';
 import { blobConfigured, putImage, decodeDataUri } from '../../lib/blob-store.js';
+import { buildCharacterKeys, objectKeySecretConfigured } from '../../lib/upload-image.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 
 export const maxDuration = 60;
@@ -92,6 +93,11 @@ export default async function handler(req, res) {
       return res.status(503).json({ success: false, code: CODES.SERVER_ERROR });
     }
 
+    if (!objectKeySecretConfigured()) {
+      console.error('❌ upload-character: OBJECT_KEY_SECRET is not configured — refusing to store the photo');
+      return res.status(503).json({ success: false, code: CODES.SERVER_ERROR });
+    }
+
     // (3) 🛡️ Content safety — fail-closed.
     const safe = await moderateImage(selfieBase64);
     if (!safe) {
@@ -130,11 +136,13 @@ export default async function handler(req, res) {
     };
 
     const stamp = Date.now();
+    // Random, unguessable names under an HMAC owner segment (no user id in the public URL; see lib/upload-image.js).
+    const keys = buildCharacterKeys(identifier);
     let rawUrl;
     try {
       // (5) Store raw selfie.
       const { bytes, contentType } = decodeDataUri(selfieBase64);
-      rawUrl = await putImage(`characters/${identifier}-raw-${stamp}.jpg`, bytes, contentType);
+      rawUrl = await putImage(keys.raw, bytes, contentType);
     } catch (e) {
       await giveBackReservation(); // storage failed before any paid call
       throw e;
@@ -156,7 +164,7 @@ export default async function handler(req, res) {
     if (sheetDataUri) {
       try {
         const sheet = decodeDataUri(sheetDataUri);
-        styledUrl = await putImage(`characters/${identifier}-sheet-${stamp}.jpg`, sheet.bytes, sheet.contentType);
+        styledUrl = await putImage(keys.sheet, sheet.bytes, sheet.contentType);
         sheetGenerated = true;
       } catch (e) {
         console.warn(`⚠️ Character sheet could not be stored, using raw selfie as reference: ${e.message}`);
