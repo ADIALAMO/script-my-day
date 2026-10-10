@@ -121,7 +121,7 @@ idempotent (one attribution per referee via `set(..., {nx:true})`).
 5. Put comic accounting in the storyboard route.
 6. If it's paywalled, verify both the Stripe grant and revoke paths.
 
-## Hardening additions (branch hardening/quota-and-abuse)
+## Reservation pattern, comic guard and budgets
 - **Reserve, don't read-then-write.** Script, comic, character-sheet and panel counters now use
   `INCR` then compare, and `DECR` on refusal / failure (lib/script-quota.js, comic-quota.js,
   sheet-quota.js, comic-guard.js, budget.js `reserveIdentityBudget`). Concurrent requests can no

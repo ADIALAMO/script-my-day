@@ -1,5 +1,7 @@
 import { termsPlansHe, termsPlansEn, faqPlansHe, faqPlansEn, uploadsSentenceHe, uploadsSentenceEn } from './limits-copy.js';
 
+import { privacyAccountHe, privacyAccountEn, privacyProvidersHe, privacyProvidersEn, privacySharingHe, privacySharingEn } from './ai-provider-copy.js';
+
 export const MODAL_DATA = {
 
   // ─── Terms of Service ──────────────────────────────────────────────────────
@@ -103,7 +105,7 @@ export const MODAL_DATA = {
   privacy: {
     he: {
       title: 'פרטיות',
-      summary: '"הפרטיות שלך היא התסריט הכי חשוב שאנחנו מגנים עליו." · עודכן יוני 2026',
+      summary: '"הפרטיות שלך היא התסריט הכי חשוב שאנחנו מגנים עליו." · עודכן אוקטובר 2026',
       sections: [
         {
           h: '1. מה נשמר ומה לא',
@@ -115,7 +117,7 @@ export const MODAL_DATA = {
         },
         {
           h: '3. חשבון והתחברות',
-          p: 'אם אתה נרשם, אנחנו שומרים את כתובת האימייל והשם שלך (מ-Google או מקישור הכניסה) כדי לנהל את החשבון, המכסה והמנוי שלך. אם התחברת באמצעות Google, אנחנו שומרים גם את כתובת ה-URL של תמונת הפרופיל שלך מהחשבון, המשמשת אך ורק להצגת האווטאר שלך באפליקציה. זהו המידע המזהה אישית היחיד שאנחנו מחזיקים.',
+          p: privacyAccountHe(),
         },
         {
           h: '4. נתוני שימוש ומכסות',
@@ -131,11 +133,11 @@ export const MODAL_DATA = {
         },
         {
           h: '7. עיבוד על ידי ספקי AI חיצוניים',
-          p: 'כדי ליצור תסריטים, קומיקס ופוסטרים אנחנו שולחים לספקי AI חיצוניים (בהצפנת HTTPS) את הטקסט שכתבת, תיאורי תמונה שנגזרים ממנו, ובפיצ\'ר "לככב בסיפור" גם את תמונת הפנים שלך. הקטגוריות: (א) Google (Gemini API) ליצירת תסריטים ותוכנית הקומיקס; (ב) OpenRouter, שמנתב בקשות למודלים של ספקים נוספים (למשל Gemma, DeepSeek, FLUX, xAI Grok, Gemini לתמונות, ומודל לבדיקת תוכן) — לכל ספק כאלה מדיניות משלו; (ג) Cloudflare Workers AI ליצירת תמונות; (ד) ספקי גיבוי לטקסט ולתמונה (כגון Cohere ו-Pollinations). ספקים אלה פועלים לפי תנאיהם: בחלק מהמסלולים ספק עשוי לשמור את התוכן לזמן מוגבל, לבדוק אותו לצורכי אבטחה, או להשתמש בו לשיפור מוצריו, ולכן איננו יכולים להבטיח שהתוכן לא נשמר אצלם. אל תזין מידע רגיש במיוחד. אנחנו לא מוכרים את התוכן ולא משתמשים בו לפרסום.',
+          p: privacyProvidersHe(),
         },
         {
           h: '8. אנחנו לא מוכרים מידע',
-          p: 'אנחנו לא מוכרים, לא משתפים ולא מעבדים את הקלטים שלך לשום מטרה פרסומית או מסחרית. LIFESCRIPT מרוויחה מהיכולת לייצר עבורך — לא ממה שאתה כותב.',
+          p: privacySharingHe(),
         },
         {
           h: '9. הזכויות שלך ובעל המאגר',
@@ -145,7 +147,7 @@ export const MODAL_DATA = {
     },
     en: {
       title: 'PRIVACY',
-      summary: '"Your privacy is the most important script we protect." · Updated June 2026',
+      summary: '"Your privacy is the most important script we protect." · Updated October 2026',
       sections: [
         {
           h: '1. What We Store and What We Don\'t',
@@ -157,7 +159,7 @@ export const MODAL_DATA = {
         },
         {
           h: '3. Account & Sign-In',
-          p: 'If you sign up, we store your email address and name (from Google or the magic-link sign-in) to manage your account, quota, and subscription. If you sign in with Google, we also store the profile photo URL from your Google account, used only to display your avatar in the app. This is the only personally identifying information we hold.',
+          p: privacyAccountEn(),
         },
         {
           h: '4. Usage & Quota Data',
@@ -173,11 +175,11 @@ export const MODAL_DATA = {
         },
         {
           h: '7. Processing by External AI Providers',
-          p: 'To create scripts, comics and posters we send to external AI providers (over HTTPS) the text you wrote, image descriptions derived from it, and, for "Star Yourself", your face photo. The categories: (a) Google (Gemini API) for scripts and comic planning; (b) OpenRouter, which routes requests to models from other providers (for example Gemma, DeepSeek, FLUX, xAI Grok, Gemini for images, and a content-safety model) — each of those providers has its own policy; (c) Cloudflare Workers AI for images; (d) fallback text and image providers (such as Cohere and Pollinations). These providers act under their own terms: depending on the plan, a provider may retain content for a limited time, review it for safety, or use it to improve its products, so we cannot promise that content is not retained by them. Do not enter highly sensitive information. We do not sell your content or use it for advertising.',
+          p: privacyProvidersEn(),
         },
         {
           h: "8. We Don't Sell Your Data",
-          p: "We do not sell, share, or repurpose your inputs for any advertising or commercial purpose. LIFESCRIPT profits from the ability to generate for you — not from what you write.",
+          p: privacySharingEn(),
         },
         {
           h: '9. Your Rights & Data Controller',

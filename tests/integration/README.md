@@ -52,4 +52,4 @@ the app treats that as an Upstash outage and fails open, exactly as in productio
 ## Scenario map
 `00` harness self-test · `01` A auth · `02` B scripts · `03` C poster · `04` D/E comics · `05` F identity · `06` G atomicity ·
 `07` H budgets · `08` I magic link · `09` J proxy-image/og · `10` K billing · `11` L plan · `12` M cost.
-Failing scenarios are **findings**, not suite bugs: they are listed in `test-run-report.md` and are intentionally left red.
+A failing scenario means the code no longer matches the documented behaviour; read its title and the assertion message to see which limit or budget changed.

@@ -1,10 +1,10 @@
 /**
- * Scenario M — cost sanity. Simulates a whole month (31 UTC days, fake clock) of a maximally ABUSIVE Free user and
- * a maximally abusive Pro user against the REAL route handlers, counts every paid provider call, and prices it with
- * the unit prices documented in ai-cost-report.md (unverified prices are flagged). Three attack profiles:
- *   sequential          – hammers every endpoint politely, one request at a time (the "by design" ceiling)
+ * Scenario M — cost sanity. Simulates a whole month (31 UTC days, fake clock) of a Free user and
+ * a Pro user who use every allowance to the maximum, against the REAL route handlers, counts every paid provider call, and prices it with
+ * the unit prices below (unverified prices are flagged). Three usage profiles:
+ *   sequential          – uses every endpoint, one request at a time (the "by design" ceiling)
  *   sequential+CFdown   – same, with the free image provider (Cloudflare) down so the PAID Klein fallback serves every image
- *   parallel+CFdown     – plus daily bursts of 20 parallel requests, which exploit the non-atomic poster/identity counters
+ *   parallel+CFdown     – plus daily bursts of 20 parallel requests, which check that the counters stay exact under concurrency
  */
 import { after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -26,7 +26,7 @@ const FACE = 'https://pub-test.r2.dev/characters/face.jpg';
 const SCRIPT_BODY = { journalEntry: 'I walked along the beach with my family and we laughed all afternoon.', genre: 'drama' };
 const SB_SCRIPT = 'INT. BEACH - DAY. A family laughs together by the water while the sun sets over the quiet sea.';
 
-// ---- unit prices (USD per call) — see ai-cost-report.md §2.3 / §2.4 -------------------------------------------------
+// ---- unit prices (USD per call) — unit prices -------------------------------------------------
 export const PRICES = {
   'gemini:gemini-2.5-flash':       { usd: 0.0084, note: 'Google list price × assumed 2.8k in / 3k out tokens (rates VERIFIED, tokens estimated); upper bound: the raced loser is really aborted' },
   'gemini:gemini-3-flash-preview': { usd: 0.0104, note: 'same basis' },
@@ -40,8 +40,8 @@ export const PRICES = {
 const ILS = 3.7;
 
 // FREE / PAID classification: Gemini called DIRECTLY with the owner's Google key is FREE ($0, but it consumes the
-// project's shared free quota) when the key's plan is Free, PAID at list price when billing is enabled (plan UNKNOWN,
-// see model-inventory.md). Everything else is the same under both plans: OpenRouter models are billed to credits.
+// project's shared free quota) when the key's plan is Free, PAID at list price when billing is enabled (plan not
+// confirmed). Everything else is the same under both plans: OpenRouter models are billed to credits.
 function price(log) {
   const lines = {}; let usd = 0; let usdGeminiFree = 0; let geminiCalls = 0;
   for (const e of log) {
@@ -56,7 +56,7 @@ function price(log) {
 const step = (ms) => ctx.advance(ms);
 const burst = (n, fn) => Promise.all(Array.from({ length: n }, fn));
 
-/** One whole month of abuse. `pro` toggles the attacker's tier. */
+/** One whole month of maximum use. `pro` toggles the tier. */
 async function month({ kind, cloudflareDown, parallel }) {
   fake.flush(); providers.reset(); ctx.setNow('2026-10-01T00:00:00Z'); fake.control.failCommands.clear();
   if (cloudflareDown) providers.mode.cloudflare = 500;
@@ -66,7 +66,7 @@ async function month({ kind, cloudflareDown, parallel }) {
   const stats = { scripts: 0, posters: 0, comics: 0, panelImages: 0, uploads: 0, faceImages: 0 };
   const post = (body) => invoke(poster, { body, cookies: u.cookies, ip });
   for (let day = 0; day < 31; day++) {
-    // --- race exploit FIRST thing in the day, while the daily poster / identity counters are still low ---
+    // --- parallel burst FIRST thing in the day, while the daily poster / identity counters are still low ---
     if (parallel) {
       const withFace = pro ? day === 5 : day === 0;                      // Free: the single lifetime credit; Pro: one credit left of 30
       if (pro && day === 5) fake.set(`usage:identity:${u.identifier}:2026-10`, 29);
@@ -84,7 +84,7 @@ async function month({ kind, cloudflareDown, parallel }) {
     step(130_000);
     for (let i = 0; i < 6; i++) { const r = await post({ prompt: 'A lone figure in the rain' }); if (r.status === 200 && !r.body.isPlaceholder) stats.posters++; }
     step(70_000);
-    // --- comics: open as many as allowed (try 5), then hammer every panel index with and without a face reference ---
+    // --- comics: open as many as allowed (try 5), then request every panel index with and without a face reference ---
     const opened = [];
     for (let i = 0; i < 5; i++) {
       const seed = `${day}${i}${Date.now()}`;
@@ -111,7 +111,7 @@ async function profile(label, kind, opts) {
   return r;
 }
 
-scenario('M1', 'abusive FREE user, one month, sequential, free image provider healthy',
+scenario('M1', 'maximum-use FREE user, one month, sequential, free image provider healthy',
   'cost bounded by the quotas: scripts ≤155 (31×5), comics 3, uploads 3, ≤1 face image, ≤19 comic images', async () => {
     const r = await profile('free / sequential', 'free', { cloudflareDown: false, parallel: false });
     assert.ok(r.stats.scripts <= 31 * 5, `scripts ${r.stats.scripts}`);   // October has 31 UTC days
@@ -121,36 +121,36 @@ scenario('M1', 'abusive FREE user, one month, sequential, free image provider he
     assert.ok(r.stats.panelImages <= 19, `panel images ${r.stats.panelImages}`);
     return { actual: `stats ${JSON.stringify(r.stats)}; calls ${JSON.stringify(r.calls)}; cost $${r.usd.toFixed(2)} (₪${(r.usd * ILS).toFixed(2)})` };
   });
-scenario('M2', 'abusive FREE user, sequential, Cloudflare DOWN (every image served by paid Klein)',
+scenario('M2', 'maximum-use FREE user, sequential, Cloudflare DOWN (every image served by paid Klein)',
   'same counts; cost higher by the Klein price', async () => {
     const r = await profile('free / sequential / CF down', 'free', { cloudflareDown: true, parallel: false });
     return { actual: `stats ${JSON.stringify(r.stats)}; cost $${r.usd.toFixed(2)} (₪${(r.usd * ILS).toFixed(2)})` };
   });
-scenario('M3', 'abusive FREE user with daily 20-request parallel bursts, Cloudflare down',
+scenario('M3', 'maximum-use FREE user with daily 20-request parallel bursts, Cloudflare down',
   'cost does not exceed the sequential ceiling (counters are atomic)', async () => {
     const seq = rows.find((x) => x.label === 'free / sequential / CF down');
     const r = await profile('free / parallel / CF down', 'free', { cloudflareDown: true, parallel: true });
-    assert.ok(r.usd <= seq.usd * 1.05, `parallel abuse cost $${r.usd.toFixed(2)} vs sequential ceiling $${seq.usd.toFixed(2)} (Klein calls ${r.calls.klein} vs ${seq.calls.klein}; gemini-image ${r.calls['gemini-image']} vs ${seq.calls['gemini-image']})`);
+    assert.ok(r.usd <= seq.usd * 1.05, `parallel-burst cost $${r.usd.toFixed(2)} vs sequential ceiling $${seq.usd.toFixed(2)} (Klein calls ${r.calls.klein} vs ${seq.calls.klein}; gemini-image ${r.calls['gemini-image']} vs ${seq.calls['gemini-image']})`);
     return { actual: `cost $${r.usd.toFixed(2)} (₪${(r.usd * ILS).toFixed(2)})` };
   });
-scenario('M4', 'abusive PRO user, one month, sequential, free image provider healthy',
+scenario('M4', 'maximum-use PRO user, one month, sequential, free image provider healthy',
   'cost below the $9 (₪33) subscription price', async () => {
     const r = await profile('pro / sequential', 'paid', { cloudflareDown: false, parallel: false });
     assert.ok(r.stats.scripts <= 31 * 20, `scripts ${r.stats.scripts}`);
-    assert.ok(r.usd < 9, `abusive Pro costs $${r.usd.toFixed(2)} (₪${(r.usd * ILS).toFixed(2)}) vs $9 revenue`);
+    assert.ok(r.usd < 9, `maximum-use Pro costs $${r.usd.toFixed(2)} (₪${(r.usd * ILS).toFixed(2)}) vs $9 revenue`);
     return { actual: `stats ${JSON.stringify(r.stats)}; cost $${r.usd.toFixed(2)} (₪${(r.usd * ILS).toFixed(2)})` };
   });
-scenario('M5', 'abusive PRO user, sequential, Cloudflare DOWN',
+scenario('M5', 'maximum-use PRO user, sequential, Cloudflare DOWN',
   'cost below the $9 subscription price', async () => {
     const r = await profile('pro / sequential / CF down', 'paid', { cloudflareDown: true, parallel: false });
-    assert.ok(r.usd < 9, `abusive Pro (CF down) costs $${r.usd.toFixed(2)} (₪${(r.usd * ILS).toFixed(2)}) vs $9 revenue`);
+    assert.ok(r.usd < 9, `maximum-use Pro (CF down) costs $${r.usd.toFixed(2)} (₪${(r.usd * ILS).toFixed(2)}) vs $9 revenue`);
     return { actual: `stats ${JSON.stringify(r.stats)}; cost $${r.usd.toFixed(2)} (₪${(r.usd * ILS).toFixed(2)})` };
   });
-scenario('M6', 'abusive PRO user with daily parallel bursts, Cloudflare down',
+scenario('M6', 'maximum-use PRO user with daily parallel bursts, Cloudflare down',
   'cost does not exceed the sequential ceiling', async () => {
     const seq = rows.find((x) => x.label === 'pro / sequential / CF down');
     const r = await profile('pro / parallel / CF down', 'paid', { cloudflareDown: true, parallel: true });
-    assert.ok(r.usd <= seq.usd * 1.05, `parallel abuse cost $${r.usd.toFixed(2)} vs sequential ceiling $${seq.usd.toFixed(2)}`);
+    assert.ok(r.usd <= seq.usd * 1.05, `parallel-burst cost $${r.usd.toFixed(2)} vs sequential ceiling $${seq.usd.toFixed(2)}`);
     return { actual: `cost $${r.usd.toFixed(2)} (₪${(r.usd * ILS).toFixed(2)})` };
   });
 

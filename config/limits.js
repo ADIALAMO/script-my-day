@@ -40,8 +40,8 @@ export const COMIC = {
   proPerDay:            envInt('PRO_COMICS_PER_DAY', 2),
   // Pro ALSO has a monthly cap (UTC month, on top of the daily one). Default 6. Measured in the max-usage Pro
   // simulation (tests/integration/12-cost.test.js, Klein $0.014 / Grok $0.06 UNVERIFIED): each extra comic adds
-  // ≈ $0.127 (up to 9 panel images) → 6 comics bring the whole abusive-Pro month to ≈ $4.44, i.e. ≤ half of $9.
-  // (10 comics = $4.95, the old uncapped 60/month would be several times the price.) Details: test-run-report.md.
+  // ≈ $0.127 (up to 9 panel images) → 6 comics bring the whole max-use Pro month to ≈ $4.44, i.e. ≤ half of $9.
+  // (10 comics = $4.95, the old uncapped 60/month would be several times the price.)
   proPerMonth:          envInt('PRO_COMICS_PER_MONTH', 6),
   // Replacements ("Replace" button) allowed per comic, enforced SERVER-side. The browser gets
   // the value from the storyboard response and only mirrors it in the UI.
@@ -51,7 +51,7 @@ export const COMIC = {
 };
 
 // Backstop on panel images per user per UTC day, across all comics: comics/day × (panels + regens)
-// with headroom. Stops replaying many old comic sessions to farm images.
+// with headroom. Stops repeated replays of old comic sessions from producing unlimited images.
 export const PANELS_PER_DAY = {
   free:  envInt('FREE_PANELS_PER_DAY', 30),
   pro:   envInt('PRO_PANELS_PER_DAY', 30),
@@ -145,7 +145,7 @@ export const GUEST_RETENTION = {
 // Every guest script is a paid-or-free-tier Gemini call; the per-IP limit (2/day) does not bound the
 // AGGREGATE (many IPs). This caps all guests together per UTC day. Signed-in users are never counted
 // or blocked by it. Set GUEST_SCRIPTS_PER_DAY=0 to disable the cap. Free-tier Gemini quota is per
-// PROJECT and shared with signed-in users — see model-inventory.md for how this default was chosen.
+// PROJECT and shared with signed-in users — the default of 300 was chosen from the shared free-tier request quota.
 export const GUEST_SCRIPT_BUDGET = {
   perDay: envInt('GUEST_SCRIPTS_PER_DAY', 300),
 };

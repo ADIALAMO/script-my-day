@@ -17,7 +17,7 @@ async function openComic(u, { seed = newSeed(), ip = '198.51.100.40' } = {}) {
   const r = await invoke(storyboard, { body: { script: SCRIPT, lang: 'en', genre: 'drama', comicStyle: 'anime', comicSeed: seed }, cookies: u.cookies, ip });
   return { r, seed, status: r.status, body: r.body };
 }
-/** one panel request exactly as the browser would send it (or as an attacker would, bypassing the UI) */
+/** one panel request exactly as the browser would send it (or as a direct API call would, without the UI) */
 const panel = (u, seed, idx, { ip = '198.51.100.40', extra = {} } = {}) =>
   invoke(poster, { body: { prompt: 'A calm person near a window, soft light, medium shot', genre: 'drama', lang: 'en', requestType: 'comic', panelIndex: idx, comicSeed: seed, ...extra }, cookies: u.cookies, ip });
 const month = () => '2026-10';
@@ -97,8 +97,8 @@ scenario('D4', 'a comic id the user did not create (made-up, expired, or another
     return { actual: 'foreign/made-up/malformed/expired seeds → 403 COMIC_SESSION_EXPIRED, 0 klein calls' };
   });
 
-scenario('D5', 'Free cannot get extra panels by regenerating: the total image budget is Σ(unlocked + 2 regens) over the 3 monthly comics = 19, however hard the API is hammered',
-  'exactly 19 Klein calls for an all-out attack on 3 comics', async () => {
+scenario('D5', 'Free cannot get extra panels by regenerating: the total image budget is Σ(unlocked + 2 regens) over the 3 monthly comics = 19, however many requests are made',
+  'exactly 19 Klein calls when every panel of 3 comics is requested repeatedly', async () => {
     const u = await makeUser('d5', 'free');
     const comics = [];
     for (let i = 0; i < 3; i++) { comics.push(await openComic(u, { ip: '198.51.100.45' })); ctx.advance(70_000); }
@@ -118,7 +118,7 @@ scenario('D5', 'Free cannot get extra panels by regenerating: the total image bu
     return { actual: `allowed ${ok}, refused ${refused}; Klein calls ${kleinCalls()} (= 7+2 + 3+2 + 3+2)`, evidence: 'per-comic counters comic:pc / comic:rg' };
   });
 
-scenario('E1', 'regeneration limit is enforced SERVER-side with the client bypassed: panel 0 + 2 replacements OK, 3rd refused (QUOTA_PANEL_REGEN) for Free and both kinds of Pro; same panel repeated makes zero provider calls',
+scenario('E1', 'regeneration limit is enforced SERVER-side with the client limit ignored: panel 0 + 2 replacements OK, 3rd refused (QUOTA_PANEL_REGEN) for Free and both kinds of Pro; same panel repeated makes zero provider calls',
   'for each tier: panel 0 ×3 → 200 (1 + 2 replacements); 10 more on panel 0 → 429 QUOTA_PANEL_REGEN; another panel\'s first image still allowed, its replacement refused', async () => {
     for (const kind of ['free', 'paid', 'adminGranted']) {
       const u = await makeUser(`e1-${kind}`, kind);
@@ -185,7 +185,7 @@ scenario('E3', 'the panel counter cannot be reset by creating a new comic id for
   });
 
 scenario('E4', 'Pro comics: 2/day (3rd → QUOTA_COMIC daily message), all 7 panels, total images/day ≤ 2×(7+2)=18',
-  'Pro: unlocked 7,7; 3rd 429 QUOTA_COMIC; Klein calls under an all-out attack = 18', async () => {
+  'Pro: unlocked 7,7; 3rd 429 QUOTA_COMIC; Klein calls when every panel is requested repeatedly = 18', async () => {
     const u = await makeUser('e4', 'paid');
     const ip = '198.51.100.51';
     const cs = [await openComic(u, { ip }), await openComic(u, { ip })];

@@ -1,6 +1,6 @@
 /**
- * Guests (anonymous visitors): how they are identified, how trivially that can be bypassed, and the real daily
- * worst-case cost under the current limits and global budgets. These scenarios DOCUMENT current behaviour (guest
+ * Guests (anonymous visitors): how they are identified (IPv4 address / IPv6 /64) and what a day of guest traffic
+ * costs under the current limits and global budgets. These scenarios document current guest behaviour (guest
  * behaviour is intentionally unchanged); DAILY_IMAGE_BUDGET is set to 0.14 here (= 10 Klein images/day).
  */
 import { after } from 'node:test';
@@ -50,8 +50,8 @@ scenario('N2', 'FIXED: every IPv6 address of one /64 (privacy addresses) is ONE 
     return { actual: `${same.length} IPv6 addresses of ONE /64 = ONE guest allowance (key 2001:db8:1:1::/64); other /64 = new guest`, evidence: 'lib/api-utils.js normalizeGuestIp; IPv4 rotation (VPN/proxies/CGNAT) is unchanged and still mints new guests' };
   });
 
-scenario('N3', 'real worst-case cost of guest SCRIPT abuse per day: no global cap exists for LLM spend — cost = (#IPs the attacker owns) × 2 scripts',
-  'paid Gemini calls scale linearly with IPs and are NOT stopped by DAILY_IMAGE_BUDGET / DAILY_IDENTITY_BUDGET', async () => {
+scenario('N3', 'cost of guest scripts per day: each guest IP gets 2 scripts, so paid Gemini calls scale with the number of distinct IPs (the global guest cap GUEST_SCRIPTS_PER_DAY bounds the total)',
+  'paid Gemini calls = 2 × number of IPs, below the global guest cap; not limited by DAILY_IMAGE_BUDGET / DAILY_IDENTITY_BUDGET', async () => {
     const N = 50;
     for (let i = 1; i <= N; i++) { const ip = `198.18.${Math.floor(i / 200)}.${i % 200 + 1}`; await guestScript(ip); await guestScript(ip); await guestScript(ip); }
     const calls = providers.counts.gemini;
@@ -61,7 +61,7 @@ scenario('N3', 'real worst-case cost of guest SCRIPT abuse per day: no global ca
     return { actual: `${N} guest IPs → ${calls} paid Gemini calls = $${lo.toFixed(2)}–$${hi.toFixed(2)}/day (price × assumed 2.8k in / 3k out tokens)`, evidence: `extrapolation per day: ${[100, 1000, 10000].map(row).join(' | ')}` };
   });
 
-scenario('N4', 'real worst-case cost of guest POSTER abuse: free Cloudflare first; when it is down, paid Klein is bounded by DAILY_IMAGE_BUDGET (here 10 images), then free Pollinations',
+scenario('N4', 'cost of guest posters per day: free Cloudflare first; when it is down, paid Klein is bounded by DAILY_IMAGE_BUDGET (here 10 images), then free Pollinations',
   'Klein calls ≤ 10 for 30 guest IPs; the rest served by the free provider', async () => {
     providers.mode.cloudflare = 500;
     for (let i = 1; i <= 30; i++) assert.equal((await guestPoster(`198.19.0.${i}`)).status, 200);
