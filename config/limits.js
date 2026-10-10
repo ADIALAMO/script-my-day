@@ -116,12 +116,20 @@ export const OG_IMAGE = {
 // limit never gives the reserved quota slot back, so the whole cascade must finish with margin):
 //   • benchmarked quality-tier latency is ~21–26 s, so a hedge delay below ~27 s would fire on most scripts (≈ the old
 //     2-calls-per-script cost) — and a delay of 25 s used to leave the rescue model only 15 s, too little to finish.
-//   • default: hedge at 28 s (outliers only), the rescue gets until `qualityBudgetMs` (46 s → ~18 s), and is not
+//   • default: hedge at 27 s (outliers only; 28 s before the Stage-1 reserve below), the rescue gets until `qualityBudgetMs` (42 s with the default reserve → ~15 s), and is not
 //     started at all with less than `minStartBudgetMs` (15 s) left. The delay is clamped so that it ALWAYS fits:
 //     hedge delay ≤ qualityBudgetMs − minStartBudgetMs.
-//   • `totalBudgetMs` (52 s = 60 s − 8 s margin) bounds the entire cascade: no stage starts without time to finish,
+//   • `totalBudgetMs` (50 s = 60 s − 10 s margin) bounds the entire cascade: no stage starts without time to finish,
 //     and per-call timeouts are cut to what is left, so the route returns SCRIPT_FAIL (slot released) instead of dying.
-const _qualityBudgetMs  = envInt('SCRIPT_GEMINI_QUALITY_BUDGET_MS', 46000);
+//   • `stage1ReserveMs` (8 s) is kept back for Stages 2–5: Gemini (Stage 1) may not run past totalBudgetMs − reserve,
+//     so a Gemini HANG (not a 429) can no longer eat the whole budget and leave the fallbacks no turn. The reserve is
+//     the largest one that keeps the hedge working: quality budget 50 − 8 = 42 s → hedge delay min(28, 42 − 15) = 27 s
+//     (still above the benchmarked 21–26 s, so it fires for outliers only). A reserve of 9 s would pull the hedge to
+//     26 s, 10 s to 25 s, 14 s to 21 s — i.e. into the normal latency band (≈ the old 2-calls-per-script cost).
+//     It is also capped at a quarter of the total, so a tiny test budget stays valid.
+const _totalBudgetMs    = envInt('SCRIPT_TOTAL_BUDGET_MS', 50000);
+const _stage1ReserveMs  = Math.min(envInt('SCRIPT_STAGE1_RESERVE_MS', 8000), Math.floor(_totalBudgetMs / 4));
+const _qualityBudgetMs  = Math.min(envInt('SCRIPT_GEMINI_QUALITY_BUDGET_MS', 46000), _totalBudgetMs - _stage1ReserveMs);
 const _minStartBudgetMs = envInt('SCRIPT_GEMINI_MIN_START_MS', 15000);
 export const SCRIPT_GEMINI = {
   mode:             process.env.SCRIPT_GEMINI_MODE === 'race' ? 'race' : 'hedge',
@@ -129,7 +137,37 @@ export const SCRIPT_GEMINI = {
   fastHedgeMs:      envInt('SCRIPT_GEMINI_FAST_HEDGE_MS', 4000),
   qualityBudgetMs:  _qualityBudgetMs,   // a hedged model may never run past this point of the quality tier
   minStartBudgetMs: _minStartBudgetMs,  // …and is not started at all with less than this left (it could not finish)
-  totalBudgetMs:    envInt('SCRIPT_TOTAL_BUDGET_MS', 52000), // whole generateScript() cascade; keep ≥8 s under maxDuration
+  totalBudgetMs:    _totalBudgetMs,     // whole generateScript() cascade; keep ≥10 s under maxDuration
+  stage1ReserveMs:  _stage1ReserveMs,   // time Stage 1 (Gemini) leaves for Stages 2–5 (see above)
+};
+
+// ─── Script generation: Stages 2–5 (OpenRouter / Cohere) ──────────────────────────────
+// Per-call ceilings, always further cut to the time left in totalBudgetMs. They used to be 10/10/8/8 s, which threw away
+// valid-but-slow answers (the fastest measured real call is 16.5 s). Order of the stages is NOT changed.
+//   • `lastResortReserveMs`: Stages 2–4 leave this much for Stage 5 (the cheap free model) when it is configured, so the
+//     larger caps above cannot starve it when everything before it hangs.
+export const SCRIPT_CASCADE = {
+  gemma27bMs:          envInt('SCRIPT_GEMMA_27B_TIMEOUT_MS', 20000),
+  gemma12bMs:          envInt('SCRIPT_GEMMA_12B_TIMEOUT_MS', 12000),
+  cohereMs:            envInt('SCRIPT_COHERE_TIMEOUT_MS', 10000),
+  deepseekMs:          envInt('SCRIPT_DEEPSEEK_TIMEOUT_MS', 12000),
+  freeMs:              envInt('SCRIPT_FREE_TIMEOUT_MS', 12000),
+  lastResortReserveMs: envInt('SCRIPT_LAST_RESORT_RESERVE_MS', 6000),
+};
+
+// ─── Script generation: per-model circuit breaker (lib/script-circuit.js) ─────────────
+// A model that answered HTTP 429 is skipped by following requests instead of being asked (and waited for) again.
+//   • rpmOpenMs:      first 429 → skip for 60 s (per-minute limits reset within a minute).
+//   • escalatedOpenMs: a 429 on the first call AFTER that pause (no success in between) → skip for 15 min.
+//   • dayOpenMs:      only when the 429 body names a per-DAY quota (see classify429): skipped until the quota resets
+//     (capped at 24 h). Unverified assumption, see lib/script-circuit.js.
+//   • redisBudgetMs:  every Redis read/write is capped; on timeout/error it falls back to per-instance memory.
+export const SCRIPT_CIRCUIT = {
+  enabled:         process.env.SCRIPT_CIRCUIT_ENABLED !== 'false',
+  rpmOpenMs:       envInt('SCRIPT_CIRCUIT_RPM_MS', 60 * 1000),
+  escalatedOpenMs: envInt('SCRIPT_CIRCUIT_ESCALATED_MS', 15 * 60 * 1000),
+  strikeTtlSec:    envInt('SCRIPT_CIRCUIT_STRIKE_TTL_SEC', 30 * 60),
+  redisBudgetMs:   envInt('SCRIPT_CIRCUIT_REDIS_MS', 500),
 };
 
 // ─── Guest IP retention ───────────────────────────────────────────────────────────────

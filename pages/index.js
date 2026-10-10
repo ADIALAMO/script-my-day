@@ -758,7 +758,8 @@ function HomePage() {
             genre
           });
         }
-        throw new Error(data.message || data.error || 'Production Error');
+        // Prefer the server's CODES symbol (e.g. SCRIPT_FAIL) — the catch below localizes it; plain messages still fall back to inferCode.
+        throw new Error(data.code || data.message || data.error || 'Production Error');
       }
 
       const finalScript = data.script || data.output;
