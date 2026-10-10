@@ -8,7 +8,7 @@ bank accounts/entities directly, so Live billing is blocked until a payout path
 exists (see Phase 2.0 below). This is a deliberate hand-brake, not a bug.
 
 **Why this is safe:**
-- Auth/signup and the **free tier** (1 poster/day, 1 lifetime "Star Yourself") work
+- Auth/signup and the **free tier** (2 posters/day, 1 lifetime "Star Yourself") work
   with **zero payment** — that's the viral hook, fully functional for everyone.
 - Pro purchase in Test Mode: friends use a Stripe **test card** (`4242 4242 4242
   4242`, any future expiry/CVC) to get Pro free → framed as a **"free Beta for

@@ -1,5 +1,6 @@
 import { getStripe } from '../../../lib/stripe.js';
 import { getSessionAndTier } from '../../../lib/auth.js';
+import { checkoutDescription } from '../../../constants/limits-copy.js';
 
 // ── Pro plan definition ───────────────────────────────────────────────────────
 // Using inline price_data avoids a hard dependency on a pre-created Stripe
@@ -10,7 +11,7 @@ const PRO_LINE_ITEM = {
     currency: 'usd',
     product_data: {
       name: 'LifeScript Pro',
-      description: 'Unlimited scripts · 3 posters/day · Full comic books · Reels generation',
+      description: checkoutDescription(),
       // Images and metadata can be added here later without changing the webhook.
     },
     unit_amount: 900,              // $9.00 — stored in cents as Stripe requires

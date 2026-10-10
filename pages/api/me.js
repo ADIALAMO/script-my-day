@@ -3,7 +3,7 @@ import redis from '../../lib/redis.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
-  const { userId, tier, email } = await getSessionAndTier(req, res);
+  const { userId, tier, plan, email } = await getSessionAndTier(req, res);
   res.setHeader('Cache-Control', 'no-store');
 
   // One-time "this account was just created" signal for the client GA4 `sign_up` event.
@@ -37,6 +37,9 @@ export default async function handler(req, res) {
   return res.status(200).json({
     authenticated: !!userId,
     tier,
+    // Why this plan applies (payment | admin | allowlist | unknown) — from lib/plan.js, the one resolver.
+    plan: plan?.plan ?? 'free',
+    grantedBy: plan?.grantedBy ?? null,
     email,
     justSignedUp,
     signupMethod,

@@ -48,9 +48,9 @@ ready-to-ship deliverables, not generic advice.
 - **Genres:** drama, comedy, action, sci-fi, romance, and more.
 - **Languages:** Hebrew + English, RTL-aware.
 - **Business model — freemium:**
-  - *Free:* 3 scripts/day · 1 poster/day · 1 comic/day · **1 lifetime "star
+  - *Free:* 5 scripts/day · 2 posters/day · 3 comics/month · **1 lifetime "star
     yourself" poster** (the taste).
-  - *Pro — **$9/month*** (Stripe): unlimited scripts · 3 posters/day · 2 comics/day ·
+  - *Pro — **$9/month*** (Stripe): up to 20 scripts/day · 3 posters/day · 2 comics/day ·
     full 7-panel comics · **reels generation** · priority queue · 30 identity/month.
 - **Stack (for technical-audience credibility / investor due-diligence):**
   Next.js 15 + React 19 on Vercel; multi-tier AI cascade (Gemini → OpenRouter

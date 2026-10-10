@@ -6,8 +6,14 @@
 // the image server-side and re-serving it with CORS headers makes the response
 // same-origin from the browser's perspective — no taint, no black frames.
 //
-// Security: only URLs that begin with our own R2_PUBLIC_URL are proxied.
-// Any other URL receives 403, preventing open-redirect / SSRF abuse.
+// Security: only objects under our own R2_PUBLIC_URL origin are proxied (exact origin match, no
+// credentials, no traversal, no private/loopback hosts — lib/proxy-url.js). Redirects are never
+// followed and the body is capped (config/limits.js PROXY_IMAGE). Rate limited per client IP.
+
+import { enforceRateLimit } from '../../lib/rate-limit.js';
+import { extractTrustedIp } from '../../lib/api-utils.js';
+import { resolveAllowedUrl, readCapped } from '../../lib/proxy-url.js';
+import { PROXY_IMAGE } from '../../config/limits.js';
 
 export const config = {
   api: { responseLimit: '8mb' },
@@ -15,6 +21,13 @@ export const config = {
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
+
+  // Basic per-IP limit (before any outbound fetch). Responses are CDN-cached for a year, so
+  // normal browsing only pays for cache MISSES. Falls back to an in-process limiter if Redis is down.
+  if (await enforceRateLimit(req, res, 'proxy-image', {
+    identifier: `ip:${extractTrustedIp(req)}`,
+    fallback: { max: PROXY_IMAGE.perIpPerMinute, windowMs: 60_000 },
+  })) return;
 
   const { url } = req.query;
   if (!url || typeof url !== 'string') return res.status(400).end();
@@ -24,12 +37,16 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'R2_PUBLIC_URL not configured.' });
   }
 
-  if (!url.startsWith(allowed + '/')) {
+  const target = resolveAllowedUrl(url, allowed);
+  if (!target) {
     return res.status(403).end();
   }
 
   try {
-    const upstream = await fetch(url, { signal: AbortSignal.timeout(12000) });
+    // redirect:'manual' — R2 objects never redirect, so a 3xx is refused instead of followed
+    // (a redirect to a private range is the classic SSRF bypass of a host allowlist).
+    const upstream = await fetch(target, { redirect: 'manual', signal: AbortSignal.timeout(12000) });
+    if (upstream.status >= 300 && upstream.status < 400) return res.status(502).end();
     if (!upstream.ok) return res.status(upstream.status).end();
 
     // Only ever re-serve real raster images from our own origin. Anything else
@@ -38,7 +55,8 @@ export default async function handler(req, res) {
     if (!contentType.startsWith('image/') || contentType === 'image/svg+xml') {
       return res.status(415).end();
     }
-    const buffer = Buffer.from(await upstream.arrayBuffer());
+    const buffer = await readCapped(upstream, PROXY_IMAGE.maxBytes);
+    if (!buffer) return res.status(413).end();
 
     res.setHeader('Content-Type', contentType);
     res.setHeader('X-Content-Type-Options', 'nosniff');

@@ -131,8 +131,8 @@ export default function WaitlistModal({ isOpen, onClose, lang = 'en', defaultEma
                       </h2>
                       <p className="text-center text-white/40 text-[12px] leading-relaxed mb-6">
                         {isHe
-                          ? 'תסריטים ללא הגבלה, יותר פוסטרים וקומיקסים ביום, רילז ותור מועדף. השאר אימייל ונעדכן אותך ברגע שזה עולה לאוויר.'
-                          : 'Unlimited scripts, more posters & comics a day, reels, and a priority queue. Drop your email and we’ll tell you the moment it goes live.'}
+                          ? 'יותר תסריטים, פוסטרים וקומיקסים ביום, רילז ותור מועדף. השאר אימייל ונעדכן אותך ברגע שזה עולה לאוויר.'
+                          : 'More scripts, posters & comics a day, reels, and a priority queue. Drop your email and we’ll tell you the moment it goes live.'}
                       </p>
 
                       <div className="relative mb-3">

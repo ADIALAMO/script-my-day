@@ -21,7 +21,9 @@ import { CODES } from '../../lib/messages.js';
 import { isAdminRequest } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { limitFor } from '../../lib/quota.js';
-import { moderateImage, grokImageFromReference, geminiImageFromReference, identityQuotaExceeded, identityBudgetReached } from '../../lib/identity.js';
+import { moderateImage, grokImageFromReference, geminiImageFromReference, identityQuotaExceeded } from '../../lib/identity.js';
+import { reserveIdentityBudget, releaseIdentityBudget } from '../../lib/budget.js';
+import { reserveSheetQuota, releaseSheetQuota } from '../../lib/sheet-quota.js';
 import { blobConfigured, putImage, decodeDataUri } from '../../lib/blob-store.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 
@@ -96,31 +98,72 @@ export default async function handler(req, res) {
       return res.status(422).json({ success: false, code: CODES.SAFETY_REJECTED });
     }
 
-    // (4) Store raw selfie.
-    const { bytes, contentType } = decodeDataUri(selfieBase64);
-    const stamp = Date.now();
-    const rawUrl = await putImage(`characters/${identifier}-raw-${stamp}.jpg`, bytes, contentType);
-
-    // (5) STAGE A — canonical character sheet. If it fails, fall back to the raw
-    // selfie as the reference so the feature still works (degraded consistency).
-    // Gated by the SAME global daily spend kill-switch resolveIdentityGate uses for
-    // poster/panel identity calls (lib/identity.js) — this is also a paid Grok/Gemini
-    // call and was previously unmetered by that budget, letting a signup wave keep
-    // spending on Character Sheets even after the global daily cap was hit.
-    let styledUrl = rawUrl;
-    if (await identityBudgetReached()) {
-      console.warn('🛑 Global daily identity budget reached — skipping Character Sheet generation, using raw selfie as reference.');
-    } else {
+    // (4) Reserve the PAID generation: per-user daily upload quota AND the global daily identity
+    // budget, both ATOMICALLY (INCR first, compare after — see lib/sheet-quota.js, lib/budget.js)
+    // and BEFORE any storage or paid call, so an over-limit request costs nothing. A hit is an
+    // explicit error the UI shows — never a silent downgrade to the raw selfie. Admin bypasses.
+    // Redis trouble fails CLOSED: this is a per-call paid feature.
+    let sheetKey = null;
+    let budgetReserved = false;
+    if (!isAdmin) {
       try {
-        const sheetDataUri = await sheetGenerator(CHARACTER_SHEET_PROMPT, rawUrl);
+        const q = await reserveSheetQuota(tier, identifier);
+        if (!q.ok) return res.status(429).json({ success: false, code: CODES.QUOTA_SHEET, limit: q.limit, resetsAt: q.resetsAt });
+        sheetKey = q.key;
+
+        const b = await reserveIdentityBudget();
+        if (!b.ok) {
+          await releaseSheetQuota(sheetKey);
+          console.warn('🛑 Global daily identity budget reached — character sheet refused.');
+          return res.status(503).json({ success: false, code: CODES.IDENTITY_BUDGET_REACHED });
+        }
+        budgetReserved = true;
+      } catch (e) {
+        await releaseSheetQuota(sheetKey);
+        console.warn(`⚠️ Sheet reservation unverifiable (Redis down) — failing closed: ${e.message}`);
+        return res.status(503).json({ success: false, code: CODES.SERVER_ERROR });
+      }
+    }
+    const giveBackReservation = async () => {
+      await releaseSheetQuota(sheetKey);
+      if (budgetReserved) await releaseIdentityBudget();
+    };
+
+    const stamp = Date.now();
+    let rawUrl;
+    try {
+      // (5) Store raw selfie.
+      const { bytes, contentType } = decodeDataUri(selfieBase64);
+      rawUrl = await putImage(`characters/${identifier}-raw-${stamp}.jpg`, bytes, contentType);
+    } catch (e) {
+      await giveBackReservation(); // storage failed before any paid call
+      throw e;
+    }
+
+    // (6) STAGE A — canonical character sheet (the paid call). If the PROVIDER fails, fall back to
+    // the raw selfie as the reference so the feature still works (degraded consistency) and give
+    // the reservation back: no money was spent. (A storage failure AFTER a successful generation
+    // keeps the reservation — the money was spent.)
+    let styledUrl = rawUrl;
+    let sheetGenerated = false;
+    let sheetDataUri = null;
+    try {
+      sheetDataUri = await sheetGenerator(CHARACTER_SHEET_PROMPT, rawUrl);
+    } catch (e) {
+      console.warn(`⚠️ Character sheet generation failed, using raw selfie as reference: ${e.message}`);
+      await giveBackReservation();
+    }
+    if (sheetDataUri) {
+      try {
         const sheet = decodeDataUri(sheetDataUri);
         styledUrl = await putImage(`characters/${identifier}-sheet-${stamp}.jpg`, sheet.bytes, sheet.contentType);
+        sheetGenerated = true;
       } catch (e) {
-        console.warn(`⚠️ Character sheet generation failed, using raw selfie as reference: ${e.message}`);
+        console.warn(`⚠️ Character sheet could not be stored, using raw selfie as reference: ${e.message}`);
       }
     }
 
-    // (6) Persist pointer (URLs only) with 90-day TTL.
+    // (7) Persist pointer (URLs only) with 90-day TTL.
     const ninetyDays = Math.floor(Date.now() / 1000) + 90 * 86400;
     try {
       const pipe = redis.pipeline();
@@ -134,8 +177,8 @@ export default async function handler(req, res) {
       console.warn(`⚠️ Character pointer persist skipped (Redis down): ${e.message}`);
     }
 
-    console.log(`🎭 Character ready for ${identifier} (sheet: ${styledUrl !== rawUrl})`);
-    return res.status(200).json({ success: true, characterImageUrl: styledUrl });
+    console.log(`🎭 Character ready for ${identifier} (sheet: ${sheetGenerated})`);
+    return res.status(200).json({ success: true, characterImageUrl: styledUrl, sheetGenerated });
   } catch (err) {
     console.error('upload-character unhandled error:', err.message, err.stack);
     return res.status(500).json({ success: false, code: CODES.SERVER_ERROR });

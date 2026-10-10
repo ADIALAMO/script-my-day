@@ -1,3 +1,7 @@
+import { termsPlansHe, termsPlansEn, faqPlansHe, faqPlansEn, uploadsSentenceHe, uploadsSentenceEn } from './limits-copy.js';
+
+import { privacyAccountHe, privacyAccountEn, privacyProvidersHe, privacyProvidersEn, privacySharingHe, privacySharingEn } from './ai-provider-copy.js';
+
 export const MODAL_DATA = {
 
   // ─── Terms of Service ──────────────────────────────────────────────────────
@@ -12,7 +16,7 @@ export const MODAL_DATA = {
         },
         {
           h: '2. מסלולים, מכסות ושימוש הוגן',
-          p: 'LIFESCRIPT מציעה מסלול חינמי ומסלול Pro. במסלול החינמי: 3 תסריטים, פוסטר אחד וקומיקס אחד ביום, וכן פוסטר "לככב בסיפור" אחד חינם (חד-פעמי). במסלול Pro (9$ לחודש): תסריטים ללא הגבלה, עד 3 פוסטרים ו-2 קומיקסים ביום, עד 7 פאנלים לקומיקס, יצירת רילז ותור עיבוד מועדף. גולשים שאינם רשומים מוגבלים ל-2 תסריטים ביום. המגבלות היומיות מתאפסות בחצות UTC, ונועדו לשמור על איכות השירות לכלל המשתמשים.',
+          p: termsPlansHe(),
         },
         {
           h: '3. חיוב, חידוש וביטול מנוי',
@@ -24,7 +28,7 @@ export const MODAL_DATA = {
         },
         {
           h: '5. "לככב בסיפור" — תמונות פנים ומידע ביומטרי',
-          p: 'פיצ\'ר "לככב בסיפור" מעבד תמונת פנים, שעשויה להיחשב מידע ביומטרי לפי דינים מסוימים. בעת ההעלאה תתבקש לאשר אקטיבית כי (א) זו תמונה שלך או של אדם שנתן הסכמה מפורשת ומדעת, (ב) אינה של קטין, ו-(ג) אתה מבין שהיא תעובד ל"גיליון דמות". התמונה נשמרת מוצפנת באחסון ענן (Cloudflare R2) למשך עד 90 יום ואז נמחקת אוטומטית; היא לעולם אינה משמשת לאימון מודלים, אינה נמכרת ואינה משותפת. תוכל לבקש מחיקה מיידית בכל עת. העלאה ללא ההרשאות הללו אסורה ועלולה להוביל לחסימת חשבון. פירוט מלא במדיניות הפרטיות.',
+          p: 'פיצ\'ר "לככב בסיפור" מעבד תמונת פנים, שעשויה להיחשב מידע ביומטרי לפי דינים מסוימים. בעת ההעלאה תתבקש לאשר אקטיבית כי (א) זו תמונה שלך או של אדם שנתן הסכמה מפורשת ומדעת, (ב) אינה של קטין, ו-(ג) אתה מבין שהיא תעובד ל"גיליון דמות". התמונה נשלחת לספקי AI חיצוניים ונשמרת באחסון ענן (Cloudflare R2); הקישור אליה אצלנו נמחק אוטומטית לאחר 90 יום, והקבצים עצמם נמחקים לפי בקשה. אנחנו לא משתמשים בה לאימון מודלים, לא מוכרים אותה ולא משתפים אותה מעבר לעיבוד הנדרש. תוכל לבקש מחיקה בכל עת. העלאה ללא ההרשאות הללו אסורה ועלולה להוביל לחסימת חשבון. פירוט במדיניות הפרטיות.',
         },
         {
           h: '6. ביצועי השירות ואדפטציה דינמית',
@@ -54,7 +58,7 @@ export const MODAL_DATA = {
         },
         {
           h: '2. Plans, Quotas & Fair Use',
-          p: 'LIFESCRIPT offers a Free plan and a Pro plan. Free plan: 3 scripts, 1 poster, and 1 comic per day, plus one free "Star Yourself" poster (one-time). Pro plan ($9/month): unlimited scripts, up to 3 posters and 2 comics per day, up to 7 comic panels, reels generation, and a priority processing queue. Unregistered visitors are limited to 2 scripts per day. Daily limits reset at UTC midnight and exist to maintain quality service for all users.',
+          p: termsPlansEn(),
         },
         {
           h: '3. Billing, Renewal & Cancellation',
@@ -66,7 +70,7 @@ export const MODAL_DATA = {
         },
         {
           h: '5. "Star Yourself" — Face Photos & Biometric Data',
-          p: 'The "Star Yourself" feature processes a face photo, which may constitute biometric data under certain laws. At upload you will be asked to actively confirm that (a) it is a photo of yourself or of a person who gave explicit, informed consent, (b) it is not of a minor, and (c) you understand it will be processed into a "Character Sheet." The image is stored encrypted in cloud storage (Cloudflare R2) for up to 90 days and then automatically deleted; it is never used to train models, never sold, and never shared. You may request immediate deletion at any time. Uploading without these permissions is forbidden and may result in account suspension. See the Privacy Policy for full details.',
+          p: 'The "Star Yourself" feature processes a face photo, which may be considered biometric data under certain laws. On upload you will be asked to actively confirm that (a) it is a photo of you or of a person who gave explicit, informed consent, (b) it is not of a minor, and (c) you understand it will be processed into a "Character Sheet". The photo is sent to external AI providers and stored in cloud storage (Cloudflare R2); our link to it is deleted automatically after 90 days, and the files themselves are deleted on request. We do not use it to train models, sell it, or share it beyond the processing required. You can request deletion at any time. Uploading without these permissions is prohibited and may lead to account suspension. Details are in the Privacy Policy.',
         },
         {
           h: '6. Service Performance & Dynamic Adaptation',
@@ -91,26 +95,33 @@ export const MODAL_DATA = {
 
   // ─── Privacy Policy ────────────────────────────────────────────────────────
 
+  // TODO(OWNER-CONFIRM — DRAFT, NOT FINAL): the privacy / AI-provider wording below (privacy §1, §2, §4, §7 and
+  // terms §5) is a DRAFT based on the providers' public terms (Google https://ai.google.dev/gemini-api/terms ; OpenRouter https://openrouter.ai/docs/features/privacy-and-logging and /provider-routing ; Cloudflare https://developers.cloudflare.com/workers-ai/platform/data-usage/ ; Cohere https://cohere.com/privacy).
+  // The FINAL text must be confirmed by the owner AFTER (1) billing is enabled on the Google project (Gemini API
+  // unpaid tier may use content to improve products + human review; EEA/UK/CH users require paid services),
+  // (2) OpenRouter provider data policies are reviewed (account privacy settings / provider routing), and
+  // (3) R2 object retention for characters/, posters/, panels/ is verified or implemented. No "no retention" claim
+  // may be added. Do not publish before this is confirmed.
   privacy: {
     he: {
       title: 'פרטיות',
-      summary: '"הפרטיות שלך היא התסריט הכי חשוב שאנחנו מגנים עליו." · עודכן יוני 2026',
+      summary: '"הפרטיות שלך היא התסריט הכי חשוב שאנחנו מגנים עליו." · עודכן אוקטובר 2026',
       sections: [
         {
-          h: '1. התוכן שאתה יוצר נשאר אצלך',
-          p: 'התסריטים, הפוסטרים ופאנלי הקומיקס שאתה יוצר אינם נשמרים בשרתים שלנו. היסטוריית ההפקות שלך נשמרת אך ורק בזיכרון המקומי (localStorage) של הדפדפן שלך, על המכשיר שלך בלבד — אנחנו לא יכולים לראות אותה, והיא נמחקת ברגע שאתה מנקה את נתוני הדפדפן.',
+          h: '1. מה נשמר ומה לא',
+          p: 'הטקסט שאתה כותב (יומן, תסריט) אינו נשמר על ידינו במסד נתונים, וההיסטוריה שלך נשמרת בזיכרון המקומי (localStorage) של הדפדפן שלך. שים לב: הטקסט נשלח לספקי AI חיצוניים כדי ליצור את התוצר (ראה סעיף 7). פוסטרים ופאנלי קומיקס שנוצרו עשויים להישמר גם באחסון ענן (Cloudflare R2) תחת כתובת לא ניתנת לניחוש, כדי שיהיה אפשר להציג ולשתף אותם; אנחנו לא מתחייבים כרגע על מחיקה אוטומטית שלהם, וניתן לבקש את מחיקתם (סעיף 9).',
         },
         {
           h: '2. תמונות "לככב בסיפור"',
-          p: 'כשאתה מעלה תמונת פנים לפיצ\'ר "לככב בסיפור", היא מעובדת ליצירת "גיליון דמות" ונשמרת באחסון ענן מוצפן (Cloudflare R2) למשך עד 90 יום — כדי שתוכל לככב שוב בלי להעלות מחדש. בתום התקופה התמונה נמחקת אוטומטית. אנחנו שומרים רק מצביע (קישור) לתמונה, ולעולם לא משתמשים בפנים שלך לאימון מודלים או לכל מטרה אחרת.',
+          p: 'כשאתה מעלה תמונת פנים לפיצ\'ר "לככב בסיפור", היא נשלחת לספקי AI (ראה סעיף 7) לבדיקת תוכן וליצירת "גיליון דמות", ונשמרת באחסון ענן (Cloudflare R2) יחד עם גיליון הדמות. אצלנו נשמר רק קישור אליהן, והקישור נמחק אוטומטית לאחר 90 יום. מחיקת הקבצים עצמם מהאחסון מתבצעת לפי בקשה (סעיף 9). אנחנו לא משתמשים בתמונה לאימון מודלים או לכל מטרה אחרת; מדיניות הספקים החיצוניים מתוארת בסעיף 7.',
         },
         {
           h: '3. חשבון והתחברות',
-          p: 'אם אתה נרשם, אנחנו שומרים את כתובת האימייל והשם שלך (מ-Google או מקישור הכניסה) כדי לנהל את החשבון, המכסה והמנוי שלך. אם התחברת באמצעות Google, אנחנו שומרים גם את כתובת ה-URL של תמונת הפרופיל שלך מהחשבון, המשמשת אך ורק להצגת האווטאר שלך באפליקציה. זהו המידע המזהה אישית היחיד שאנחנו מחזיקים.',
+          p: privacyAccountHe(),
         },
         {
           h: '4. נתוני שימוש ומכסות',
-          p: 'כדי לאכוף את המגבלות היומיות ההוגנות, אנחנו סופרים כמה תסריטים, פוסטרים וקומיקסים יצרת ביום נתון. מונים אלו נשמרים זמנית (Redis) ומתאפסים בחצות UTC.',
+          p: 'כדי לאכוף את המגבלות ההוגנות, אנחנו שומרים (ב-Redis) מוני שימוש: מונים יומיים עד חצות UTC, חודשיים עד כמה ימים לאחר סוף החודש, ומונים של קרדיטי "לככב בסיפור" שחלקם לכל החיים. עבור גולשים שאינם רשומים המונים נשמרים לפי כתובת ה-IP (ב-IPv6 לפי תחילית /64); מונה פוסטר האורח נשמר עד 90 יום מהשימוש האחרון. לחשבון רשום נשמרים גם מצב המנוי, מזהה לקוח של Stripe, מועד פעילות אחרון ונתוני הזמנת חברים. פעילות הקומיקס הפתוחה נשמרת עד 24 שעות. בקשות מחיקה נשמרות 30 יום לצורך תיעוד.',
         },
         {
           h: '5. תשלומים',
@@ -121,12 +132,12 @@ export const MODAL_DATA = {
           p: 'אנחנו משתמשים בעוגיות חיוניות לשמירת ההתחברות שלך, ובעוגיית הזמנה (ls_ref) לזיהוי החבר שהזמין אותך (נמחקת לאחר 30 יום). בנוסף אנחנו משתמשים ב-Google Analytics וב-Vercel Analytics לאיסוף נתוני שימוש מצטברים ואנונימיים שעוזרים לנו לשפר את השירות. נתונים אלו אינם מזהים אותך אישית.',
         },
         {
-          h: '7. עיבוד מאובטח דרך ספקי AI מובילים',
-          p: 'הטקסט והתמונות שלך מועברים בצורה מוצפנת (HTTPS) לשרתי Google AI, OpenRouter ושרתים מובילים נוספים בתחום, לצורך יצירת התסריט והתמונות. שירותים אלו אינם שומרים את התוכן שלך לאחר השלמת הבקשה ואינם משתמשים בו למטרות פרסום.',
+          h: '7. עיבוד על ידי ספקי AI חיצוניים',
+          p: privacyProvidersHe(),
         },
         {
           h: '8. אנחנו לא מוכרים מידע',
-          p: 'אנחנו לא מוכרים, לא משתפים ולא מעבדים את הקלטים שלך לשום מטרה פרסומית או מסחרית. LIFESCRIPT מרוויחה מהיכולת לייצר עבורך — לא ממה שאתה כותב.',
+          p: privacySharingHe(),
         },
         {
           h: '9. הזכויות שלך ובעל המאגר',
@@ -136,23 +147,23 @@ export const MODAL_DATA = {
     },
     en: {
       title: 'PRIVACY',
-      summary: '"Your privacy is the most important script we protect." · Updated June 2026',
+      summary: '"Your privacy is the most important script we protect." · Updated October 2026',
       sections: [
         {
-          h: '1. The Content You Create Stays Yours',
-          p: 'The scripts, posters, and comic panels you create are not stored on our servers. Your production history is saved only in your browser\'s local storage (localStorage), on your device alone — we cannot see it, and it is erased the moment you clear your browser data.',
+          h: '1. What We Store and What We Don\'t',
+          p: 'The text you write (diary, script) is not stored by us in a database, and your history is kept in your browser\'s local storage (localStorage). Note: the text is sent to external AI providers to produce the result (see section 7). Generated posters and comic panels may also be stored in cloud storage (Cloudflare R2) under an unguessable address so they can be displayed and shared; we do not currently promise automatic deletion of them, and you can ask us to delete them (section 9).',
         },
         {
           h: '2. "Star Yourself" Photos',
-          p: 'When you upload a face photo for the "Star Yourself" feature, it is processed into a "Character Sheet" and stored in encrypted cloud storage (Cloudflare R2) for up to 90 days — so you can star again without re-uploading. After that period the photo is automatically deleted. We store only a pointer (URL) to the image, and we never use your face to train models or for any other purpose.',
+          p: 'When you upload a face photo for "Star Yourself", it is sent to AI providers (see section 7) for a content check and to create a "Character Sheet", and is stored in cloud storage (Cloudflare R2) together with the sheet. We keep only a link to them, and that link is deleted automatically after 90 days. Deleting the files themselves from storage is done on request (section 9). We do not use the photo to train models or for any other purpose; the external providers\' policies are described in section 7.',
         },
         {
           h: '3. Account & Sign-In',
-          p: 'If you sign up, we store your email address and name (from Google or the magic-link sign-in) to manage your account, quota, and subscription. If you sign in with Google, we also store the profile photo URL from your Google account, used only to display your avatar in the app. This is the only personally identifying information we hold.',
+          p: privacyAccountEn(),
         },
         {
           h: '4. Usage & Quota Data',
-          p: 'To enforce fair daily limits, we count how many scripts, posters, and comics you created on a given day. These counters are stored temporarily (Redis) and reset at UTC midnight.',
+          p: 'To enforce fair limits we keep (in Redis) usage counters: daily counters until UTC midnight, monthly counters until a few days after the month ends, and "Star Yourself" credit counters, some of which are lifetime. For visitors who are not signed in the counters are keyed by IP address (IPv6: its /64 prefix); the guest-poster counter is kept for up to 90 days after the last use. For a registered account we also keep the subscription state, a Stripe customer ID, last-active time and friend-invite data. An open comic session is kept for up to 24 hours. Deletion requests are logged for 30 days for audit.',
         },
         {
           h: '5. Payments',
@@ -163,12 +174,12 @@ export const MODAL_DATA = {
           p: 'We use essential cookies to keep you signed in, and a referral cookie (ls_ref) to recognize the friend who invited you (deleted after 30 days). We also use Google Analytics and Vercel Analytics to collect aggregate, anonymous usage data that helps us improve the service. This data does not personally identify you.',
         },
         {
-          h: '7. Secure Processing via Trusted AI Providers',
-          p: 'Your text and images are transmitted over encrypted HTTPS to Google AI, OpenRouter, and other industry-leading AI infrastructure providers, for the purpose of generating scripts and images. These services do not retain your content after a request is completed and do not use it for advertising.',
+          h: '7. Processing by External AI Providers',
+          p: privacyProvidersEn(),
         },
         {
           h: "8. We Don't Sell Your Data",
-          p: "We do not sell, share, or repurpose your inputs for any advertising or commercial purpose. LIFESCRIPT profits from the ability to generate for you — not from what you write.",
+          p: privacySharingEn(),
         },
         {
           h: '9. Your Rights & Data Controller',
@@ -258,7 +269,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'איך "מלככבים" בפוסטר עם הפנים שלי?',
-          p: 'בשלב יצירת הפוסטר או הקומיקס תמצא אפשרות להעלות תמונת פנים. ה-AI בונה ממנה "גיליון דמות" ומחדיר אותך לסצנות. כל משתמש רשום מקבל פוסטר אחד חינם להתנסות; מנויי Pro מקבלים מכסה חודשית. שים לב — מותר להעלות רק את הפנים שלך, או של מי שנתן הסכמה.',
+          p: 'בשלב יצירת הפוסטר או הקומיקס תמצא אפשרות להעלות תמונת פנים. ה-AI בונה ממנה "גיליון דמות" ומחדיר אותך לסצנות. כל משתמש רשום מקבל פוסטר אחד חינם להתנסות; מנויי Pro מקבלים מכסה חודשית. ' + uploadsSentenceHe() + ' שים לב — מותר להעלות רק את הפנים שלך, או של מי שנתן הסכמה.',
         },
         {
           h: 'איך עובד "הזמן חברים"?',
@@ -298,7 +309,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'How do I "star" in the poster with my own face?',
-          p: 'During poster or comic generation you\'ll find an option to upload a face photo. The AI builds a "Character Sheet" from it and casts you into the scenes. Every registered user gets one free poster to try it; Pro members get a monthly allowance. Note — only upload your own face, or someone who has consented.',
+          p: 'During poster or comic generation you\'ll find an option to upload a face photo. The AI builds a "Character Sheet" from it and casts you into the scenes. Every registered user gets one free poster to try it; Pro members get a monthly allowance. ' + uploadsSentenceEn() + ' Note — only upload your own face, or someone who has consented.',
         },
         {
           h: 'How does "Invite friends" work?',
@@ -336,7 +347,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'חינמי, Pro והזמנת חברים',
-          p: 'במסלול החינמי תכתוב 3 תסריטים, פוסטר וקומיקס ביום — מספיק כדי להתאהב. מסלול Pro (9$ לחודש) פותח תסריטים ללא הגבלה, יותר פוסטרים וקומיקסים ביום, רילז ותור עיבוד מועדף. ויש בונוס: על כל חבר שתזמין שנרשם ויוצר פוסטר ראשון — אתה מקבל פוסטר "לככב בסיפור" חינם נוסף.',
+          p: faqPlansHe(),
         },
         {
           h: 'איך להפיק את המיטב?',
@@ -366,7 +377,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'Free, Pro & Inviting Friends',
-          p: 'On the Free plan you write 3 scripts, a poster, and a comic each day — enough to fall in love. Pro ($9/month) unlocks unlimited scripts, more posters and comics per day, reels, and a priority queue. And there\'s a bonus: for every friend you invite who signs up and makes their first poster, you earn another free "Star Yourself" poster.',
+          p: faqPlansEn(),
         },
         {
           h: 'How to Direct Your Best Story',

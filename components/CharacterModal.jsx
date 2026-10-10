@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Loader2, Camera, Sparkles, RefreshCw, Crown } from 'lucide-react';
 import { isCapacitorNative } from '../utils/platform.js';
+import { getMsg, CODES } from '../lib/messages.js';
 
 // Downscale a selected file to a JPEG data URI (max 1024px, q0.9) before upload.
 // Keeps the request well under the endpoint's body limit and trims R2/latency cost.
@@ -96,6 +97,18 @@ export default function CharacterModal({
       setPicked(''); // fall through to the result view (shows the new sheet)
     } else if (result.code === 'NEEDS_PRO') {
       setGated(true);
+    } else if (result.code === CODES.QUOTA_SHEET || result.code === CODES.IDENTITY_BUDGET_REACHED
+            || result.code === CODES.QUOTA_IDENTITY || result.code === CODES.IDENTITY_LIFETIME_USED
+            || result.code === CODES.SAFETY_REJECTED || result.code === CODES.RATE_LIMITED) {
+      // A limit / budget / moderation answer from the server: say exactly what happened.
+      // QUOTA_SHEET carries {limit, resetsAt}: say how many uploads are included and when they renew.
+      const lang = isHebrew ? 'he' : 'en';
+      let reset;
+      if (result.resetsAt) {
+        const d = new Date(result.resetsAt);
+        if (!Number.isNaN(d.getTime())) reset = d.toLocaleDateString(isHebrew ? 'he-IL' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+      }
+      setFileError(getMsg(result.code, lang, { limit: result.limit, reset }));
     } else {
       setFileError(isHebrew ? 'משהו השתבש. נסה שוב.' : 'Something went wrong. Try again.');
     }

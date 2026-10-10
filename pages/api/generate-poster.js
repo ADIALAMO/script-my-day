@@ -3,6 +3,8 @@ import { CODES } from '../../lib/messages.js';
 import { nextMidnightUTC, isAdminRequest, isValidComicSeed } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { limitFor } from '../../lib/quota.js';
+import { guardComicPanel } from '../../lib/comic-guard.js';
+import { reservePosterQuota, releasePosterQuota } from '../../lib/poster-quota.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 import {
   PROVIDERS,
@@ -19,7 +21,6 @@ import {
   grokImageFromReference,
   geminiImageFromReference,
   resolveIdentityGate,
-  consumeIdentityCredit,
 } from '../../lib/identity.js';
 import { maybeRedeemReferral } from '../../lib/referral.js';
 import {
@@ -338,6 +339,15 @@ for (const cascade of [POSTER_CASCADE, COMIC_CASCADE, COMIC_CASCADE_KLEIN_FIRST,
 // ─── Handler ─────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
+  let panelGuard = null;       // comic panel reservation (lib/comic-guard.js) — released if no image is produced
+  let posterQuotaKey = null;   // standalone poster reservation (lib/poster-quota.js) — released if no image is produced
+  let gateRelease = null;      // identity credit + global identity budget reservation (resolveIdentityGate) — released if the face was not applied
+  /** give back every reservation that was taken for a request that did NOT produce a real image */
+  const releaseReservations = async () => {
+    await panelGuard?.release();
+    await releasePosterQuota(posterQuotaKey); posterQuotaKey = null;
+    await gateRelease?.(); gateRelease = null;
+  };
   try {
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
 
@@ -364,68 +374,43 @@ export default async function handler(req, res) {
   // Comic quota accounting is owned by generate-storyboard.js — panel image calls do
   // not increment the poster counter.  However, each panel request must still be gated
   // against the tier's unlock limit so that direct API calls cannot bypass the paywall.
-  let usageKey       = null;
-  let posterLimit    = 0;
-  let isAnonPoster   = false; // anonymous poster is a LIFETIME allowance → no-expiry key, no daily reset
   let refereeUserId  = null; // set for an authed standalone-poster request → referral activation
 
   if (!isAdmin) {
     if (isComic) {
       // ── Comic panel gate ───────────────────────────────────────────────────
-      // generate-storyboard.js is the FIRST layer: it only returns unlocked panels
-      // so the client never receives locked panel data.  This is the SECOND, independent
-      // layer that rejects any direct API call for a panel index beyond the tier limit.
-      const { tier } = await getSessionAndTier(req, res);
-      const unlockedPanels = limitFor(tier, 'unlockedPanels');
-
-      // panelIndex arrives as a JSON number from the client; guard against missing /
-      // non-numeric values (which we treat as a rejected request, fail-safe).
-      const idx = Number.isFinite(panelIndex) ? panelIndex : parseInt(panelIndex, 10);
-
-      if (!Number.isFinite(idx) || idx >= unlockedPanels) {
-        console.warn(`⚠️ Panel request rejected — index=${idx} exceeds tier limit (${unlockedPanels})`);
-        return res.status(403).json({
-          success: false,
-          code: CODES.NEEDS_ACCOUNT,
-          message: 'Upgrade to Pro to generate images for all storyboard panels.',
-        });
+      // generate-storyboard.js opens the comic SESSION (owner + how many panels THIS comic
+      // unlocks) and owns the comic quota. This is the independent SECOND layer: lib/comic-guard.js
+      // checks ownership, the unlocked count, the per-user daily panel cap, and the per-comic
+      // replacement budget — all server-side — so a direct API call can neither reach a locked
+      // panel nor regenerate the same panel beyond the allowed replacements.
+      const { tier, identifier } = await getSessionAndTier(req, res);
+      const guard = await guardComicPanel({ tier, identifier, comicSeed, panelIndex });
+      if (!guard.ok) {
+        console.warn(`⚠️ Panel request rejected — ${guard.code} (index=${panelIndex})`);
+        return res.status(guard.status).json({ success: false, code: guard.code });
       }
+      panelGuard = guard;
 
     } else {
       // ── Standalone movie poster quota ──────────────────────────────────────
       const { tier, identifier, userId } = await getSessionAndTier(req, res);
       refereeUserId = userId; // authed → eligible to activate a pending referral on success
-      posterLimit = limitFor(tier, 'poster');
-      // Anonymous = a single LIFETIME taste poster (no daily reset) so guests can try the
-      // product before committing an email. Authed tiers stay on the daily key.
-      isAnonPoster = tier === 'anonymous';
-      const today = new Date().toISOString().split('T')[0];
-      usageKey    = isAnonPoster
-        ? `usage:poster:lifetime:${identifier}`
-        : `usage:poster:${identifier}:${today}`;
-
-      if (posterLimit === 0) {
-        return res.status(403).json({
-          success: false,
-          code: CODES.NEEDS_ACCOUNT,
-          message: 'Sign in to unlock poster generation.',
-        });
-      }
-
+      // The poster quota is RESERVED atomically (INCR then compare; rolled back on refusal and whenever no
+      // image is produced) — see lib/poster-quota.js. Anonymous = a single LIFETIME taste poster per IP.
+      // Redis trouble fails open, as before.
       try {
-        const currentUsage = await redis.get(usageKey);
-        const used = parseInt(currentUsage, 10) || 0;
-        if (posterLimit !== Infinity && used >= posterLimit) {
-          return res.status(429).json({
+        const q = await reservePosterQuota(tier, identifier);
+        if (!q.ok) {
+          return res.status(q.status).json({
             success: false,
-            // Guests get a sign-up nudge (renewing daily quota + the selfie hook) instead
-            // of the free-tier "come back tomorrow" copy.
-            code: isAnonPoster ? CODES.QUOTA_POSTER_GUEST : CODES.QUOTA_POSTER,
-            message: 'Poster quota reached.',
+            code: q.code,
+            message: q.status === 403 ? 'Sign in to unlock poster generation.' : 'Poster quota reached.',
           });
         }
+        posterQuotaKey = q.key;
       } catch (e) {
-        console.warn(`⚠️ Poster quota check skipped (Redis unavailable): ${e.message}`);
+        console.warn(`⚠️ Poster quota reservation skipped (Redis unavailable): ${e.message}`);
       }
     }
   }
@@ -433,20 +418,6 @@ export default async function handler(req, res) {
   const trackUsage = async () => {
     if (isComic) return; // comic panels are counted by generate-storyboard.js — never here
     const today = new Date().toISOString().split('T')[0];
-
-    // Per-user quota — only finite-quota non-admin tiers consume a credit.
-    if (!isAdmin && usageKey && posterLimit !== Infinity) {
-      try {
-        const pipeline = redis.pipeline();
-        pipeline.incr(usageKey);
-        // Anonymous poster is a LIFETIME key — never set an expiry on it. All other
-        // tiers reset at midnight UTC.
-        if (!isAnonPoster) pipeline.expireat(usageKey, nextMidnightUTC());
-        await pipeline.exec();
-      } catch (e) {
-        console.warn(`⚠️ Poster quota increment skipped (Redis unavailable): ${e.message}`);
-      }
-    }
 
     // ── Global activity counters (all tiers) — powers /api/admin/stats ─────────
     try {
@@ -494,7 +465,9 @@ export default async function handler(req, res) {
   // 'reject' → paid gate / monthly quota; 'identity' → prepend the Grok provider;
   // 'standard' → no/invalid face, normal generation (degradation, not an error).
   const gate = await resolveIdentityGate(req, res, { isAdmin, characterImageUrl, isComic });
+  gateRelease = gate.release || null;
   if (gate.mode === 'reject') {
+    await releaseReservations();
     return res.status(gate.status).json({ success: false, code: gate.code });
   }
   const useIdentity = gate.mode === 'identity';
@@ -555,11 +528,11 @@ export default async function handler(req, res) {
       // paid provider in the faceless cascade (identity spend is metered separately).
       if (provider.key === 'openrouter') await recordPaidImage(redis);
       await trackUsage();
-      // Consume an identity credit ONLY when the winning provider actually applied
-      // the face — a degraded (faceless) result must not cost the user a credit.
-      if (useIdentity && result.faceApplied) {
-        await consumeIdentityCredit(gate.usageKey, gate.limit, { isLifetime: gate.isLifetime });
-      }
+      // The identity credit and the global identity budget slot were RESERVED atomically in the gate. Keep them
+      // only when the winning provider actually applied the face — a degraded (faceless) result must not cost
+      // the user a credit (nor the shared budget), so give them back.
+      if (useIdentity && !result.faceApplied) { await gateRelease?.(); }
+      gateRelease = null; posterQuotaKey = null; panelGuard = null;   // a real image was produced: the reservations stand
       // Referral activation: this user's FIRST successful poster redeems any pending invite
       // (rewards the REFERRER). No-ops instantly (no Redis traffic) when no ls_ref cookie is
       // present, and is idempotent + fail-safe — see lib/referral.js. The returned flag lets
@@ -602,15 +575,19 @@ export default async function handler(req, res) {
   // All cascade providers failed. Return a placeholder so the frontend always
   // gets a renderable imageUrl rather than a broken image icon.
   console.error(`❌ Image cascade exhausted (${trackLabel}) — returning placeholder`);
+  await releaseReservations(); // no image was produced → the attempt must not burn a replacement, a poster slot or an identity credit
   return res.status(200).json({
     success: true,
-    code: CODES.PROVIDERS_BUSY,
+    // The spend cap removed the paid fallback and no free provider could serve this request →
+    // say so honestly instead of the generic "providers busy".
+    code: paidImageCapped ? CODES.IMAGE_BUDGET_REACHED : CODES.PROVIDERS_BUSY,
     imageUrl: makePlaceholderImage(),
     provider: 'placeholder',
     isPlaceholder: true,
     details: `All providers exhausted (${trackLabel}).`,
   });
   } catch (error) {
+    await releaseReservations();
     console.error('generate-poster unhandled error:', error.message, error.stack);
     return res.status(500).json({
       success: false,

@@ -103,16 +103,20 @@ enforces tier + quota **before** any paid call. Moderation (nemotron) is **fail-
 Faces stored in R2 (`characters/`), Redis holds only the URL.
 
 ### 4. Tiers & quota → skill `quota`
-Single source of truth: `TIER_LIMITS` in [lib/quota.js](lib/quota.js). Always use
+Single source of truth: `TIER_LIMITS` in [config/limits.js](config/limits.js) (re-exported by [lib/quota.js](lib/quota.js)). Always use
 `limitFor(tier, feature)`, never read the table directly in routes.
 
 | feature | anon | free | pro | admin | period |
 |---|---|---|---|---|---|
-| script | 2 | 5 | ∞ | ∞ | daily |
-| poster | 1 | 2 | 3 | ∞ | daily |
-| comic | 0 | 1 | 2 | ∞ | daily |
-| unlockedPanels | 0 | 7 | 7 | ∞ | per comic |
+| script | 2 | 5 | 20 | ∞ | daily |
+| poster | 1 (lifetime) | 2 | 3 | ∞ | daily |
+| comic | 0 | 3 | 2 | ∞ | free = **monthly**, pro = daily |
+| unlockedPanels | 0 | 7 for the 1st comic ever, then 3 | 7 | ∞ | per comic |
 | identity | 0 | 1 | 30 | ∞ | monthly (free = **lifetime, no expiry**) |
+| character-sheet uploads | 0 | 3 | 30 | ∞ | **monthly** (each is a paid generation; key `usage:sheet:<id>:<YYYY-MM>`) |
+
+All tunables live in [config/limits.js](config/limits.js) (env overrides for the newer numbers;
+see that file). `lib/quota.js` only re-exports the table and `limitFor`.
 
 Redis keys: `usage:<feature>:<identifier>:<YYYY-MM-DD>` (daily, `expireat` next UTC
 midnight) / `usage:identity:<id>:<YYYY-MM>` (monthly) / `usage:identity:lifetime:<id>`

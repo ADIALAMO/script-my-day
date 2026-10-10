@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Ticket, X, Star } from "lucide-react";
+import { proBlurbHe, proBlurbEn } from '../constants/limits-copy.js';
 
 export default function LaunchTicket({ lang = 'he' }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -30,8 +31,8 @@ export default function LaunchTicket({ lang = 'he' }) {
         icon: "👑",
         title: isHe ? "מסלול Pro — 9$ לחודש" : "Pro plan — $9/month",
         body: isHe
-          ? "תסריטים ללא הגבלה, עד 3 פוסטרים ו-2 קומיקסים ביום, רילז ותור מועדף. ביטול בכל עת."
-          : "Unlimited scripts, up to 3 posters & 2 comics a day, reels, and a priority queue. Cancel anytime.",
+          ? proBlurbHe()
+          : proBlurbEn(),
       },
     ],
     button: isHe ? "חזרה לצילומים" : "Back to Set"

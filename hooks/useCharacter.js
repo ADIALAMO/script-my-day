@@ -121,7 +121,7 @@ export function useCharacter(gender = 'neutral') {
       }
       setStatus('error');
       setError(d.code || 'SERVER_ERROR');
-      return { ok: false, code: d.code || 'SERVER_ERROR' };
+      return { ok: false, code: d.code || 'SERVER_ERROR', limit: d.limit, resetsAt: d.resetsAt };
     } catch {
       setStatus('error');
       setError('NETWORK_OFFLINE');

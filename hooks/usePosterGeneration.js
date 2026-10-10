@@ -147,7 +147,7 @@ export function usePosterGeneration({
       }
 
       if (data.isPlaceholder) {
-        setPosterError(getMsg(CODES.PROVIDERS_BUSY, lang));
+        setPosterError(getMsg(data.code || CODES.PROVIDERS_BUSY, lang)); // PROVIDERS_BUSY or IMAGE_BUDGET_REACHED
         setPosterLoading(false);
         return;
       }

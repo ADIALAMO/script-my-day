@@ -19,7 +19,7 @@ const COPY = {
     ],
     notH: 'מה לא רלוונטי למחיקה',
     not: [
-      'התסריטים, הפוסטרים והקומיקסים שיצרת — הם נשמרים רק בזיכרון המקומי של הדפדפן שלך (localStorage), על המכשיר שלך בלבד. אנחנו מעולם לא שמרנו אותם בשרתים שלנו, כך שאין מה למחוק בצד שלנו — פשוט נקה את נתוני הדפדפן במכשיר שלך.',
+      'הטקסט, התסריטים וההיסטוריה שלך — נשמרים בזיכרון המקומי של הדפדפן (localStorage) בלבד, ואין לנו עותק במסד נתונים; נקה את נתוני הדפדפן כדי למחוק אותם. עותקי תמונות שנוצרו (פוסטרים/פאנלים) עשויים להישמר באחסון ענן ונמחקים לפי בקשתך — ציין זאת בהערה. מידע שנשלח לספקי AI חיצוניים כפוף למדיניות הספקים.',
     ],
     formH: 'בקשת מחיקה',
     formSub: 'הזן את כתובת האימייל המשויכת לחשבון שלך. נטפל בבקשה תוך זמן סביר ונשלח אישור לאותה כתובת.',
@@ -48,7 +48,7 @@ const COPY = {
     ],
     notH: 'What deletion does not apply to',
     not: [
-      'The scripts, posters, and comics you created — these are stored only in your browser\'s local storage (localStorage), on your device alone. We never stored them on our servers, so there is nothing to delete on our end — just clear your browser data on that device.',
+      'Your text, scripts and history are kept in your browser\'s local storage (localStorage) only; we hold no database copy, so clear your browser data to remove them. Copies of generated images (posters/panels) may be stored in cloud storage and are deleted on your request — mention it in the note. Content sent to external AI providers is subject to those providers\' policies.',
     ],
     formH: 'Deletion request',
     formSub: 'Enter the email address associated with your account. We will process the request within a reasonable time and send confirmation to that address.',

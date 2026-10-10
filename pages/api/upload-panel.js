@@ -3,6 +3,7 @@ import redis from '../../lib/redis.js';
 import { isAdminRequest } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
+import { UPLOAD_LIMITS } from '../../config/limits.js';
 import { MAX_IMAGE_BYTES, sniffImage, decodeDataUriBytes, buildObjectKey } from '../../lib/upload-image.js';
 
 // ── R2 client singleton ───────────────────────────────────────────────────────
@@ -28,16 +29,8 @@ function getS3() {
 }
 
 // ── Upload quotas ─────────────────────────────────────────────────────────────
-// Per-identifier rolling 30-day window limits that cap R2 storage growth on
-// free-tier accounts.  These are intentionally set above realistic daily-quota
-// ceilings (e.g. free = 1 comic/day × 2 unlocked panels × 30 days = 60 panels
-// theoretical max; 80 gives a 33 % safety margin before the gate trips).
-// Admins bypass entirely; Redis downtime fails open (see catch block below).
-const UPLOAD_LIMITS = {
-  anonymous: { panels: 20,  posters: 5   },
-  free:      { panels: 80,  posters: 45  },
-  pro:       { panels: 250, posters: 120 },
-};
+// Per-identifier rolling 30-day window limits that cap R2 storage growth. The numbers live in
+// config/limits.js (UPLOAD_LIMITS). Admins bypass entirely; Redis downtime fails open.
 
 // Single 30-day TTL for both asset types. Set once on the first upload in a
 // window; subsequent uploads inherit the expiry, resetting naturally at day 30.

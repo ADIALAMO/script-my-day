@@ -4,7 +4,8 @@ import { sanitize } from '../../utils/input-processor';
 import { CODES } from '../../lib/messages.js';
 import { nextMidnightUTC, isAdminRequest } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
-import { limitFor } from '../../lib/quota.js';
+import { reserveScriptQuota, releaseScriptQuota } from '../../lib/script-quota.js';
+import { reserveGuestScriptBudget, releaseGuestScriptBudget } from '../../lib/guest-budget.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 
 // Must be a top-level export — NOT nested inside config — for Vercel to honour it.
@@ -38,32 +39,13 @@ export default async function handler(req, res) {
     const { journalEntry, genre, gender } = req.body;
 
     const isAdmin = isAdminRequest(req);
-    let usageKey  = null;
-    let dailyLimit = 0;
+    let tier = 'admin';
+    let identifier = 'admin';
 
-    // ── Quota gate ────────────────────────────────────────────────────────────
     if (!isAdmin) {
-      const { tier, identifier } = await getSessionAndTier(req, res);
-      dailyLimit = limitFor(tier, 'script');
-      const today = new Date().toISOString().split('T')[0];
-      usageKey    = `usage:script:${identifier}:${today}`;
-      // Guests get a sign-up nudge ("sign in for a renewing daily quota") instead of the
-      // free-tier "come back tomorrow" copy.
-      const isAnon = tier === 'anonymous';
-
-      try {
-        const currentUsage = await redis.get(usageKey);
-        const used = parseInt(currentUsage, 10) || 0;
-        if (dailyLimit !== Infinity && used >= dailyLimit) {
-          return res.status(429).json({
-            success: false,
-            code: isAnon ? CODES.QUOTA_SCRIPT_GUEST : CODES.QUOTA_SCRIPT,
-            message: 'Daily script quota reached. Come back tomorrow.',
-          });
-        }
-      } catch (e) {
-        console.warn(`⚠️ Script quota check skipped (Redis unavailable): ${e.message}`);
-      }
+      const ctx = await getSessionAndTier(req, res);
+      tier = ctx.tier;
+      identifier = ctx.identifier;
     }
 
     // ── Input validation ──────────────────────────────────────────────────────
@@ -81,28 +63,66 @@ export default async function handler(req, res) {
     // Never trust the client blindly — coerce to the only three values we speak.
     const cleanGender = ['male', 'female', 'neutral'].includes(gender) ? gender : 'neutral';
 
+    // ── Quota gate ────────────────────────────────────────────────────────────
+    // Reserved atomically (INCR then compare) once the input is valid; given back below if no
+    // script is produced. Free/Pro daily values live in config/limits.js. Redis trouble fails open.
+    let reservation = null;
+    let guestBudgetReserved = false;
+    if (!isAdmin) {
+      try {
+        const q = await reserveScriptQuota(tier, identifier);
+        if (!q.ok) {
+          // Guests get a sign-up nudge; Pro gets its own messages (daily / monthly) with no upgrade pitch.
+          const code = tier === 'anonymous' ? CODES.QUOTA_SCRIPT_GUEST
+                     : tier === 'pro'       ? (q.scope === 'month' ? CODES.QUOTA_SCRIPT_PRO_MONTH : CODES.QUOTA_SCRIPT_PRO)
+                     :                        CODES.QUOTA_SCRIPT;
+          return res.status(429).json({
+            success: false,
+            code,
+            limit: q.limit,
+            resetsAt: q.resetsAt,
+            message: q.scope === 'month' ? 'Monthly script quota reached.' : 'Daily script quota reached. Come back tomorrow.',
+          });
+        }
+        reservation = q;
+        // Guests also draw on a GLOBAL daily budget (all guests together). Signed-in users never do.
+        if (tier === 'anonymous') {
+          const g = await reserveGuestScriptBudget();
+          if (!g.ok) {
+            await releaseScriptQuota(reservation); // the guest keeps their own per-IP slot
+            return res.status(429).json({
+              success: false,
+              code: CODES.GUEST_CAPACITY_REACHED,
+              resetsAt: g.resetsAt,
+              message: 'Guest capacity reached for today. Sign in to continue.',
+            });
+          }
+          guestBudgetReserved = g.reserved;
+        }
+      } catch (e) {
+        console.warn(`⚠️ Script quota reservation skipped (Redis unavailable): ${e.message}`);
+      }
+    }
+
     // ── AI generation ─────────────────────────────────────────────────────────
-    const result = await generateScript(safeJournalEntry, cleanGenre, cleanGender);
+    let result;
+    try {
+      result = await generateScript(safeJournalEntry, cleanGenre, cleanGender);
+    } catch (e) {
+      await releaseScriptQuota(reservation);
+      if (guestBudgetReserved) await releaseGuestScriptBudget();
+      throw e;
+    }
 
     if (!result.success) {
+      await releaseScriptQuota(reservation); // nothing was produced → no script spent
+      if (guestBudgetReserved) await releaseGuestScriptBudget();
       console.error('❌ generateScript failed:', result.error);
       return res.status(500).json({
         success: false,
         code: CODES.SCRIPT_FAIL,
         message: 'Script generation failed.',
       });
-    }
-
-    // ── Quota increment (atomic pipeline) ─────────────────────────────────────
-    if (!isAdmin && usageKey && dailyLimit !== Infinity) {
-      try {
-        const pipeline = redis.pipeline();
-        pipeline.incr(usageKey);
-        pipeline.expireat(usageKey, nextMidnightUTC());
-        await pipeline.exec();
-      } catch (err) {
-        console.warn(`⚠️ Script quota increment skipped (Redis unavailable): ${err.message}`);
-      }
     }
 
     // ── Global activity counters (all tiers) — powers /api/admin/stats ─────────
