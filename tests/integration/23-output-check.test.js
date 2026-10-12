@@ -196,24 +196,26 @@ scenario('O10', 'upload-panel: the bytes generate-poster just approved are store
     return { actual: 'stored without a second check' };
   });
 
-scenario('O11', 'upload-panel: a direct upload with no marker is checked first — unsafe → 422 and NOT stored; unavailable → 503 and NOT stored; safe → stored and marked. Upload quota untouched by rejections',
-  'unsafe: 422, no put; unavailable: 503, no put; safe: put', async () => {
+scenario('O11', 'upload-panel stores ONLY bytes that carry the imgok marker: a direct upload with no marker is NOT stored, NOT checked, and costs no quota; the same bytes ARE stored once generate-poster has approved them',
+  'no marker: 200 {url:null, unverified}, no put, no model call, quota 0; with marker: put', async () => {
     const u = await makeUser('o11', 'free');
-    providers.moderationVerdict.value = 'unsafe';
+    const before = nem(); const paid = providers.counts['gemini-check'] ?? 0;
     const a = await up(u, '198.51.100.251');
-    assert.equal(a.status, 422); assert.equal(a.body.code, 'CONTENT_REFUSED'); assert.equal(providers.s3puts.length, 0);
-    providers.moderationVerdict.value = 'safe'; providers.mode.moderation = 500; providers.mode['gemini-check'] = 500;
-    const b = await up(u, '198.51.100.251');
-    assert.equal(b.status, 503); assert.equal(b.body.code, 'CONTENT_CHECK_UNAVAILABLE'); assert.equal(providers.s3puts.length, 0);
-    assert.equal(fake.num(`upload:posters:${u.identifier}`), 0, 'rejections cost no upload quota');
-    delete providers.mode.moderation; delete providers.mode['gemini-check']; ctx.advance(60_000);
+    assert.equal(a.status, 200); assert.equal(a.body.url, null); assert.equal(a.body.unverified, true);
+    assert.equal(providers.s3puts.length, 0, 'nothing written to R2');
+    assert.equal(nem(), before, 'upload-panel makes no model call of its own'); assert.equal(providers.counts['gemini-check'] ?? 0, paid);
+    assert.equal(fake.num(`upload:posters:${u.identifier}`), 0, 'a skipped upload costs no upload quota');
+    // even with the checker reporting "safe", unmarked bytes are still refused: the marker is the only way in
+    providers.moderationVerdict.value = 'safe';
+    assert.equal((await up(u, '198.51.100.251')).body.url, null);
+    fake.set(`imgok:${imageHash(PNG_DATA_URI)}`, '1');
     const c = await up(u, '198.51.100.251');
-    assert.equal(c.status, 200); assert.equal(providers.s3puts.length, 1); assert.ok(marker());
-    return { actual: '422 / 503 / 200 as designed' };
+    assert.equal(c.status, 200); assert.ok(c.body.url); assert.equal(providers.s3puts.length, 1);
+    return { actual: 'unmarked bytes never stored; marked bytes stored' };
   });
 
-scenario('O12', 'upload-panel: different bytes (even one byte more) do not inherit the marker — they are checked on their own',
-  'moderation +1 for the second image; marker only for the approved bytes', async () => {
+scenario('O12', 'upload-panel: different bytes (even one byte more) do not inherit the marker — they are not stored; the approved bytes are',
+  'marker only for the approved bytes; the extra-byte image gets url:null and no put', async () => {
     const u = await makeUser('o12', 'free');
     const g = await plain(u, '198.51.100.252');
     const approved = marker(g.body.imageUrl);
@@ -221,10 +223,24 @@ scenario('O12', 'upload-panel: different bytes (even one byte more) do not inher
     const bytes = Buffer.concat([Buffer.from(PNG_DATA_URI.split(',')[1], 'base64'), Buffer.from([1])]);
     const other = `data:image/png;base64,${bytes.toString('base64')}`;
     assert.equal(marker(other), null, 'no marker for the other bytes');
-    const before = nem();
     const r = await up(u, '198.51.100.252', other);
-    assert.equal(r.status, 200); assert.equal(nem(), before + 1, 'checked on its own');
-    return { actual: 'the extra byte forced a fresh check' };
+    assert.equal(r.status, 200); assert.equal(r.body.url, null); assert.equal(providers.s3puts.length, 0);
+    const ok = await up(u, '198.51.100.252', g.body.imageUrl);
+    assert.ok(ok.body.url); assert.equal(providers.s3puts.length, 1);
+    return { actual: 'the extra byte lost the marker: not stored; approved bytes stored' };
+  });
+
+scenario('O12b', 'upload-panel: an expired marker (6 h) or a Redis outage → url:null, nothing stored — the same quiet outcome as the storage quota gate, never a 5xx; an admin key does not bypass the marker',
+  'expired: url null; Redis down: url null; admin: url null; hidden-bytes refusal still 422', async () => {
+    const u = await makeUser('o12b', 'free');
+    const g = await plain(u, '198.51.100.253');
+    fake.del(`imgok:${imageHash(g.body.imageUrl)}`);   // what the 6 h TTL does
+    const expired = await up(u, '198.51.100.253', g.body.imageUrl);
+    assert.equal(expired.status, 200); assert.equal(expired.body.url, null);
+    const adminKey = await invoke(uploadPanel, { body: { imageData: g.body.imageUrl, key: 'panels/x_00.png' }, headers: ctx.adminKeyHeader, ip: '198.51.100.253' });
+    assert.equal(adminKey.status, 200); assert.equal(adminKey.body.url, null, 'no admin bypass');
+    assert.equal(providers.s3puts.length, 0);
+    return { actual: 'expired marker and admin key both end in url:null; nothing stored' };
   });
 
 scenario('O13', 'Character Sheet: an UNSAFE generated sheet is not stored — the moderated raw selfie stays the reference (sheetGenerated false) and the charge stays',

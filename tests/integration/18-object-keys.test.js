@@ -11,6 +11,7 @@ const upload = await ctx.route('upload-character');
 const panelUp = await ctx.route('upload-panel');
 const poster = await ctx.route('generate-poster');
 const { ownerSegment } = await import('../../lib/upload-image.js');
+const { imageHash } = await import('../../lib/image-check.js');
 const OLD_URL = 'https://pub-test.r2.dev/characters/user_old123-raw-1700000000000.jpg';   // pre-change key format
 
 scenario('Q1', 'new character uploads and panel/poster uploads write random keys under an HMAC owner segment: no user id, no IP, no plain hash in any key',
@@ -27,6 +28,7 @@ scenario('Q1', 'new character uploads and panel/poster uploads write random keys
     assert.ok(keys.every((k) => !k.includes(u.identifier)), 'user id not in any key');
     // guest panel upload: owner = HMAC of the IP
     const gb = providers.s3puts.length;
+    fake.set(`imgok:${imageHash(PNG_DATA_URI)}`, '1');   // upload-panel stores only bytes generate-poster approved
     const g = await invoke(panelUp, { body: { key: 'posters/x.png', imageData: PNG_DATA_URI }, ip: '203.0.113.91' });
     assert.equal(g.status, 200); assert.ok(g.body.url, JSON.stringify(g.body));
     const gk = providers.s3puts[gb].key;
