@@ -50,13 +50,12 @@ function applyHeroCap(panels, maxHero = MAX_HERO) {
 }
 
 // Free OpenRouter last-resort net for the storyboard step (mirrors lib/story-service.js
-// Stage 5). Verified 2026-06-10; three providers so one provider's rate-limit can't
-// empty it. Only reached when Gemini AND the paid OpenRouter stage both fail — keeps a
-// comic flowing instead of returning "All storyboard engines offline".
+// Stage 5). Only reached when Gemini AND the paid OpenRouter stage both fail — keeps a
+// comic flowing instead of returning "All storyboard engines offline". The llama-3.3-70b and
+// qwen3-next ":free" slugs that used to be listed here were removed: OpenRouter has no free variant
+// of either (HTTP 404 "unavailable for free"; absent from its public models list as of 2026-10-11).
 const FREE_STORYBOARD_MODELS = [
   'google/gemma-4-31b-it:free',
-  'meta-llama/llama-3.3-70b-instruct:free',
-  'qwen/qwen3-next-80b-a3b-instruct:free',
 ];
 
 // NOTE: suffixes deliberately carry NO motion/pose words (no "speed lines", "dynamic
