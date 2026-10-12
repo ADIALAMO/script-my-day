@@ -472,7 +472,7 @@ export default async function handler(req, res) {
   const finalPrompt = isComic
     ? compileComicPrompt(agentPrompt)
     : `A high-end cinematic RAW 35mm film still of: ${agentPrompt}. ` +
-      `Shot on IMAX, dramatic cinematic lighting, realistic skin textures, ` +
+      `Shot on large-format film, dramatic cinematic lighting, realistic skin textures, ` +
       `sharp focus, 8k, masterpiece.`;
   const negativePrompt = isComic ? COMIC_NEGATIVE_PROMPT : undefined;
 

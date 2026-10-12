@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import { Check, Loader2, AlertCircle } from 'lucide-react';
 import { SITE_URL } from '../lib/site';
+import { useNative } from '../hooks/useNative.js';
 
 const COPY = {
   he: {
@@ -22,13 +23,13 @@ const COPY = {
       'הטקסט, התסריטים וההיסטוריה שלך — נשמרים בזיכרון המקומי של הדפדפן (localStorage) בלבד, ואין לנו עותק במסד נתונים; נקה את נתוני הדפדפן כדי למחוק אותם. עותקי תמונות שנוצרו (פוסטרים/פאנלים) עשויים להישמר באחסון ענן ונמחקים לפי בקשתך — ציין זאת בהערה. מידע שנשלח לספקי AI חיצוניים כפוף למדיניות הספקים.',
     ],
     formH: 'בקשת מחיקה',
-    formSub: 'הזן את כתובת האימייל המשויכת לחשבון שלך. נטפל בבקשה תוך זמן סביר ונשלח אישור לאותה כתובת.',
+    formSub: 'הזן את כתובת האימייל המשויכת לחשבון שלך. לפני כל מחיקה אנחנו מאמתים שהבקשה הוגשה על ידי בעל החשבון: בקשה שנשלחת כשאתה מחובר לחשבון מאומתת אוטומטית, ובכל מקרה אחר נאשר מול הכתובת. נטפל בבקשה תוך זמן סביר.',
     emailPh: 'האימייל שלך',
     notePh: 'הערה נוספת (לא חובה)',
     submit: 'שלח בקשת מחיקה',
     sending: 'שולח…',
     success: 'הבקשה התקבלה',
-    successSub: 'קיבלנו את בקשת המחיקה שלך ונטפל בה תוך זמן סביר. אישור יישלח לכתובת שהזנת.',
+    successSub: 'קיבלנו את בקשת המחיקה שלך. נאמת שהיא הוגשה על ידי בעל החשבון ואז נטפל בה תוך זמן סביר; אישור יישלח לכתובת שהזנת.',
     invalidEmail: 'נא להזין כתובת אימייל תקינה.',
     genericError: 'משהו השתבש. אפשר גם לפנות ישירות במייל.',
     orEmail: 'אפשר גם לפנות ישירות ל-',
@@ -51,13 +52,13 @@ const COPY = {
       'Your text, scripts and history are kept in your browser\'s local storage (localStorage) only; we hold no database copy, so clear your browser data to remove them. Copies of generated images (posters/panels) may be stored in cloud storage and are deleted on your request — mention it in the note. Content sent to external AI providers is subject to those providers\' policies.',
     ],
     formH: 'Deletion request',
-    formSub: 'Enter the email address associated with your account. We will process the request within a reasonable time and send confirmation to that address.',
+    formSub: 'Enter the email address associated with your account. Before anything is deleted we verify that the request comes from the account owner: a request sent while you are signed in to that account is verified automatically; in every other case we confirm with the address. We then process it within a reasonable time.',
     emailPh: 'your@email.com',
     notePh: 'Additional note (optional)',
     submit: 'Submit deletion request',
     sending: 'Sending…',
     success: 'Request received',
-    successSub: 'We received your deletion request and will process it within a reasonable time. Confirmation will be sent to the address you entered.',
+    successSub: 'We received your deletion request. We will verify that it comes from the account owner and then process it within a reasonable time; confirmation will be sent to the address you entered.',
     invalidEmail: 'Please enter a valid email address.',
     genericError: 'Something went wrong. You can also reach us directly by email.',
     orEmail: 'You can also reach us directly at ',
@@ -68,6 +69,7 @@ const COPY = {
 
 export default function DataDeletionPage() {
   const { data: session } = useSession();
+  const native = useNative();   // Android app: the "what gets deleted" list names no payment provider
   const [lang, setLang] = useState('he');
   const isHe = lang === 'he';
   const t = COPY[lang];
@@ -157,7 +159,7 @@ export default function DataDeletionPage() {
           <section className="border-b border-white/[0.05] py-8">
             <h2 className="text-[#d4a373] font-bold text-[14px] mb-3 leading-snug">{t.whatH}</h2>
             <ul className="space-y-2">
-              {t.what.map((line, i) => (
+              {t.what.filter((line) => !(native && /Stripe/.test(line))).map((line, i) => (
                 <li key={i} className="text-white/58 text-[13px] leading-[1.85] flex gap-2">
                   <span className="text-[#d4a373]/50 shrink-0">—</span>
                   <span>{line}</span>

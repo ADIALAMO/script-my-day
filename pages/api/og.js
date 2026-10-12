@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { OG_IMAGE } from '../../config/limits.js';
 import { SITE_URL } from '../../lib/site.js';
+import { lookupReferrer } from '../../lib/referral.js';
 
 export const config = { runtime: 'edge' };
 
@@ -119,7 +120,12 @@ export default async function handler(req) {
 
   const { searchParams } = new URL(req.url);
   // Only the invitee's first name (capped) and a two-value language reach the card.
-  const name = (searchParams.get('name') || '').replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 40);
+  // No free text from the URL: the card takes a referral CODE and the name is looked up server-side (it already passed the content
+  // blocklist when it was stored). An unknown / malformed code renders the generic card. Anyone minting arbitrary text on our domain is
+  // therefore impossible.
+  const code = searchParams.get('code') || '';
+  const ref = /^[a-z0-9]{1,16}$/i.test(code) ? await lookupReferrer(code) : null;
+  const name = (ref?.name || '').replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 40);
   const isHe = (searchParams.get('lang') || 'he') !== 'en';
 
   const rawHeadline = isHe

@@ -51,13 +51,19 @@ export default async function handler(req, res) {
   let dropRaw = null;      // set once the raw selfie is stored
   try {
     const isAdmin = isAdminRequest(req);
-    const { selfieBase64, consent } = req.body || {};
+    const { selfieBase64, consent, adult } = req.body || {};
 
     // (0) Biometric consent — mandatory before any face is processed/stored.
     // The client gates this in CharacterModal; enforce it server-side too so a
     // face is never persisted without a recorded affirmative consent.
     if (consent !== true) {
       return res.status(400).json({ success: false, code: CODES.CONSENT_REQUIRED });
+    }
+
+    // (0b) "Star Yourself" is 18+ (Terms §5/§7): the explicit adult confirmation is required exactly like the consent. This is an attestation,
+    // NOT age verification — nothing here can check a person's age.
+    if (adult !== true) {
+      return res.status(400).json({ success: false, code: CODES.ADULT_REQUIRED });
     }
 
     // (1) Tier gate — identity requires at least the free lifetime allowance (anonymous = 0).

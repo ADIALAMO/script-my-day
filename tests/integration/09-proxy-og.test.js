@@ -131,7 +131,7 @@ scenario('J6', 'proxy-image rate limit per IP: 120 requests/minute then 429 (Ret
 
 scenario('J7', '/api/og: renders for a normal request, only talks to its two fixed hosts, ignores a spoofed Host header',
   '200 image/png; fetched hosts ⊆ {cdn.jsdelivr.net, site.test}', async () => {
-    const req = new Request('http://localhost:3000/api/og?name=Dana&lang=en', { headers: { 'x-real-ip': '203.0.113.50', host: 'evil.example', 'x-forwarded-host': 'evil.example' } });
+    const req = new Request('http://localhost:3000/api/og?code=abc123&lang=en', { headers: { 'x-real-ip': '203.0.113.50', host: 'evil.example', 'x-forwarded-host': 'evil.example' } });
     const r = await og(req);
     assert.equal(r.status, 200); assert.equal(r.headers.get('content-type'), 'image/png');
     const buf = Buffer.from(await r.arrayBuffer());
@@ -145,7 +145,8 @@ scenario('J7', '/api/og: renders for a normal request, only talks to its two fix
 scenario('J8', '/api/og: asset size cap — an oversized font/logo is dropped (card still renders, no crash); the name is capped at 40 chars',
   '200 even when the font fetch returns 5 MB; name longer than 40 is truncated', async () => {
     providers.handlers.font = () => new Response(new Uint8Array(5 * 1024 * 1024), { status: 200, headers: { 'content-type': 'font/ttf', 'content-length': String(5 * 1024 * 1024) } });
-    const r = await og(new Request(`http://localhost:3000/api/og?name=${'A'.repeat(200)}&lang=en`, { headers: { 'x-real-ip': '203.0.113.51' } }));
+    fake.set('referral:code:longname', 'u-long'); fake.set('referral:name:u-long', 'A'.repeat(200));   // the name now comes from the code, server-side
+    const r = await og(new Request(`http://localhost:3000/api/og?code=longname&lang=en`, { headers: { 'x-real-ip': '203.0.113.51' } }));
     providers.handlers.font = null;
     assert.equal(r.status, 200);
     assert.deepEqual(ctx.violations, []);

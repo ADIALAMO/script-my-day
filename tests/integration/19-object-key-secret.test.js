@@ -13,7 +13,7 @@ const panelUp = await ctx.route('upload-panel');
 scenario('R1', 'production without OBJECT_KEY_SECRET: character upload → 503 SERVER_ERROR, panel upload → 500 with a clear message; nothing written to R2, no paid call, no quota used',
   '503 / 500, s3puts 0, paid 0', async () => {
     const u = await makeUser('r1', 'free');
-    const r = await invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true }, cookies: u.cookies, ip: '198.51.100.93' });
+    const r = await invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true, adult: true }, cookies: u.cookies, ip: '198.51.100.93' });
     assert.equal(r.status, 503); assert.equal(r.body.code, 'SERVER_ERROR');
     const p = await invoke(panelUp, { body: { key: 'posters/x.png', imageData: PNG_DATA_URI }, ip: '203.0.113.94' });
     assert.equal(p.status, 500); assert.match(p.body.error, /secret not configured/i);

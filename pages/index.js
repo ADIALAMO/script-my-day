@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -18,7 +18,8 @@ import ScriptForm from '../components/ScriptForm';
 import { Analytics } from '@vercel/analytics/react';
 import { track } from '@vercel/analytics';
 import { SHOWCASE_POSTERS, SHOWCASE_REELS } from '../constants/showcase';
-import { MODAL_DATA } from '../constants/modalData';
+import { modalDataFor } from '../constants/modalData';
+import { useNative } from '../hooks/useNative.js';
 import CinematicLoader from '../components/CinematicLoader';
 import CookieConsent from '../components/CookieConsent';
 import { useScriptHistory } from '../hooks/useScriptHistory';
@@ -398,6 +399,9 @@ function HomePage() {
 
   // ── Upgrade modal (authenticated free users) ───────────────────────────────
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  // Android app (Capacitor): no pricing / purchase / subscription text anywhere — neutral legal copy, and the upgrade route below is a no-op.
+  const native = useNative();
+  const modalData = useMemo(() => modalDataFor(native), [native]);
   // ── Waitlist modal (shown instead of checkout while billing is gated) ───────
   const [showWaitlistModal, setShowWaitlistModal] = useState(false);
   // Stripe checkout return — 'success' | 'cancelled' | null
@@ -419,6 +423,7 @@ function HomePage() {
   //   billing live   → authed users get the Pro checkout modal; guests sign in first
   // All other contexts go to the auth gate.
   const openAuthModal = useCallback((context = 'general') => {
+    if (context === 'upgrade' && native) return;   // Google Play payments policy: nothing in the app leads to a purchase
     if (context === 'upgrade' && !BILLING_ENABLED) {
       setShowWaitlistModal(true);
       return;
@@ -429,7 +434,7 @@ function HomePage() {
     }
     setAuthModalContext(context);
     setShowAuthModal(true);
-  }, [session]);
+  }, [session, native]);
 
   const closeAuthModal = useCallback(() => {
     setShowAuthModal(false);
@@ -1031,7 +1036,7 @@ function HomePage() {
 
         {/* Modals (Terms, Privacy, Support, About) */}
         <AnimatePresence>
-          {modalContent && MODAL_DATA[modalContent] && (
+          {modalContent && modalData[modalContent] && (
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/95 md:backdrop-blur-xl p-4 md:p-6"
@@ -1045,7 +1050,7 @@ function HomePage() {
                 <div className={lang === 'he' ? 'text-right' : 'text-left'} dir={lang === 'he' ? 'rtl' : 'ltr'}>
                   <div className="flex items-center justify-between border-b border-[#d4a373]/10 pb-4 mb-6">
                     <h2 className="text-[#d4a373] text-2xl font-black uppercase tracking-tighter italic">
-                      {MODAL_DATA[modalContent][lang].title}
+                      {modalData[modalContent][lang].title}
                     </h2>
                     <button
                       type="button"
@@ -1058,44 +1063,44 @@ function HomePage() {
                   </div>
 
                   <div className="space-y-8 text-gray-300 text-sm md:text-base leading-relaxed overflow-y-auto max-h-[60vh] pr-2 custom-scrollbar">
-                    {MODAL_DATA[modalContent][lang].sections.map((section, idx) => (
+                    {modalData[modalContent][lang].sections.map((section, idx) => (
                       <section
                         key={idx}
-                        className={MODAL_DATA[modalContent][lang].type === 'faq' ? "bg-white/5 p-5 rounded-2xl border border-white/5" : ""}
+                        className={modalData[modalContent][lang].type === 'faq' ? "bg-white/5 p-5 rounded-2xl border border-white/5" : ""}
                       >
                         <h3 className="text-white font-bold mb-2 flex items-center gap-2">
-                          {MODAL_DATA[modalContent][lang].type === 'faq' ? (
+                          {modalData[modalContent][lang].type === 'faq' ? (
                             <span className="text-[#d4a373]">{(idx + 1).toString().padStart(2, '0')}.</span>
                           ) : (
                             <span className="w-1.5 h-1.5 rounded-full bg-[#d4a373]"></span>
                           )}
                           {section.h}
                         </h3>
-                        <p className={MODAL_DATA[modalContent][lang].type === 'faq' ? "text-gray-400 text-xs md:text-sm" : "opacity-80"}>
+                        <p className={modalData[modalContent][lang].type === 'faq' ? "text-gray-400 text-xs md:text-sm" : "opacity-80"}>
                           {section.p}
                         </p>
                       </section>
                     ))}
 
-                    {MODAL_DATA[modalContent][lang].summary && (
+                    {modalData[modalContent][lang].summary && (
                       <div className="bg-white/5 p-4 rounded-xl border border-white/5 mt-8 text-center italic text-[11px] text-[#d4a373]/80">
-                        {MODAL_DATA[modalContent][lang].summary}
+                        {modalData[modalContent][lang].summary}
                       </div>
                     )}
 
-                    {MODAL_DATA[modalContent][lang].quote && (
+                    {modalData[modalContent][lang].quote && (
                       <p className="text-center text-[10px] tracking-[0.6em] text-[#d4a373]/40 uppercase py-4 border-t border-white/5">
-                        {MODAL_DATA[modalContent][lang].quote}
+                        {modalData[modalContent][lang].quote}
                       </p>
                     )}
 
-                    {MODAL_DATA[modalContent][lang].footerLabel && (
+                    {modalData[modalContent][lang].footerLabel && (
                       <div className="pt-6 text-center border-t border-white/5">
                         <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-4">
-                          {MODAL_DATA[modalContent][lang].footerLabel}
+                          {modalData[modalContent][lang].footerLabel}
                         </p>
                         <div className="inline-block px-6 py-2 rounded-full bg-[#d4a373]/10 border border-[#d4a373]/20 text-[#d4a373] text-[11px] font-black uppercase tracking-widest">
-                          {MODAL_DATA[modalContent][lang].footerButton}
+                          {modalData[modalContent][lang].footerButton}
                         </div>
                       </div>
                     )}
@@ -1605,7 +1610,7 @@ function HomePage() {
                   onClick={() => setModalContent(item)}
                   className="text-[9px] font-black text-gray-500 hover:text-[#d4a373] transition-colors uppercase tracking-[0.2em]"
                 >
-                  {MODAL_DATA[item][lang].title.split(' - ')[0]}
+                  {modalData[item][lang].title.split(' - ')[0]}
                 </button>
               ))}
             </div>

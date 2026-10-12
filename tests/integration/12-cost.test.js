@@ -75,7 +75,7 @@ async function month({ kind, cloudflareDown, parallel }) {
       step(130_000);
     }
     // --- character uploads: 8 attempts a day in batches of 4 per 5 minutes ---
-    for (let i = 0; i < 8; i++) { const r = await invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true }, cookies: u.cookies, ip }); if (r.status === 200 && r.body.sheetGenerated) stats.uploads++; if (i % 4 === 3) step(11 * 60_000); }
+    for (let i = 0; i < 8; i++) { const r = await invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true, adult: true }, cookies: u.cookies, ip }); if (r.status === 200 && r.body.sheetGenerated) stats.uploads++; if (i % 4 === 3) step(11 * 60_000); }
     // --- scripts (attempt well over the cap, in rate-limit-friendly batches) ---
     for (let i = 0; i < (pro ? 26 : 8); i++) { if ((await invoke(script, { body: SCRIPT_BODY, cookies: u.cookies, ip })).status === 200) stats.scripts++; if (i % 10 === 9) step(130_000); }
     step(130_000);

@@ -166,6 +166,17 @@ processing only, does not itself delete any keys) is detected at read time in `u
 missing `user:<id>` record excludes it from the response and opportunistically `ZREM`s it, self-healing
 the index regardless of how the deletion actually happened.
 
+### 4b. Android app (Capacitor) — Google Play payments policy
+Inside the native shell **nothing may show a price, a subscription, Stripe or an "upgrade" prompt**. `hooks/useNative.js`
+(true after mount; SSR/first render false) hides Manage Subscription, the LaunchTicket Pro card, the Go-Pro chip, locked-panel
+"Pro only" text and the Star-Yourself upgrade text; `openAuthModal('upgrade')` is a no-op; `modalDataFor(true)` (constants/modalData.js)
+drops the billing/payments/upgrade sections and strips pricing sentences; `getMsg()` swaps three messages for neutral ones
+(detected via the Capacitor global, no import). Pro entitlements still work (tier comes from the server). `tests/native-copy.test.js`
+scans all of it. No server-side userAgent check yet (would need an app update: `android.appendUserAgent`).
+Other Play-compliance rules: `/api/og` takes a referral **code** only (names come from Redis and pass the blocklist); "Star Yourself"
+is 18+ (`adult:true` required like `consent:true`; self-declaration, never "age verification"); deletion requests record the session
+user id and are verified before anything is deleted (still processed manually).
+
 ### 5. Bilingual + RTL → skill `bilingual`
 Every user-facing string must exist in **both** `he` and `en`. Components branch on a
 `lang` prop (`lang === 'he' ? … : …`); data files use paired keys (`label: {he, en}`,

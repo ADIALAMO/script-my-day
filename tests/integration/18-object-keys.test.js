@@ -17,7 +17,7 @@ scenario('Q1', 'new character uploads and panel/poster uploads write random keys
   'characters/<32 hex>/<uuid>-raw|sheet.jpg and panels|posters/<32 hex>/<uuid>.png', async () => {
     const u = await makeUser('q1', 'free');
     const before = providers.s3puts.length;
-    const r = await invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true }, cookies: u.cookies, ip: '198.51.100.90' });
+    const r = await invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true, adult: true }, cookies: u.cookies, ip: '198.51.100.90' });
     assert.equal(r.status, 200);
     const keys = providers.s3puts.slice(before).map((p) => p.key);
     assert.equal(keys.length, 2);

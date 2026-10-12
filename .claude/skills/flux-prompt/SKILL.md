@@ -42,7 +42,7 @@ adding guard phrases. **It backfires every time:**
 
 - **POSTER** (photorealistic film still): wraps the agent prompt in positive
   cinematic prose only —
-  `A high-end cinematic RAW 35mm film still of: <agentPrompt>. Shot on IMAX,
+  `A high-end cinematic RAW 35mm film still of: <agentPrompt>. Shot on large-format film,
   dramatic cinematic lighting, realistic skin textures, sharp focus, 8k,
   masterpiece.` No weights, no negations.
 - **COMIC panel**: stays **bare clean prose** (`agentPrompt` untouched) — the

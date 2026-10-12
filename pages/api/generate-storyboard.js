@@ -70,12 +70,13 @@ const STYLE_TRACKS = {
     prefix: 'Anime comic illustration, flat cel-shading, vibrant dramatic lighting, bold clean ink outlines —',
     suffix: '— vivid saturated colors, clean bold linework, expressive faces'
   },
+  // The key stays `marvel` (clients send it); the user-facing name is "Retro Comic" and the prompt names no franchise.
   marvel: {
-    prefix: '90s X-Men animated series, classic comic book shading, sharp ink line art, retro animation —',
+    prefix: 'Retro 1990s animated superhero style, classic comic book shading, sharp ink line art, retro animation —',
     suffix: '— strong black ink outlines, halftone dots, bold graphic composition'
   },
   noir: {
-    prefix: 'Gritty black and white comic noir, Sin City aesthetic, stark chiaroscuro shadows —',
+    prefix: 'Gritty black and white comic noir, high-contrast graphic-novel look, deep chiaroscuro shadows —',
     suffix: '— high contrast black and white, deep ink shadows, graphic novel style'
   },
   // Soft "painted" track — semi-realistic anime with RENDERED shading instead of flat ink.

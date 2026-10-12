@@ -11,7 +11,7 @@ const upload = await ctx.route('upload-character');
 const poster = await ctx.route('generate-poster');
 const { getMsg } = await import('../../lib/messages.js');
 const GLOBAL = (d = '2026-10-15') => `usage:identity:global:${d}`;
-const up = (u, ip = '198.51.100.60', body = { selfieBase64: PNG_DATA_URI, consent: true }) => invoke(upload, { body, cookies: u.cookies, ip });
+const up = (u, ip = '198.51.100.60', body = { selfieBase64: PNG_DATA_URI, consent: true, adult: true }) => invoke(upload, { body, cookies: u.cookies, ip });
 const FACE = 'https://pub-test.r2.dev/characters/face.jpg';
 
 /** how CharacterModal.jsx builds the {reset} text (UTC, locale dependent) — mirrored so the message can be checked end to end */
@@ -137,7 +137,7 @@ scenario('F8', 'consent is mandatory server-side; invalid payloads cost nothing'
   '400 CONSENT_REQUIRED / 400 for bad data URI, 0 calls', async () => {
     const u = await makeUser('f8', 'free');
     const a = await up(u, '198.51.100.66', { selfieBase64: PNG_DATA_URI }); assert.equal(a.status, 400); assert.equal(a.body.code, 'CONSENT_REQUIRED');
-    const b = await up(u, '198.51.100.66', { selfieBase64: 'not-an-image', consent: true }); assert.equal(b.status, 400);
+    const b = await up(u, '198.51.100.66', { selfieBase64: 'not-an-image', consent: true, adult: true }); assert.equal(b.status, 400);
     assert.deepEqual(providers.counts, {});
     return { actual: `${a.status} CONSENT_REQUIRED, ${b.status} bad payload; 0 calls` };
   });

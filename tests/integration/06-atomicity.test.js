@@ -26,7 +26,7 @@ scenario('G1', '25 PARALLEL identity uploads for one Free user (quota 3): exactl
   '3×200, 22×429 QUOTA_SHEET, gemini-image=3, global budget=3, sheet counter=3', async () => {
     limiterOff();
     const u = await makeUser('g1', 'free');
-    const rs = await Promise.all(Array.from({ length: 25 }, () => invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true }, cookies: u.cookies, ip: '198.51.100.70' })));
+    const rs = await Promise.all(Array.from({ length: 25 }, () => invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true, adult: true }, cookies: u.cookies, ip: '198.51.100.70' })));
     assert.equal(ok(rs), 3); assert.equal(count(rs, 'QUOTA_SHEET'), 22);
     assert.equal(providers.counts['gemini-image'], 3);
     assert.equal(fake.num('usage:identity:global:2026-10-15'), 3);
@@ -37,7 +37,7 @@ scenario('G1', '25 PARALLEL identity uploads for one Free user (quota 3): exactl
 scenario('G1b', 'same burst with the rate limiter ON: still exactly 3 paid calls (4 pass the limiter, the rest are RATE_LIMITED)',
   'gemini-image=3', async () => {
     const u = await makeUser('g1b', 'free');
-    const rs = await Promise.all(Array.from({ length: 25 }, () => invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true }, cookies: u.cookies, ip: '198.51.100.71' })));
+    const rs = await Promise.all(Array.from({ length: 25 }, () => invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true, adult: true }, cookies: u.cookies, ip: '198.51.100.71' })));
     assert.equal(providers.counts['gemini-image'], 3);
     return { actual: `200×${ok(rs)}, QUOTA_SHEET×${count(rs, 'QUOTA_SHEET')}, RATE_LIMITED×${count(rs, 'RATE_LIMITED')}` };
   });

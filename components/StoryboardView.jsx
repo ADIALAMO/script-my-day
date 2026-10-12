@@ -3,12 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Check, X, Clapperboard, Film, Loader2, ChevronDown, Share2, Download, Lock, Crown, RefreshCw } from 'lucide-react';
 import { shareReadyFile, makeShareFile, shareBlobs, downloadBlob, downloadBlobs, exportCapabilities, urlToBlob } from '../utils/export-image.js';
 import { isCapacitorNative } from '../utils/platform.js';
+import { useNative } from '../hooks/useNative.js';
 import ReportButton from './ReportButton.jsx';
 import { isReported } from '../utils/reported-store.js';
 import { REPORT_COPY, reportText } from '../constants/report-copy.js';
 
 export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade, onRegenerate, onRetryRateLimited, regensLeft = 0, notice = '' }) {
   const isHebrew = lang === 'he';
+  const native = useNative();   // Android app: locked panels say "Locked", never "Pro only" / "Upgrade"
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [allCopied, setAllCopied] = useState(false);
   const [expandedPrompts, setExpandedPrompts] = useState({});
@@ -282,7 +284,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                         <Lock size={19} className="text-amber-400/65 group-hover:text-amber-400 transition-colors duration-250" />
                       </div>
                       <p className="text-amber-400/55 font-black text-[8.5px] tracking-[0.32em] uppercase group-hover:text-amber-400/90 transition-colors duration-250">
-                        {isHebrew ? 'פרו בלבד' : 'Pro Only'}
+                        {native ? (isHebrew ? 'נעול' : 'Locked') : (isHebrew ? 'פרו בלבד' : 'Pro Only')}
                       </p>
                     </div>
                   </div>
@@ -300,7 +302,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                     <div className="flex items-center gap-1.5 text-amber-500/32 group-hover:text-amber-500/65 transition-colors duration-250">
                       <Lock size={8} />
                       <span className="text-[7.5px] font-black uppercase tracking-widest">
-                        {isHebrew ? 'שדרג לצפייה' : 'Upgrade to view'}
+                        {native ? (isHebrew ? 'לא זמין' : 'Not available') : (isHebrew ? 'שדרג לצפייה' : 'Upgrade to view')}
                       </span>
                     </div>
                   </div>

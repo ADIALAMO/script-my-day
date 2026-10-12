@@ -8,7 +8,7 @@ const ctx = await boot({ file: '20-raw-selfie' });
 after(() => ctx.afterAll());
 const { scenario, invoke, providers, makeUser, fake } = ctx;
 const upload = await ctx.route('upload-character');
-const up = (u, ip) => invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true }, cookies: u.cookies, ip });
+const up = (u, ip) => invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true, adult: true }, cookies: u.cookies, ip });
 const ptr = (u) => JSON.parse(fake.get(`character:${u.identifier}`));
 
 scenario('S1', 'success: raw selfie stored → sheet generated and stored → pointer saved → raw object DELETED; the response and the pointer reference only the sheet',
