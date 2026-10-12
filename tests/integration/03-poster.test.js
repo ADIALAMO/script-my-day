@@ -33,13 +33,14 @@ scenario('C2', 'Pro: 3 posters/day, 4th → QUOTA_POSTER (paid and admin-granted
     return { actual: 'both Pro kinds: 3 allowed, 4th refused' };
   });
 
-scenario('C3', 'a plain poster is served by the FREE provider first (Cloudflare) — zero paid calls',
-  'cloudflare=1, klein/pollinations=0, paid total 0', async () => {
+scenario('C3', 'a plain poster is served by the FREE provider first (Cloudflare) — no paid GENERATION call (only the one second-opinion safety check)',
+  'cloudflare=1, klein/pollinations=0, paid total 1 (= the image-safety second opinion)', async () => {
     const u = await makeUser('c3', 'free');
     const r = await call(u);
     assert.equal(r.status, 200); assert.equal(r.body.provider, 'Cloudflare-Flux');
-    assert.equal(providers.paidTotal(), 0);
-    return { actual: `provider ${r.body.provider}; paid calls 0` };
+    assert.equal(providers.paidTotal(), providers.counts['gemini-imgsafety'] ?? 0, 'the only paid call is the second-opinion safety check');
+    assert.equal(providers.counts['gemini-imgsafety'], 1);
+    return { actual: `provider ${r.body.provider}; paid generation calls 0` };
   });
 
 scenario('C4', 'cascade fallback when Cloudflare fails: Klein (PAID) serves it and is counted toward the image budget counter',
