@@ -72,8 +72,9 @@ Two independent cascades, each tries providers in order and returns the first su
   primary "unsafe" is final, never re-asked); once consulted, the fallback's verdict alone decides. Nemotron is called with `reasoning:{effort:"none"}`, `max_tokens:512` and the
   neutral text "Image to check." (probe-verified; the old "Classify … safe or unsafe" prompt gave false positives). Unsafe → placeholder +
   `CONTENT_REFUSED`; no checker available → placeholder + `CONTENT_CHECK_UNAVAILABLE` (retryable, quota back).
-  generate-poster leaves an `imgok:<sha256>` marker (6 h) so upload-panel stores the same bytes without a second
-  call and re-checks (fail-closed) anything else.
+  generate-poster leaves an `imgok:<sha256>` marker (6 h) and upload-panel stores ONLY bytes that carry it (no marker — a direct API
+  POST, an edited file, an expired marker, a Redis outage — → `{url:null,unverified:true}`, nothing written to `panels/`/`posters/`, no model call, no quota spent; admin key
+  does not bypass). It does no checking of its own.
   **Reports** (`feat/content-report`): `ReportButton` on posters, panels and reels → `POST /api/report-content`
   ([lib/report.js](lib/report.js)). Reporters are counted by a keyed HMAC (never raw IP/id); the OWNER's report hides
   at once, anyone else needs 2 distinct. Hiding = object moved to the PRIVATE bucket `R2_QUARANTINE_BUCKET_NAME`
