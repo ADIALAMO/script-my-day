@@ -85,6 +85,9 @@ Two independent cascades, each tries providers in order and returns the first su
   at once, anyone else needs 2 distinct. Hiding = object moved to the PRIVATE bucket `R2_QUARANTINE_BUCKET_NAME`
   ([lib/quarantine.js](lib/quarantine.js)) + `report:hidden:<key>` (proxy-image answers 410; upload-panel refuses the same
   bytes via `report:hidden:h:<sha256>`). Unset quarantine bucket = nothing deleted, alert says "still public". Restore /
+  **Gallery reports:** the static showcase items (`constants/showcase.js`, files in `public/`) have the same flag (cards, genre view, poster lightbox, reel lightbox) with a
+  `{ gallery: 'poster:<id>'|'reel:<id>' }` ref validated against the showcase lists ([lib/gallery-report.js](lib/gallery-report.js) — path from our list, never the client). Local hide only
+  (`gallery:<ref>` in the reported-store) + a Telegram alert with the `public/` path on every distinct reporter; no Redis mark, no threshold, copy says "hidden for you". Remove the file by hand (git rm + deploy).
   permanent delete / find objects: [scripts/takedown-object.mjs](scripts/takedown-object.mjs). The `imgok:<sha256>` marker
   carries the provider tag, copied into the R2 object metadata. Circuit keys `check_nemotron` / `check_gemini` reuse circuit-breaker.js. Cloudflare's request body is `{ prompt, steps: 6 }`
   ONLY — confirmed empirically against the real API that `seed` and `negative_prompt` are both
