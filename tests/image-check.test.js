@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseNemotronVerdict, parseGeminiVerdict, imageHash, NEMOTRON_SLUG } from '../lib/image-check.js';
+import { parseNemotronVerdict, parseFallbackVerdict, imageHash, NEMOTRON_SLUG, FALLBACK_SLUG, NEMOTRON_MAX_TOKENS, reasoningOption } from '../lib/image-check.js';
 import { checkBudgetUsd, checkMaxCalls, CHECK_COST_USD } from '../lib/budget.js';
 
 // Pinned format (NVIDIA model card / NIM reference): "User Safety: safe|unsafe", optional "Response Safety: …", optional "Safety Categories: …"
@@ -41,22 +41,32 @@ test('parseNemotronVerdict — table-driven', () => {
   for (const [input, want] of T) assert.equal(parseNemotronVerdict(input), want, JSON.stringify(input));
 });
 
-test('parseGeminiVerdict — exact {"verdict": …} only; any Gemini block on an image input is unsafe', () => {
-  const ok = (text, extra = {}) => ({ candidates: [{ content: { parts: [{ text }] }, finishReason: 'STOP', ...extra }] });
-  assert.equal(parseGeminiVerdict(ok('{"verdict":"safe"}')), 'safe');
-  assert.equal(parseGeminiVerdict(ok('{"verdict":"unsafe"}')), 'unsafe');
-  assert.equal(parseGeminiVerdict(ok(' {"verdict": "safe"} ')), 'safe');
-  for (const bad of ['safe', '{"verdict":"maybe"}', '{"verdict":"safe","note":"x"}', '{"result":"safe"}', '[]', '"safe"', 'null', '', '{"verdict":["safe"]}', '{"verdict":"Safe"}']) {
-    assert.equal(parseGeminiVerdict(ok(bad)), 'unknown', bad);
+// The four REAL raw replies recorded by the format probe on the free route (2026-10-12) — the parser is pinned to them.
+test('parseNemotronVerdict — pinned to the four real raw replies', () => {
+  const REAL = [
+    ['User Safety: safe', 'safe'],
+    ['User Safety: safe\nResponse Safety: safe', 'safe'],
+    ['User Safety: unsafe\nSafety Categories: Sexual', 'unsafe'],
+    ['User Safety: unsafe\nResponse Safety: unsafe\nSafety Categories: Illegal Activity, Other, Needs Caution', 'unsafe'],
+  ];
+  for (const [raw, want] of REAL) assert.equal(parseNemotronVerdict(raw), want, JSON.stringify(raw));
+});
+
+test('parseFallbackVerdict (Gemini via OpenRouter) — exact {"verdict": …} only; any refusal is unsafe and wins over the text', () => {
+  const ok = (content, extra = {}) => ({ choices: [{ finish_reason: 'stop', message: { content }, ...extra }] });
+  assert.equal(parseFallbackVerdict(ok('{"verdict":"safe"}')), 'safe');
+  assert.equal(parseFallbackVerdict(ok('{"verdict":"unsafe"}')), 'unsafe');
+  assert.equal(parseFallbackVerdict(ok(' {"verdict": "safe"} ')), 'safe');
+  for (const bad of ['safe', '{"verdict":"maybe"}', '{"verdict":"safe","note":"x"}', '{"result":"safe"}', '[]', '"safe"', 'null', '', '{"verdict":["safe"]}', '{"verdict":"Safe"}', null, 42]) {
+    assert.equal(parseFallbackVerdict(ok(bad)), 'unknown', String(bad));
   }
-  assert.equal(parseGeminiVerdict({ promptFeedback: { blockReason: 'SAFETY' } }), 'unsafe');
-  assert.equal(parseGeminiVerdict({ promptFeedback: { blockReason: 'PROHIBITED_CONTENT' } }), 'unsafe');
-  assert.equal(parseGeminiVerdict({ promptFeedback: { blockReason: 'IMAGE_SAFETY' } }), 'unsafe');
-  assert.equal(parseGeminiVerdict(ok('', { finishReason: 'SAFETY' })), 'unsafe');
-  assert.equal(parseGeminiVerdict(ok('{"verdict":"safe"}', { finishReason: 'SAFETY' })), 'unsafe', 'a SAFETY finish reason wins over a "safe" text');
-  assert.equal(parseGeminiVerdict({}), 'unknown');
-  assert.equal(parseGeminiVerdict(null), 'unknown');
-  assert.equal(parseGeminiVerdict({ candidates: [] }), 'unknown');
+  assert.equal(parseFallbackVerdict({ choices: [{ finish_reason: 'content_filter', message: { content: null } }] }), 'unsafe');
+  assert.equal(parseFallbackVerdict({ choices: [{ finish_reason: 'stop', native_finish_reason: 'IMAGE_SAFETY', message: { content: null } }] }), 'unsafe');
+  assert.equal(parseFallbackVerdict({ choices: [{ finish_reason: 'stop', native_finish_reason: 'SAFETY', message: { content: '{"verdict":"safe"}' } }] }), 'unsafe', 'a native SAFETY reason wins over a "safe" text');
+  assert.equal(parseFallbackVerdict({ choices: [{ message: { content: '{"verdict":"safe"}', refusal: 'I cannot assist' } }] }), 'unsafe');
+  assert.equal(parseFallbackVerdict({}), 'unknown');
+  assert.equal(parseFallbackVerdict(null), 'unknown');
+  assert.equal(parseFallbackVerdict({ choices: [] }), 'unknown');
 });
 
 test('imageHash is the SHA-256 of the DECODED bytes, independent of the claimed MIME type', () => {
@@ -67,8 +77,17 @@ test('imageHash is the SHA-256 of the DECODED bytes, independent of the claimed 
   assert.equal(imageHash(undefined), null);
 });
 
-test('the pinned model slug is the free Nemotron route', () => {
+test('pinned slugs and request defaults', () => {
   assert.equal(NEMOTRON_SLUG, 'nvidia/nemotron-3.5-content-safety:free');
+  assert.equal(FALLBACK_SLUG, 'google/gemini-2.5-flash-lite');
+  assert.equal(NEMOTRON_MAX_TOKENS, 512);
+  const keep = process.env.IMAGE_CHECK_REASONING_EFFORT;
+  try {
+    delete process.env.IMAGE_CHECK_REASONING_EFFORT; assert.deepEqual(reasoningOption(), { reasoning: { effort: 'none' } });
+    process.env.IMAGE_CHECK_REASONING_EFFORT = 'low'; assert.deepEqual(reasoningOption(), { reasoning: { effort: 'low' } });
+    process.env.IMAGE_CHECK_REASONING_EFFORT = 'bogus'; assert.deepEqual(reasoningOption(), { reasoning: { effort: 'none' } });
+    process.env.IMAGE_CHECK_REASONING_EFFORT = 'off'; assert.deepEqual(reasoningOption(), {});
+  } finally { if (keep === undefined) delete process.env.IMAGE_CHECK_REASONING_EFFORT; else process.env.IMAGE_CHECK_REASONING_EFFORT = keep; }
 });
 
 test('paid-checker budget math: default $0.50/day, 0 switches the fallback off, junk falls back to the default', () => {

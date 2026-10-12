@@ -1,4 +1,4 @@
-/** Scenario O — output-image safety check: Nemotron primary, capped Gemini Flash-Lite fallback, fail-closed, upload-panel marker. */
+/** Scenario O — output-image safety check: Nemotron primary, capped Gemini 2.5 Flash-Lite fallback (via OpenRouter), fail-closed, upload-panel marker. */
 import { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { boot } from './setup.mjs';
@@ -31,7 +31,8 @@ scenario('O1', 'a clean image: ONE free Nemotron call (image first, then the neu
     const sent = providers.bodies.find((b) => b.provider === 'moderation').body;
     assert.equal(sent.model, 'nvidia/nemotron-3.5-content-safety:free');
     assert.equal(sent.messages[0].content[0].type, 'image_url', 'image first');
-    assert.equal(sent.messages[0].content[1].type, 'text');
+    assert.equal(sent.messages[0].content[1].type, 'text'); assert.equal(sent.messages[0].content[1].text, 'Image to check.');
+    assert.equal(sent.max_tokens, 512); assert.deepEqual(sent.reasoning, { effort: 'none' });
     assert.ok(marker(r.body.imageUrl), 'imgok marker written for the exact bytes');
     assert.equal(posterCount(u), 1);
     return { actual: '1 free check, 0 paid, marker written' };
@@ -102,8 +103,12 @@ scenario('O4', 'Nemotron 5xx → ONE short retry (2 calls) → paid Gemini fallb
     assert.ok(providers.log.find((l) => l.provider === 'gemini-check').hasImage);
     assert.equal(checkSpend(), 1);
     const sent = providers.bodies.find((b) => b.provider === 'gemini-check').body;
-    assert.equal(sent.generationConfig.responseSchema.properties.verdict.enum.join(), 'safe,unsafe');
-    assert.ok(sent.safetySettings.some((s) => s.category === 'HARM_CATEGORY_SEXUALLY_EXPLICIT'));
+    assert.equal(sent.model, 'google/gemini-2.5-flash-lite');
+    assert.deepEqual(sent.provider, { data_collection: 'deny' }, 'no-training routing');
+    assert.equal(sent.response_format.type, 'json_schema');
+    assert.equal(sent.response_format.json_schema.schema.properties.verdict.enum.join(), 'safe,unsafe');
+    assert.equal(sent.messages[0].content[0].type, 'image_url');
+    assert.equal(providers.counts.gemini ?? 0, 0, 'the direct Google API is no longer used by the check');
     return { actual: 'fell back after the retry; 1 paid check counted' };
   });
 
@@ -228,6 +233,9 @@ scenario('O13', 'Character Sheet: an UNSAFE generated sheet is not stored — th
     providers.moderationVerdict.queue.push('User Safety: safe', 'User Safety: unsafe\nSafety Categories: Sexual');
     const r = await invoke(uploadCharacter, { body: { selfieBase64: PNG_DATA_URI, consent: true }, cookies: u.cookies, ip: '198.51.100.253' });
     assert.equal(r.status, 200); assert.equal(r.body.sheetGenerated, false);
+    const selfieCheck = providers.bodies.find((b) => b.provider === 'moderation').body;   // the FIRST moderation call is the selfie
+    assert.equal(selfieCheck.messages[0].content[0].type, 'image_url'); assert.equal(selfieCheck.messages[0].content[1].text, 'Image to check.');
+    assert.equal(selfieCheck.max_tokens, 512); assert.deepEqual(selfieCheck.reasoning, { effort: 'none' });
     assert.ok(!providers.s3puts.some((p) => String(p.key).endsWith('-sheet.jpg')), 'sheet never stored');
     assert.ok(providers.s3puts.some((p) => String(p.key).endsWith('-raw.jpg')) && providers.s3deletes.length === 0, 'raw selfie kept as the reference');
     assert.equal(fake.num(`usage:sheet:${u.identifier}:2026-10`), 1, 'the paid call was made → the charge stays');
@@ -249,11 +257,11 @@ scenario('O14', 'Character Sheet: when no checker can answer, the sheet is not s
   });
 
 scenario('O15', 'Nemotron request shape: a token budget big enough for the REASONING (the probe saw content=null / finish=length at 40), no reasoning option unless configured, an invalid option is ignored; a reasoning-exhausted reply (null content) goes to the fallback',
-  'max_tokens ≥ 1024; reasoning only when IMAGE_CHECK_REASONING_EFFORT is valid; null/length → Gemini decides', async () => {
+  'max_tokens 512, reasoning none by default; env overrides; invalid value → none; "off" omits; null/length → Gemini decides', async () => {
     const u = await makeUser('o15', 'free');
     await plain(u, '198.51.100.140');
     const def = providers.bodies.find((b) => b.provider === 'moderation').body;
-    assert.ok(def.max_tokens >= 1024, `max_tokens ${def.max_tokens}`); assert.equal(def.reasoning, undefined);
+    assert.equal(def.max_tokens, 512); assert.deepEqual(def.reasoning, { effort: 'none' });
     const keep = process.env.IMAGE_CHECK_REASONING_EFFORT;
     try {
       providers.bodies.length = 0;
@@ -263,10 +271,30 @@ scenario('O15', 'Nemotron request shape: a token budget big enough for the REASO
       providers.bodies.length = 0;
       process.env.IMAGE_CHECK_REASONING_EFFORT = 'bogus; drop table';
       await plain(await makeUser('o15c', 'free'), '198.51.100.142');
-      assert.equal(providers.bodies.find((b) => b.provider === 'moderation').body.reasoning, undefined, 'invalid value never forwarded');
+      assert.deepEqual(providers.bodies.find((b) => b.provider === 'moderation').body.reasoning, { effort: 'none' }, 'invalid value never forwarded — falls back to none');
+      providers.bodies.length = 0;
+      process.env.IMAGE_CHECK_REASONING_EFFORT = 'off';
+      await plain(await makeUser('o15e', 'free'), '198.51.100.144');
+      assert.equal(providers.bodies.find((b) => b.provider === 'moderation').body.reasoning, undefined, 'off → no reasoning option');
     } finally { if (keep === undefined) delete process.env.IMAGE_CHECK_REASONING_EFFORT; else process.env.IMAGE_CHECK_REASONING_EFFORT = keep; }
     providers.moderationVerdict.nullLength = true;
     const r = await plain(await makeUser('o15d', 'free'), '198.51.100.143');
     assert.ok(!r.body.isPlaceholder); assert.equal(gem(), 1, 'reasoning ran out of tokens → unreadable → Gemini decided');
     return { actual: 'request shape verified; null/length reply fell back to Gemini' };
+  });
+
+scenario('O16', 'the check has NO dependency on GOOGLE_GEMINI_API_KEY: with that key removed, Nemotron down still falls back (through OpenRouter) and serves a safe image; an unsafe verdict from it refuses',
+  'gemini-check=1 via openrouter, direct Google API never called', async () => {
+    const keep = process.env.GOOGLE_GEMINI_API_KEY;
+    try {
+      delete process.env.GOOGLE_GEMINI_API_KEY;
+      providers.mode.moderation = 500;
+      const a = await plain(await makeUser('o16a', 'free'), '198.51.100.145');
+      assert.ok(!a.body.isPlaceholder); assert.equal(gem(), 1); assert.equal(providers.counts.gemini ?? 0, 0);
+      ctx.advance(60_000);
+      providers.checkGemini.value = 'unsafe';
+      const b = await plain(await makeUser('o16b', 'free'), '198.51.100.146');
+      assert.equal(b.body.code, 'CONTENT_REFUSED');
+    } finally { process.env.GOOGLE_GEMINI_API_KEY = keep; }
+    return { actual: 'fallback worked without the Google key' };
   });

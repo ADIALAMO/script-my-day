@@ -43,10 +43,13 @@ test("NEXT_PUBLIC_GEMINI_API_TIER=paid removes the free-tier sentence in both la
     assert.ok(!t.includes('Pollinations'), `${lang}: Pollinations was removed from every image chain and must not be named as a provider`);
     assert.match(t, lang === 'he' ? /תמונת הפנים/ : /face photo/);
   }
-  assert.match(r.en7, /\(a\) Google \(Gemini API\) receives your text to create scripts and the comic plan, and, when our primary safety check is unavailable, generated images for a safety check\. \(b\) OpenRouter/);
+  assert.match(r.en7, /\(a\) Google \(Gemini API\) receives your text to create scripts and the comic plan\. \(b\) OpenRouter/);
+  assert.match(r.en7, /backup safety check may be run on a generated image through our AI gateway provider \(OpenRouter\), with routing set to providers that state they do not collect the data or train on it \(the OpenRouter data_collection=deny setting\) — a statement we cannot independently verify/);
+  assert.doesNotMatch(r.en7, /generated images for a safety check/, 'the checker is not described as a Google free-tier flow');
   assert.match(r.en7, /a content-safety model that checks face photos and generated images/);
   assert.match(r.he7, /ותמונות שנוצרו\)/);
-  assert.match(r.he7, /בדיקת הבטיחות הראשית אינה זמינה גם תמונות שנוצרו/);
+  assert.match(r.he7, /בדיקת בטיחות גיבוי על תמונה שנוצרה דרך שער ה-AI שלנו \(OpenRouter\), בניתוב המוגדר לספקים שמצהירים כי אינם אוספים את המידע ואינם מאמנים עליו \(הגדרת data_collection=deny של OpenRouter\) — הצהרה שאיננו יכולים לאמת באופן עצמאי/);
+  assert.doesNotMatch(r.he7, /ותוכנית הקומיקס, וכאשר/);
 });
 
 test('no bracketed internal note or TODO/owner remark appears in any user-visible policy or terms text, either value', () => {

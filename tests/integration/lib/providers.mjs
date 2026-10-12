@@ -9,7 +9,7 @@
  *   grok              OpenRouter x-ai/grok-imagine-image-quality (identity)          PAID
  *   gemini-image      OpenRouter google/gemini-2.5-flash-image (identity)            PAID
  *   moderation        OpenRouter nvidia/nemotron ":free" (selfie moderation AND the output-image check)  free
- *   gemini-check      Google generativelanguage, the PAID fallback of the output-image check   PAID
+ *   gemini-check      OpenRouter google/gemini-2.5-flash-lite, the PAID fallback of the output-image check   PAID
  *   cohere            Cohere chat                                                    PAID
  *   cloudflare        Cloudflare Workers AI flux-1-schnell                           free tier
  *   pollinations      image.pollinations.ai                                          free
@@ -82,13 +82,6 @@ export function createProviders() {
 
     if (host === 'generativelanguage.googleapis.com') {
       const model = decodeURIComponent(u.pathname.split('/models/')[1] || '').split(':')[0];
-      if (body?.generationConfig?.responseSchema) {   // the output-image check (fallback): strict {"verdict": …}
-        count('gemini-check', { model, hasImage: JSON.stringify(body.contents).includes('inlineData') }); bodies.push({ provider: 'gemini-check', body });
-        const f = failing('gemini-check'); if (f === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; } if (f) return json({ error: { message: 'mock failure' } }, Number(f));
-        if (checkGemini.block) return json({ promptFeedback: { blockReason: 'SAFETY' } });
-        const t = checkGemini.raw ?? JSON.stringify({ verdict: checkGemini.value });
-        return json({ candidates: [{ content: { parts: [{ text: t }] }, finishReason: 'STOP' }] });
-      }
       count('gemini', { model }); bodies.push({ provider: 'gemini', body });
       const f = (mode[`gemini:${model}`] && mode[`gemini:${model}`] !== 'ok' ? mode[`gemini:${model}`] : null) || failing('gemini');   // per-model failure: mode['gemini:gemini-2.5-flash'] = 500
       if (f) return json({ error: { message: 'mock failure' } }, Number(f));
@@ -115,6 +108,13 @@ export function createProviders() {
       bodies.push({ provider: model, body });
       const refusedImage = json({ choices: [{ finish_reason: 'content_filter', native_finish_reason: 'IMAGE_SAFETY', message: { content: null } }] });
       const img = { choices: [{ message: { content: null, images: [{ image_url: { url: PNG_DATA_URI } }] } }] };
+      if (model.includes('gemini-2.5-flash-lite') && body?.response_format) {   // the output-image check FALLBACK, through OpenRouter
+        count('gemini-check', { model, hasImage: JSON.stringify(body.messages).includes('image_url') }); bodies.push({ provider: 'gemini-check', body });
+        const f = failing('gemini-check'); if (f === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; } if (f) return text('mock failure', Number(f));
+        if (checkGemini.block) return json({ choices: [{ finish_reason: 'content_filter', native_finish_reason: 'IMAGE_SAFETY', message: { content: null } }] });
+        const t = checkGemini.raw ?? JSON.stringify({ verdict: checkGemini.value });
+        return json({ choices: [{ finish_reason: 'stop', message: { content: t } }] });
+      }
       if (model.includes('flux.2-klein')) { count('klein', { model }); const f = failing('klein'); if (f) return text('mock failure', Number(f)); if (refuse.klein) return refusedImage; return json(img); }
       if (model.includes('grok-imagine')) { count('grok', { model }); const f = failing('grok'); if (f) return text('mock failure', Number(f)); if (refuse.grok) return refusedImage; return json(img); }
       if (model.includes('gemini-2.5-flash-image')) { count('gemini-image', { model }); const f = failing('gemini-image'); if (f) return text('mock failure', Number(f)); return json(img); }
