@@ -31,21 +31,23 @@ test('the regeneration line reaches the script prompt ONLY when asked for', () =
   assert.equal(again.messages.length, plain.messages.length);
 });
 
-test('checkTextOutput without a classifier: clean text passes, blocklisted wording is held back (en + he), empty is unsafe — no network involved', async () => {
-  assert.deepEqual(await checkTextOutput('INT. KITCHEN - DAY. Dana laughs with her friend over coffee.', { genre: 'drama' }), { verdict: 'safe', stage: 'blocklist' });
+test('checkTextOutput: blocklisted wording is held back (en + he, any genre) BEFORE the classifier is asked; empty is unsafe — no network involved', async () => {
   const en = await checkTextOutput('SCENE 2. A nude woman walks along the shore.', { genre: 'comedy' });
   assert.equal(en.verdict, 'blocked'); assert.match(en.stage, /^blocklist:/);
   const he = await checkTextOutput('סצנה 1. אישה בעירום מלא הולכת בחוף.', { genre: 'action' });
   assert.equal(he.verdict, 'blocked');
-  const minor = await checkTextOutput('A child and sexual content', { genre: 'drama' });
-  assert.equal(minor.stage, 'blocklist:minor-sexual');
+  assert.equal((await checkTextOutput('A child and sexual content', { genre: 'romance' })).stage, 'blocklist:minor-sexual');
   assert.equal((await checkTextOutput('   ', { genre: 'drama' })).verdict, 'unsafe');
   assert.equal((await checkTextOutput(undefined, { genre: 'drama' })).verdict, 'unsafe');
 });
 
-test('a classifier genre with no time left is "unavailable" (fail-closed), never "safe" — and it does not call out', async () => {
-  const r = await checkTextOutput('INT. CAFÉ - NIGHT. They talk until the café closes.', { genre: 'romance', budgetMs: 1000 });
-  assert.deepEqual(r, { verdict: 'unavailable', stage: 'no-time' });
+test('classifier unavailable (here: no time left, so nothing is called): ROMANCE / HORROR fail closed; every other genre returns on the blocklist alone and says it degraded', async () => {
+  const text = 'INT. CAFÉ - NIGHT. They talk until the café closes.';
+  for (const g of ['romance', 'horror', 'Romance']) assert.deepEqual(await checkTextOutput(text, { genre: g, budgetMs: 1000 }), { verdict: 'unavailable', stage: 'no-time' }, g);
+  for (const g of ['drama', 'comedy', 'action', 'sci-fi', undefined]) {
+    const r = await checkTextOutput(text, { genre: g, budgetMs: 1000 });
+    assert.equal(r.verdict, 'safe', String(g)); assert.equal(r.degraded, true); assert.match(r.stage, /classifier no-time/);
+  }
 });
 
 test('storyboardText joins scene, visual and dialogue of every panel and tolerates junk', () => {
@@ -86,9 +88,9 @@ test('no copy, doc or comment claims age verification — every mention is a den
 test('privacy text discloses the text classifier and the photo screen in both languages, and never as age verification', async () => {
   const { privacyProvidersEn, privacyProvidersHe } = await import('../constants/ai-provider-copy.js');
   const en = privacyProvidersEn(); const he = privacyProvidersHe();
-  assert.match(en, /romance and horror scripts and comics is also checked by an automatic safety classifier/);
+  assert.match(en, /generated scripts and comics is also checked by an automatic safety classifier/);
   assert.match(en, /clearly shows a child — a best-effort check that cannot confirm the age of anyone/);
-  assert.match(he, /רומנטיים ואימה נבדק גם הוא על ידי מסווג בטיחות אוטומטי/);
+  assert.match(he, /תסריטים וקומיקס שנוצרו נבדק גם הוא על ידי מסווג בטיחות אוטומטי/);
   assert.match(he, /מציגה בבירור ילד — בדיקה מאמץ סביר שאינה יכולה לאשר את גילו של איש/);
   assert.doesNotMatch(en, /age verification/i);
 });

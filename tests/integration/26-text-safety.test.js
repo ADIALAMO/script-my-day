@@ -15,7 +15,10 @@ const ENTRY = 'I walked along the beach with my family and we laughed all aftern
 const callScript = (u, genre, ip) => invoke(script, { body: { journalEntry: ENTRY, genre, gender: 'neutral' }, cookies: u.cookies, ip });
 const SCRIPT_USED = (u) => fake.num(`usage:script:${u.identifier}:2026-10-15`);
 const COMIC_USED = (u) => fake.num(`usage:comic:${u.identifier}:2026-10`);
-const SPEND = () => fake.num('usage:check:paid:global:2026-10-15');
+const SPEND = () => fake.num('usage:check:paid:global:2026-10-15');            // IMAGE check budget (DAILY_CHECK_BUDGET)
+const TEXT_SPEND = () => fake.num('usage:check:text:global:2026-10-15');        // text classifier budget (DAILY_TEXT_CHECK_BUDGET)
+const MINOR_SPEND = () => fake.num('usage:check:minor:global:2026-10-15');      // minor screen budget (DAILY_MINOR_CHECK_BUDGET)
+const DEGRADED = () => fake.num('stats:textcheck:degraded:2026-10-15');
 const textChecks = () => providers.log.filter((l) => l.provider === 'gemini-check' && !l.hasImage).length;
 const ageChecks = () => providers.log.filter((l) => l.provider === 'gemini-check' && l.hasImage).length;
 /** a plausible English script (> 500 chars, no Hebrew) so the cascade accepts it */
@@ -27,27 +30,28 @@ const SB_SCRIPT = 'INT. HALL - DAY. A calm person waits in a quiet hall while th
 let seq = 0; const seed = () => `${Date.now()}${++seq}${Math.floor(Math.random() * 1e6)}`;
 const callStoryboard = (u, genre, ip) => invoke(storyboard, { body: { script: SB_SCRIPT, lang: 'en', genre, comicStyle: 'anime', comicSeed: seed() }, cookies: u.cookies, ip });
 
-scenario('T1', 'a clean DRAMA script is blocklist-checked only: no classifier call, no paid spend, returned and counted',
-  'gemini-check=0, 200, usage:script=1', async () => {
+scenario('T1', 'a clean DRAMA script now also goes through the text classifier (every genre); spend lands on the TEXT budget only; returned and counted',
+  'text classifier ×1, text spend 1, image/minor spend 0, 200, usage:script=1', async () => {
     const u = await makeUser('t1', 'free');
     const r = await callScript(u, 'drama', '198.51.100.201');
     assert.equal(r.status, 200); assert.ok(r.body.script);
-    assert.equal(providers.counts['gemini-check'] ?? 0, 0); assert.equal(SPEND(), 0); assert.equal(SCRIPT_USED(u), 1);
-    return { actual: 'blocklist only, $0' };
+    assert.equal(textChecks(), 1); assert.equal(TEXT_SPEND(), 1); assert.equal(SPEND(), 0); assert.equal(MINOR_SPEND(), 0); assert.equal(SCRIPT_USED(u), 1);
+    assert.equal(DEGRADED(), 0);
+    return { actual: 'every genre is classified; own budget' };
   });
 
-scenario('T2', 'ROMANCE and HORROR scripts go through the classifier (text only, strict JSON, no-training routing); safe → returned; the paid call is counted against DAILY_CHECK_BUDGET',
-  'one text classifier call each, spend 2', async () => {
+scenario('T2', 'ROMANCE and HORROR scripts go through the classifier too (text only, strict JSON, no-training routing); safe → returned; the paid call is counted against the TEXT budget',
+  'one text classifier call each, text spend 2, image spend 0', async () => {
     const a = await makeUser('t2a', 'free'); const b = await makeUser('t2b', 'free');
     const r1 = await callScript(a, 'romance', '198.51.100.202'); const r2 = await callScript(b, 'horror', '198.51.100.203');
     assert.equal(r1.status, 200); assert.equal(r2.status, 200);
-    assert.equal(textChecks(), 2); assert.equal(ageChecks(), 0); assert.equal(SPEND(), 2);
+    assert.equal(textChecks(), 2); assert.equal(ageChecks(), 0); assert.equal(TEXT_SPEND(), 2); assert.equal(SPEND(), 0);
     const sent = providers.bodies.find((x) => x.provider === 'gemini-check').body;
     assert.equal(sent.model, 'google/gemini-2.5-flash-lite'); assert.deepEqual(sent.provider, { data_collection: 'deny' });
     assert.equal(sent.response_format.json_schema.schema.properties.verdict.enum.join(), 'safe,unsafe');
     assert.ok(sent.messages[0].content.length === 1 && sent.messages[0].content[0].type === 'text');
     assert.match(sent.messages[0].content[0].text, /TEXT START/); assert.match(sent.messages[0].content[0].text, /Scene one/);
-    return { actual: 'classifier for romance + horror only' };
+    return { actual: 'classifier for romance + horror, text budget' };
   });
 
 scenario('T3', 'classifier says UNSAFE → ONE regeneration with the safety reminder; still unsafe → 422 CONTENT_REFUSED, the quota slot is returned',
@@ -64,47 +68,55 @@ scenario('T3', 'classifier says UNSAFE → ONE regeneration with the safety remi
   });
 
 scenario('T4', 'unsafe once, safe after the regeneration → the SECOND script is returned and charged once',
-  'classifier unsafe,safe; 200; usage:script 1; two script generations', async () => {
+  'classifier unsafe,safe; 200; usage:script 1; two script generations; text spend 2', async () => {
     providers.checkGemini.queue.push('unsafe', 'safe');
     const u = await makeUser('t4', 'free');
     const r = await callScript(u, 'romance', '198.51.100.205');
-    assert.equal(r.status, 200); assert.equal(SCRIPT_USED(u), 1); assert.equal(geminiScriptBodies().length, 2); assert.equal(SPEND(), 2);
+    assert.equal(r.status, 200); assert.equal(SCRIPT_USED(u), 1); assert.equal(geminiScriptBodies().length, 2); assert.equal(TEXT_SPEND(), 2);
     return { actual: 'regeneration passed' };
   });
 
-scenario('T5', 'blocklisted wording in the OUTPUT (any genre): one regeneration; clean second try is returned; held back twice → CONTENT_REFUSED + quota returned; the classifier is not involved for drama',
-  'drama: blocked → regen → 200; blocked ×2 → 422', async () => {
+scenario('T5', 'blocklisted wording in the OUTPUT (any genre): one regeneration; clean second try is returned; held back twice → CONTENT_REFUSED + quota returned; the classifier only judges text the blocklist let through',
+  'drama: blocked → regen → classified → 200; blocked ×2 → 422 with no classifier call', async () => {
     providers.scriptOutputs.queue.push(scriptWith(BLATANT));
     const a = await makeUser('t5a', 'free');
     const r1 = await callScript(a, 'drama', '198.51.100.206');
     assert.equal(r1.status, 200); assert.ok(!r1.body.script.toLowerCase().includes('nude')); assert.equal(SCRIPT_USED(a), 1);
     assert.ok(geminiScriptBodies()[1].includes(REMINDER));
+    assert.equal(textChecks(), 1, 'the blocked first output never reached the classifier; the clean regeneration did');
+    const before = textChecks();
     providers.scriptOutputs.queue.push(scriptWith(BLATANT), scriptWith(BLATANT));
     const b = await makeUser('t5b', 'free');
     const r2 = await callScript(b, 'drama', '198.51.100.207');
     assert.equal(r2.status, 422); assert.equal(r2.body.code, 'CONTENT_REFUSED'); assert.equal(SCRIPT_USED(b), 0);
-    assert.equal(providers.counts['gemini-check'] ?? 0, 0, 'no classifier for drama');
-    return { actual: 'output blocklist works for every genre' };
+    assert.equal(textChecks(), before, 'two blocklisted outputs → no classifier call at all');
+    return { actual: 'output blocklist first, classifier second' };
   });
 
-scenario('T6', 'classifier required but UNAVAILABLE (down, circuit, or daily cap spent) → 503 CONTENT_CHECK_UNAVAILABLE, the script is NOT returned, quota and the paid slot are given back',
-  '503 each time; usage:script 0; spend 0', async () => {
-    providers.mode['gemini-check'] = 500;
+scenario('T6', 'classifier UNAVAILABLE (down, own circuit open, own daily cap spent): ROMANCE / HORROR fail CLOSED (503 CONTENT_CHECK_UNAVAILABLE, script not returned, quota + paid slot returned); every OTHER genre returns on the blocklist alone and bumps a degradation counter',
+  'romance/horror 503; drama 200 + counter, no text stored', async () => {
+    providers.mode['gemini-check-text'] = 500;
     const a = await makeUser('t6a', 'free');
     const down = await callScript(a, 'romance', '198.51.100.208');
     assert.equal(down.status, 503); assert.equal(down.body.code, 'CONTENT_CHECK_UNAVAILABLE'); assert.equal(down.body.script, undefined);
-    assert.equal(SCRIPT_USED(a), 0); assert.equal(SPEND(), 0, 'a failed paid call is not billed');
-    const again = await callScript(await makeUser('t6b', 'free'), 'horror', '198.51.100.209');   // circuit now open
+    assert.equal(SCRIPT_USED(a), 0); assert.equal(TEXT_SPEND(), 0, 'a failed paid call is not billed');
+    const again = await callScript(await makeUser('t6b', 'free'), 'horror', '198.51.100.209');   // text circuit now open
     assert.equal(again.status, 503); assert.equal(textChecks(), 1, 'circuit open → no second paid call');
-    delete providers.mode['gemini-check']; ctx.advance(120_000);
-    const keep = process.env.DAILY_CHECK_BUDGET; process.env.DAILY_CHECK_BUDGET = '0';
-    const capped = await callScript(await makeUser('t6c', 'free'), 'romance', '198.51.100.210');
-    process.env.DAILY_CHECK_BUDGET = keep;
-    assert.equal(capped.status, 503); assert.equal(textChecks(), 1);
-    // a non-classifier genre is unaffected while the classifier is down
-    providers.mode['gemini-check'] = 500; ctx.advance(120_000);
-    assert.equal((await callScript(await makeUser('t6d', 'free'), 'drama', '198.51.100.211')).status, 200);
-    return { actual: 'fail-closed for romance/horror only' };
+    // a non-risk genre is returned (blocklist only) and the degradation is COUNTED — number only
+    const d = await makeUser('t6d', 'free');
+    const drama = await callScript(d, 'drama', '198.51.100.211');
+    assert.equal(drama.status, 200); assert.ok(drama.body.script); assert.equal(SCRIPT_USED(d), 1); assert.equal(DEGRADED(), 1);
+    assert.ok(!fake.keys('stats:textcheck').some((k) => /scene|script|hero/i.test(k)), 'the counter key carries no text');
+    // cap spent (own budget = 0): the same split
+    delete providers.mode['gemini-check-text']; ctx.advance(120_000);
+    const keep = process.env.DAILY_TEXT_CHECK_BUDGET; process.env.DAILY_TEXT_CHECK_BUDGET = '0';
+    try {
+      const capped = await callScript(await makeUser('t6c', 'free'), 'romance', '198.51.100.210');
+      assert.equal(capped.status, 503); assert.equal(textChecks(), 1);
+      const capDrama = await callScript(await makeUser('t6e', 'free'), 'comedy', '198.51.100.212');
+      assert.equal(capDrama.status, 200); assert.equal(DEGRADED(), 2);
+    } finally { if (keep === undefined) delete process.env.DAILY_TEXT_CHECK_BUDGET; else process.env.DAILY_TEXT_CHECK_BUDGET = keep; }
+    return { actual: 'fail-closed for romance/horror; degraded + counted for the rest' };
   });
 
 scenario('T7', 'STORYBOARD: blocklisted output → one regeneration with the reminder in the system instruction; clean second try is returned; held back twice → 422 and the comic quota is returned',
@@ -123,8 +135,8 @@ scenario('T7', 'STORYBOARD: blocklisted output → one regeneration with the rem
     return { actual: 'regenerated once, then refused; quota back' };
   });
 
-scenario('T8', 'STORYBOARD romance/horror: classifier unsafe twice → CONTENT_REFUSED; unavailable → CONTENT_CHECK_UNAVAILABLE; both release the comic quota; a safe verdict returns the panels',
-  'unsafe → 422; down → 503; safe → 200', async () => {
+scenario('T8', 'STORYBOARD: classifier unsafe twice → CONTENT_REFUSED; unavailable → CONTENT_CHECK_UNAVAILABLE for romance/horror but the panels are returned (degraded) for other genres; all refusals release the comic quota',
+  'unsafe → 422; romance down → 503; drama down → 200', async () => {
     const a = await makeUser('t8a', 'free');
     providers.checkGemini.value = 'unsafe';
     const unsafe = await callStoryboard(a, 'horror', '198.51.100.214');
@@ -132,11 +144,14 @@ scenario('T8', 'STORYBOARD romance/horror: classifier unsafe twice → CONTENT_R
     providers.checkGemini.value = 'safe';
     const safe = await callStoryboard(a, 'romance', '198.51.100.214');
     assert.equal(safe.status, 200); assert.equal(COMIC_USED(a), 1);
-    providers.mode['gemini-check'] = 500; ctx.advance(120_000);
+    providers.mode['gemini-check-text'] = 500; ctx.advance(120_000);
     const b = await makeUser('t8b', 'free');
     const down = await callStoryboard(b, 'romance', '198.51.100.215');
     assert.equal(down.status, 503); assert.equal(down.body.code, 'CONTENT_CHECK_UNAVAILABLE'); assert.equal(COMIC_USED(b), 0);
-    return { actual: 'classifier outcomes honoured, quota returned' };
+    const c = await makeUser('t8c', 'free');
+    const drama = await callStoryboard(c, 'drama', '198.51.100.216');
+    assert.equal(drama.status, 200); assert.equal(COMIC_USED(c), 1); assert.equal(DEGRADED(), 1);
+    return { actual: 'classifier outcomes honoured, quota returned, degraded for non-risk genres' };
   });
 
 // ── apparent-minor screen ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -180,9 +195,9 @@ scenario('T10', 'everything else ALLOWS the upload (it is a best-effort screen, 
     assert.equal(r2.status, 200); assert.equal(ageChecks(), before, 'open circuit → no call');
     // budget spent → skipped without a call
     delete providers.mode['gemini-check-age']; ctx.advance(120_000);
-    const keep = process.env.DAILY_CHECK_BUDGET; process.env.DAILY_CHECK_BUDGET = '0';
+    const keep = process.env.DAILY_MINOR_CHECK_BUDGET; process.env.DAILY_MINOR_CHECK_BUDGET = '0';
     const u3 = await makeUser('t10-budget', 'free'); const r3 = await up(u3, '198.51.100.241');
-    process.env.DAILY_CHECK_BUDGET = keep;
+    if (keep === undefined) delete process.env.DAILY_MINOR_CHECK_BUDGET; else process.env.DAILY_MINOR_CHECK_BUDGET = keep;
     assert.equal(r3.status, 200); assert.equal(ageChecks(), before, 'cap spent → no call');
     return { actual: 'only an unambiguous "minor" rejects' };
   });
@@ -217,4 +232,87 @@ scenario('T12', 'the minor screen has its OWN circuit: a failing face-photo scre
     const circuitState = fake.keys('circuit:img:');
     assert.ok(circuitState.includes('circuit:img:check_minor') && !circuitState.includes('circuit:img:check_gemini'));
     return { actual: 'separate circuits' };
+  });
+
+// ── independence of the three paid-check budgets and circuits ───────────────────────────────────────────────────────────────────
+const posterRoute = await ctx.route('generate-poster');
+const withEnv = async (name, value, fn) => { const keep = process.env[name]; process.env[name] = value; try { return await fn(); } finally { if (keep === undefined) delete process.env[name]; else process.env[name] = keep; } };
+const posterWithNemotronDown = async (label) => {
+  providers.mode.moderation = 500;
+  const r = await invoke(posterRoute, { body: { prompt: 'A lone figure walks into the rain' }, cookies: (await makeUser(`ind-${label}`, 'free')).cookies, ip: `198.51.100.${60 + (++seq % 150)}` });
+  delete providers.mode.moderation; return r;
+};
+
+scenario('T13', 'budget independence: exhausting the IMAGE budget (DAILY_CHECK_BUDGET=0) leaves the text classifier and the minor screen fully working',
+  'image fallback unavailable; romance script 200 (text spend); minor screen still rejects a child (minor spend)', async () => {
+    await withEnv('DAILY_CHECK_BUDGET', '0', async () => {
+      const img = await posterWithNemotronDown('a');
+      assert.equal(img.body.code, 'CONTENT_CHECK_UNAVAILABLE', 'the image fallback has no budget');
+      const txt = await callScript(await makeUser('t13a', 'free'), 'romance', '198.51.100.31'); assert.equal(txt.status, 200); assert.equal(TEXT_SPEND(), 1);
+      providers.ageVerdict.value = 'minor';
+      const age = await up(await makeUser('t13b', 'free'), '198.51.100.32'); assert.equal(age.status, 422); assert.equal(age.body.code, 'MINOR_REJECTED'); assert.equal(MINOR_SPEND(), 1, 'the screen ran on its own budget');
+      assert.equal(SPEND(), 0);
+    });
+    return { actual: 'image budget empty; text and minor unaffected' };
+  });
+
+scenario('T14', 'budget independence: exhausting the TEXT budget (DAILY_TEXT_CHECK_BUDGET=0) leaves the image fallback and the minor screen working; non-risk text degrades, romance/horror fail closed',
+  'image fallback serves; minor rejects; romance 503; drama 200 degraded', async () => {
+    await withEnv('DAILY_TEXT_CHECK_BUDGET', '0', async () => {
+      const img = await posterWithNemotronDown('b');
+      assert.equal(img.status, 200); assert.ok(!img.body.isPlaceholder, 'the image fallback still has its own budget'); assert.equal(SPEND(), 1);
+      providers.ageVerdict.value = 'minor';
+      const age = await up(await makeUser('t14a', 'free'), '198.51.100.33'); assert.equal(age.status, 422);
+      assert.equal((await callScript(await makeUser('t14b', 'free'), 'horror', '198.51.100.34')).status, 503);
+      assert.equal((await callScript(await makeUser('t14c', 'free'), 'drama', '198.51.100.35')).status, 200); assert.equal(DEGRADED(), 1);
+      assert.equal(TEXT_SPEND(), 0);
+    });
+    return { actual: 'text budget empty; image and minor unaffected' };
+  });
+
+scenario('T15', 'budget independence: exhausting the MINOR budget (DAILY_MINOR_CHECK_BUDGET=0) skips only the screen (upload allowed, no age call); the image fallback and the text classifier keep working',
+  'age call skipped, upload 200 even for a "minor" verdict; image fallback + romance script fine', async () => {
+    await withEnv('DAILY_MINOR_CHECK_BUDGET', '0', async () => {
+      providers.ageVerdict.value = 'minor';
+      const before = ageChecks();
+      const age = await up(await makeUser('t15a', 'free'), '198.51.100.36'); assert.equal(age.status, 200); assert.equal(ageChecks(), before, 'no age call without budget');
+      const img = await posterWithNemotronDown('c'); assert.ok(!img.body.isPlaceholder); assert.equal(SPEND(), 1);
+      assert.equal((await callScript(await makeUser('t15b', 'free'), 'romance', '198.51.100.37')).status, 200); assert.equal(TEXT_SPEND(), 1);
+      assert.equal(MINOR_SPEND(), 0);
+    });
+    return { actual: 'minor budget empty; image and text unaffected' };
+  });
+
+scenario('T16', 'the three counters are separate keys: one call of each kind moves only its own counter',
+  'image 1, text 1, minor 1 (each in its own key)', async () => {
+    await posterWithNemotronDown('d');
+    ctx.advance(120_000);   // let the Nemotron circuit that the poster's failures opened expire, so the upload's own image check uses Nemotron again
+    await callScript(await makeUser('t16a', 'free'), 'drama', '198.51.100.38');
+    await up(await makeUser('t16b', 'free'), '198.51.100.39');
+    assert.deepEqual([SPEND(), TEXT_SPEND(), MINOR_SPEND()], [1, 1, 1]);
+    assert.deepEqual(fake.keys('usage:check:').sort(), ['usage:check:minor:global:2026-10-15', 'usage:check:paid:global:2026-10-15', 'usage:check:text:global:2026-10-15']);
+    return { actual: 'three independent counters' };
+  });
+
+scenario('T17', 'circuit independence: a failing text classifier opens ONLY check_text, a failing image fallback ONLY check_gemini, a failing screen ONLY check_minor — and the others keep serving',
+  'each failure opens its own key only', async () => {
+    const open = () => fake.keys('circuit:img:check_').map((k) => k.replace('circuit:img:', '')).sort();
+    providers.mode['gemini-check-text'] = 500;
+    await callScript(await makeUser('t17a', 'free'), 'romance', '198.51.100.40');
+    assert.deepEqual(open(), ['check_text']);
+    delete providers.mode['gemini-check-text']; fake.flush(); ctx.advance(120_000);
+    providers.mode['gemini-check'] = 500; providers.mode.moderation = 500;
+    const dead = await invoke(posterRoute, { body: { prompt: 'A lone figure walks into the rain' }, cookies: (await makeUser('t17b', 'free')).cookies, ip: '198.51.100.41' });
+    assert.equal(dead.body.code, 'CONTENT_CHECK_UNAVAILABLE');
+    assert.deepEqual(open().filter((k) => k !== 'check_nemotron'), ['check_gemini']);
+    // with the image fallback circuit open, text + minor still work
+    providers.mode.moderation = 0; delete providers.mode.moderation;
+    assert.equal((await callScript(await makeUser('t17c', 'free'), 'romance', '198.51.100.42')).status, 200);
+    providers.ageVerdict.value = 'minor';
+    assert.equal((await up(await makeUser('t17d', 'free'), '198.51.100.43')).status, 422);
+    delete providers.mode['gemini-check']; fake.flush(); ctx.advance(120_000); providers.ageVerdict.value = 'adult';
+    providers.mode['gemini-check-age'] = 500;
+    await up(await makeUser('t17e', 'free'), '198.51.100.44');
+    assert.deepEqual(open(), ['check_minor']);
+    return { actual: 'three circuits, three keys' };
   });

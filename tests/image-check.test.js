@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseNemotronVerdict, parseFallbackVerdict, imageHash, NEMOTRON_SLUG, FALLBACK_SLUG, NEMOTRON_MAX_TOKENS, reasoningOption } from '../lib/image-check.js';
-import { checkBudgetUsd, checkMaxCalls, CHECK_COST_USD } from '../lib/budget.js';
+import { checkBudgetUsd, checkMaxCalls, CHECK_COST_USD, globalCheckKey } from '../lib/budget.js';
 
 // Pinned format (NVIDIA model card / NIM reference): "User Safety: safe|unsafe", optional "Response Safety: …", optional "Safety Categories: …"
 test('parseNemotronVerdict — table-driven', () => {
@@ -90,13 +90,26 @@ test('pinned slugs and request defaults', () => {
   } finally { if (keep === undefined) delete process.env.IMAGE_CHECK_REASONING_EFFORT; else process.env.IMAGE_CHECK_REASONING_EFFORT = keep; }
 });
 
-test('paid-checker budget math: default $0.50/day, 0 switches the fallback off, junk falls back to the default', () => {
-  const keep = process.env.DAILY_CHECK_BUDGET;
+test('three independent paid-check budgets: defaults, 0 switches ONE off, junk falls back to that budget\'s own default, and they never read each other\'s variable', () => {
+  const ENV = ['DAILY_CHECK_BUDGET', 'DAILY_TEXT_CHECK_BUDGET', 'DAILY_MINOR_CHECK_BUDGET', 'CHECK_COST_USD', 'TEXT_CHECK_COST_USD', 'MINOR_CHECK_COST_USD'];
+  const keep = Object.fromEntries(ENV.map((k) => [k, process.env[k]]));
+  const clear = () => ENV.forEach((k) => delete process.env[k]);
   try {
-    delete process.env.DAILY_CHECK_BUDGET; assert.equal(checkBudgetUsd(), 0.5); assert.equal(checkMaxCalls(), Math.floor(0.5 / CHECK_COST_USD));
-    process.env.DAILY_CHECK_BUDGET = '0'; assert.equal(checkMaxCalls(), 0);
-    process.env.DAILY_CHECK_BUDGET = '0.0003'; assert.equal(checkMaxCalls(), 2);
-    process.env.DAILY_CHECK_BUDGET = 'abc'; assert.equal(checkBudgetUsd(), 0.5);
-    process.env.DAILY_CHECK_BUDGET = '-1'; assert.equal(checkBudgetUsd(), 0.5);
-  } finally { if (keep === undefined) delete process.env.DAILY_CHECK_BUDGET; else process.env.DAILY_CHECK_BUDGET = keep; }
+    clear();
+    assert.deepEqual([checkBudgetUsd('image'), checkBudgetUsd('text'), checkBudgetUsd('minor')], [0.5, 0.3, 0.2]);
+    assert.equal(checkBudgetUsd(), 0.5, 'no argument = the image budget (backward compatible)');
+    assert.deepEqual([checkMaxCalls('image'), checkMaxCalls('text'), checkMaxCalls('minor')], [Math.floor(0.5 / CHECK_COST_USD), 750, 1333]);
+    assert.deepEqual([globalCheckKey('image').slice(0, 23), globalCheckKey('text').slice(0, 23), globalCheckKey('minor').slice(0, 24)], ['usage:check:paid:global', 'usage:check:text:global', 'usage:check:minor:global']);
+    process.env.DAILY_TEXT_CHECK_BUDGET = '0';
+    assert.deepEqual([checkMaxCalls('image') > 0, checkMaxCalls('text'), checkMaxCalls('minor') > 0], [true, 0, true], 'zeroing the text budget leaves the other two');
+    clear(); process.env.DAILY_CHECK_BUDGET = '0';
+    assert.deepEqual([checkMaxCalls('image'), checkMaxCalls('text') > 0, checkMaxCalls('minor') > 0], [0, true, true]);
+    clear(); process.env.DAILY_MINOR_CHECK_BUDGET = '0.0003';
+    assert.deepEqual([checkMaxCalls('minor'), checkMaxCalls('image') > 100, checkMaxCalls('text') > 100], [2, true, true]);
+    clear(); process.env.DAILY_TEXT_CHECK_BUDGET = 'abc'; process.env.DAILY_MINOR_CHECK_BUDGET = '-1'; process.env.DAILY_CHECK_BUDGET = '';
+    assert.deepEqual([checkBudgetUsd('text'), checkBudgetUsd('minor'), checkBudgetUsd('image')], [0.3, 0.2, 0.5]);
+    clear(); process.env.TEXT_CHECK_COST_USD = '0.001';
+    assert.equal(checkMaxCalls('text'), 300);
+    assert.equal(checkBudgetUsd('nonsense'), 0.5, 'an unknown purpose behaves like the image budget');
+  } finally { for (const k of ENV) { if (keep[k] === undefined) delete process.env[k]; else process.env[k] = keep[k]; } }
 });

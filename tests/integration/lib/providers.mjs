@@ -114,8 +114,10 @@ export function createProviders() {
       const refusedImage = json({ choices: [{ finish_reason: 'content_filter', native_finish_reason: 'IMAGE_SAFETY', message: { content: null } }] });
       const img = { choices: [{ message: { content: null, images: [{ image_url: { url: PNG_DATA_URI } }] } }] };
       if (model.includes('gemini-2.5-flash-lite') && body?.response_format) {   // the output-image check FALLBACK, through OpenRouter
-        count('gemini-check', { model, hasImage: JSON.stringify(body.messages).includes('image_url') }); bodies.push({ provider: 'gemini-check', body });
-        const f = failing(body?.response_format?.json_schema?.name === 'apparent_age' ? 'gemini-check-age' : 'gemini-check'); if (f === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; } if (f) return text('mock failure', Number(f));
+        count('gemini-check', { model, hasImage: JSON.stringify(body.messages).includes('image_url'), isAge: body?.response_format?.json_schema?.name === 'apparent_age' }); bodies.push({ provider: 'gemini-check', body });
+        const hasImage = JSON.stringify(body.messages).includes('image_url');
+        // three independent failure switches: image check, text classifier, minor screen
+        const f = failing(body?.response_format?.json_schema?.name === 'apparent_age' ? 'gemini-check-age' : hasImage ? 'gemini-check' : 'gemini-check-text'); if (f === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; } if (f) return text('mock failure', Number(f));
         const isAge = body?.response_format?.json_schema?.name === 'apparent_age';
         const ctl = isAge ? ageVerdict : checkGemini;
         if (ctl.queue.length) ctl.value = ctl.queue.shift();   // per-call sequence: ['unsafe', 'safe'] …
