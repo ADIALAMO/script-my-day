@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Check, X, Clapperboard, Film, Loader2, ChevronDown, Share2, Download, Lock, Crown, RefreshCw } from 'lucide-react';
 import { shareReadyFile, makeShareFile, shareBlobs, downloadBlob, downloadBlobs, exportCapabilities, urlToBlob } from '../utils/export-image.js';
 import { isCapacitorNative } from '../utils/platform.js';
+import ReportButton from './ReportButton.jsx';
+import { isReported } from '../utils/reported-store.js';
+import { REPORT_COPY, reportText } from '../constants/report-copy.js';
 
 export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade, onRegenerate, onRetryRateLimited, regensLeft = 0, notice = '' }) {
   const isHebrew = lang === 'he';
@@ -10,6 +13,10 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
   const [allCopied, setAllCopied] = useState(false);
   const [expandedPrompts, setExpandedPrompts] = useState({});
   const [sharingAll, setSharingAll] = useState(false);
+  // Panels the user reported in this session (ReportButton). isReported() also covers reports from earlier sessions (stored URLs).
+  const [reportedIdx, setReportedIdx] = useState(() => new Set());
+  const [brokenIdx, setBrokenIdx] = useState(() => new Set());
+  const isPanelHidden = (idx) => reportedIdx.has(idx) || isReported(panelImages?.[idx]?.url);
   // Guards a single panel's exportFrame against an overlapping second tap — a ref,
   // not `disabled` (see PosterRenderer.jsx's note on why `disabled` can only safely
   // apply after a click was already received, not between pointerdown and pointerup).
@@ -132,7 +139,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
   const shareableIdxs = panels.reduce((acc, p, idx) => {
     const locked = p.isLocked === true || idx >= unlockedPanels;
     const st = panelImages?.[idx];
-    if (!locked && st && !st.loading && st.url) acc.push(idx);
+    if (!locked && st && !st.loading && st.url && !isPanelHidden(idx)) acc.push(idx);
     return acc;
   }, []);
 
@@ -162,6 +169,8 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
   const getImageState = (idx) => {
     const s = panelImages?.[idx];
     if (!s) return 'pending';
+    if (isPanelHidden(idx)) return 'reported';
+    if (brokenIdx.has(idx)) return 'error';
     if (s.loading) return 'loading';
     if (s.url) return 'loaded';
     if (s.rateLimited) return 'rateLimited';
@@ -301,7 +310,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
 
             /* ── Normal (Unlocked) Panel Card ──────────────────── */
             const imgState = getImageState(idx);
-            const imgUrl = panelImages?.[idx]?.url;
+            const imgUrl = imgState === 'reported' ? undefined : panelImages?.[idx]?.url;
             const isExpanded = !!expandedPrompts[idx];
             // During a REPLACE the panel is `loading` but keeps its old url + a regenerating
             // flag — so we show the old image under a spinner instead of a blank skeleton.
@@ -352,9 +361,24 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                       >
                         <img
                           src={imgUrl}
+                          onError={() => setBrokenIdx((prev) => (prev.has(idx) ? prev : new Set(prev).add(idx)))}   // e.g. the object was quarantined after a report → the "Frame lost" tile, never a broken-image icon
                           alt={`Panel ${panel.panel}`}
                           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                         />
+                      </motion.div>
+                    )}
+
+                    {imgState === 'reported' && (
+                      <motion.div
+                        key="reported-state"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="absolute inset-0 flex items-center justify-center bg-[#06040a] px-4 text-center"
+                        role="status"
+                      >
+                        <span className="text-white/40 text-[10px] font-bold tracking-wide">
+                          {reportText(REPORT_COPY.hiddenTile, isHebrew ? 'he' : 'en')}
+                        </span>
                       </motion.div>
                     )}
 
@@ -461,6 +485,17 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                           <span>{isHebrew ? 'שתף' : 'Share'}</span>
                         </button>
                       )}
+                    </div>
+                  )}
+
+                  {/* Report — always reachable (not hover-only): small flag, top-right of a finished image */}
+                  {imgState === 'loaded' && imgUrl && (
+                    <div className="absolute top-3 right-3 z-30">
+                      <ReportButton
+                        kind="panel" compact lang={lang}
+                        sources={[imgUrl]}
+                        onReported={() => setReportedIdx((prev) => new Set(prev).add(idx))}
+                      />
                     </div>
                   )}
 

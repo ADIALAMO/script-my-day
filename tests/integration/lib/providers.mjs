@@ -58,6 +58,8 @@ export function createProviders() {
   const telegram = [];
   const s3puts = [];
   const s3deletes = [];
+  const s3copies = [];            // { from, to } as 'bucket/key'
+  const s3objects = new Map();    // 'bucket/key' -> { bytes, metadata } — a tiny in-memory R2 so Head/Copy/Delete behave
   const mode = {};   // provider -> HTTP status to fail with, or 'ok'
   const latency = { gemini: null };   // e.g. { gemini: { 'gemini-2.5-flash': 400, default: 50 } } (ms)
   // value 'safe' | 'unsafe' are rendered in NVIDIA's documented template ("User Safety: …"); `raw` overrides the whole reply text
@@ -179,8 +181,8 @@ export function createProviders() {
   }
 
   return {
-    handle, refuse, bodies, counts, log, telegram, s3puts, s3deletes, mode, latency, moderationVerdict, checkGemini, handlers, unexpected,
-    reset() { for (const k of Object.keys(counts)) delete counts[k]; log.length = 0; telegram.length = 0; s3puts.length = 0; s3deletes.length = 0; for (const k of Object.keys(mode)) delete mode[k]; latency.gemini = null; moderationVerdict.value = 'safe'; moderationVerdict.raw = undefined; moderationVerdict.nonString = false; moderationVerdict.nullLength = false; moderationVerdict.queue.length = 0; checkGemini.value = 'safe'; checkGemini.raw = undefined; checkGemini.block = false; handlers.r2 = null; for (const k of Object.keys(refuse)) delete refuse[k]; bodies.length = 0; },
+    handle, refuse, bodies, counts, log, telegram, s3puts, s3deletes, s3copies, s3objects, mode, latency, moderationVerdict, checkGemini, handlers, unexpected,
+    reset() { for (const k of Object.keys(counts)) delete counts[k]; log.length = 0; telegram.length = 0; s3puts.length = 0; s3deletes.length = 0; s3copies.length = 0; s3objects.clear(); for (const k of Object.keys(mode)) delete mode[k]; latency.gemini = null; moderationVerdict.value = 'safe'; moderationVerdict.raw = undefined; moderationVerdict.nonString = false; moderationVerdict.nullLength = false; moderationVerdict.queue.length = 0; checkGemini.value = 'safe'; checkGemini.raw = undefined; checkGemini.block = false; handlers.r2 = null; for (const k of Object.keys(refuse)) delete refuse[k]; bodies.length = 0; },
     snapshot() { return { ...counts, 'r2-put': s3puts.length }; },
     paidTotal() { return Object.entries(counts).filter(([k]) => PAID.has(k)).reduce((n, [, v]) => n + v, 0); },
     paid() { return Object.fromEntries(Object.entries(counts).filter(([k]) => PAID.has(k))); },

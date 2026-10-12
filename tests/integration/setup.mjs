@@ -79,13 +79,32 @@ export async function boot({ env = {}, nodeEnv = 'test', startAt = '2026-10-15T1
   const require = createRequire(import.meta.url);
   const { S3Client } = await import('@aws-sdk/client-s3');
   S3Client.prototype.send = async function recordedSend(cmd) {
-    if (cmd?.constructor?.name === 'DeleteObjectCommand') {
-      providers.s3deletes.push({ key: cmd.input.Key });
+    const name = cmd?.constructor?.name;
+    const input = cmd?.input ?? {};
+    const id = `${input.Bucket}/${input.Key}`;
+    if (name === 'DeleteObjectCommand') {
+      providers.s3deletes.push({ key: input.Key, bucket: input.Bucket });
       if (providers.mode.s3delete) throw new Error(`R2 delete failed (mock ${providers.mode.s3delete})`);
+      providers.s3objects.delete(id);
       return {};
     }
-    if (providers.mode.s3putSheet && String(cmd?.input?.Key).endsWith('-sheet.jpg')) throw new Error('R2 put failed (mock sheet)');
-    providers.s3puts.push({ key: cmd?.input?.Key, bytes: cmd?.input?.Body?.length ?? 0 });
+    if (name === 'HeadObjectCommand') {
+      const o = providers.s3objects.get(id);
+      if (!o) { const e = new Error('NotFound'); e.name = 'NotFound'; e.$metadata = { httpStatusCode: 404 }; throw e; }
+      return { Metadata: o.metadata ?? {}, ContentLength: o.bytes };
+    }
+    if (name === 'CopyObjectCommand') {
+      if (providers.mode.s3copy) throw new Error(`R2 copy failed (mock ${providers.mode.s3copy})`);
+      const from = decodeURIComponent(input.CopySource);
+      const o = providers.s3objects.get(from);
+      if (!o) { const e = new Error('NoSuchKey'); e.name = 'NoSuchKey'; e.Code = 'NoSuchKey'; throw e; }
+      providers.s3copies.push({ from, to: id });
+      providers.s3objects.set(id, { ...o });
+      return {};
+    }
+    if (providers.mode.s3putSheet && String(input.Key).endsWith('-sheet.jpg')) throw new Error('R2 put failed (mock sheet)');
+    providers.s3puts.push({ key: input.Key, bytes: input.Body?.length ?? 0, bucket: input.Bucket, metadata: input.Metadata });
+    providers.s3objects.set(id, { bytes: input.Body?.length ?? 0, metadata: input.Metadata ?? {} });
     return {};
   };
   const mails = [];

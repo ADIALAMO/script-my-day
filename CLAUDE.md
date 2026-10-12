@@ -73,7 +73,14 @@ Two independent cascades, each tries providers in order and returns the first su
   neutral text "Image to check." (probe-verified; the old "Classify … safe or unsafe" prompt gave false positives). Unsafe → placeholder +
   `CONTENT_REFUSED`; no checker available → placeholder + `CONTENT_CHECK_UNAVAILABLE` (retryable, quota back).
   generate-poster leaves an `imgok:<sha256>` marker (6 h) so upload-panel stores the same bytes without a second
-  call and re-checks (fail-closed) anything else. Circuit keys `check_nemotron` / `check_gemini` reuse circuit-breaker.js. Cloudflare's request body is `{ prompt, steps: 6 }`
+  call and re-checks (fail-closed) anything else.
+  **Reports** (`feat/content-report`): `ReportButton` on posters, panels and reels → `POST /api/report-content`
+  ([lib/report.js](lib/report.js)). Reporters are counted by a keyed HMAC (never raw IP/id); the OWNER's report hides
+  at once, anyone else needs 2 distinct. Hiding = object moved to the PRIVATE bucket `R2_QUARANTINE_BUCKET_NAME`
+  ([lib/quarantine.js](lib/quarantine.js)) + `report:hidden:<key>` (proxy-image answers 410; upload-panel refuses the same
+  bytes via `report:hidden:h:<sha256>`). Unset quarantine bucket = nothing deleted, alert says "still public". Restore /
+  permanent delete / find objects: [scripts/takedown-object.mjs](scripts/takedown-object.mjs). The `imgok:<sha256>` marker
+  carries the provider tag, copied into the R2 object metadata. Circuit keys `check_nemotron` / `check_gemini` reuse circuit-breaker.js. Cloudflare's request body is `{ prompt, steps: 6 }`
   ONLY — confirmed empirically against the real API that `seed` and `negative_prompt` are both
   rejected as unknown properties (code 5006); every call 400'd before this was fixed.
 - **Circuit breaker** ([lib/circuit-breaker.js](lib/circuit-breaker.js)): Redis `circuit:img:*`,

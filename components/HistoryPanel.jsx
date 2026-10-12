@@ -1,6 +1,7 @@
 import React, { memo, useEffect, useCallback, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Clapperboard, Trash2, Film, Clock, ChevronRight } from 'lucide-react';
+import { isReported } from '../utils/reported-store.js';
 import { getGenreMeta, FALLBACK_GENRE_META as FALLBACK_GENRE } from '../constants/genres.js';
 
 // ─── Pure helpers ────────────────────────────────────────────────────────────
@@ -155,7 +156,7 @@ const HistoryItem = memo(function HistoryItem({ entry, onReload, onDelete, lang,
           <div className="absolute inset-0 flex items-center justify-center">
             <Film size={13} style={{ color: gm.color, opacity: 0.45 }} />
           </div>
-          {entry.posterUrl && (
+          {entry.posterUrl && !isReported(entry.posterUrl) && (   // a reported poster shows only the genre icon
             <img
               src={entry.posterUrl}
               alt=""
