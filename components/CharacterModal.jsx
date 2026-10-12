@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Loader2, Camera, Sparkles, RefreshCw, Crown } from 'lucide-react';
 import { isCapacitorNative } from '../utils/platform.js';
+import { useNative } from '../hooks/useNative.js';
 import { getMsg, CODES } from '../lib/messages.js';
 
 // Downscale a selected file to a JPEG data URI (max 1024px, q0.9) before upload.
@@ -49,6 +50,7 @@ export default function CharacterModal({
   gender, setGender,
 }) {
   const isHebrew = lang === 'he';
+  const native = useNative();   // Android app: neutral "not available" wording, no Pro / upgrade text
 
   const genderOptions = isHebrew
     ? [{ value: 'male', label: 'גבר' }, { value: 'female', label: 'אישה' }, { value: 'neutral', label: 'ניטרלי' }]
@@ -58,6 +60,7 @@ export default function CharacterModal({
   const [fileError, setFileError] = useState('');
   const [gated,     setGated]     = useState(false); // free-tier 403
   const [consented, setConsented] = useState(false); // biometric consent gate (pre-create)
+  const [adultOk,   setAdultOk]   = useState(false); // "I am 18 or older" — Star Yourself is 18+ (an attestation, not age verification)
   const fileInputRef = useRef(null);
 
   // Body scroll lock — same pattern as the Distribution Hub modal.
@@ -85,21 +88,22 @@ export default function CharacterModal({
       setPicked(dataUri);
       setChanging(false);
       setConsented(false); // require fresh consent for each uploaded photo
+      setAdultOk(false);
     } catch {
       setFileError(isHebrew ? 'לא ניתן לקרוא את התמונה' : 'Could not read that image');
     }
   }, [isHebrew]);
 
   const handleCreate = useCallback(async () => {
-    if (!consented) return; // biometric consent is mandatory
-    const result = await uploadCharacter(picked, consented);
+    if (!consented || !adultOk) return; // biometric consent AND the 18+ confirmation are mandatory
+    const result = await uploadCharacter(picked, consented, adultOk);
     if (result.ok) {
       setPicked(''); // fall through to the result view (shows the new sheet)
     } else if (result.code === 'NEEDS_PRO') {
       setGated(true);
     } else if (result.code === CODES.QUOTA_SHEET || result.code === CODES.IDENTITY_BUDGET_REACHED
             || result.code === CODES.QUOTA_IDENTITY || result.code === CODES.IDENTITY_LIFETIME_USED
-            || result.code === CODES.SAFETY_REJECTED || result.code === CODES.RATE_LIMITED) {
+            || result.code === CODES.SAFETY_REJECTED || result.code === CODES.RATE_LIMITED || result.code === CODES.ADULT_REQUIRED) {
       // A limit / budget / moderation answer from the server: say exactly what happened.
       // QUOTA_SHEET carries {limit, resetsAt}: say how many uploads are included and when they renew.
       const lang = isHebrew ? 'he' : 'en';
@@ -112,7 +116,7 @@ export default function CharacterModal({
     } else {
       setFileError(isHebrew ? 'משהו השתבש. נסה שוב.' : 'Something went wrong. Try again.');
     }
-  }, [picked, uploadCharacter, isHebrew, consented]);
+  }, [picked, uploadCharacter, isHebrew, consented, adultOk]);
 
   // ── View resolution ──────────────────────────────────────────────────────────
   const showLoading = status === 'loading';
@@ -171,18 +175,22 @@ export default function CharacterModal({
                   <Crown size={24} className="text-[#d4a373]" />
                 </div>
                 <p className="text-white font-bold text-[14px]">
-                  {isHebrew ? 'ליהוק עצמי הוא פיצ׳ר Pro' : 'Casting yourself is a Pro feature'}
+                  {native
+                    ? (isHebrew ? 'ליהוק עצמי אינו זמין במסלול הנוכחי שלך' : 'Casting yourself isn\'t available on your current plan')
+                    : (isHebrew ? 'ליהוק עצמי הוא פיצ׳ר Pro' : 'Casting yourself is a Pro feature')}
                 </p>
                 <p className="text-gray-500 text-[11.5px] leading-relaxed">
-                  {isHebrew
-                    ? 'שדרג ל-Pro כדי להפוך לגיבור של הקומיקס והפוסטרים שלך.'
-                    : 'Upgrade to Pro to become the hero of your comics and posters.'}
+                  {native
+                    ? (isHebrew ? 'הפיצ׳ר הזה אינו פתוח כרגע בחשבון שלך.' : 'This feature isn\'t open on your account right now.')
+                    : (isHebrew
+                      ? 'שדרג ל-Pro כדי להפוך לגיבור של הקומיקס והפוסטרים שלך.'
+                      : 'Upgrade to Pro to become the hero of your comics and posters.')}
                 </p>
                 {/* No purchase/pricing CTA in the Capacitor shell (per the
                     mobile-wrapper plan's billing decision) — the informational
                     copy above still explains the gate, this button just isn't
                     shown, since tapping it can't lead anywhere on native. */}
-                {!isCapacitorNative() && (
+                {!native && (
                   <button
                     onClick={() => { onClose(); onUpgrade?.(); }}
                     className="w-full bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black font-black py-3 rounded-2xl text-[12px] uppercase tracking-wider"
@@ -230,6 +238,22 @@ export default function CharacterModal({
                     : "We'll craft a stylized character sheet from this (~15s)."}
                 </p>
 
+                {/* 18+ confirmation — "Star Yourself" is for adults only. This is a self-declaration, not age verification. */}
+                <button
+                  type="button"
+                  onClick={() => setAdultOk(v => !v)}
+                  aria-pressed={adultOk}
+                  className="w-full flex items-start gap-2.5 text-right rtl:text-right ltr:text-left p-3 rounded-xl bg-white/[0.03] border border-white/[0.07] hover:border-white/[0.14] transition-colors"
+                >
+                  <span className={`mt-[1px] shrink-0 w-4 h-4 rounded-[5px] border flex items-center justify-center transition-all duration-150
+                    ${adultOk ? 'bg-[#d4a373] border-[#d4a373]' : 'bg-transparent border-white/25'}`}>
+                    {adultOk && <Check size={11} className="text-black" />}
+                  </span>
+                  <span className="text-gray-400 text-[10px] leading-relaxed">
+                    {isHebrew ? 'אני בן/בת 18 ומעלה.' : 'I am 18 or older.'}
+                  </span>
+                </button>
+
                 {/* Biometric consent gate — required before any face upload */}
                 <button
                   type="button"
@@ -257,7 +281,7 @@ export default function CharacterModal({
                   </button>
                   <button
                     onClick={handleCreate}
-                    disabled={!consented}
+                    disabled={!consented || !adultOk}
                     className="flex-[1.5] py-3 rounded-2xl bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Sparkles size={14} /> {isHebrew ? 'צור דמות' : 'Create character'}

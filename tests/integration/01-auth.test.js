@@ -40,7 +40,7 @@ scenario('A2', 'comic panel route rejects anonymous (any index/seed), zero provi
 
 scenario('A3', 'identity upload rejects anonymous (even with consent + valid selfie), zero provider calls',
   '403 NEEDS_PRO, 0 provider calls (not even moderation)', async () => {
-    const r = await invoke(upload, { body: { consent: true, selfieBase64: 'data:image/png;base64,AAAA' }, ip: '203.0.113.13' });
+    const r = await invoke(upload, { body: { consent: true, adult: true, selfieBase64: 'data:image/png;base64,AAAA' }, ip: '203.0.113.13' });
     assert.equal(r.status, 403); assert.equal(r.body.code, 'NEEDS_PRO');
     assert.deepEqual(providers.counts, {});
     assert.equal(providers.s3puts.length, 0);

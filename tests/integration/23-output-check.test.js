@@ -231,7 +231,7 @@ scenario('O13', 'Character Sheet: an UNSAFE generated sheet is not stored — th
   'selfie passes, sheet unsafe → no -sheet.jpg put, raw kept, sheet quota 1', async () => {
     const u = await makeUser('o13', 'free');
     providers.moderationVerdict.queue.push('User Safety: safe', 'User Safety: unsafe\nSafety Categories: Sexual');
-    const r = await invoke(uploadCharacter, { body: { selfieBase64: PNG_DATA_URI, consent: true }, cookies: u.cookies, ip: '198.51.100.253' });
+    const r = await invoke(uploadCharacter, { body: { selfieBase64: PNG_DATA_URI, consent: true, adult: true }, cookies: u.cookies, ip: '198.51.100.253' });
     assert.equal(r.status, 200); assert.equal(r.body.sheetGenerated, false);
     const selfieCheck = providers.bodies.find((b) => b.provider === 'moderation').body;   // the FIRST moderation call is the selfie
     assert.equal(selfieCheck.messages[0].content[0].type, 'image_url'); assert.equal(selfieCheck.messages[0].content[1].text, 'Image to check.');
@@ -248,7 +248,7 @@ scenario('O14', 'Character Sheet: when no checker can answer, the sheet is not s
     const u = await makeUser('o14', 'free');
     providers.moderationVerdict.queue.push('User Safety: safe', 500, 500);   // selfie ok; sheet check: attempt + retry fail
     providers.mode['gemini-check'] = 500;
-    const r = await invoke(uploadCharacter, { body: { selfieBase64: PNG_DATA_URI, consent: true }, cookies: u.cookies, ip: '198.51.100.255' });
+    const r = await invoke(uploadCharacter, { body: { selfieBase64: PNG_DATA_URI, consent: true, adult: true }, cookies: u.cookies, ip: '198.51.100.255' });
     assert.equal(r.status, 200); assert.equal(r.body.sheetGenerated, false);
     assert.ok(!providers.s3puts.some((p) => String(p.key).endsWith('-sheet.jpg')));
     assert.equal(fake.num(`usage:sheet:${u.identifier}:2026-10`), 0);

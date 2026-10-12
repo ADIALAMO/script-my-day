@@ -37,7 +37,7 @@ export const MODAL_DATA = {
         },
         {
           h: '7. הגבלת גיל, AI ושירותי צד שלישי',
-          p: 'השירות מיועד למשתמשים מגיל 13 ומעלה; רכישת מנוי בתשלום מחייבת גיל 18 ומעלה או אישור אפוטרופוס. LIFESCRIPT משתמשת בשירותי AI חיצוניים (Google AI, OpenRouter ואחרים). אנחנו לא אחראים לשינויים במדיניות ספקים אלו. התוכן שנוצר מבוסס על בינה מלאכותית ועשוי להכיל אי-דיוקים; האחריות על השימוש בו חלה על המשתמש בלבד.',
+          p: 'השירות מיועד למשתמשים מגיל 13 ומעלה; הפיצ\'ר "לככב בסיפור" (העלאת תמונת פנים) מיועד למשתמשים בני 18 ומעלה בלבד; רכישת מנוי בתשלום מחייבת גיל 18 ומעלה או אישור אפוטרופוס. LIFESCRIPT משתמשת בשירותי AI חיצוניים (Google AI, OpenRouter ואחרים). אנחנו לא אחראים לשינויים במדיניות ספקים אלו. התוכן שנוצר מבוסס על בינה מלאכותית ועשוי להכיל אי-דיוקים; האחריות על השימוש בו חלה על המשתמש בלבד.',
         },
         {
           h: '8. אחריות, אחריות על תוכן המשתמש ושיפוי',
@@ -79,7 +79,7 @@ export const MODAL_DATA = {
         },
         {
           h: '7. Age Restriction, AI & Third-Party Services',
-          p: 'This service is intended for users aged 13 and above; purchasing a paid subscription requires you to be 18 or older, or to have guardian approval. LIFESCRIPT uses third-party AI services (Google AI, OpenRouter, and others). We are not responsible for changes in their policies. AI-generated content may contain inaccuracies; the user bears sole responsibility for how it is used.',
+          p: 'This service is intended for users aged 13 and above; the "Star Yourself" feature (uploading a face photo) is for users aged 18 and over only; purchasing a paid subscription requires you to be 18 or older, or to have guardian approval. LIFESCRIPT uses third-party AI services (Google AI, OpenRouter, and others). We are not responsible for changes in their policies. AI-generated content may contain inaccuracies; the user bears sole responsibility for how it is used.',
         },
         {
           h: '8. Warranty, Responsibility for Your Content & Indemnification',
@@ -136,7 +136,7 @@ export const MODAL_DATA = {
         },
         {
           h: '9. הזכויות שלך ובעל המאגר',
-          p: 'אתה יכול לבקש בכל עת לעיין במידע שלך, לתקנו או למחוק את חשבונך, את תמונות הפנים שהעלית או כל מידע אחר שאנחנו מחזיקים. ניתן להגיש בקשת מחיקה דרך עמוד מחיקת החשבון והמידע שלנו, או ישירות במייל adialamo@gmail.com — נטפל בכל בקשה בהקדם.',
+          p: 'אתה יכול לבקש בכל עת לעיין במידע שלך, לתקנו או למחוק את חשבונך, את תמונות הפנים שהעלית או כל מידע אחר שאנחנו מחזיקים. ניתן להגיש בקשת מחיקה דרך עמוד מחיקת החשבון והמידע שלנו, או ישירות במייל adialamo@gmail.com. לפני כל מחיקה אנחנו מאמתים שהבקשה הוגשה על ידי בעל החשבון (בקשה שנשלחת בזמן שאתה מחובר מאומתת אוטומטית, אחרת נאשר מול הכתובת) — ונטפל בכל בקשה בהקדם.',
         },
       ],
     },
@@ -178,7 +178,7 @@ export const MODAL_DATA = {
         },
         {
           h: '9. Your Rights & Data Controller',
-          p: 'You can request at any time to access your data, correct it, or delete your account, the face photos you uploaded, or any other data we hold. You can submit a deletion request through our account & data deletion page, or directly at adialamo@gmail.com — we will handle every request promptly.',
+          p: 'You can request at any time to access your data, correct it, or delete your account, the face photos you uploaded, or any other data we hold. You can submit a deletion request through our account & data deletion page, or directly at adialamo@gmail.com. Before anything is deleted we verify that the request comes from the account owner (a request sent while you are signed in is verified automatically, otherwise we confirm with the address) — and we will handle every request promptly.',
         },
       ],
     },
@@ -264,7 +264,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'איך "מלככבים" בפוסטר עם הפנים שלי?',
-          p: 'בשלב יצירת הפוסטר או הקומיקס תמצא אפשרות להעלות תמונת פנים. ה-AI בונה ממנה "גיליון דמות" ומחדיר אותך לסצנות. כל משתמש רשום מקבל פוסטר אחד חינם להתנסות; מנויי Pro מקבלים מכסה חודשית. ' + uploadsSentenceHe() + ' שים לב — מותר להעלות רק את הפנים שלך, או של מי שנתן הסכמה.',
+          p: 'בשלב יצירת הפוסטר או הקומיקס תמצא אפשרות להעלות תמונת פנים. ה-AI בונה ממנה "גיליון דמות" ומחדיר אותך לסצנות. כל משתמש רשום מקבל פוסטר אחד חינם להתנסות; מנויי Pro מקבלים מכסה חודשית. ' + uploadsSentenceHe() + ' שים לב — הפיצ\'ר מיועד לבני 18 ומעלה, ומותר להעלות רק את הפנים שלך, או של בגיר שנתן הסכמה.',
         },
         {
           h: 'איך עובד "הזמן חברים"?',
@@ -304,7 +304,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'How do I "star" in the poster with my own face?',
-          p: 'During poster or comic generation you\'ll find an option to upload a face photo. The AI builds a "Character Sheet" from it and casts you into the scenes. Every registered user gets one free poster to try it; Pro members get a monthly allowance. ' + uploadsSentenceEn() + ' Note — only upload your own face, or someone who has consented.',
+          p: 'During poster or comic generation you\'ll find an option to upload a face photo. The AI builds a "Character Sheet" from it and casts you into the scenes. Every registered user gets one free poster to try it; Pro members get a monthly allowance. ' + uploadsSentenceEn() + ' Note — this feature is for users aged 18 and over, and you may only upload your own face, or an adult who has consented.',
         },
         {
           h: 'How does "Invite friends" work?',
@@ -334,7 +334,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'מהתסריט ללוח הסיפור',
-          p: 'אחרי שהתסריט מוכן, LIFESCRIPT ממשיכה בהפקה: מנתחת את הסצנות, מחלקת אותן ל-5 עד 7 פאנלים ומייצרת כל פאנל בנפרד — בסגנון שבחרת: אנימה סטודיו, מארוול רטרו, או נואר קולנועי. הפאנלים מופיעים בהדרגה ברגע שמוכנים, כך שהיצירה מתגלה בפניך סצנה אחר סצנה.',
+          p: 'אחרי שהתסריט מוכן, LIFESCRIPT ממשיכה בהפקה: מנתחת את הסצנות, מחלקת אותן ל-5 עד 7 פאנלים ומייצרת כל פאנל בנפרד — בסגנון שבחרת: אנימה סטודיו, קומיקס רטרו, או נואר קולנועי. הפאנלים מופיעים בהדרגה ברגע שמוכנים, כך שהיצירה מתגלה בפניך סצנה אחר סצנה.',
         },
         {
           h: 'לככב בסיפור שלך',
@@ -364,7 +364,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'From Script to Storyboard',
-          p: "Once your script is ready, LIFESCRIPT continues production: it analyzes scenes, breaks them into 5–7 panels, and generates each independently — in your chosen style: Anime Studio, Marvel Retro, or Cinematic Noir. Panels appear progressively the moment they're ready, so your creation reveals itself scene by scene.",
+          p: "Once your script is ready, LIFESCRIPT continues production: it analyzes scenes, breaks them into 5–7 panels, and generates each independently — in your chosen style: Anime Studio, Retro Comic, or Cinematic Noir. Panels appear progressively the moment they're ready, so your creation reveals itself scene by scene.",
         },
         {
           h: 'Star in Your Own Story',
@@ -383,3 +383,70 @@ export const MODAL_DATA = {
     },
   },
 };
+
+// ─── Android-app (Capacitor) variant ─────────────────────────────────────────────────────────────────────────────────
+// Google Play payments policy: inside the native app nothing may mention a price, a subscription, Stripe or "upgrading". The web
+// MODAL_DATA above is unchanged; the app renders modalDataFor(true), which drops the billing / payments / "how to upgrade"
+// sections, neutralises the plan descriptions, strips the subscription clause from the age section, and renumbers the headings.
+// (tests/native-copy.test.js scans the result for any leftover price / subscription / upgrade wording.)
+const NATIVE_DROP = /^\s*(?:\d+\.\s*)?(?:חיוב, חידוש|Billing, Renewal|תשלומים$|Payments$)|משדרגים ל-Pro|upgrade to Pro|חינמי, Pro|Free, Pro/i;
+const NATIVE_PLANS = {
+  he: 'השימוש בשירות כפוף למכסות שימוש הוגן יומיות וחודשיות, שעשויות להשתנות ומתחדשות לפי החלון המוצג באפליקציה. כל משתמש רשום מקבל מכסה של תסריטים, פוסטרים וקומיקסים, וכן פוסטר "לככב בסיפור" אחד חינם (חד-פעמי).',
+  en: 'Use of the service is subject to daily and monthly fair-use quotas, which may change and renew on the schedule shown in the app. Every registered user receives an allowance of scripts, posters and comics, plus one free "Star Yourself" poster (one-time).',
+};
+const NATIVE_STAR = {
+  he: 'בשלב יצירת הפוסטר או הקומיקס תמצא אפשרות להעלות תמונת פנים. ה-AI בונה ממנה "גיליון דמות" ומחדיר אותך לסצנות. כל משתמש רשום מקבל פוסטר אחד חינם להתנסות. שים לב — הפיצ\'ר מיועד לבני 18 ומעלה, ומותר להעלות רק את הפנים שלך, או של בגיר שנתן הסכמה.',
+  en: 'During poster or comic generation you\'ll find an option to upload a face photo. The AI builds a "Character Sheet" from it and casts you into the scenes. Every registered user gets one free poster to try it. Note — this feature is for users aged 18 and over, and you may only upload your own face, or an adult who has consented.',
+};
+const NATIVE_ABOUT_STAR = {
+  he: 'הפיצ\'ר החתום שלנו: העלה תמונת פנים, וה-AI יהפוך אותך לדמות הראשית בפוסטר ובקומיקס שלך. אנחנו בונים "גיליון דמות" עקבי כדי שתיראה כמוך לאורך כל הסצנות. כל משתמש רשום מקבל פוסטר "לככב בסיפור" אחד חינם להתנסות.',
+  en: 'Our signature feature: upload a face photo, and the AI turns you into the lead character of your own poster and comic. We build a consistent "Character Sheet" so you look like yourself across every scene. Every registered user gets one free "Star Yourself" poster to try it.',
+};
+const SUBSCRIPTION_CLAUSE = /;?\s*(?:רכישת מנוי בתשלום מחייבת גיל 18 ומעלה או אישור אפוטרופוס|purchasing a paid subscription requires you to be 18 or older, or to have guardian approval)/;
+
+// Disclosures about web-payment data and the Pro waitlist: removed from the app's copy (the full wording stays on the web pages).
+const NATIVE_TEXT_REPLACEMENTS = [
+  ['מצב המנוי, מזהה לקוח של Stripe, ', ''],
+  ['the subscription state, a Stripe customer ID, ', ''],
+  ['החשבון, המכסה והמנוי', 'החשבון והמכסה'],
+  ['account, quota and subscription', 'account and quota'],
+  [', הרשמות לרשימת ההמתנה ובקשות', ' ובקשות'],
+  ['Feedback, waitlist sign-ups and deletion requests', 'Feedback and deletion requests'],
+  [' אימיילים ברשימת ההמתנה נשמרים עד שתבקש למחוק אותם.', ''],
+  [' Waitlist email addresses are kept until you ask us to delete them.', ''],
+  [' ומזהה לקוח של Stripe)', ')'],
+  ['waitlist and deletion-request messages', 'deletion-request messages'],
+  ['בהרשמה לרשימת ההמתנה ובבקשת מחיקה', 'בבקשת מחיקה'],
+  [' and a Stripe customer ID)', ')'],
+  [' and Stripe customer ID)', ')'],
+];
+const applyNativeReplacements = (p) => NATIVE_TEXT_REPLACEMENTS.reduce((t, [from, to]) => t.split(from).join(to), p);
+
+function nativeParagraph(h, p) {
+  if (/^\d+\.\s*(?:מסלולים, מכסות|Plans, Quotas)/.test(h)) return /[א-ת]/.test(h) ? NATIVE_PLANS.he : NATIVE_PLANS.en;
+  if (/^\d+\.\s*(?:הגבלת גיל|Age Restriction)/.test(h)) return applyNativeReplacements(p.replace(SUBSCRIPTION_CLAUSE, ''));
+  if (/מלככבים" בפוסטר|"star" in the poster/.test(h)) return /[א-ת]/.test(h) ? NATIVE_STAR.he : NATIVE_STAR.en;
+  if (/לככב בסיפור שלך|Star in Your Own Story/.test(h)) return /[א-ת]/.test(h) ? NATIVE_ABOUT_STAR.he : NATIVE_ABOUT_STAR.en;
+  return applyNativeReplacements(p);
+}
+
+/** MODAL_DATA for the web (native=false: the very same object) or for the Android app (native=true: no pricing / purchase text). */
+export function modalDataFor(native) {
+  if (!native) return MODAL_DATA;
+  const out = {};
+  for (const [doc, langs] of Object.entries(MODAL_DATA)) {
+    out[doc] = {};
+    for (const [lang, content] of Object.entries(langs)) {
+      if (!content || !Array.isArray(content.sections)) { out[doc][lang] = content; continue; }
+      let sections = content.sections
+        .filter((sec) => !NATIVE_DROP.test(sec.h || ''))
+        .map((sec) => ({ ...sec, p: nativeParagraph(sec.h || '', sec.p) }));
+      if (content.sections.every((sec) => /^\d+\./.test(sec.h || ''))) {
+        let n = 0;
+        sections = sections.map((sec) => ({ ...sec, h: sec.h.replace(/^\d+\./, `${++n}.`) }));
+      }
+      out[doc][lang] = { ...content, sections };
+    }
+  }
+  return out;
+}

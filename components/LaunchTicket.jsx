@@ -3,11 +3,13 @@ import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Ticket, X, Star } from "lucide-react";
 import { proBlurbHe, proBlurbEn } from '../constants/limits-copy.js';
+import { useNative } from '../hooks/useNative.js';
 
 export default function LaunchTicket({ lang = 'he' }) {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const isHe = lang === 'he';
+  const native = useNative();   // the Android app shows no Pro plan / price card
 
   useEffect(() => {
     setMounted(true);
@@ -101,7 +103,7 @@ export default function LaunchTicket({ lang = 'he' }) {
         </p>
         
         <div className="space-y-2 mb-4 text-start">
-          {content.deals.map((deal, i) => (
+          {content.deals.filter((d) => !(native && d.icon === "👑")).map((deal, i) => (
             <div
               key={i}
               className="bg-amber-500/[0.07] border border-amber-500/20 rounded-xl p-3 flex gap-2.5 items-start"

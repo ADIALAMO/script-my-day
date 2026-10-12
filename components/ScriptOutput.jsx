@@ -407,12 +407,12 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
   // ── Comic style options ────────────────────────────────────────────────────
   const comicStyleOptions = useMemo(() => uiHebrew ? [
     { value: 'anime',   label: 'אנימה סטודיו' },
-    { value: 'marvel',  label: 'מארוול רטרו' },
+    { value: 'marvel',  label: 'קומיקס רטרו' },
     { value: 'noir',    label: 'נואר קולנועי' },
     { value: 'painted', label: 'ציור קולנועי' },
   ] : [
     { value: 'anime',   label: 'ANIME STUDIO' },
-    { value: 'marvel',  label: 'MARVEL RETRO' },
+    { value: 'marvel',  label: 'RETRO COMIC' },
     { value: 'noir',    label: 'CINEMATIC NOIR' },
     { value: 'painted', label: 'CINEMATIC PAINTED' },
   ], [uiHebrew]);

@@ -52,11 +52,11 @@ scenario('L2', 'the SAME plan drives different routes: poster limit (Free 2 / Pr
     assert.deepEqual(await run('free', 3), [200, 200, 429]);
     for (const kind of ['paid', 'adminGranted', 'vip']) assert.deepEqual(await run(kind, 4), [200, 200, 200, 429], kind);
     assert.deepEqual(await run('admin', 4), [200, 200, 200, 200]);
-    const upAnon = await invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true }, ip: '203.0.113.79' });
+    const upAnon = await invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true, adult: true }, ip: '203.0.113.79' });
     assert.equal(upAnon.status, 403);
     for (const kind of ['free', 'paid', 'adminGranted', 'vip', 'admin']) {
       const u = await makeUser(`l2u-${kind}`, kind);
-      const r = await invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true }, cookies: u.cookies, ip: `203.0.113.${80 + kind.length}` });
+      const r = await invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true, adult: true }, cookies: u.cookies, ip: `203.0.113.${80 + kind.length}` });
       assert.equal(r.status, 200, `${kind} upload`);
     }
     return { actual: 'Free 2/day; paid, admin-granted and allow-list Pro 3/day; admin unlimited; anonymous upload 403; every signed-in kind may upload' };

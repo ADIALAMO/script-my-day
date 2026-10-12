@@ -1,7 +1,8 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useState } from 'react';
-import { MODAL_DATA } from '../constants/modalData';
+import { modalDataFor } from '../constants/modalData';
+import { useNative } from '../hooks/useNative.js';
 import { SITE_URL } from '../lib/site';
 
 const PAGE_META = {
@@ -43,7 +44,8 @@ const SIBLING = { privacy: 'terms', terms: 'privacy' };
 export default function LegalPage({ contentKey }) {
   const [lang, setLang] = useState('he');
   const isHe   = lang === 'he';
-  const data   = MODAL_DATA[contentKey][lang];
+  const native = useNative();   // Android app: the same document without pricing / subscription sections
+  const data   = modalDataFor(native)[contentKey][lang];
   const meta   = PAGE_META[contentKey][lang];
   const slug   = PAGE_META[contentKey].slug;
   const sib    = SIBLING[contentKey];

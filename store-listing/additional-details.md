@@ -13,6 +13,8 @@ Reasoning: the app's core output — and what a screenshot-browsing user will ju
 ## Target audience & age
 **Recommended: 18+ primary, or at minimum 16+.**
 
+> ⚠️ **Mismatch to resolve:** the Terms of Use (§7) allow users aged **13+** (and "Star Yourself" is **18+ only**). A declared target audience of 16+/18+ is narrower than the Terms. Pick one: declare 13+ (and meet the teen obligations of the AI-content / UGC policies), or raise the Terms minimum age. See `content-rating.md` → "Mismatches to resolve".
+
 Reasoning, not just a guess:
 - The app requires an email/Google sign-in to unlock most functionality, and has a paid subscription — Play's own guidance steers apps with account creation + payments away from a "designed for children" or broad all-ages declaration, since that triggers Google's stricter Families Policy (additional restrictions on ads, data collection, and design that this app hasn't been built against).
 - The core interaction — writing reflective journal entries about your day — isn't inherently child-directed content, and the tone/branding (cinematic, "director," Hollywood aesthetic) reads as general-audience/adult, not kid-focused.

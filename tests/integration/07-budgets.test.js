@@ -119,7 +119,7 @@ scenario('H5', 'identity budget reached → character upload is refused EXPLICIT
     await face(p, '198.51.100.87'); await face(p, '198.51.100.87');            // spend the budget (2)
     const g = (providers.counts.grok || 0) + (providers.counts['gemini-image'] || 0);
     const u = await makeUser('h5', 'free');
-    const r = await invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true }, cookies: u.cookies, ip: '198.51.100.88' });
+    const r = await invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true, adult: true }, cookies: u.cookies, ip: '198.51.100.88' });
     assert.equal(r.status, 503); assert.equal(r.body.code, 'IDENTITY_BUDGET_REACHED');
     assert.equal((providers.counts.grok || 0) + (providers.counts['gemini-image'] || 0), g);
     assert.equal(providers.s3puts.length, 0);

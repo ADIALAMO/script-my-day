@@ -95,7 +95,7 @@ export function useCharacter(gender = 'neutral') {
   }, [defaultStarringOnIfUnset]);
 
   // ── Upload (the one-time, paid, two-stage pipeline) ─────────────────────────
-  const uploadCharacter = useCallback(async (selfieBase64, consent = false) => {
+  const uploadCharacter = useCallback(async (selfieBase64, consent = false, adult = false) => {
     setStatus('loading');
     setError('');
     try {
@@ -103,7 +103,7 @@ export function useCharacter(gender = 'neutral') {
       const r = await fetch('/api/upload-character', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', 'x-device-id': deviceId },
-        body:    JSON.stringify({ selfieBase64, consent }),
+        body:    JSON.stringify({ selfieBase64, consent, adult }),
       });
       const d = await r.json();
 

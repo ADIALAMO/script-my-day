@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Film, Languages, Clapperboard, LogOut, Crown, ChevronDown, User, CreditCard, Loader2, Gift, Volume2, VolumeX } from 'lucide-react';
+import { Film, Languages, Clapperboard, LogOut, Crown, ChevronDown, User, CreditCard, Loader2, Gift, Volume2, VolumeX, Trash2 } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import LaunchTicket from './LaunchTicket';
 import ReferralModal from './ReferralModal';
 import { BILLING_ENABLED } from '../constants/billing';
-import { isCapacitorNative } from '../utils/platform.js';
+import { useNative } from '../hooks/useNative.js';
 
 // Fetches the current user's tier from the server.
 // refreshToken is an external counter; incrementing it triggers a re-fetch.
@@ -57,6 +57,7 @@ const IconTooltip = ({ label }) => (
 
 // Dropdown menu rendered via portal so it escapes the navbar's overflow:hidden.
 function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, onInviteClick }) {
+  const native = useNative();   // Android app: no purchase / subscription UI at all (Google Play payments policy)
   const ref = useRef(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [portalError,   setPortalError]   = useState(null);
@@ -152,7 +153,7 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, 
         {/* Upgrade to Pro — hidden for pro/admin users, and for the Capacitor
             shell entirely (no purchase/pricing CTA in the native app — see
             the mobile-wrapper plan's billing decision). */}
-        {!isElevated && !isCapacitorNative() && (
+        {!isElevated && !native && (
           <button
             onClick={() => { onClose(); onUpgradeClick(); }}
             className="w-full flex items-center gap-2.5 px-4 py-2.5 text-amber-400 hover:bg-amber-500/10 transition-colors duration-150 group"
@@ -167,7 +168,7 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, 
         )}
 
         {/* Manage Subscription — only for paying Pro subscribers, not admin */}
-        {isPro && (
+        {isPro && !native && (
           <>
             <button
               onClick={handleManageSubscription}
@@ -204,6 +205,16 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, 
           </span>
         </button>
 
+        {/* Account & data deletion — the public /data-deletion page, prefilled with this session's e-mail (requests are verified before anything is deleted) */}
+        <a
+          href="/data-deletion?from=account"
+          onClick={onClose}
+          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-white/40 hover:text-red-300 hover:bg-white/[0.04] transition-colors duration-150"
+        >
+          <Trash2 size={13} className="shrink-0" />
+          <span className="text-[11px] font-medium uppercase tracking-wide">{isHe ? 'מחק את החשבון שלי' : 'Delete my account'}</span>
+        </a>
+
         {/* Sign out */}
         <button
           onClick={() => { onClose(); signOut({ callbackUrl: '/' }); }}
@@ -223,6 +234,7 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, 
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHistoryOpen, onOpenAuthModal, tierRefreshToken = 0, onDropdownToggle, closeDropdownRef, isMusicMuted, onToggleMute, isMuteLocked = false }) {
+  const native = useNative();
   const { data: session, status } = useSession();
   const isAuthenticated = status === 'authenticated';
   const tier = useTier(isAuthenticated, tierRefreshToken);
@@ -370,7 +382,7 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
           <div className="flex items-center gap-2 shrink-0">
             {/* Go Pro CTA — desktop, free users only. Hidden entirely on
                 Capacitor (no purchase/pricing CTA in the native app). */}
-            {!isPro && !isCapacitorNative() && (
+            {!isPro && !native && (
               <button
                 onClick={() => handleOpenAuthModal('upgrade')}
                 className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 hover:border-amber-500/45 text-amber-400 text-[10px] font-black uppercase tracking-wide transition-all duration-200 whitespace-nowrap active:scale-95"

@@ -32,7 +32,7 @@ export async function getServerSideProps(context) {
   context.res.setHeader('Set-Cookie', `ls_ref=${encodeURIComponent(code)}; Path=/; Max-Age=${maxAge}; SameSite=Lax`);
   context.res.setHeader('Cache-Control', 'no-store');
 
-  const ogImage = `${base}/api/og?name=${encodeURIComponent(name)}&lang=${lang}`;
+  const ogImage = `${base}/api/og?code=${encodeURIComponent(code)}&lang=${lang}`;
   return { props: { code, name, lang, ogImage, inviteUrl: `${base}/i/${code}` } };
 }
 

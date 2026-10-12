@@ -6,6 +6,7 @@ import { signIn, getSession } from 'next-auth/react';
 import { X, Film, Shield, Mail, ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
 import { Browser } from '@capacitor/browser';
 import { isCapacitorNative } from '../utils/platform.js';
+import { useNative } from '../hooks/useNative.js';
 
 const CONTEXT_COPY = {
   poster: {
@@ -94,7 +95,9 @@ function generateRelayToken() {
  */
 export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'general' }) {
   const isHe = lang === 'he';
-  const safeContext = context in CONTEXT_COPY ? context : 'general';
+  const native = useNative();
+  // The Android app never shows the "upgrade to Pro" message: that context falls back to the plain sign-in copy.
+  const safeContext = context in CONTEXT_COPY && !(native && context === 'upgrade') ? context : 'general';
   const contextMsg  = CONTEXT_COPY[safeContext][lang] || CONTEXT_COPY[safeContext].en;
 
   // 'idle' | 'sending' | 'sent' | 'error' | 'authenticated'
