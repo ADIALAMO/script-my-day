@@ -36,7 +36,7 @@ console.log('GENERATION — production prompt (lib/agent.js buildScriptPrompt) +
 console.log('model | provider/key | free? | calls | est. cost (expected / worst-case) | price in/out per 1M | price source');
 for (const { m, n, exp, worst } of rows) {
   const free = m.free ? 'FREE (OpenRouter :free key)' : m.provider === 'google' ? 'free-or-paid depends on your Google plan (UNKNOWN) — budgeted as PAID' : m.provider === 'cohere' ? 'paid if production key, free if trial (UNKNOWN) — budgeted as PAID' : 'PAID (OpenRouter credits)';
-  const route = m.provider === 'google' ? 'Google direct (GOOGLE_GEMINI_API_KEY)' : m.provider === 'cohere' ? 'Cohere direct' : `OpenRouter (${m.keyEnv})`;
+  const route = m.provider === 'google' ? 'Google direct (EVAL_GOOGLE_API_KEY)' : m.provider === 'cohere' ? 'Cohere direct' : `OpenRouter (${m.keyEnv})`;
   console.log(`- ${m.id} | ${route} | stage ${m.stage} | ${free} | ${n} calls | $${exp.toFixed(3)} / $${worst.toFixed(3)} | $${m.in}/$${m.out} | ${m.verified}`);
 }
 console.log(`- probes (free, 1 call each): ${PROBE_MODELS.map(p => p.id).join(', ')} — listed in code but missing from the live OpenRouter list`);
@@ -61,5 +61,5 @@ console.log(`- HARD CAP $${BUDGET_USD.toFixed(2)}: the runner keeps a ledger fro
 if (genWorst + jWorst > BUDGET_USD) console.log(`- NOTE: worst-case exceeds the cap, and the expected figure is close to it - the ledger/stop rule is what guarantees the cap; judging (fewer random pairs) is trimmed first if generation costs more than expected.`);
 
 console.log('\nKEYS (presence only, values never printed):');
-for (const k of ['GOOGLE_GEMINI_API_KEY', 'OPENROUTER_API_KEY', 'OPENROUTER_FREE_KEY', 'COHERE_API_KEY']) console.log(`- ${k}: ${hasKey(k) ? 'present' : 'MISSING'}`);
+for (const k of ['EVAL_GOOGLE_API_KEY', 'OPENROUTER_API_KEY', 'OPENROUTER_FREE_KEY', 'COHERE_API_KEY']) console.log(`- ${k}: ${hasKey(k) ? 'present' : 'MISSING'}`);
 console.log('\nPrice sources:', Object.entries(PRICE_SOURCES).map(([k, v]) => `${k}: ${v}`).join(' | '));
