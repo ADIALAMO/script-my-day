@@ -71,6 +71,19 @@ test('§1 describes posters/panels as a random, unlisted address that anyone hol
   assert.match(sec('privacy', 'en', 1), /anyone who has the address can open the file/);
   assert.match(sec('privacy', 'he', 1), /כתובת אינטרנט אקראית שאינה מופיעה באף רשימה/);
   assert.match(sec('privacy', 'he', 1), /מי שמחזיק בכתובת יכול לפתוח את הקובץ/);
+  // older files: be honest that they may sit at a less random address, and offer deletion
+  assert.match(sec('privacy', 'en', 1), /Files created before October 2026 may be stored at a less random address, and you can ask us to delete them \(section 9\)\./);
+  assert.match(sec('privacy', 'he', 1), /קבצים שנוצרו לפני אוקטובר 2026 עשויים להישמר בכתובת פחות אקראית, וניתן לבקש את מחיקתם \(סעיף 9\)\./);
+  // the no-automatic-deletion sentence stays
+  assert.match(sec('privacy', 'en', 1), /We do not currently promise automatic deletion of them/);
+  assert.match(sec('privacy', 'he', 1), /אנחנו לא מתחייבים כרגע על מחיקה אוטומטית שלהם/);
+});
+
+test('§8 points to every section where data goes to providers or the team: 3, 4 (Telegram), 5 and 7 — and §4 really mentions the Telegram forwarding', () => {
+  assert.match(sec('privacy', 'en', 8), /\(sections 3, 4, 5 and 7\)/);
+  assert.match(sec('privacy', 'he', 8), /\(סעיפים 3, 4, 5 ו-7\)/);
+  assert.match(sec('privacy', 'en', 4), /private Telegram chat/);
+  assert.match(sec('privacy', 'he', 4), /צ'אט טלגרם פרטי/);
 });
 
 test('§2 says earlier photos may still be stored (plain text, no brackets) and that the sheet address is openable by anyone holding it', () => {

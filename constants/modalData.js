@@ -104,7 +104,7 @@ export const MODAL_DATA = {
       sections: [
         {
           h: '1. מה נשמר ומה לא',
-          p: 'הטקסט שאתה כותב (יומן, תסריט) אינו נשמר על ידינו במסד נתונים, וההיסטוריה שלך נשמרת בזיכרון המקומי (localStorage) של הדפדפן שלך. שים לב: הטקסט נשלח לספקי AI חיצוניים כדי ליצור את התוצר (ראה סעיף 7). פוסטרים ופאנלי קומיקס שנוצרו עשויים להישמר גם באחסון ענן (Cloudflare R2) בכתובת אינטרנט אקראית שאינה מופיעה באף רשימה, כדי שיהיה אפשר להציג ולשתף אותם; מי שמחזיק בכתובת יכול לפתוח את הקובץ. אנחנו לא מתחייבים כרגע על מחיקה אוטומטית שלהם, וניתן לבקש את מחיקתם (סעיף 9).',
+          p: 'הטקסט שאתה כותב (יומן, תסריט) אינו נשמר על ידינו במסד נתונים, וההיסטוריה שלך נשמרת בזיכרון המקומי (localStorage) של הדפדפן שלך. שים לב: הטקסט נשלח לספקי AI חיצוניים כדי ליצור את התוצר (ראה סעיף 7). פוסטרים ופאנלי קומיקס שנוצרו עשויים להישמר גם באחסון ענן (Cloudflare R2) בכתובת אינטרנט אקראית שאינה מופיעה באף רשימה, כדי שיהיה אפשר להציג ולשתף אותם; מי שמחזיק בכתובת יכול לפתוח את הקובץ. אנחנו לא מתחייבים כרגע על מחיקה אוטומטית שלהם, וניתן לבקש את מחיקתם (סעיף 9). קבצים שנוצרו לפני אוקטובר 2026 עשויים להישמר בכתובת פחות אקראית, וניתן לבקש את מחיקתם (סעיף 9).',
         },
         {
           h: '2. תמונות "לככב בסיפור"',
@@ -146,7 +146,7 @@ export const MODAL_DATA = {
       sections: [
         {
           h: '1. What We Store and What We Don\'t',
-          p: 'The text you write (diary, script) is not stored by us in a database, and your history is kept in your browser\'s local storage (localStorage). Note: the text is sent to external AI providers to produce the result (see section 7). Generated posters and comic panels may also be stored in cloud storage (Cloudflare R2) at a random web address that is not listed anywhere, so they can be displayed and shared; anyone who has the address can open the file. We do not currently promise automatic deletion of them, and you can ask us to delete them (section 9).',
+          p: 'The text you write (diary, script) is not stored by us in a database, and your history is kept in your browser\'s local storage (localStorage). Note: the text is sent to external AI providers to produce the result (see section 7). Generated posters and comic panels may also be stored in cloud storage (Cloudflare R2) at a random web address that is not listed anywhere, so they can be displayed and shared; anyone who has the address can open the file. We do not currently promise automatic deletion of them, and you can ask us to delete them (section 9). Files created before October 2026 may be stored at a less random address, and you can ask us to delete them (section 9).',
         },
         {
           h: '2. "Star Yourself" Photos',
