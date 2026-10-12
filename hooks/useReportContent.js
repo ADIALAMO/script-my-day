@@ -14,15 +14,17 @@ async function hashDataUri(dataUri) {
 
 /**
  * Sends one report. `sources` are the image URLs (our R2 links) or data: URIs the user is looking at (up to 8; a reel lists its frames).
+ * `galleryRef` ('poster:<id>' | 'reel:<id>') reports a static showcase item instead (sources are ignored).
  * Resolves { ok: true } or { ok: false, error: 'rate' | 'invalid' | 'failed' }. On success the sources are remembered as hidden.
  */
 export function useReportContent() {
   const [sending, setSending] = useState(false);
 
-  const submit = useCallback(async ({ kind, reason, sources }) => {
+  const submit = useCallback(async ({ kind, reason, sources, galleryRef }) => {
     setSending(true);
     try {
       const refs = [];
+      if (galleryRef) refs.push({ gallery: galleryRef });   // static gallery item: a lookup key only (lib/gallery-report.js)
       for (const s of (sources || []).slice(0, 8)) {
         if (typeof s !== 'string') continue;
         if (s.startsWith('http')) refs.push({ url: s });
@@ -37,7 +39,7 @@ export function useReportContent() {
       if (resp.status === 429) return { ok: false, error: 'rate' };
       if (resp.status === 400) return { ok: false, error: 'invalid' };
       if (!resp.ok) return { ok: false, error: 'failed' };
-      markReported(sources);
+      markReported(galleryRef ? [`gallery:${galleryRef}`] : sources);
       return { ok: true };
     } catch {
       return { ok: false, error: 'failed' };

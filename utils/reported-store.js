@@ -34,3 +34,12 @@ export function markReported(sources = []) {
     window.localStorage.setItem(LS_KEY, JSON.stringify(next));
   } catch { /* storage unavailable — the in-memory copy still hides it for this session */ }
 }
+
+/** the gallery refs ('poster:49', 'reel:reel-action-4') the user reported on this device (stored as 'gallery:<ref>') */
+export function reportedGalleryRefs() {
+  const out = new Set();
+  const take = (s) => { if (typeof s === 'string' && s.startsWith('gallery:')) out.add(s.slice('gallery:'.length)); };
+  mem.forEach(take);
+  readPersisted().forEach(take);
+  return out;
+}
