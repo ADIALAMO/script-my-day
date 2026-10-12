@@ -73,6 +73,7 @@ export function createProviders() {
   const unexpected = [];
   const refuse = {};   // provider -> true: answer with that provider's CONTENT REFUSAL (safety filter) instead of an image/script
   const bodies = [];   // { provider, body } of every request, so tests can assert what was (not) sent
+  const hooks = { afterPut: null };   // test hooks (see setup.mjs): run something right after an object is stored
 
   const count = (provider, extra = {}) => { counts[provider] = (counts[provider] || 0) + 1; log.push({ provider, ...extra }); };
   const failing = (provider) => (mode[provider] && mode[provider] !== 'ok' ? mode[provider] : null);
@@ -189,8 +190,8 @@ export function createProviders() {
   }
 
   return {
-    handle, refuse, bodies, counts, log, telegram, s3puts, s3deletes, s3copies, s3objects, mode, latency, moderationVerdict, checkGemini, ageVerdict, scriptOutputs, sbVisuals, handlers, unexpected,
-    reset() { for (const k of Object.keys(counts)) delete counts[k]; log.length = 0; telegram.length = 0; s3puts.length = 0; s3deletes.length = 0; s3copies.length = 0; s3objects.clear(); for (const k of Object.keys(mode)) delete mode[k]; latency.gemini = null; moderationVerdict.value = 'safe'; moderationVerdict.raw = undefined; moderationVerdict.nonString = false; moderationVerdict.nullLength = false; moderationVerdict.queue.length = 0; checkGemini.value = 'safe'; checkGemini.raw = undefined; checkGemini.block = false; ageVerdict.value = 'adult'; ageVerdict.raw = undefined; ageVerdict.block = false; scriptOutputs.queue.length = 0; sbVisuals.queue.length = 0; checkGemini.queue.length = 0; ageVerdict.queue.length = 0; handlers.r2 = null; for (const k of Object.keys(refuse)) delete refuse[k]; bodies.length = 0; },
+    handle, refuse, bodies, counts, log, telegram, s3puts, s3deletes, s3copies, s3objects, hooks, mode, latency, moderationVerdict, checkGemini, ageVerdict, scriptOutputs, sbVisuals, handlers, unexpected,
+    reset() { for (const k of Object.keys(counts)) delete counts[k]; log.length = 0; telegram.length = 0; s3puts.length = 0; s3deletes.length = 0; s3copies.length = 0; s3objects.clear(); for (const k of Object.keys(mode)) delete mode[k]; latency.gemini = null; moderationVerdict.value = 'safe'; moderationVerdict.raw = undefined; moderationVerdict.nonString = false; moderationVerdict.nullLength = false; moderationVerdict.queue.length = 0; checkGemini.value = 'safe'; checkGemini.raw = undefined; checkGemini.block = false; ageVerdict.value = 'adult'; ageVerdict.raw = undefined; ageVerdict.block = false; scriptOutputs.queue.length = 0; sbVisuals.queue.length = 0; checkGemini.queue.length = 0; ageVerdict.queue.length = 0; handlers.r2 = null; hooks.afterPut = null; for (const k of Object.keys(refuse)) delete refuse[k]; bodies.length = 0; },
     snapshot() { return { ...counts, 'r2-put': s3puts.length }; },
     paidTotal() { return Object.entries(counts).filter(([k]) => PAID.has(k)).reduce((n, [, v]) => n + v, 0); },
     paid() { return Object.fromEntries(Object.entries(counts).filter(([k]) => PAID.has(k))); },

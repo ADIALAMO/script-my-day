@@ -85,6 +85,7 @@ export async function boot({ env = {}, nodeEnv = 'test', startAt = '2026-10-15T1
     if (name === 'DeleteObjectCommand') {
       providers.s3deletes.push({ key: input.Key, bucket: input.Bucket });
       if (providers.mode.s3delete) throw new Error(`R2 delete failed (mock ${providers.mode.s3delete})`);
+      if (providers.mode.s3deleteFailures > 0) { providers.mode.s3deleteFailures -= 1; throw new Error('R2 delete failed (mock, transient)'); }
       providers.s3objects.delete(id);
       return {};
     }
@@ -95,6 +96,7 @@ export async function boot({ env = {}, nodeEnv = 'test', startAt = '2026-10-15T1
     }
     if (name === 'CopyObjectCommand') {
       if (providers.mode.s3copy) throw new Error(`R2 copy failed (mock ${providers.mode.s3copy})`);
+      if (providers.mode.s3copyFailures > 0) { providers.mode.s3copyFailures -= 1; throw new Error('R2 copy failed (mock, transient)'); }   // fails N times, then works
       const from = decodeURIComponent(input.CopySource);
       const o = providers.s3objects.get(from);
       if (!o) { const e = new Error('NoSuchKey'); e.name = 'NoSuchKey'; e.Code = 'NoSuchKey'; throw e; }
@@ -105,6 +107,7 @@ export async function boot({ env = {}, nodeEnv = 'test', startAt = '2026-10-15T1
     if (providers.mode.s3putSheet && String(input.Key).endsWith('-sheet.jpg')) throw new Error('R2 put failed (mock sheet)');
     providers.s3puts.push({ key: input.Key, bytes: input.Body?.length ?? 0, bucket: input.Bucket, metadata: input.Metadata });
     providers.s3objects.set(id, { bytes: input.Body?.length ?? 0, metadata: input.Metadata ?? {} });
+    await providers.hooks.afterPut?.(input);   // lets a test interleave another request right after an object is stored (race scenarios)
     return {};
   };
   const mails = [];

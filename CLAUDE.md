@@ -182,6 +182,14 @@ NOT age verification — never describe it so (tests/text-safety.test.js scans t
 | text classifier | `DAILY_TEXT_CHECK_BUDGET` ($0.30) | `usage:check:text:global:<day>` | `check_text` |
 | minor screen | `DAILY_MINOR_CHECK_BUDGET` ($0.20) | `usage:check:minor:global:<day>` | `check_minor` |
 
+### 4c. Report gaps + one-time scan (`fix/report-gaps-and-scan`)
+Legacy object keys (no owner segment) count as owner-equivalent in `lib/report.js` (one report hides). `quarantineObject` retries the copy and the delete
+3× inline; `takedownAfterUpload` closes the upload-vs-report race; the 31st alert in an hour sends ONE "volume high" count alert. **Daily cron**
+`/api/cron/sweep-hidden` (vercel.json, 04:00 UTC, auth = `Authorization: Bearer $CRON_SECRET`, fail-closed 401) moves hidden objects that are still
+public into the private bucket (`lib/report-sweep.js`; MOVE only, never deletes; digest to Telegram only when there is something to say);
+`scripts/takedown-object.mjs sweep [--apply]` is the manual twin. `scripts/scan-existing-images.mjs` is the MANUAL one-time scan of old
+objects (dry run by default; `--quarantine-from` is a separate typed-confirmation step; never automated).
+
 ### 4b. Android app (Capacitor) — Google Play payments policy
 Inside the native shell **nothing may show a price, a subscription, Stripe or an "upgrade" prompt**. `hooks/useNative.js`
 (true after mount; SSR/first render false) hides Manage Subscription, the LaunchTicket Pro card, the Go-Pro chip, locked-panel

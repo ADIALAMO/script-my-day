@@ -70,3 +70,30 @@ test('bad usage and non-reportable keys are refused with a non-zero code and no 
   assert.equal((await run({ ...f.deps, argv: ['delete', 'characters/x/y-raw.jpg'] })).code, 2);
   assert.equal(f.ops.length, 0);
 });
+
+test('sweep: dry run lists hidden objects still in the public bucket; --apply moves them after the typed word; hash-only marks and quarantined items are ignored', async () => {
+  const A = 'panels/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/11111111-1111-1111-1111-111111111111.png';
+  const B = 'panels/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/22222222-2222-2222-2222-222222222222.png';
+  const f = fakes({ public: { [A]: { size: 1 } }, quarantine: { [B]: { size: 1 } } });
+  f.deps.redis.scanHidden = async () => [A, B];
+  const dry = await run({ ...f.deps, argv: ['sweep'] });
+  assert.equal(dry.code, 0); assert.equal(f.ops.length, 0);
+  assert.match(f.log.join('\n'), /2 hidden item\(s\) checked; 1 still in the PUBLIC bucket/); assert.ok(f.log.includes(`  still public: ${A}`));
+  assert.match(f.log.join('\n'), /dry run — add --apply/);
+  let asked;
+  const r = await run({ ...f.deps, argv: ['sweep', '--apply'], confirm: async (plan, word) => { asked = word; return true; } });
+  assert.equal(asked, 'SWEEP 1'); assert.equal(r.code, 0);
+  assert.deepEqual(f.ops, [`copy public->quarantine ${A}`, `del public ${A}`]);
+  assert.equal(f.buckets.public.has(A), false); assert.equal(f.buckets.quarantine.has(A), true);
+});
+
+test('sweep --apply: refused confirmation moves nothing; nothing to do exits cleanly without asking', async () => {
+  const A = 'panels/1699999999999_abc123_00.png';
+  const f = fakes({ public: { [A]: { size: 1 } } });
+  f.deps.redis.scanHidden = async () => [A];
+  const refused = await run({ ...f.deps, argv: ['sweep', '--apply'], confirm: async () => false });
+  assert.equal(refused.code, 1); assert.equal(f.ops.length, 0);
+  const none = fakes(); none.deps.redis.scanHidden = async () => [];
+  let asked = false;
+  assert.equal((await run({ ...none.deps, argv: ['sweep', '--apply'], confirm: async () => { asked = true; return true; } })).code, 0); assert.equal(asked, false);
+});
