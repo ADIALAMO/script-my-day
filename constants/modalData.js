@@ -48,7 +48,7 @@ export const MODAL_DATA = {
           p: 'על תנאים אלו יחולו דיני מדינת ישראל, ומקום השיפוט הבלעדי יהיה בתל אביב. אנו רשאים לעדכן תנאים אלו מעת לעת; המשך השימוש לאחר עדכון מהווה הסכמה. השירות מופעל תחת השם LIFESCRIPT. בכל שאלה, בקשת מחיקה או פנייה בנושא פרטיות ניתן לפנות אל adialamo@gmail.com.',
         },
       ],
-      summary: 'עודכן לאחרונה: יוני 2026',
+      summary: 'עודכן לאחרונה: אוקטובר 2026',
     },
     en: {
       title: 'TERMS',
@@ -90,19 +90,13 @@ export const MODAL_DATA = {
           p: 'These terms are governed by the laws of the State of Israel, with exclusive jurisdiction in Tel Aviv. We may update these terms from time to time; continued use after an update constitutes acceptance. The service operates under the name LIFESCRIPT. For any question, deletion request, or privacy matter, contact adialamo@gmail.com.',
         },
       ],
-      summary: 'Last updated: June 2026',
+      summary: 'Last updated: October 2026',
     },
   },
 
   // ─── Privacy Policy ────────────────────────────────────────────────────────
 
-  // TODO(OWNER-CONFIRM — DRAFT, NOT FINAL): the privacy / AI-provider wording below (privacy §1, §2, §4, §7 and
-  // terms §5; the retention numbers are built from config/limits.js RETENTION / GUEST_RETENTION) is a DRAFT based on the providers' public terms (Google https://ai.google.dev/gemini-api/terms ; OpenRouter https://openrouter.ai/docs/features/privacy-and-logging and /provider-routing ; Cloudflare https://developers.cloudflare.com/workers-ai/platform/data-usage/ ; Cohere https://cohere.com/privacy).
-  // The FINAL text must be confirmed by the owner AFTER (1) billing is enabled on the Google project (Gemini API
-  // unpaid tier may use content to improve products + human review; EEA/UK/CH users require paid services),
-  // (2) OpenRouter provider data policies are reviewed (account privacy settings / provider routing), and
-  // (3) R2 object retention for characters/, posters/, panels/ is verified or implemented. No "no retention" claim
-  // may be added. Do not publish before this is confirmed.
+  // The AI-provider and storage wording (privacy §1, §2, §4, §6, §7, §8 and terms §5) follows the providers' public terms and the retention values in config/limits.js. Re-read it whenever a provider, a plan or a retention setting changes.
   privacy: {
     he: {
       title: 'פרטיות',
@@ -110,7 +104,7 @@ export const MODAL_DATA = {
       sections: [
         {
           h: '1. מה נשמר ומה לא',
-          p: 'הטקסט שאתה כותב (יומן, תסריט) אינו נשמר על ידינו במסד נתונים, וההיסטוריה שלך נשמרת בזיכרון המקומי (localStorage) של הדפדפן שלך. שים לב: הטקסט נשלח לספקי AI חיצוניים כדי ליצור את התוצר (ראה סעיף 7). פוסטרים ופאנלי קומיקס שנוצרו עשויים להישמר גם באחסון ענן (Cloudflare R2) תחת כתובת לא ניתנת לניחוש, כדי שיהיה אפשר להציג ולשתף אותם; אנחנו לא מתחייבים כרגע על מחיקה אוטומטית שלהם, וניתן לבקש את מחיקתם (סעיף 9).',
+          p: 'הטקסט שאתה כותב (יומן, תסריט) אינו נשמר על ידינו במסד נתונים, וההיסטוריה שלך נשמרת בזיכרון המקומי (localStorage) של הדפדפן שלך. שים לב: הטקסט נשלח לספקי AI חיצוניים כדי ליצור את התוצר (ראה סעיף 7). פוסטרים ופאנלי קומיקס שנוצרו עשויים להישמר גם באחסון ענן (Cloudflare R2) בכתובת אינטרנט אקראית שאינה מופיעה באף רשימה, כדי שיהיה אפשר להציג ולשתף אותם; מי שמחזיק בכתובת יכול לפתוח את הקובץ. אנחנו לא מתחייבים כרגע על מחיקה אוטומטית שלהם, וניתן לבקש את מחיקתם (סעיף 9).',
         },
         {
           h: '2. תמונות "לככב בסיפור"',
@@ -130,7 +124,7 @@ export const MODAL_DATA = {
         },
         {
           h: '6. עוגיות ואנליטיקה',
-          p: 'אנחנו משתמשים בעוגיות חיוניות לשמירת ההתחברות שלך, ובעוגיית הזמנה (ls_ref) לזיהוי החבר שהזמין אותך (נמחקת לאחר ' + RETENTION.referralCookieDays + ' יום). בנוסף אנחנו משתמשים ב-Google Analytics וב-Vercel Analytics לאיסוף נתוני שימוש מצטברים ואנונימיים שעוזרים לנו לשפר את השירות. נתונים אלו אינם מזהים אותך אישית.',
+          p: 'אנחנו משתמשים בעוגיות חיוניות לשמירת ההתחברות שלך, ובעוגיית הזמנה (ls_ref) לזיהוי החבר שהזמין אותך (נמחקת לאחר ' + RETENTION.referralCookieDays + ' יום). אנחנו משתמשים ב-Vercel Web Analytics, שאינו משתמש בעוגיות לזיהוי מבקרים: מבקר מזוהה באמצעות גיבוב (hash) זמני של הבקשה, שנמחק אוטומטית לאחר יממה, והנתונים המתקבלים הם מצטברים — כגון עמודים שנצפו, אתר מפנה, מיקום משוער (מדינה, אזור ועיר), סוג מכשיר, מערכת הפעלה ודפדפן, ואירועי שימוש בפיצ\'רים כמו יצירת תסריט או שיתוף. אם תאשר עוגיות אנליטיקה, אנחנו משתמשים גם ב-Google Analytics, שקובע מזהים (עוגיות) ומעבד נתונים כמו כתובת ה-IP ופרטי המכשיר שלך כדי לספק לנו סטטיסטיקות שימוש; איננו משתמשים בו לפרסום. ללא אישורך Google Analytics לא קובע עוגיות אנליטיקה.',
         },
         {
           h: '7. עיבוד על ידי ספקי AI חיצוניים',
@@ -152,7 +146,7 @@ export const MODAL_DATA = {
       sections: [
         {
           h: '1. What We Store and What We Don\'t',
-          p: 'The text you write (diary, script) is not stored by us in a database, and your history is kept in your browser\'s local storage (localStorage). Note: the text is sent to external AI providers to produce the result (see section 7). Generated posters and comic panels may also be stored in cloud storage (Cloudflare R2) under an unguessable address so they can be displayed and shared; we do not currently promise automatic deletion of them, and you can ask us to delete them (section 9).',
+          p: 'The text you write (diary, script) is not stored by us in a database, and your history is kept in your browser\'s local storage (localStorage). Note: the text is sent to external AI providers to produce the result (see section 7). Generated posters and comic panels may also be stored in cloud storage (Cloudflare R2) at a random web address that is not listed anywhere, so they can be displayed and shared; anyone who has the address can open the file. We do not currently promise automatic deletion of them, and you can ask us to delete them (section 9).',
         },
         {
           h: '2. "Star Yourself" Photos',
@@ -172,7 +166,7 @@ export const MODAL_DATA = {
         },
         {
           h: '6. Cookies & Analytics',
-          p: 'We use essential cookies to keep you signed in, and a referral cookie (ls_ref) to recognize the friend who invited you (deleted after ' + RETENTION.referralCookieDays + ' days). We also use Google Analytics and Vercel Analytics to collect aggregate, anonymous usage data that helps us improve the service. This data does not personally identify you.',
+          p: 'We use essential cookies to keep you signed in, and a referral cookie (ls_ref) to recognize the friend who invited you (deleted after ' + RETENTION.referralCookieDays + ' days). We use Vercel Web Analytics, which does not use cookies to identify visitors: a visitor is counted using a temporary hash of the request that is discarded automatically after a day, and the data is aggregate — such as pages viewed, referrer, approximate location (country, region and city), device type, operating system and browser, and feature-usage events such as creating a script or sharing. If you accept analytics cookies, we also use Google Analytics, which sets identifiers (cookies) and processes data such as your IP address and device information to give us usage statistics; we do not use it for advertising. Without your acceptance Google Analytics does not store analytics cookies.',
         },
         {
           h: '7. Processing by External AI Providers',

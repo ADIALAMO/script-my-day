@@ -267,7 +267,6 @@ function PosterRenderer({
                 // מדידת לחיצה על הפעולה הראשית
                 if (typeof window !== 'undefined' && window.gtag) {
                   window.gtag('event', 'poster_share_click', {
-                    title: posterTitle,
                     genre: genre,
                     method: isDesktop ? 'download' : 'share',
                   });

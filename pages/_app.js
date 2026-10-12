@@ -1,6 +1,5 @@
 // pages/_app.js
 import { SessionProvider } from 'next-auth/react';
-import { SpeedInsights } from '@vercel/speed-insights/react';
 import '../styles/globals.css';
 import Head from 'next/head';
 import Script from 'next/script';
@@ -185,7 +184,6 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
         <main className="min-h-screen bg-[#030712] selection:bg-[#d4a373]/30">
           <audio id="main-bg-music" preload="auto" style={{ display: 'none' }} />
           <Component {...pageProps} />
-          <SpeedInsights />
         </main>
       </>
     </SessionProvider>

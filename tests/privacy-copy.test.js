@@ -1,4 +1,4 @@
-// The privacy / terms wording is a DRAFT pending owner confirmation (see the TODO in constants/modalData.js).
+// Privacy / terms wording guards (see the review note in constants/modalData.js).
 // Guard: it must never promise "no retention" / "not stored" by third-party AI providers, which we cannot verify.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,8 +18,10 @@ test('privacy text names the provider categories, says content is sent to them, 
   }
 });
 
-test('the owner-confirmation TODO stays in the source until the text is final', () => {
-  assert.match(readFileSync(new URL('../constants/modalData.js', import.meta.url), 'utf8'), /TODO\(OWNER-CONFIRM/);
+test('the provider-policy review note stays next to the privacy text, and no owner-confirmation TODO is left', () => {
+  const src = readFileSync(new URL('../constants/modalData.js', import.meta.url), 'utf8');
+  assert.match(src, /Re-read it whenever a provider, a plan or a retention setting changes/);
+  assert.doesNotMatch(src, /OWNER-CONFIRM/);
 });
 
 // ── retention numbers in the wording must be the ones the code enforces (config/limits.js) ──────────
@@ -57,4 +59,59 @@ test('changing the retention in config changes the wording (nothing is hard-code
   const [en, he] = JSON.parse(out);
   assert.match(en, /45 days/); assert.doesNotMatch(en, /90 days/);
   assert.match(he, /45 ימים/);
+});
+
+// ── wording that must match what the code actually does ────────────────────────────────────────────
+const sec = (doc, lang, n) => MODAL_DATA[doc][lang].sections.find((s) => s.h.startsWith(`${n}.`)).p;
+
+test('§1 describes posters/panels as a random, unlisted address that anyone holding it can open (no "unguessable" promise)', () => {
+  assert.doesNotMatch(sec('privacy', 'en', 1), /unguessable/i);
+  assert.doesNotMatch(sec('privacy', 'he', 1), /לא ניתנת לניחוש/);
+  assert.match(sec('privacy', 'en', 1), /random web address that is not listed anywhere/);
+  assert.match(sec('privacy', 'en', 1), /anyone who has the address can open the file/);
+  assert.match(sec('privacy', 'he', 1), /כתובת אינטרנט אקראית שאינה מופיעה באף רשימה/);
+  assert.match(sec('privacy', 'he', 1), /מי שמחזיק בכתובת יכול לפתוח את הקובץ/);
+});
+
+test('§2 says earlier photos may still be stored (plain text, no brackets) and that the sheet address is openable by anyone holding it', () => {
+  assert.match(sec('privacy', 'en', 2), /Photos uploaded before this change may still be stored, and you can ask us to delete them\./);
+  assert.match(sec('privacy', 'he', 2), /תמונות שהועלו לפני שינוי זה עשויות עדיין להיות שמורות, וניתן לבקש את מחיקתן\./);
+  assert.match(sec('privacy', 'en', 2), /anyone who has a file's web address can open it/);
+  assert.match(sec('privacy', 'he', 2), /כל מי שמחזיק בכתובת האינטרנט של קובץ יכול לפתוח אותו/);
+  for (const lang of ['he', 'en']) assert.doesNotMatch(sec('privacy', lang, 2), /[\[\]]/);
+});
+
+test('§4 covers rate-limit records, the deletion log with e-mail/note/IP, Telegram forwarding (masked e-mail) and hosting logs', () => {
+  assert.match(sec('privacy', 'en', 4), /rate-limit records keyed by IP address/);
+  assert.match(sec('privacy', 'en', 4), /together with your email address, your note and your IP address/);
+  assert.match(sec('privacy', 'en', 4), /private Telegram chat[^.]*partly hidden email address/);
+  assert.match(sec('privacy', 'en', 4), /Waitlist email addresses are kept until you ask us to delete them/);
+  assert.match(sec('privacy', 'en', 4), /standard server logs/);
+  assert.match(sec('privacy', 'he', 4), /צ'אט טלגרם פרטי/);
+  assert.match(sec('privacy', 'he', 4), /יומני שרת סטנדרטיים/);
+});
+
+test('§6 names Vercel Web Analytics (no cookies to identify visitors, aggregate) and Google Analytics only after consent; no Speed Insights, no user-typed-text caveat', () => {
+  for (const lang of ['he', 'en']) {
+    const t = sec('privacy', lang, 6);
+    assert.match(t, /Vercel Web Analytics/);
+    assert.match(t, /Google Analytics/);
+    assert.doesNotMatch(t, /Speed Insights|Vercel Analytics/);
+    assert.doesNotMatch(t, /producer|מפיק|film title|שם הסרט/);
+  }
+  assert.match(sec('privacy', 'en', 6), /does not use cookies to identify visitors/);
+  assert.match(sec('privacy', 'en', 6), /If you accept analytics cookies, we also use Google Analytics/);
+  assert.match(sec('privacy', 'he', 6), /אם תאשר עוגיות אנליטיקה, אנחנו משתמשים גם ב-Google Analytics/);
+});
+
+test('terms §5: we ourselves do not train on or sell the photo; providers act under their own terms (no "share beyond processing" promise)', () => {
+  assert.match(sec('terms', 'en', 5), /We ourselves do not use the photo to train models or sell it; the AI providers that process it act under their own terms/);
+  assert.doesNotMatch(sec('terms', 'en', 5), /share it beyond the processing required/);
+  assert.match(sec('terms', 'he', 5), /אנחנו עצמנו לא משתמשים בתמונה לאימון מודלים ולא מוכרים אותה; ספקי ה-AI שמעבדים אותה פועלים לפי תנאיהם/);
+  assert.doesNotMatch(sec('terms', 'he', 5), /לא משתפים אותה מעבר לעיבוד הנדרש/);
+});
+
+test('terms last-updated date is October 2026 in both languages', () => {
+  assert.equal(MODAL_DATA.terms.he.summary, 'עודכן לאחרונה: אוקטובר 2026');
+  assert.equal(MODAL_DATA.terms.en.summary, 'Last updated: October 2026');
 });
