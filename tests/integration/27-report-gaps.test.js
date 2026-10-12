@@ -111,7 +111,7 @@ scenario('G6', 'sweep cron: moves ONLY hidden objects that are still public (nev
     hide(stuck); hide(already); fake.set(`report:hidden:h:${'a'.repeat(64)}`, '{}');
     put(fine, QB); providers.s3objects.delete(`${PUB}/${fine}`); hide(fine);
     const r = await cron();
-    assert.equal(r.status, 200); assert.deepEqual({ ...r.body }, { success: true, examined: 3, stillPublic: 1, moved: 1, failed: 0, notConfigured: false, timedOut: false });
+    assert.equal(r.status, 200); assert.deepEqual({ ...r.body }, { success: true, examined: 3, stillPublic: 1, moved: 1, failed: 0, notConfigured: false, timedOut: false, finished: true });
     assert.equal(inPublic(stuck), false); assert.equal(inQ(stuck), true);
     assert.equal(inPublic(visible), true, 'a non-hidden object is never touched');
     assert.ok(!JSON.stringify(r.body).includes('panels/'), 'no keys in the response');
@@ -142,4 +142,27 @@ scenario('G8', 'sweep cron: nothing to do → 200 with zero counts and NO Telegr
     const r = await cron();
     assert.equal(r.status, 200); assert.equal(r.body.examined, 0); assert.equal(tg('Report sweep').length, 0);
     return { actual: 'quiet when idle' };
+  });
+
+scenario('G9', 'sweep cron safety: it NEVER touches characters/ (or any non-panels/posters key) even if a hidden mark exists for it; it does not run from a Preview deployment; the cursor key is cleared after a full pass',
+  'characters/ object stays public & untouched; preview → skipped; cursor deleted', async () => {
+    const sel = 'characters/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/11111111-1111-1111-1111-111111111111-sheet.jpg';
+    const odd = 'something-else/x.png';
+    put(sel); put(odd); hide(sel); hide(odd);
+    const good = newKey(9); put(good); hide(good);
+    const r = await cron();
+    assert.equal(r.body.moved, 1); assert.equal(inPublic(sel), true); assert.equal(inPublic(odd), true); assert.equal(inQ(good), true);
+    assert.equal(providers.s3deletes.filter((d) => d.key === sel || d.key === odd).length, 0);
+    assert.equal(fake.get('report:sweep:cursor'), null);
+    // never from a Preview deployment (it may share the production variables)
+    put(newKey(1)); hide(newKey(1));
+    process.env.VERCEL_ENV = 'preview';
+    try {
+      const p = await cron();
+      assert.equal(p.status, 200); assert.equal(p.body.skipped, 'not-production'); assert.equal(inPublic(newKey(1)), true);
+      assert.equal((await cron({})).status, 401, 'still needs the secret first');
+    } finally { delete process.env.VERCEL_ENV; }
+    process.env.VERCEL_ENV = 'production';
+    try { assert.equal((await cron()).body.moved, 1); } finally { delete process.env.VERCEL_ENV; }
+    return { actual: 'scope-limited, production-only' };
   });

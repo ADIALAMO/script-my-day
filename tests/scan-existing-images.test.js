@@ -130,3 +130,45 @@ test('bad --route is refused before anything is read', async () => {
   const f = setup(OBJ);
   assert.equal((await run({ argv: ['--route', 'turbo'], deps: f.deps })).code, 2); assert.equal(f.gets.length, 0);
 });
+
+test('quarantine step refuses the WHOLE file if any key is outside panels/ or posters/ (tampered or wrong file): nothing is moved, no confirmation is even asked', async () => {
+  for (const bad of ['characters/x/y-sheet.jpg', 'panels/../characters/x.jpg', 'quarantine/panels/a.png', 'avatars/u.png']) {
+    const f = setup([]); f.files.set('res.json', JSON.stringify({ local: false, entries: { 'panels/a/ok.png': { v: 'unsafe' }, [bad]: { v: 'unsafe' } } }));
+    let asked = false; let moved = 0;
+    const r = await run({ argv: ['--quarantine-from', 'res.json'], deps: { ...f.deps, headPublic: async () => true, quarantine: async () => { moved += 1; return { status: 'moved' }; }, redis: { set: async () => {} }, confirm: async () => { asked = true; return true; } } });
+    assert.equal(r.code, 2, bad); assert.equal(asked, false); assert.equal(moved, 0);
+    assert.match(f.log.join('\n'), /refused: 1 key\(s\)/);
+    assert.ok(!f.log.join('\n').includes(bad), 'the offending key is not echoed');
+  }
+});
+
+test('--max-paid-usd really stops the spending: the classifier is handed a budget gate that closes at the cap (and at 0 never opens)', async () => {
+  const COST = 0.00015;
+  const spendWith = async (maxUsd, items) => {
+    let paidCalls = 0;
+    const objs = Array.from({ length: items }, (_, i) => ({ key: `panels/a/${i}.png` }));
+    const f = setup(objs, { classify: async (_u, { paid }) => { if (paid.allow()) { paid.used(); paidCalls += 1; return { verdict: 'safe', via: 'fallback' }; } return { verdict: 'unavailable', via: 'paid-cap' }; } });
+    const r = await run({ argv: ['--route', 'auto', '--concurrency', '8', '--max-paid-usd', String(maxUsd), '--out', 'x.json'], deps: f.deps });
+    return { paidCalls, summary: r.summary };
+  };
+  const capped = await spendWith(0.0006, 40);                 // 0.0006 / 0.00015 = 4 calls
+  assert.equal(capped.paidCalls, 4); assert.equal(capped.summary.safe, 4); assert.equal(capped.summary.unavailable, 36); assert.equal(capped.summary.paidCalls, 4);
+  const zero = await spendWith(0, 10);
+  assert.equal(zero.paidCalls, 0); assert.equal(zero.summary.unavailable, 10);
+});
+
+test('the script never touches Redis in scan mode: even with Redis variables set and an unreachable address, a local scan runs and exits cleanly', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const dir = mkdtempSync(`${tmpdir()}/scan-empty-`);
+  try {
+    writeFileSync(`${dir}/note.txt`, 'not an image');
+    const out = execFileSync(process.execPath, ['scripts/scan-existing-images.mjs', '--dir', dir, '--out', `${dir}/r.json`], {
+      cwd: new URL('..', import.meta.url).pathname, encoding: 'utf8', timeout: 20000,
+      env: { PATH: process.env.PATH, OPENROUTER_API_KEY: 'dummy-not-used', UPSTASH_REDIS_REST_URL: 'http://127.0.0.1:9', UPSTASH_REDIS_REST_TOKEN: 'dummy' },
+    });
+    assert.match(out, /0 object\(s\) in scope, 0 to scan/); assert.match(out, /DRY RUN — nothing was moved or deleted/);
+    assert.ok(!/ECONNREFUSED|upstash|redis/i.test(out));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});

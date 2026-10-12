@@ -3,12 +3,15 @@
  * moves them to the private quarantine bucket (lib/report-sweep.js → lib/quarantine.js). Move only, never delete. Sends one Telegram digest
  * when there is something to report.
  *
+ * Runs ONLY on the production deployment (VERCEL_ENV): a Preview deployment can share the production Redis / R2 variables, and a sweep from there
+ * would act on production data. Bounded: paged SCAN with a persisted cursor (resumes next day), at most 1000 keys and 45 s per run.
+ *
  * Auth: Vercel sends `Authorization: Bearer <CRON_SECRET>` when the CRON_SECRET environment variable exists. Without CRON_SECRET (or with a wrong
  * header) the route answers 401 and does nothing — fail-closed, it is never open to the public.
  */
 import { createHash, timingSafeEqual } from 'crypto';
 import redis from '../../../lib/redis.js';
-import { scanHiddenKeys, sweepHidden } from '../../../lib/report-sweep.js';
+import { sweepPaged } from '../../../lib/report-sweep.js';
 import { headPublicObject, quarantineObject, quarantineConfigured } from '../../../lib/quarantine.js';
 import { alertOnce } from '../../../lib/alert-throttle.js';
 import { escapeMarkdownV1 } from '../../../lib/telegram.js';
@@ -30,15 +33,16 @@ function authorised(req) {
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ message: 'Method Not Allowed' });
   if (!authorised(req)) return res.status(401).json({ message: 'Unauthorized' });
+  // Authenticated, but never sweep from a Preview deployment (VERCEL_ENV is unset locally and in tests, 'production' in production).
+  if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production') return res.status(200).json({ success: true, skipped: 'not-production' });
 
   try {
-    const keys = await scanHiddenKeys(redis, MAX_KEYS);
-    const result = await sweepHidden({
-      keys,
+    const result = await sweepPaged({
+      redis,
       headPublic: async (key) => (await headPublicObject(key)).exists,
       quarantine: (key) => quarantineObject(key),
-      apply: true,
       deadlineMs: DEADLINE_MS,
+      maxKeys: MAX_KEYS,
     });
 
     // Yesterday's report volume for the digest (counter written by lib/report.js; absent = 0).
@@ -50,16 +54,16 @@ export default async function handler(req, res) {
       const day = new Date().toISOString().split('T')[0];
       const lines = [
         '🧹 *Report sweep*',
-        `Hidden items checked: ${result.examined}${result.timedOut ? ' (stopped at the time limit — the rest next run)' : ''} · reports today so far: ${reportsToday}`,
+        `Hidden items checked: ${result.examined}${result.timedOut ? ' (stopped at the time limit — the rest next run)' : result.finished ? '' : ' (more next run)'} · reports today so far: ${reportsToday}`,
         `Were still public: ${result.stillPublic.length} · moved to quarantine now: ${result.moved}`,
       ];
       if (result.notConfigured || (!quarantineConfigured() && stuck)) lines.push('⚠️ R2_QUARANTINE_BUCKET_NAME is NOT set: hidden objects remain public until it is configured (scripts/takedown-object.mjs sweep --apply).');
       if (result.failed.length) lines.push(`⚠️ ${result.failed.length} object(s) could not be moved (retried tomorrow). First key: \`${escapeMarkdownV1(result.failed[0]).replace(/\\/g, '')}\``);
       await alertOnce(`report-sweep:${day}`, lines.join('\n'), { windowSec: 20 * 3600 });
     }
-    console.log(`🧹 sweep-hidden: examined=${result.examined} stillPublic=${result.stillPublic.length} moved=${result.moved} failed=${result.failed.length} notConfigured=${result.notConfigured} timedOut=${result.timedOut}`);
+    console.log(`🧹 sweep-hidden: examined=${result.examined} stillPublic=${result.stillPublic.length} moved=${result.moved} failed=${result.failed.length} notConfigured=${result.notConfigured} timedOut=${result.timedOut} finished=${result.finished}`);
     // Counts only — keys are never returned.
-    return res.status(200).json({ success: true, examined: result.examined, stillPublic: result.stillPublic.length, moved: result.moved, failed: result.failed.length, notConfigured: result.notConfigured, timedOut: result.timedOut });
+    return res.status(200).json({ success: true, examined: result.examined, stillPublic: result.stillPublic.length, moved: result.moved, failed: result.failed.length, notConfigured: result.notConfigured, timedOut: result.timedOut, finished: result.finished });
   } catch (e) {
     console.error('sweep-hidden error:', e.message);
     return res.status(500).json({ success: false });

@@ -71,6 +71,10 @@ export async function run({ argv, deps }) {
     if (results.local) { log('this results file came from a local --dir scan: there is nothing to move in R2'); return { code: 2 }; }
     const verdicts = has(argv, 'include-unreadable') ? ['unsafe', 'unreadable'] : ['unsafe'];
     const keys = Object.entries(results.entries || {}).filter(([, v]) => verdicts.includes(v.v)).map(([k]) => k);
+    // A results file is just a JSON file: never trust it. Only generated panels / posters can be moved — any other key (characters/, anything else, a
+    // traversal) makes the WHOLE file refused, so a tampered or wrong file cannot reach selfies or other objects.
+    const outOfScope = keys.filter((k) => !/^(panels|posters)\//.test(k) || k.includes('..'));
+    if (outOfScope.length) { log(`refused: ${outOfScope.length} key(s) in ${file} are not under panels/ or posters/ — nothing was moved`); return { code: 2 }; }
     log(`${keys.length} object(s) selected (${verdicts.join(' + ')}) from ${file}`);
     if (!keys.length) return { code: 0 };
     if (!(await deps.confirm(`Move ${keys.length} object(s) from the PUBLIC bucket to the private quarantine bucket and mark them hidden. Nothing is deleted outright.`, `QUARANTINE ${keys.length} OBJECTS`))) { log('aborted'); return { code: 1 }; }
