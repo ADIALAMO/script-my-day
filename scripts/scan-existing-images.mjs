@@ -31,6 +31,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline/promises';
 import { pathToFileURL } from 'node:url';
+import { safeErrInfo, formatSafeErr } from '../lib/safe-error.js';
 
 // A results file is just JSON: whatever names a key must be a generated panel / poster (R2) or a plain relative path inside --dir (local).
 const R2_SCOPE = /^(panels|posters)\//;
@@ -87,20 +88,27 @@ export async function run({ argv, deps }) {
     log(`${keys.length} object(s) selected (${verdicts.join(' + ')}) from ${file}`);
     if (!keys.length) return { code: 0 };
     if (!(await deps.confirm(`Move ${keys.length} object(s) from the PUBLIC bucket to the private quarantine bucket and mark them hidden. Nothing is deleted outright.`, `QUARANTINE ${keys.length} OBJECTS`))) { log('aborted'); return { code: 1 }; }
-    let moved = 0; let missing = 0; const failed = [];
+    let moved = 0; let missing = 0; const failed = [];   // failed: [{ stage, cls, http }] — a reason only, never the key / message / bucket
     for (const key of keys) {
+      let stage = 'head';
       try {
         if (!(await deps.headPublic(key))) { missing += 1; continue; }
+        stage = 'move';
         const q = await deps.quarantine(key);
         if (q.status === 'moved') {
           moved += 1;
+          stage = 'redis-mark';
           await deps.redis.set(`report:hidden:${key}`, JSON.stringify({ at: Math.floor(now() / 1000), via: 'scan', n: 0 }), { ex: 400 * 24 * 60 * 60 });
         } else if (q.status === 'not-configured') { log('R2_QUARANTINE_BUCKET_NAME is not set — nothing was moved'); return { code: 2 }; }
-        else failed.push(key);
-      } catch { failed.push(key); }
+        else failed.push({ stage: q.stage || 'move', cls: q.cls || 'Unknown', http: q.http ?? null });
+      } catch (e) { failed.push({ stage, ...safeErrInfo(e) }); }
     }
     log(`moved ${moved}, already gone ${missing}, failed ${failed.length}`);
-    for (const k of failed) log(`  failed: ${k}`);
+    const reasons = new Map();
+    for (const f of failed) { const r = `stage=${f.stage} ${formatSafeErr(f)}`; reasons.set(r, (reasons.get(r) || 0) + 1); }
+    for (const [r, n] of reasons) log(`  failed ×${n}: ${r}`);
+    if (failed.some((f) => f.stage === 'redis-mark')) log('  note: redis-mark failures were already MOVED to the private bucket; only the hidden mark is missing');
+    if (failed.some((f) => f.stage === 'delete-original')) log('  note: delete-original failures: a copy exists in the private bucket but the ORIGINAL IS STILL PUBLIC');
     return { code: failed.length ? 1 : 0, summary: { moved, missing, failed: failed.length } };
   }
 

@@ -329,3 +329,42 @@ test('workflow: quarantining from the SECOND file moves only the keys the paid m
   const q = await run({ argv: ['--quarantine-from', 'second.json'], deps: { ...f.deps, headPublic: async () => true, quarantine: async (k) => { moved.push(k); return { status: 'moved' }; }, redis: { set: async () => {} }, confirm: async (_p, word) => { asked = word; return true; } } });
   assert.deepEqual(moved, ['panels/a/2.png']); assert.equal(asked, 'QUARANTINE 1 OBJECTS'); assert.equal(q.summary.moved, 1);
 });
+
+test('failure reasons: stage + error class + HTTP status only — never the message, key or bucket', async () => {
+  const results = { entries: { 'panels/SECRETKEY/1.png': { v: 'unsafe' }, 'panels/SECRETKEY/2.png': { v: 'unsafe' }, 'panels/SECRETKEY/3.png': { v: 'unsafe' } } };
+  const f = setup([]); f.files.set('res.json', JSON.stringify(results));
+  const boom = (name, status, msg) => Object.assign(new Error(msg), { name, $metadata: { httpStatusCode: status } });
+  const deps = {
+    ...f.deps, confirm: async () => true, redis: { set: async () => {} },
+    headPublic: async (k) => { if (k.endsWith('1.png')) throw boom('AccessDenied', 403, 'denied for my-secret-bucket/panels/SECRETKEY/1.png'); return true; },
+    quarantine: async (k) => (k.endsWith('2.png') ? { status: 'failed', error: 'copy: leak my-secret-bucket', stage: 'copy', cls: 'NoSuchBucket', http: 404 } : { status: 'moved' }),
+  };
+  const r = await run({ argv: ['--quarantine-from', 'res.json'], deps });
+  const out = f.log.join('\n');
+  assert.equal(r.code, 1); assert.deepEqual(r.summary, { moved: 1, missing: 0, failed: 2 });
+  assert.match(out, /failed ×1: stage=head class=AccessDenied http=403/);
+  assert.match(out, /failed ×1: stage=copy class=NoSuchBucket http=404/);
+  assert.doesNotMatch(out, /SECRETKEY|my-secret-bucket|denied for|leak/);
+});
+
+test('failure reasons: a Redis-mark failure is reported as redis-mark with its own note; a missing env var is labelled ConfigMissing, not echoed', async () => {
+  const f = setup([]); f.files.set('res.json', JSON.stringify({ entries: { 'panels/a/1.png': { v: 'unsafe' }, 'panels/a/2.png': { v: 'unsafe' } } }));
+  const deps = { ...f.deps, confirm: async () => true, headPublic: async (k) => { if (k.endsWith('2.png')) throw new Error('R2_ACCESS_KEY_ID not configured.'); return true; },
+    quarantine: async () => ({ status: 'moved' }), redis: { set: async () => { throw Object.assign(new Error('https://secret.upstash.io refused'), { name: 'FetchError' }); } } };
+  const r = await run({ argv: ['--quarantine-from', 'res.json'], deps });
+  const out = f.log.join('\n');
+  assert.equal(r.code, 1);
+  assert.match(out, /stage=redis-mark class=FetchError/); assert.match(out, /already MOVED/);
+  assert.match(out, /stage=head class=ConfigMissing/);
+  assert.doesNotMatch(out, /upstash|R2_ACCESS_KEY_ID|panels\//);
+});
+
+test('quarantineObject failures carry stage + class + status, and the original is never deleted after a failed copy', async () => {
+  const { safeErrInfo } = await import('../lib/safe-error.js');
+  assert.deepEqual(safeErrInfo(Object.assign(new Error('x bucket/key'), { name: 'AccessDenied', $metadata: { httpStatusCode: 403 } })), { cls: 'AccessDenied', http: 403 });
+  assert.deepEqual(safeErrInfo(new Error('weird')), { cls: 'Error', http: null });
+  assert.deepEqual(safeErrInfo(Object.assign(new Error('a'), { name: 'bad name with spaces/and-slash' })), { cls: 'Error', http: null });
+  const { quarantineObject } = await import('../lib/quarantine.js');
+  const g = await quarantineObject('characters/x/y.jpg');
+  assert.deepEqual([g.status, g.stage, g.cls], ['failed', 'key-guard', 'OutOfScope']);
+});
