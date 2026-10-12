@@ -19,6 +19,9 @@ import { Analytics } from '@vercel/analytics/react';
 import { track } from '@vercel/analytics';
 import { SHOWCASE_POSTERS, SHOWCASE_REELS } from '../constants/showcase';
 import { modalDataFor } from '../constants/modalData';
+import ReportButton from '../components/ReportButton';
+import { reportedGalleryRefs } from '../utils/reported-store';
+import { galleryRefId, filterVisibleGallery } from '../lib/gallery-report';
 import { useNative } from '../hooks/useNative.js';
 import CinematicLoader from '../components/CinematicLoader';
 import CookieConsent from '../components/CookieConsent';
@@ -141,7 +144,7 @@ function PosterCardBody({ poster, lang, compact = false, eager = false }) {
 }
 
 // ── Cinematic Lightbox — scale+opacity crossfade + parallax script scrub ──────
-function PosterLightbox({ poster, onClose, lang }) {
+function PosterLightbox({ poster, onClose, onReported, lang }) {
   const scrollRef = useRef(null);
   const { scrollYProgress } = useScroll({ container: scrollRef });
   const textY    = useTransform(scrollYProgress, [0, 1], ['0%', '-12%']);
@@ -180,6 +183,18 @@ function PosterLightbox({ poster, onClose, lang }) {
           >
             <X size={20} className="[@media(hover:hover)]:group-hover:rotate-90 transition-transform duration-450" />
           </button>
+
+          {/* Report — top-left corner of the banner (the close button is top-right). Gallery items are static files: hidden for this user,
+              the team is notified (copy says so). Text-only posters have no image, so no button. */}
+          {poster.src && (
+            <div className="absolute left-5 z-[200]" style={{ top: 'calc(var(--sat,0px) + 14px)' }}>
+              <ReportButton
+                kind={poster.type === 'comic' ? 'panel' : 'poster'} compact lang={lang} dialogZ="z-[1300]"
+                galleryRef={galleryRefId('poster', poster.id)}
+                sources={[]} onReported={() => onReported?.(galleryRefId('poster', poster.id))}
+              />
+            </div>
+          )}
 
           {/* Hero — parallax scale */}
           <div className="w-full h-44 relative overflow-hidden shrink-0">
@@ -348,6 +363,11 @@ function HomePage() {
   const [showGallery, setShowGallery] = useState(true);
   const [selectedPoster, setSelectedPoster] = useState(null);
   const [selectedReel,   setSelectedReel]   = useState(null);
+  // Gallery items this user reported on this device (static showcase files: hidden for them only). Loaded after mount (localStorage).
+  const [reportedGallery, setReportedGallery] = useState(() => new Set());
+  useEffect(() => { setReportedGallery(reportedGalleryRefs()); }, []);
+  const visiblePosters = useMemo(() => filterVisibleGallery(SHOWCASE_POSTERS, 'poster', reportedGallery), [reportedGallery]);
+  const visibleReels   = useMemo(() => filterVisibleGallery(SHOWCASE_REELS, 'reel', reportedGallery), [reportedGallery]);
   const [galleryMode,    setGalleryMode]    = useState('grid'); // 'grid' | 'filmstrip'
   const [producerName, setProducerName] = useState('');
 
@@ -897,7 +917,7 @@ function HomePage() {
 
           <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none px-2"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            {SHOWCASE_POSTERS.slice(0, 5).map((poster, idx) => (
+            {visiblePosters.slice(0, 5).map((poster, idx) => (
               <div
                 key={poster.id}
                 className="relative shrink-0 rounded-2xl overflow-hidden"
@@ -1298,7 +1318,7 @@ function HomePage() {
                   <div className="h-px flex-1 bg-[#d4a373]/12" />
                 </div>
                 <div className="flex gap-3 overflow-x-auto pb-3 custom-reel-scroll snap-x snap-mandatory">
-                  {SHOWCASE_REELS.map(reel => (
+                  {visibleReels.map(reel => (
                     <ReelCard key={reel.id} reel={reel} lang={lang} onClick={setSelectedReel} />
                   ))}
                 </div>
@@ -1318,7 +1338,7 @@ function HomePage() {
                     className="max-h-[560px] overflow-y-auto overflow-x-hidden px-2 custom-gallery-scroll pb-6"
                   >
                     <div className="columns-2 lg:columns-3 [column-gap:1.2rem]">
-                      {SHOWCASE_POSTERS.map((poster) => (
+                      {visiblePosters.map((poster) => (
                         /* ── Column-flow wrapper: PURE HTML, owns the masonry break.
                            Keeping break-inside-avoid OFF the motion.div stops Framer
                            Motion from snapshotting a collapsed first column child. ── */
@@ -1345,6 +1365,16 @@ function HomePage() {
 
                             <PosterCardBody poster={poster} lang={lang} />
                           </motion.div>
+                          {/* Report: a sibling of the clickable card (never opens the lightbox), top-right; text-only cards have no image */}
+                          {poster.src && (
+                            <div className="absolute top-2 right-2 z-30">
+                              <ReportButton
+                                kind={poster.type === 'comic' ? 'panel' : 'poster'} compact lang={lang}
+                                galleryRef={galleryRefId('poster', poster.id)} sources={[]}
+                                onReported={() => setReportedGallery((prev) => new Set(prev).add(galleryRefId('poster', poster.id)))}
+                              />
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -1362,7 +1392,7 @@ function HomePage() {
                   >
                     <div className="flex gap-px min-w-max">
                       {GENRE_GROUPS.map(({ key, labelEn, labelHe, color }) => {
-                        const group = SHOWCASE_POSTERS.filter(p => inferPosterGenre(p) === key);
+                        const group = visiblePosters.filter(p => inferPosterGenre(p) === key);
                         if (!group.length) return null;
                         return (
                           <div key={key} className="flex flex-col shrink-0" style={{ scrollSnapAlign: 'start' }}>
@@ -1379,8 +1409,8 @@ function HomePage() {
                             {/* Card row */}
                             <div className="flex gap-3 px-3">
                               {group.map(poster => (
+                                <div key={`fs-${poster.id}`} className="relative shrink-0">
                                 <motion.div
-                                  key={`fs-${poster.id}`}
                                   onClick={() => setSelectedPoster(poster)}
                                   whileHover={{ scale: 1.06, y: -5 }}
                                   transition={{ type: 'spring', stiffness: 360, damping: 28 }}
@@ -1393,6 +1423,16 @@ function HomePage() {
                                 >
                                   <PosterCardBody poster={poster} lang={lang} compact />
                                 </motion.div>
+                                {poster.src && (
+                                  <div className="absolute top-1 right-1 z-30">
+                                    <ReportButton
+                                      kind={poster.type === 'comic' ? 'panel' : 'poster'} compact lang={lang}
+                                      galleryRef={galleryRefId('poster', poster.id)} sources={[]}
+                                      onReported={() => setReportedGallery((prev) => new Set(prev).add(galleryRefId('poster', poster.id)))}
+                                    />
+                                  </div>
+                                )}
+                                </div>
                               ))}
                             </div>
                           </div>
@@ -1457,6 +1497,7 @@ function HomePage() {
               key={selectedPoster.id}
               poster={selectedPoster}
               onClose={() => setSelectedPoster(null)}
+              onReported={(ref) => { setReportedGallery((prev) => new Set(prev).add(ref)); setSelectedPoster(null); }}
               lang={lang}
             />
           )}
@@ -1500,6 +1541,13 @@ function HomePage() {
                 >
                   <X size={14} />
                 </button>
+                <div className="absolute top-12 left-3.5 z-20">
+                  <ReportButton
+                    kind="reel" compact lang={lang} dialogZ="z-[1300]"
+                    galleryRef={galleryRefId('reel', selectedReel.id)} sources={[]}
+                    onReported={() => { setReportedGallery((prev) => new Set(prev).add(galleryRefId('reel', selectedReel.id))); setSelectedReel(null); }}
+                  />
+                </div>
                 <div className="absolute top-3.5 left-3.5 z-10 pointer-events-none">
                   <div className="px-2 py-1 rounded-lg text-[6.5px] font-black tracking-[0.14em] uppercase"
                     style={{ background: `${selectedReel.color}28`, color: selectedReel.color, border: `1px solid ${selectedReel.color}50`, backdropFilter: 'blur(4px)' }}>

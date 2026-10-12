@@ -11,6 +11,12 @@ export const REPORT_COPY = {
     en: 'Tell us what is wrong. The image will be hidden and our team will be notified.',
     he: 'ספר לנו מה לא בסדר. התמונה תוסתר והצוות שלנו יקבל התראה.',
   },
+  // Gallery (static showcase) items: hidden for the reporter only, the team is notified. Never claims the item is removed for everyone.
+  introGallery: {
+    en: 'Tell us what is wrong. This item will be hidden for you and our team will be notified.',
+    he: 'ספר לנו מה לא בסדר. הפריט יוסתר עבורך והצוות שלנו יקבל התראה.',
+  },
+  doneGallery: { en: 'Thanks. This item is hidden for you and our team has been notified.', he: 'תודה. הפריט הוסתר עבורך והצוות שלנו קיבל התראה.' },
   reasons: {
     sexual:  { en: 'Sexual content or nudity', he: 'תוכן מיני או עירום' },
     violent: { en: 'Violent or disturbing',    he: 'אלים או מטריד' },
