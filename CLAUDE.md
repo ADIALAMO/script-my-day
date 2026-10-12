@@ -166,6 +166,14 @@ processing only, does not itself delete any keys) is detected at read time in `u
 missing `user:<id>` record excludes it from the response and opportunistically `ZREM`s it, self-healing
 the index regardless of how the deletion actually happened.
 
+### 4a. Text output safety + minors screen (`fix/text-safety`)
+`lib/text-check.js`: every script/storyboard OUTPUT passes the blocklist (all genres); ROMANCE/HORROR also pass the paid Gemini Flash-Lite JSON
+classifier (via OpenRouter, `DAILY_CHECK_BUDGET`, shared `check_gemini` circuit — `runFallbackJson` in lib/image-check.js). Held back → ONE
+regeneration with `REGENERATION_SAFETY_LINE` (only if enough of the 60 s route budget is left) → `CONTENT_REFUSED`; classifier needed but
+unavailable → `CONTENT_CHECK_UNAVAILABLE` (503); quota released in every refusal. `lib/minor-screen.js`: best-effort apparent-minor screen at
+Star Yourself upload (after the quota reservations, before anything is stored): rejects ONLY on a clear "minor" (`MINOR_REJECTED`), every
+other outcome allows. It is NOT age verification — never describe it so (tests/text-safety.test.js scans the repo).
+
 ### 4b. Android app (Capacitor) — Google Play payments policy
 Inside the native shell **nothing may show a price, a subscription, Stripe or an "upgrade" prompt**. `hooks/useNative.js`
 (true after mount; SSR/first render false) hides Manage Subscription, the LaunchTicket Pro card, the Go-Pro chip, locked-panel

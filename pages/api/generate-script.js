@@ -8,13 +8,22 @@ import { reserveScriptQuota, releaseScriptQuota } from '../../lib/script-quota.j
 import { reserveGuestScriptBudget, releaseGuestScriptBudget } from '../../lib/guest-budget.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 import { checkContent } from '../../lib/content-blocklist.js';
+import { checkTextOutput } from '../../lib/text-check.js';
+import { REGENERATION_SAFETY_LINE } from '../../lib/content-safety.js';
 
 // Must be a top-level export — NOT nested inside config — for Vercel to honour it.
 export const maxDuration = 60;
 
+// The route is killed at 60 s (and a killed function never releases the reserved quota): the output check and the ONE regeneration run inside
+// this budget, and a regeneration is only started when enough of it is left.
+const ROUTE_BUDGET_MS = 57000;
+const REGEN_MIN_LEFT_MS = 22000;
+
 const REQUIRED_KEYS = ['GOOGLE_GEMINI_API_KEY', 'OPENROUTER_API_KEY', 'COHERE_API_KEY'];
 
 export default async function handler(req, res) {
+  const startedAt = Date.now();
+  const left = () => ROUTE_BUDGET_MS - (Date.now() - startedAt);
   // Single outer try/catch so nothing — not even the env audit or quota gate — can
   // produce an uncaught exception that makes Vercel return a bare HTML 500.
   try {
@@ -136,6 +145,36 @@ export default async function handler(req, res) {
         code: CODES.SCRIPT_FAIL,
         message: 'Script generation failed.',
       });
+    }
+
+    // ── OUTPUT CHECK (lib/text-check.js) ───────────────────────────────────────
+    // Every script passes the output blocklist; ROMANCE and HORROR also pass the paid classifier (fail-closed). A held-back output gets ONE
+    // automatic regeneration with an extra safety line; if that is held back too the user gets CONTENT_REFUSED. When the classifier is required
+    // and cannot answer, nothing is returned (CONTENT_CHECK_UNAVAILABLE). In every refusal the quota slot is given back.
+    const giveBack = async () => { await releaseScriptQuota(reservation); if (guestBudgetReserved) await releaseGuestScriptBudget(); };
+    const refuse = async (why) => {
+      console.warn(`🛑 generate-script: output held back (${why})`);
+      await giveBack();
+      return res.status(422).json({ success: false, code: CODES.CONTENT_REFUSED, message: 'Content refused.' });
+    };
+    const unavailable = async () => {
+      await giveBack();
+      return res.status(503).json({ success: false, code: CODES.CONTENT_CHECK_UNAVAILABLE, message: 'Safety check unavailable.' });
+    };
+    let check = await checkTextOutput(result.output, { genre: cleanGenre, budgetMs: left() });
+    if (check.verdict === 'unavailable') return unavailable();
+    if (check.verdict !== 'safe') {
+      if (left() < REGEN_MIN_LEFT_MS) return refuse(`${check.stage}, no time to regenerate`);
+      console.warn(`🛑 generate-script: output held back (${check.stage}) — regenerating once`);
+      let again;
+      try {
+        again = await generateScript(safeJournalEntry, cleanGenre, cleanGender, { extraSafety: REGENERATION_SAFETY_LINE, budgetMs: left() - 9000 });
+      } catch { again = { success: false }; }
+      if (!again.success) return refuse('regeneration failed');
+      check = await checkTextOutput(again.output, { genre: cleanGenre, budgetMs: left() });
+      if (check.verdict === 'unavailable') return unavailable();
+      if (check.verdict !== 'safe') return refuse(`${check.stage} (after regeneration)`);
+      result = again;
     }
 
     // ── Global activity counters (all tiers) — powers /api/admin/stats ─────────

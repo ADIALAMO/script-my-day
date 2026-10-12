@@ -10,9 +10,15 @@ import { openComicSession } from '../../lib/comic-guard.js';
 import { COMIC } from '../../config/limits.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 import { checkContent } from '../../lib/content-blocklist.js';
-import { CONTENT_SAFETY_RULE, GEMINI_SAFETY_SETTINGS, geminiBlockReason } from '../../lib/content-safety.js';
+import { CONTENT_SAFETY_RULE, GEMINI_SAFETY_SETTINGS, geminiBlockReason, REGENERATION_SAFETY_LINE } from '../../lib/content-safety.js';
+import { checkTextOutput, storyboardText } from '../../lib/text-check.js';
 
 export const maxDuration = 60;
+
+// The route is killed at 60 s (a killed function never releases the reserved comic quota): the output check and the ONE regeneration stay inside
+// this budget, and a regeneration only starts when enough of it is left.
+const ROUTE_BUDGET_MS = 57000;
+const REGEN_MIN_LEFT_MS = 30000;
 
 // Comic limit is now tier-aware — see lib/quota.js TIER_LIMITS.
 
@@ -263,6 +269,7 @@ async function tryOpenRouter(staticInstruction, script, apiKey, models = ['googl
 }
 
 export default async function handler(req, res) {
+  const startedAt = Date.now();
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
 
   // ── Rate limiting (sliding window, before quota gate) ─────────────────────
@@ -360,36 +367,64 @@ export default async function handler(req, res) {
     const openrouterKey = process.env.OPENROUTER_API_KEY?.trim();
     const openrouterFreeKey = process.env.OPENROUTER_FREE_KEY?.trim();
 
-    let enrichedPanels = null;
-    let storyboardEngine = null;
-
     // Style prefix/suffix are injected here (server-side) rather than in the prompt,
     // so every engine's bare "visual" gets the same FLUX framing.
     const enrich = (panels) => panels.map(p => ({ ...p, visual: `${track.prefix} ${p.visual} ${track.suffix}` }));
 
-    // OpenRouter runs FIRST now (paid → free) so the gemma/deepseek/llama/qwen engines are
-    // the primary path and can be evaluated. Both Gemini models are demoted to the LAST resort.
-    if (openrouterKey) {
-      const panels = await tryOpenRouter(staticInstruction, cleanScript, openrouterKey);
-      if (panels) { enrichedPanels = enrich(panels); storyboardEngine = 'OpenRouter'; }
-    }
+    // The engine cascade as a function, because the output check below may run it a SECOND time (with a safety reminder appended).
+    // OpenRouter runs FIRST (paid → free) so the gemma/deepseek/llama/qwen engines are the primary path; both Gemini models are the LAST resort.
+    const runEngines = async (instruction) => {
+      let panelsOut = null; let engine = null;
+      if (openrouterKey) {
+        const panels = await tryOpenRouter(instruction, cleanScript, openrouterKey);
+        if (panels) { panelsOut = enrich(panels); engine = 'OpenRouter'; }
+      }
+      // Free net — only when the paid OpenRouter tier came up empty.
+      if (!panelsOut && openrouterFreeKey) {
+        const panels = await tryOpenRouter(instruction, cleanScript, openrouterFreeKey, FREE_STORYBOARD_MODELS);
+        if (panels) { panelsOut = enrich(panels); engine = 'OpenRouter (free)'; }
+      }
+      // Gemini LAST (gemini-2.5-flash and its flash-lite hedge/retry live inside tryGemini).
+      if (!panelsOut && geminiKey) {
+        const panels = await tryGemini(instruction, cleanScript, geminiKey);
+        if (panels) { panelsOut = enrich(panels); engine = 'Gemini'; }
+      }
+      return { panelsOut, engine };
+    };
 
-    // Free net — only when the paid OpenRouter tier came up empty.
-    if (!enrichedPanels && openrouterFreeKey) {
-      const panels = await tryOpenRouter(staticInstruction, cleanScript, openrouterFreeKey, FREE_STORYBOARD_MODELS);
-      if (panels) { enrichedPanels = enrich(panels); storyboardEngine = 'OpenRouter (free)'; }
-    }
-
-    // Gemini LAST (both gemini-2.5-flash and its gemini-2.5-flash-lite hedge/retry live inside
-    // tryGemini) — the final fallback once every OpenRouter engine has failed.
-    if (!enrichedPanels && geminiKey) {
-      const panels = await tryGemini(staticInstruction, cleanScript, geminiKey);
-      if (panels) { enrichedPanels = enrich(panels); storyboardEngine = 'Gemini'; }
-    }
+    let { panelsOut: enrichedPanels, engine: storyboardEngine } = await runEngines(staticInstruction);
 
     if (!enrichedPanels) {
       await releaseComicQuota(comicReservationKey); // nothing was produced → no comic spent
       return res.status(500).json({ success: false, code: CODES.STORYBOARD_FAIL, message: 'All storyboard engines offline.' });
+    }
+
+    // ── OUTPUT CHECK (lib/text-check.js) ───────────────────────────────────────────────────────────────────────
+    // scene / visual / dialogue of every panel pass the output blocklist; ROMANCE and HORROR also pass the paid classifier (fail-closed).
+    // A held-back storyboard gets ONE regeneration with an extra safety line; held back again → CONTENT_REFUSED; classifier required but
+    // unavailable → CONTENT_CHECK_UNAVAILABLE. The comic quota is given back in every case.
+    const left = () => ROUTE_BUDGET_MS - (Date.now() - startedAt);
+    let outCheck = await checkTextOutput(storyboardText(enrichedPanels), { genre, budgetMs: left() });
+    if (outCheck.verdict === 'unavailable') {
+      await releaseComicQuota(comicReservationKey);
+      return res.status(503).json({ success: false, code: CODES.CONTENT_CHECK_UNAVAILABLE, message: 'Safety check unavailable.' });
+    }
+    if (outCheck.verdict !== 'safe') {
+      console.warn(`🛑 generate-storyboard: output held back (${outCheck.stage})`);
+      let again = null;
+      if (left() >= REGEN_MIN_LEFT_MS) {
+        again = (await runEngines(`${staticInstruction}\n\n${REGENERATION_SAFETY_LINE}`)).panelsOut;
+      }
+      const recheck = again ? await checkTextOutput(storyboardText(again), { genre, budgetMs: left() }) : null;
+      if (recheck?.verdict === 'unavailable') {
+        await releaseComicQuota(comicReservationKey);
+        return res.status(503).json({ success: false, code: CODES.CONTENT_CHECK_UNAVAILABLE, message: 'Safety check unavailable.' });
+      }
+      if (!recheck || recheck.verdict !== 'safe') {
+        await releaseComicQuota(comicReservationKey);
+        return res.status(422).json({ success: false, code: CODES.CONTENT_REFUSED, message: 'Content refused.' });
+      }
+      enrichedPanels = again;
     }
 
     // Selective Framing: enforce the hard hero cap server-side so a model overshoot
