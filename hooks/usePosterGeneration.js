@@ -342,7 +342,7 @@ export function usePosterGeneration({
 
     track('Poster Shared', { genre, language: lang, method });
     if (typeof window !== 'undefined' && window.gtag) {
-      window.gtag('event', 'content_export', { method, genre, title: posterTitle });
+      window.gtag('event', 'content_export', { method, genre });
     }
 
     // Optimistic: flipped off only in the catch block below. Every in-try exit path

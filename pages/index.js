@@ -794,7 +794,9 @@ function HomePage() {
       if (typeof window !== 'undefined' && window.gtag) {
         window.gtag('event', 'script_error', {
           error_type: 'frontend_exception',
-          error_message: err.message,
+          // Only a known error code (a fixed symbol from lib/messages.js) is sent; anything else is reported as 'other'
+          // because arbitrary exception text must never reach analytics.
+          error_message: Object.values(CODES).includes(err.message) ? err.message : 'other',
           genre
         });
       }
