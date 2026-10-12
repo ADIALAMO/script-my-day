@@ -81,7 +81,7 @@ scenario('N5', 'guests cannot reach any other paid feature: storyboard, comic pa
     return { actual: 'storyboard 403; guest R2 uploads ≤ 20 panels + 5 posters per 30 days per IP' };
   });
 
-scenario('N5', 'guest IP retention: the lifetime guest-poster key expires after 90 days, refreshed on every use; a guest silent for 90 days gets a new allowance, one who returns earlier does not',
+scenario('N6', 'guest IP retention: the lifetime guest-poster key expires after 90 days, refreshed on every use; a guest silent for 90 days gets a new allowance, one who returns earlier does not',
   'TTL ≈ 90 d; day-80 return refreshes it (still 429 at day 100); 90 d of silence → key gone → new poster allowed', async () => {
     const DAY = 86400_000; const ip = '203.0.113.77'; const key = `usage:poster:lifetime:${ip}`;
     ctx.setNow('2026-11-01T12:00:00Z');

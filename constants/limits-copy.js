@@ -1,7 +1,7 @@
 // User-facing wording of the plan limits, BUILT from config/limits.js so the Terms, FAQ, upgrade
 // table, launch card and checkout text can never drift from the enforced numbers.
 // tests/limits-copy.test.js fails if any user-facing file states a number that differs from config.
-import { TIER_LIMITS, COMIC, SHEET_LIMITS, SCRIPT_MONTHLY_LIMITS } from '../config/limits.js';
+import { TIER_LIMITS, COMIC, SHEET_LIMITS, SCRIPT_MONTHLY_LIMITS, RETENTION, GUEST_RETENTION } from '../config/limits.js';
 
 const A = TIER_LIMITS.anonymous, F = TIER_LIMITS.free, P = TIER_LIMITS.pro;
 const proScriptsMonth = SCRIPT_MONTHLY_LIMITS.pro;
@@ -24,6 +24,10 @@ export const LIMITS = {
   proUploadsPerMonth: SHEET_LIMITS.pro,
   proPanels: P.maxPanels,
   proStarPostersPerMonth: P.identity,
+  characterPointerDays: RETENTION.characterPointerDays,
+  deletionLogDays: RETENTION.deletionLogDays,
+  guestIpDays: GUEST_RETENTION.ipDays,
+  comicSessionHours: Math.round(COMIC.sessionTtlSec / 3600),
 };
 const L = LIMITS;
 
@@ -47,3 +51,18 @@ export const checkoutDescription = () => `${L.proScriptsPerDay} scripts/day (${L
 // FAQ "Star Yourself": monthly upload allowance sentence.
 export const uploadsSentenceHe = () => `העלאת תמונת פנים כלולה עד ${L.freeUploadsPerMonth} פעמים בחודש במסלול החינמי ועד ${L.proUploadsPerMonth} בחודש ב-Pro, והמכסה מתחדשת ב-1 לחודש.`;
 export const uploadsSentenceEn = () => `Face-photo uploads are included up to ${L.freeUploadsPerMonth} per month on Free and ${L.proUploadsPerMonth} per month on Pro, and the quota renews on the 1st of the month.`;
+
+// ── Privacy / terms wording about stored data. DRAFT — see TODO(OWNER-CONFIRM) in constants/modalData.js.
+// Every retention number comes from config; R2 objects are described WITHOUT a period because the code enforces none.
+export const privacyFaceHe = () =>
+  `כשאתה מעלה תמונת פנים לפיצ'ר "לככב בסיפור", היא נשלחת לספקי AI (ראה סעיף 7) לבדיקת תוכן וליצירת "גיליון דמות". תמונת הפנים המקורית נמחקת מהאחסון שלנו מיד לאחר שגיליון הדמות נוצר ונשמר (אם יצירת הגיליון נכשלה, המקור נשמר כדי שתוכל להמשיך להשתמש בו). גיליון הדמות ותמונות שנוצרו ממנו (פוסטרים ופאנלים) עשויים להישמר באחסון ענן (Cloudflare R2); כרגע אין מחיקה אוטומטית שלהם, ומחיקה לפי בקשה מטופלת ידנית עד שתהיה אפשרות מחיקה עצמאית באפליקציה (סעיף 9). ב-Redis נשמר קישור לגיליון הדמות למשך ${L.characterPointerDays} ימים מרגע ההעלאה, ואז הוא נמחק אוטומטית (הקישור בלבד, לא הקובץ). אנחנו לא משתמשים בתמונה לאימון מודלים או לכל מטרה אחרת; מדיניות הספקים החיצוניים מתוארת בסעיף 7.`;
+export const privacyFaceEn = () =>
+  `When you upload a face photo for "Star Yourself", it is sent to AI providers (see section 7) for a content check and to create a "Character Sheet". The original face photo is deleted from our storage right after the Character Sheet has been created and saved (if creating the sheet fails, the original is kept so you can keep using it). The Character Sheet and images generated from it (posters and panels) may be stored in cloud storage (Cloudflare R2); there is currently no automatic deletion of them, and deletion on request is handled manually until a self-service delete exists in the app (section 9). In Redis we keep a link to the Character Sheet for ${L.characterPointerDays} days from the upload, and then it is deleted automatically (the link only, not the file). We do not use the photo to train models or for any other purpose; the external providers' policies are described in section 7.`;
+export const privacyUsageHe = () =>
+  `כדי לאכוף את המגבלות ההוגנות, אנחנו שומרים (ב-Redis) מוני שימוש: מונים יומיים עד חצות UTC, חודשיים עד כמה ימים לאחר סוף החודש, ומונים של קרדיטי "לככב בסיפור" שחלקם לכל החיים. עבור גולשים שאינם רשומים המונים נשמרים לפי כתובת ה-IP (ב-IPv6 לפי תחילית /64); מונה פוסטר האורח נשמר עד ${L.guestIpDays} ימים מהשימוש האחרון. לחשבון רשום נשמרים גם מצב המנוי, מזהה לקוח של Stripe, מועד פעילות אחרון ונתוני הזמנת חברים. פעילות הקומיקס הפתוחה נשמרת עד ${L.comicSessionHours} שעות. בקשות מחיקה נשמרות ${L.deletionLogDays} ימים לצורך תיעוד.`;
+export const privacyUsageEn = () =>
+  `To enforce fair limits we keep (in Redis) usage counters: daily counters until UTC midnight, monthly counters until a few days after the month ends, and "Star Yourself" credit counters, some of which are lifetime. For visitors who are not signed in the counters are keyed by IP address (IPv6: its /64 prefix); the guest-poster counter is kept for up to ${L.guestIpDays} days after the last use. For a registered account we also keep the subscription state, a Stripe customer ID, last-active time and friend-invite data. An open comic session is kept for up to ${L.comicSessionHours} hours. Deletion requests are logged for ${L.deletionLogDays} days for audit.`;
+export const termsFaceHe = () =>
+  `פיצ'ר "לככב בסיפור" מעבד תמונת פנים, שעשויה להיחשב מידע ביומטרי לפי דינים מסוימים. בעת ההעלאה תתבקש לאשר אקטיבית כי (א) זו תמונה שלך או של אדם שנתן הסכמה מפורשת ומדעת, (ב) אינה של קטין, ו-(ג) אתה מבין שהיא תעובד ל"גיליון דמות". התמונה נשלחת לספקי AI חיצוניים; התמונה המקורית נמחקת מהאחסון שלנו מיד לאחר יצירת גיליון הדמות, וגיליון הדמות עצמו נשמר באחסון ענן (Cloudflare R2) ללא מחיקה אוטומטית כרגע; מחיקה לפי בקשה מטופלת ידנית. הקישור לגיליון ב-Redis נמחק אוטומטית לאחר ${L.characterPointerDays} ימים. אנחנו לא משתמשים בתמונה לאימון מודלים, לא מוכרים אותה ולא משתפים אותה מעבר לעיבוד הנדרש. תוכל לבקש מחיקה בכל עת. העלאה ללא ההרשאות הללו אסורה ועלולה להוביל לחסימת חשבון. פירוט במדיניות הפרטיות.`;
+export const termsFaceEn = () =>
+  `The "Star Yourself" feature processes a face photo, which may be considered biometric data under certain laws. On upload you will be asked to actively confirm that (a) it is a photo of you or of a person who gave explicit, informed consent, (b) it is not of a minor, and (c) you understand it will be processed into a "Character Sheet". The photo is sent to external AI providers; the original photo is deleted from our storage right after the Character Sheet is created, and the Character Sheet itself is kept in cloud storage (Cloudflare R2) with no automatic deletion at present; deletion on request is handled manually. Our link to the sheet in Redis is deleted automatically after ${L.characterPointerDays} days. We do not use the photo to train models, sell it, or share it beyond the processing required. You can request deletion at any time. Uploading without these permissions is prohibited and may lead to account suspension. Details are in the Privacy Policy.`;

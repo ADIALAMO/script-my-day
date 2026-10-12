@@ -141,6 +141,17 @@ export const GUEST_RETENTION = {
   ipDays: envInt('GUEST_IP_RETENTION_DAYS', 90),
 };
 
+// ─── Retention periods that the CODE enforces (the privacy text is built from these) ───
+//   characterPointerDays: Redis `character:<id>` (links to the character sheet) — set at upload, NOT refreshed on use.
+//   deletionLogDays:      Redis `deletion-request:*` audit record of a data-deletion request.
+// R2 objects have NO enforced retention in code (only the raw selfie is deleted, right after the sheet is created);
+// any bucket lifecycle rule is configured in Cloudflare, outside the code — see docs-private/data-handling-report.md.
+export const RETENTION = {
+  characterPointerDays: envInt('CHARACTER_POINTER_DAYS', 90),
+  deletionLogDays:      envInt('DELETION_LOG_DAYS', 30),
+  referralCookieDays:   envInt('REFERRAL_COOKIE_DAYS', 30),   // ls_ref cookie set by /i/<code>
+};
+
 // ─── Global daily budget for GUEST (anonymous) script generation ─────────────────────
 // Every guest script is a paid-or-free-tier Gemini call; the per-IP limit (2/day) does not bound the
 // AGGREGATE (many IPs). This caps all guests together per UTC day. Signed-in users are never counted

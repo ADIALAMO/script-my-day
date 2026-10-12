@@ -1,6 +1,6 @@
 import redis from '../../lib/redis.js';
 import { extractIdentifier } from '../../lib/api-utils.js';
-import { escapeMarkdownV1, sendTelegram } from '../../lib/telegram.js';
+import { escapeMarkdownV1, maskEmail, sendTelegram } from '../../lib/telegram.js';
 
 /**
  * POST /api/waitlist  { email, lang }
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
 
   // ── Notify via Telegram (best-effort) ───────────────────────────────────────
   if (!alreadyOnList) {
-    await sendTelegram(`🎟️ *New Pro waitlist signup!*\n------------------------\n📧 ${escapeMarkdownV1(clean)}\n🌐 ${lang === 'he' ? 'Hebrew 🇮🇱' : 'English 🇺🇸'}`);
+    await sendTelegram(`🎟️ *New Pro waitlist signup!*\n------------------------\n📧 ${escapeMarkdownV1(maskEmail(clean))}\n🌐 ${lang === 'he' ? 'Hebrew 🇮🇱' : 'English 🇺🇸'}`);
   }
 
   return res.status(200).json({ success: true, alreadyOnList });

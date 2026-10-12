@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { motion } from 'framer-motion';
 import { Film, Sparkles } from 'lucide-react';
 import { lookupReferrer } from '../../lib/referral.js';
+import { RETENTION } from '../../config/limits.js';
 import { SITE_URL } from '../../lib/site.js';
 
 /**
@@ -27,7 +28,7 @@ export async function getServerSideProps(context) {
 
   // Inject the referral cookie server-side. (We intentionally do NOT set a public CDN cache
   // here — Set-Cookie + shared caching conflict — so attribution is always reliable.)
-  const maxAge = 60 * 60 * 24 * 30; // 30 days
+  const maxAge = 60 * 60 * 24 * RETENTION.referralCookieDays; // default 30 days (config/limits.js)
   context.res.setHeader('Set-Cookie', `ls_ref=${encodeURIComponent(code)}; Path=/; Max-Age=${maxAge}; SameSite=Lax`);
   context.res.setHeader('Cache-Control', 'no-store');
 

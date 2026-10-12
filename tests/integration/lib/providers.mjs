@@ -56,6 +56,7 @@ export function createProviders() {
   const log = [];
   const telegram = [];
   const s3puts = [];
+  const s3deletes = [];
   const mode = {};   // provider -> HTTP status to fail with, or 'ok'
   const latency = { gemini: null };   // e.g. { gemini: { 'gemini-2.5-flash': 400, default: 50 } } (ms)
   const moderationVerdict = { value: 'safe' };
@@ -151,8 +152,8 @@ export function createProviders() {
   }
 
   return {
-    handle, counts, log, telegram, s3puts, mode, latency, moderationVerdict, handlers, unexpected,
-    reset() { for (const k of Object.keys(counts)) delete counts[k]; log.length = 0; telegram.length = 0; s3puts.length = 0; for (const k of Object.keys(mode)) delete mode[k]; latency.gemini = null; moderationVerdict.value = 'safe'; handlers.r2 = null; },
+    handle, counts, log, telegram, s3puts, s3deletes, mode, latency, moderationVerdict, handlers, unexpected,
+    reset() { for (const k of Object.keys(counts)) delete counts[k]; log.length = 0; telegram.length = 0; s3puts.length = 0; s3deletes.length = 0; for (const k of Object.keys(mode)) delete mode[k]; latency.gemini = null; moderationVerdict.value = 'safe'; handlers.r2 = null; },
     snapshot() { return { ...counts, 'r2-put': s3puts.length }; },
     paidTotal() { return Object.entries(counts).filter(([k]) => PAID.has(k)).reduce((n, [, v]) => n + v, 0); },
     paid() { return Object.fromEntries(Object.entries(counts).filter(([k]) => PAID.has(k))); },

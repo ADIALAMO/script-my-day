@@ -24,7 +24,9 @@ import { limitFor } from '../../lib/quota.js';
 import { moderateImage, grokImageFromReference, geminiImageFromReference, identityQuotaExceeded } from '../../lib/identity.js';
 import { reserveIdentityBudget, releaseIdentityBudget } from '../../lib/budget.js';
 import { reserveSheetQuota, releaseSheetQuota } from '../../lib/sheet-quota.js';
-import { blobConfigured, putImage, decodeDataUri } from '../../lib/blob-store.js';
+import { blobConfigured, putImage, decodeDataUri, deleteObject } from '../../lib/blob-store.js';
+import { buildCharacterKeys, objectKeySecretConfigured } from '../../lib/upload-image.js';
+import { RETENTION } from '../../config/limits.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 
 export const maxDuration = 60;
@@ -44,6 +46,8 @@ export default async function handler(req, res) {
   // 4/5m window means a malicious burst drains at most $0.40 before being cut.
   if (await enforceRateLimit(req, res, 'upload-character')) return;
 
+  let delivered = false;   // the caller got a usable reference (so the raw photo may be removed)
+  let dropRaw = null;      // set once the raw selfie is stored
   try {
     const isAdmin = isAdminRequest(req);
     const { selfieBase64, consent } = req.body || {};
@@ -92,6 +96,11 @@ export default async function handler(req, res) {
       return res.status(503).json({ success: false, code: CODES.SERVER_ERROR });
     }
 
+    if (!objectKeySecretConfigured()) {
+      console.error('❌ upload-character: OBJECT_KEY_SECRET is not configured — refusing to store the photo');
+      return res.status(503).json({ success: false, code: CODES.SERVER_ERROR });
+    }
+
     // (3) 🛡️ Content safety — fail-closed.
     const safe = await moderateImage(selfieBase64);
     if (!safe) {
@@ -130,11 +139,23 @@ export default async function handler(req, res) {
     };
 
     const stamp = Date.now();
+    // Random, unguessable names under an HMAC owner segment (no user id in the public URL; see lib/upload-image.js).
+    const keys = buildCharacterKeys(identifier);
     let rawUrl;
+    let rawStored = false;
+    // The raw selfie exists ONLY to feed the sheet generator (the provider fetches it by public URL). Once the sheet
+    // is stored it is not used again, so it is deleted — best effort: a failed delete is logged and never changes the
+    // response. If the sheet step failed the raw photo IS the user's reference (styledUrl = rawUrl) and is kept.
+    dropRaw = async (why) => {
+      if (!rawStored) return;
+      try { await deleteObject(keys.raw); rawStored = false; }
+      catch (e) { console.warn(`⚠️ Raw selfie could not be deleted (${why}): ${e.message}`); }
+    };
     try {
       // (5) Store raw selfie.
       const { bytes, contentType } = decodeDataUri(selfieBase64);
-      rawUrl = await putImage(`characters/${identifier}-raw-${stamp}.jpg`, bytes, contentType);
+      rawUrl = await putImage(keys.raw, bytes, contentType);
+      rawStored = true;
     } catch (e) {
       await giveBackReservation(); // storage failed before any paid call
       throw e;
@@ -156,19 +177,19 @@ export default async function handler(req, res) {
     if (sheetDataUri) {
       try {
         const sheet = decodeDataUri(sheetDataUri);
-        styledUrl = await putImage(`characters/${identifier}-sheet-${stamp}.jpg`, sheet.bytes, sheet.contentType);
+        styledUrl = await putImage(keys.sheet, sheet.bytes, sheet.contentType);
         sheetGenerated = true;
       } catch (e) {
         console.warn(`⚠️ Character sheet could not be stored, using raw selfie as reference: ${e.message}`);
       }
     }
 
-    // (7) Persist pointer (URLs only) with 90-day TTL.
-    const ninetyDays = Math.floor(Date.now() / 1000) + 90 * 86400;
+    // (7) Persist pointer (URLs only) with RETENTION.characterPointerDays TTL (default 90) — set once, never refreshed on use.
+    const ninetyDays = Math.floor(Date.now() / 1000) + RETENTION.characterPointerDays * 86400;
     try {
       const pipe = redis.pipeline();
       pipe.set(`character:${identifier}`, JSON.stringify({
-        url: rawUrl, styledUrl, createdAt: Math.floor(stamp / 1000), status: 'ready',
+        url: sheetGenerated ? styledUrl : rawUrl, styledUrl, createdAt: Math.floor(stamp / 1000), status: 'ready',
         consentAt: Math.floor(stamp / 1000), // biometric consent recorded with the asset (BIPA/GDPR audit trail)
       }));
       pipe.expireat(`character:${identifier}`, ninetyDays);
@@ -177,9 +198,13 @@ export default async function handler(req, res) {
       console.warn(`⚠️ Character pointer persist skipped (Redis down): ${e.message}`);
     }
 
+    delivered = true;
+    if (sheetGenerated) await dropRaw('sheet created');
+
     console.log(`🎭 Character ready for ${identifier} (sheet: ${sheetGenerated})`);
     return res.status(200).json({ success: true, characterImageUrl: styledUrl, sheetGenerated });
   } catch (err) {
+    if (dropRaw && !delivered) await dropRaw('request failed');
     console.error('upload-character unhandled error:', err.message, err.stack);
     return res.status(500).json({ success: false, code: CODES.SERVER_ERROR });
   }
