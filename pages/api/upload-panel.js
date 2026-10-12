@@ -4,6 +4,8 @@ import { isAdminRequest } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 import { UPLOAD_LIMITS } from '../../config/limits.js';
+import { checkImage, markImageChecked, wasImageChecked } from '../../lib/image-check.js';
+import { CODES } from '../../lib/messages.js';
 import { MAX_IMAGE_BYTES, sniffImage, decodeDataUriBytes, buildObjectKey, objectKeySecretConfigured } from '../../lib/upload-image.js';
 
 // ── R2 client singleton ───────────────────────────────────────────────────────
@@ -42,6 +44,9 @@ const WINDOW_SECS = 30 * 24 * 60 * 60;
 export const config = {
   api: { bodyParser: { sizeLimit: '4mb' } },
 };
+
+// The fail-closed re-check below (only when the image was not already checked by generate-poster) can take up to ~16 s.
+export const maxDuration = 30;
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
@@ -92,6 +97,24 @@ export default async function handler(req, res) {
 
   if (!bucket || !publicUrl) {
     return res.status(500).json({ error: 'R2_BUCKET_NAME or R2_PUBLIC_URL not configured.' });
+  }
+
+  // ── Output-image safety check ──────────────────────────────────────────────
+  // generate-poster checks every image it returns and leaves an `imgok:<sha256 of the bytes>` marker (6 h). The browser
+  // uploads those SAME bytes, so a marker hit stores them with no second model call. Anything else — a direct API upload, an
+  // edited image, an expired marker — is checked here, fail-closed, before it can become a public R2 URL. Runs before the
+  // upload quota is touched, so a rejected or unverifiable image costs the caller nothing.
+  const checkedUri = `data:${sniffed.mime};base64,${imageBuffer.toString('base64')}`;
+  if (!(await wasImageChecked(checkedUri))) {
+    const check = await checkImage(checkedUri, { budgetMs: 20000 });
+    if (check.verdict === 'unsafe') {
+      console.warn(`🛑 upload-panel: image rejected by the output check (via ${check.via}${check.why ? `, ${check.why}` : ''})`);
+      return res.status(422).json({ error: 'Image rejected.', code: CODES.CONTENT_REFUSED });
+    }
+    if (check.verdict !== 'safe') {
+      return res.status(503).json({ error: 'Safety check unavailable.', code: CODES.CONTENT_CHECK_UNAVAILABLE });
+    }
+    await markImageChecked(checkedUri);
   }
 
   // ── Upload gate ───────────────────────────────────────────────────────────

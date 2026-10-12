@@ -43,7 +43,10 @@ test("NEXT_PUBLIC_GEMINI_API_TIER=paid removes the free-tier sentence in both la
     assert.ok(!t.includes('Pollinations'), `${lang}: Pollinations was removed from every image chain and must not be named as a provider`);
     assert.match(t, lang === 'he' ? /תמונת הפנים/ : /face photo/);
   }
-  assert.match(r.en7, /\(a\) Google \(Gemini API\) receives your text to create scripts and the comic plan\. \(b\) OpenRouter/);
+  assert.match(r.en7, /\(a\) Google \(Gemini API\) receives your text to create scripts and the comic plan, and, when our primary safety check is unavailable, generated images for a safety check\. \(b\) OpenRouter/);
+  assert.match(r.en7, /a content-safety model that checks face photos and generated images/);
+  assert.match(r.he7, /ותמונות שנוצרו\)/);
+  assert.match(r.he7, /בדיקת הבטיחות הראשית אינה זמינה גם תמונות שנוצרו/);
 });
 
 test('no bracketed internal note or TODO/owner remark appears in any user-visible policy or terms text, either value', () => {

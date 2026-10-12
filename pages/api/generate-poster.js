@@ -8,6 +8,7 @@ import { reservePosterQuota, releasePosterQuota } from '../../lib/poster-quota.j
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 import { sanitize } from '../../utils/input-processor.js';
 import { checkContent } from '../../lib/content-blocklist.js';
+import { checkImage, markImageChecked } from '../../lib/image-check.js';
 import { isContentRefusal, ContentRefusalError, openRouterRefusal } from '../../lib/content-safety.js';
 import {
   PROVIDERS,
@@ -340,7 +341,11 @@ for (const cascade of [POSTER_CASCADE, COMIC_CASCADE, COMIC_CASCADE_KLEIN_FIRST,
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
 
+// vercel.json gives this route 60 s; keep ~5 s for the response so the output check never runs past the function limit.
+const FUNCTION_BUDGET_MS = 55000;
+
 export default async function handler(req, res) {
+  const startedAt = Date.now();
   let panelGuard = null;       // comic panel reservation (lib/comic-guard.js) — released if no image is produced
   let posterQuotaKey = null;   // standalone poster reservation (lib/poster-quota.js) — released if no image is produced
   let gateRelease = null;      // identity credit + global identity budget reservation (resolveIdentityGate) — released if the face was not applied
@@ -530,6 +535,8 @@ export default async function handler(req, res) {
   const liveCascade = activeCascade.length ? activeCascade : budgetSafeCascade;
 
   let refused = false;
+  let imageCheck = null;        // set when a provider PRODUCED an image that the output check did not pass
+  let producedWithFace = false; // that image was a paid identity image (real money spent)
   for (const provider of liveCascade) {
     try {
       const result = await provider.fn(finalPrompt, seed, { characterImageUrl, negativePrompt });
@@ -537,7 +544,19 @@ export default async function handler(req, res) {
       // Count every successful PAID faceless call toward the daily image budget so the
       // kill-switch above can trip once DAILY_IMAGE_BUDGET is reached. Klein is the only
       // paid provider in the faceless cascade (identity spend is metered separately).
-      if (provider.key === 'openrouter') await recordPaidImage(redis);
+      if (provider.key === 'openrouter') await recordPaidImage(redis);   // the money is spent even if the image is rejected below
+
+      // ── OUTPUT CHECK (lib/image-check.js) — nothing is shown, stored or counted as a poster until the image passes ──
+      // Free Nemotron first; the capped paid Gemini Flash-Lite only if Nemotron was down/rate-limited. A rejected image
+      // is a refusal (the request ends, no other provider is tried); an unavailable checker ends it too, retryably.
+      const check = await checkImage(result.imageUrl, { budgetMs: FUNCTION_BUDGET_MS - (Date.now() - startedAt) });
+      if (check.verdict !== 'safe') {
+        console.warn(`🛑 output check: ${check.verdict} (via ${check.via}${check.why ? `, ${check.why}` : ''}) for an image from ${provider.key}`);
+        imageCheck = check.verdict;
+        producedWithFace = result.faceApplied === true;
+        break;
+      }
+      await markImageChecked(result.imageUrl);   // lets upload-panel store these exact bytes without a second check
       await trackUsage();
       // The identity credit and the global identity budget slot were RESERVED atomically in the gate. Keep them
       // only when the winning provider actually applied the face — a degraded (faceless) result must not cost
@@ -581,6 +600,27 @@ export default async function handler(req, res) {
       await recordFailure(redis, provider.key, code);
       console.warn(`⚠️ ${provider.key} failed: ${e.message}`);
     }
+  }
+
+  if (imageCheck) {
+    // A paid identity image WAS produced. 'unsafe': the user keeps the charge (a rejected image must not be a free retry,
+    // and the global identity budget must still count the spend). 'unavailable': the user's credit is handed back but the
+    // global budget slot stays counted — the money was spent either way.
+    if (producedWithFace) {
+      if (imageCheck === 'unavailable') await gate.releaseCredit?.();
+      gateRelease = null;
+    }
+    await releaseReservations();   // poster slot / panel reservation: always returned
+    const unsafe = imageCheck === 'unsafe';
+    return res.status(200).json({
+      success: true,
+      code: unsafe ? CODES.CONTENT_REFUSED : CODES.CONTENT_CHECK_UNAVAILABLE,
+      imageUrl: makePlaceholderImage('Scene unavailable', unsafe ? 'Content not allowed' : 'Safety check unavailable'),
+      provider: 'placeholder',
+      isPlaceholder: true,
+      ...(unsafe ? { contentRefused: true } : { checkUnavailable: true }),
+      details: unsafe ? `Image rejected by the output check (${trackLabel}).` : `Output check unavailable (${trackLabel}).`,
+    });
   }
 
   if (refused) {
