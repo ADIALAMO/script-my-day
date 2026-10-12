@@ -62,7 +62,7 @@ export function createProviders() {
   const latency = { gemini: null };   // e.g. { gemini: { 'gemini-2.5-flash': 400, default: 50 } } (ms)
   // value 'safe' | 'unsafe' are rendered in NVIDIA's documented template ("User Safety: …"); `raw` overrides the whole reply text
   // (use it for the malformed shapes: "not safe", "", ...). `nonString` makes the content a number.
-  const moderationVerdict = { value: 'safe', raw: undefined, nonString: false, queue: [] };   // queue: one-shot replies consumed in order (each a raw string)
+  const moderationVerdict = { value: 'safe', raw: undefined, nonString: false, nullLength: false, queue: [] };   // queue: one-shot replies consumed in order (each a raw string)
   const checkGemini = { value: 'safe', raw: undefined, block: false };   // paid fallback checker reply: 'safe' | 'unsafe' | raw text | block
   const handlers = { r2: null, font: null };   // overridable per test
   const unexpected = [];
@@ -123,6 +123,7 @@ export function createProviders() {
         if (mode.moderation === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; }
         const f = failing('moderation'); if (f) return text('mock failure', Number(f));
         const v = moderationVerdict;
+        if (v.nullLength) return json({ choices: [{ finish_reason: 'length', message: { content: null, reasoning: 'thinking about the image ...' } }], usage: { prompt_tokens: 300, completion_tokens: 40 } });   // what the real route returned with max_tokens: 40
         if (v.queue.length) { const q = v.queue.shift(); return typeof q === 'number' ? text('mock failure', q) : json({ choices: [{ message: { content: q } }] }); }
         const content = v.nonString ? 42 : (v.raw !== undefined ? v.raw : v.value === 'safe' ? 'User Safety: safe' : v.value === 'unsafe' ? 'User Safety: unsafe\nSafety Categories: Sexual' : v.value);
         return json({ choices: [{ message: { content } }] });
@@ -179,7 +180,7 @@ export function createProviders() {
 
   return {
     handle, refuse, bodies, counts, log, telegram, s3puts, s3deletes, mode, latency, moderationVerdict, checkGemini, handlers, unexpected,
-    reset() { for (const k of Object.keys(counts)) delete counts[k]; log.length = 0; telegram.length = 0; s3puts.length = 0; s3deletes.length = 0; for (const k of Object.keys(mode)) delete mode[k]; latency.gemini = null; moderationVerdict.value = 'safe'; moderationVerdict.raw = undefined; moderationVerdict.nonString = false; moderationVerdict.queue.length = 0; checkGemini.value = 'safe'; checkGemini.raw = undefined; checkGemini.block = false; handlers.r2 = null; for (const k of Object.keys(refuse)) delete refuse[k]; bodies.length = 0; },
+    reset() { for (const k of Object.keys(counts)) delete counts[k]; log.length = 0; telegram.length = 0; s3puts.length = 0; s3deletes.length = 0; for (const k of Object.keys(mode)) delete mode[k]; latency.gemini = null; moderationVerdict.value = 'safe'; moderationVerdict.raw = undefined; moderationVerdict.nonString = false; moderationVerdict.nullLength = false; moderationVerdict.queue.length = 0; checkGemini.value = 'safe'; checkGemini.raw = undefined; checkGemini.block = false; handlers.r2 = null; for (const k of Object.keys(refuse)) delete refuse[k]; bodies.length = 0; },
     snapshot() { return { ...counts, 'r2-put': s3puts.length }; },
     paidTotal() { return Object.entries(counts).filter(([k]) => PAID.has(k)).reduce((n, [, v]) => n + v, 0); },
     paid() { return Object.fromEntries(Object.entries(counts).filter(([k]) => PAID.has(k))); },

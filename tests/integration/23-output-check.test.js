@@ -247,3 +247,26 @@ scenario('O14', 'Character Sheet: when no checker can answer, the sheet is not s
     assert.equal(fake.num('usage:identity:global:2026-10-15'), 1);
     return { actual: 'sheet not stored; quota back; budget counted' };
   });
+
+scenario('O15', 'Nemotron request shape: a token budget big enough for the REASONING (the probe saw content=null / finish=length at 40), no reasoning option unless configured, an invalid option is ignored; a reasoning-exhausted reply (null content) goes to the fallback',
+  'max_tokens ≥ 1024; reasoning only when IMAGE_CHECK_REASONING_EFFORT is valid; null/length → Gemini decides', async () => {
+    const u = await makeUser('o15', 'free');
+    await plain(u, '198.51.100.140');
+    const def = providers.bodies.find((b) => b.provider === 'moderation').body;
+    assert.ok(def.max_tokens >= 1024, `max_tokens ${def.max_tokens}`); assert.equal(def.reasoning, undefined);
+    const keep = process.env.IMAGE_CHECK_REASONING_EFFORT;
+    try {
+      providers.bodies.length = 0;
+      process.env.IMAGE_CHECK_REASONING_EFFORT = 'low';
+      await plain(await makeUser('o15b', 'free'), '198.51.100.141');
+      assert.deepEqual(providers.bodies.find((b) => b.provider === 'moderation').body.reasoning, { effort: 'low' });
+      providers.bodies.length = 0;
+      process.env.IMAGE_CHECK_REASONING_EFFORT = 'bogus; drop table';
+      await plain(await makeUser('o15c', 'free'), '198.51.100.142');
+      assert.equal(providers.bodies.find((b) => b.provider === 'moderation').body.reasoning, undefined, 'invalid value never forwarded');
+    } finally { if (keep === undefined) delete process.env.IMAGE_CHECK_REASONING_EFFORT; else process.env.IMAGE_CHECK_REASONING_EFFORT = keep; }
+    providers.moderationVerdict.nullLength = true;
+    const r = await plain(await makeUser('o15d', 'free'), '198.51.100.143');
+    assert.ok(!r.body.isPlaceholder); assert.equal(gem(), 1, 'reasoning ran out of tokens → unreadable → Gemini decided');
+    return { actual: 'request shape verified; null/length reply fell back to Gemini' };
+  });
