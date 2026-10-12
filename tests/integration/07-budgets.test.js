@@ -32,18 +32,18 @@ const plain = (u, ip) => invoke(poster, { body: { prompt: 'A lone figure walks i
 const face = (u, ip) => invoke(poster, { body: { prompt: 'A hero walks forward', characterImageUrl: FACE }, cookies: u.cookies, ip });
 const reset = () => { _resetBudgetAlertMemory(); };
 
-scenario('H1', 'image budget: after 2 paid Klein images the paid provider is dropped (free Pollinations serves), ONE log line and ONE Telegram message per day — not per request; a new UTC day alerts again',
-  'klein stays 2; pollinations used; 1 log line + 1 telegram on day 1 (after 2 more requests); day 2 → a second alert', async () => {
+scenario('H1', 'image budget: after 2 paid Klein images the paid provider is dropped (with Cloudflare down the request ends in the placeholder — Pollinations no longer exists), ONE log line and ONE Telegram message per day — not per request; a new UTC day alerts again',
+  'klein stays 2; placeholder IMAGE_BUDGET_REACHED, no Pollinations call; 1 log line + 1 telegram on day 1 (after 2 more requests); day 2 → a second alert', async () => {
     reset(); providers.mode.cloudflare = 500;
     const users = []; for (let i = 0; i < 6; i++) users.push(await makeUser(`h1-${i}`, 'free'));
     const lines = await withLogs(async () => {
       for (let i = 0; i < 2; i++) { const r = await plain(users[i], '198.51.100.80'); assert.equal(r.body.provider, 'OpenRouter-Klein'); }
       assert.equal(fake.num(IMG()), 2);
       assert.equal(providers.telegram.length, 0, 'no alert while under the cap');
-      for (let i = 2; i < 5; i++) { const r = await plain(users[i], '198.51.100.80'); assert.equal(r.status, 200); assert.equal(r.body.provider, 'Pollinations-Flux', `request ${i + 1} must be served by the free provider`); }
+      for (let i = 2; i < 5; i++) { const r = await plain(users[i], '198.51.100.80'); assert.equal(r.status, 200); assert.equal(r.body.isPlaceholder, true, `request ${i + 1}: nothing free is left to serve it`); assert.equal(r.body.code, 'IMAGE_BUDGET_REACHED'); }
     });
     assert.equal(providers.counts.klein, 2, 'Klein never called again once capped');
-    assert.ok(providers.counts.pollinations >= 3);
+    assert.equal(providers.counts.pollinations ?? 0, 0, 'Pollinations is not part of any chain any more');
     assert.equal(budgetLines(lines, 'DAILY_IMAGE_BUDGET').length, 1, `log lines: ${budgetLines(lines, 'DAILY_IMAGE_BUDGET')}`);
     assert.equal(providers.telegram.length, 1);
     const tg = providers.telegram[0];
@@ -56,7 +56,7 @@ scenario('H1', 'image budget: after 2 paid Klein images the paid provider is dro
       for (const u of [a, b, c, d]) await plain(u, '198.51.100.81');
     });
     assert.equal(providers.telegram.length, 2, 'one alert per budget per day');
-    return { actual: `klein=2, free fallback served 3, log lines 1, telegram 1 on day 1; telegram total 2 after day 2`, evidence: `telegram text: ${JSON.stringify(tg)}` };
+    return { actual: `klein=2, 3 placeholders (IMAGE_BUDGET_REACHED), log lines 1, telegram 1 on day 1; telegram total 2 after day 2`, evidence: `telegram text: ${JSON.stringify(tg)}` };
   });
 
 scenario('H2', 'image budget + every free provider failing → the placeholder carries IMAGE_BUDGET_REACHED (honest message he/en), not the generic "providers busy"',

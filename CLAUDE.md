@@ -58,8 +58,13 @@ Two independent cascades, each tries providers in order and returns the first su
 - **Image** ([pages/api/generate-poster.js](pages/api/generate-poster.js)): P1 **Cloudflare**
   Workers AI flux-1-schnell → P2 **HuggingFace** FLUX.1-schnell (OMITTED from the cascade
   unless `HF_PROVIDER_ENABLED='true'` — see dead ends below) → P3 **OpenRouter** flux.2-klein
-  → P4 **Pollinations** (anonymous, throttled 1 req/15s, last resort). All fail → placeholder
-  SVG at HTTP 200 (never a JSON error). Cloudflare's request body is `{ prompt, steps: 6 }`
+  (Pollinations was REMOVED from every chain in the content-safety hotfix — an unfiltered anonymous
+  public service is not acceptable under Google Play's AI-Generated Content policy; there is no env
+  switch, it is gone from the code). All fail → placeholder SVG at HTTP 200 (never a JSON error).
+  **A content refusal ends the request** (Cloudflare 8007 NSFW, an OpenRouter/Grok/Gemini safety
+  block → `isContentRefusal` in [lib/content-safety.js](lib/content-safety.js)): placeholder +
+  `CODES.CONTENT_REFUSED`, reservations released, **never retried on another provider**. Only technical
+  failures (timeout, 429, 5xx, schema errors) fall through. Cloudflare's request body is `{ prompt, steps: 6 }`
   ONLY — confirmed empirically against the real API that `seed` and `negative_prompt` are both
   rejected as unknown properties (code 5006); every call 400'd before this was fixed.
 - **Circuit breaker** ([lib/circuit-breaker.js](lib/circuit-breaker.js)): Redis `circuit:img:*`,
@@ -75,7 +80,7 @@ Two independent cascades, each tries providers in order and returns the first su
   for `flux.2-klein-4b`, not a stale estimate (it drifted to 0.0035 against a real $0.014 for a
   long stretch, silently under-counting spend 4x). Verify the live figure at openrouter.ai/logs
   before trusting this constant.
-- **Dead ends (don't relitigate):** Prodia (paywall) removed; Pollinations stays last.
+- **Dead ends (don't relitigate):** Prodia (paywall) removed; Pollinations removed (content safety).
   HuggingFace's `hf-inference` route for FLUX.1-schnell returns a permanent HTTP 410 as of
   ~July 2026 (model pulled, confirmed via HF's own community forum — not a quota issue, won't
   self-heal) — gated behind `HF_PROVIDER_ENABLED` (default unset/disabled) rather than removed

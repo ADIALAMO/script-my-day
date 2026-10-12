@@ -39,7 +39,8 @@ test("NEXT_PUBLIC_GEMINI_API_TIER=paid removes the free-tier sentence in both la
   assert.doesNotMatch(r.he7, /ללא תשלום|בודקים אנושיים/);
   assert.doesNotMatch(r.en7, /free \(unpaid\)|human reviewers/);
   for (const [lang, t] of [['he', r.he7], ['en', r.en7]]) {
-    for (const name of ['Google', 'OpenRouter', 'Cloudflare', 'Cohere', 'Pollinations']) assert.ok(t.includes(name), `${lang}: ${name}`);
+    for (const name of ['Google', 'OpenRouter', 'Cloudflare', 'Cohere']) assert.ok(t.includes(name), `${lang}: ${name}`);
+    assert.ok(!t.includes('Pollinations'), `${lang}: Pollinations was removed from every image chain and must not be named as a provider`);
     assert.match(t, lang === 'he' ? /תמונת הפנים/ : /face photo/);
   }
   assert.match(r.en7, /\(a\) Google \(Gemini API\) receives your text to create scripts and the comic plan\. \(b\) OpenRouter/);

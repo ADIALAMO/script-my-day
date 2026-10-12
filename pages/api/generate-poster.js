@@ -6,6 +6,9 @@ import { limitFor } from '../../lib/quota.js';
 import { guardComicPanel } from '../../lib/comic-guard.js';
 import { reservePosterQuota, releasePosterQuota } from '../../lib/poster-quota.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
+import { sanitize } from '../../utils/input-processor.js';
+import { checkContent } from '../../lib/content-blocklist.js';
+import { isContentRefusal, ContentRefusalError, openRouterRefusal } from '../../lib/content-safety.js';
 import {
   PROVIDERS,
   extractStatusCode,
@@ -37,6 +40,10 @@ export const config = {
   api: { bodyParser: { sizeLimit: '2mb' } },
 };
 
+// Longest image prompt accepted. The legitimate maximum is a genre template + the LLM's [image:] line (~700 chars) or a
+// comic style prefix + a 20-35 word visual + suffix (~450 chars); everything above this is junk or abuse.
+const MAX_PROMPT_CHARS = 1500;
+
 // ─── Shared utility ───────────────────────────────────────────────────────────
 
 async function fetchImageAsBase64(url) {
@@ -49,7 +56,7 @@ async function fetchImageAsBase64(url) {
 // Returns an inline SVG data URI used when all cascade providers have failed.
 // This guarantees the frontend always receives a renderable imageUrl rather than
 // a JSON error, preventing broken image icons on cascade exhaustion.
-function makePlaceholderImage(label = 'Scene unavailable') {
+function makePlaceholderImage(label = 'Scene unavailable', detail = 'All providers exhausted') {
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">` +
     `<rect width="1024" height="1024" fill="#111118"/>` +
@@ -59,7 +66,7 @@ function makePlaceholderImage(label = 'Scene unavailable') {
     `<text x="512" y="720" text-anchor="middle" font-family="system-ui,sans-serif" ` +
     `font-size="26" fill="#555">${label}</text>` +
     `<text x="512" y="760" text-anchor="middle" font-family="system-ui,sans-serif" ` +
-    `font-size="18" fill="#3a3a4a">All providers exhausted</text>` +
+    `font-size="18" fill="#3a3a4a">${detail}</text>` +
     `</svg>`;
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
 }
@@ -143,8 +150,8 @@ async function runCloudflareAI(prompt, seed, opts = {}) {
   // before and after the old retry-without-negative_prompt fallback (which
   // never stripped seed either, so the retry 400'd too). `seed` and
   // opts.negativePrompt are still accepted as parameters for call-site
-  // uniformity with the other cascade providers (HF, OpenRouter Klein,
-  // Pollinations all genuinely use seed) but are intentionally unused here —
+  // uniformity with the other cascade providers (HF, OpenRouter Klein
+  // genuinely use seed) but are intentionally unused here —
   // Cloudflare has never been able to honor either, so dropping them loses
   // nothing that was actually working.
   const body = { prompt, steps: 6 };
@@ -206,16 +213,13 @@ async function runOpenRouterKlein(prompt, seed) {
     data.images?.[0] ||
     data.choices?.[0]?.message?.images?.[0]?.image_url?.url ||
     data.choices?.[0]?.message?.content;
-  if (!raw) throw new Error('No image data in OpenRouter response');
+  if (!raw) {
+    if (openRouterRefusal(data)) throw new ContentRefusalError('OpenRouter-Klein refused the content');
+    throw new Error('No image data in OpenRouter response');
+  }
 
   const imageUrl = await fetchImageAsBase64(raw);
   return { imageUrl, provider: 'OpenRouter-Klein' };
-}
-
-async function runPollinationsFlux(prompt, seed) {
-  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&model=flux&nologo=true&seed=${seed}`;
-  const imageUrl = await fetchImageAsBase64(url);
-  return { imageUrl, provider: 'Pollinations-Flux' };
 }
 
 // Identity Track — Grok Imagine Image Quality via OpenRouter, conditioned on the
@@ -285,7 +289,13 @@ const IDENTITY_CASCADE_VALUE = [
 //                         to actually work on the free hf-inference tier.
 //   P3 OpenRouter Klein → FLUX.2-klein (paid). Auto-dropped once DAILY_IMAGE_BUDGET is hit
 //                         (see filter below) so a viral day can never produce a billing surprise.
-//   P4 Pollinations     → anonymous, 1 req/15s throttled — final safety net.
+//   (Pollinations was removed from every chain in the content-safety hotfix: an anonymous,
+//    unfiltered public service is not acceptable under Google Play's AI-Generated Content
+//    policy. With Klein capped and Cloudflare down the request now ends in the placeholder.)
+//
+// A CONTENT REFUSAL from any provider (Cloudflare 8007 "NSFW", an OpenRouter/Grok/Gemini
+// safety block) ends the request — see the loop in the handler. It is never retried on the
+// next provider; only technical failures (timeouts, 429, 5xx, schema errors) fall through.
 
 const HF_ENABLED = process.env.HF_PROVIDER_ENABLED === 'true';
 const HF_ENTRY = { fn: runHuggingFace, key: 'huggingface' };
@@ -294,35 +304,27 @@ const POSTER_CASCADE = [
   { fn: runCloudflareAI,    key: 'cloudflare' },
   ...(HF_ENABLED ? [HF_ENTRY] : []),
   { fn: runOpenRouterKlein, key: 'openrouter' },
-  { fn: runPollinationsFlux, key: 'pollinations' },
 ];
 
 const COMIC_CASCADE = [
   { fn: runCloudflareAI,    key: 'cloudflare' },
   ...(HF_ENABLED ? [HF_ENTRY] : []),
   { fn: runOpenRouterKlein, key: 'openrouter' },
-  { fn: runPollinationsFlux, key: 'pollinations' },
 ];
 
 // Comic-consistency modes (see generate-storyboard.js, which decides this ONCE
 // per comic and writes comic:mode:<comicSeed>, read below). 'klein' puts
 // OpenRouter Klein first so every panel shares its seed-honored look; 'free'
 // excludes Klein ENTIRELY for the whole comic (not just per-call budget
-// filtering) so a mid-comic style switch never happens. Pollinations stays
-// last in both — it has no client-side throttling of its own, and its "1 req/
-// 15s" limit is enforced by Pollinations' own server, not us: 7 panels firing
-// in parallel would mean at most ~1 lands inside that window, so it can't
-// serve as a primary fallback for a multi-panel comic despite honoring seed.
+// filtering) so a mid-comic style switch never happens.
 const COMIC_CASCADE_KLEIN_FIRST = [
   { fn: runOpenRouterKlein, key: 'openrouter' },
   { fn: runCloudflareAI,    key: 'cloudflare' },
   ...(HF_ENABLED ? [HF_ENTRY] : []),
-  { fn: runPollinationsFlux, key: 'pollinations' },
 ];
 const COMIC_CASCADE_FREE_ONLY = [
   { fn: runCloudflareAI,    key: 'cloudflare' },
   ...(HF_ENABLED ? [HF_ENTRY] : []),
-  { fn: runPollinationsFlux, key: 'pollinations' },
 ];
 
 // Guard against ever reintroducing the circuit:img:undefined bug via a typo —
@@ -366,9 +368,18 @@ export default async function handler(req, res) {
     comicSeed,
     seed: requestedSeed,
   } = req.body;
-  const rawPrompt = prompt || visualPrompt || '';
-
   const isAdmin = isAdminRequest(req);
+
+  // The image prompt arrives straight from the client (the browser builds it from the script / storyboard), so it is
+  // untrusted: strip markup, cap the length, and run the keyword blocklist BEFORE any quota is reserved or any
+  // provider is called. A hit costs the user nothing. Only the category is logged — never the text.
+  const rawIn = prompt || visualPrompt || '';
+  const rawPrompt = typeof rawIn === 'string' ? sanitize(rawIn, MAX_PROMPT_CHARS) : '';
+  const screened = checkContent(rawPrompt);
+  if (screened.blocked) {
+    console.warn(`🛑 generate-poster: prompt blocked by content blocklist (category=${screened.category}, requestType=${requestType || 'poster'})`);
+    return res.status(400).json({ success: false, code: CODES.CONTENT_BLOCKED });
+  }
   const isComic = requestType === 'comic' || requestType === 'storyboard';
 
   // Comic quota accounting is owned by generate-storyboard.js — panel image calls do
@@ -514,11 +525,11 @@ export default async function handler(req, res) {
   // one scenario where every OTHER provider is simultaneously open-circuited
   // is exactly the scenario that silently re-included the ONE provider
   // DAILY_IMAGE_BUDGET was specifically set up to stop spending on. Cloudflare
-  // and Pollinations are never filtered by the budget cap, so this can never
-  // end up empty.
+  // is never filtered by the budget cap, so this can never end up empty.
   const budgetSafeCascade = paidImageCapped ? cascade.filter((e) => e.key !== 'openrouter') : cascade;
   const liveCascade = activeCascade.length ? activeCascade : budgetSafeCascade;
 
+  let refused = false;
   for (const provider of liveCascade) {
     try {
       const result = await provider.fn(finalPrompt, seed, { characterImageUrl, negativePrompt });
@@ -542,7 +553,11 @@ export default async function handler(req, res) {
         referralGranted = await maybeRedeemReferral(req, res, refereeUserId);
         if (referralGranted) console.log(`🎁 Referral reward granted (referee=${refereeUserId})`);
       }
-      console.log(`🎨 Poster generated successfully by: ${result.provider}`);
+      // Diagnostics only: which provider produced which panel. No prompt, image or user text — comicSeed is checked
+      // against the same format the session uses before it is logged.
+      const logPanel = Number.isFinite(numericPanelIndex) ? numericPanelIndex : '-';
+      const logSeed = isComic && isValidComicSeed(comicSeed) ? comicSeed : '-';
+      console.log(`🎨 Poster generated successfully by: ${result.provider} (panelIndex=${logPanel}, comicSeed=${logSeed})`);
       return res.status(200).json({
         success: true,
         ...result,
@@ -553,23 +568,32 @@ export default async function handler(req, res) {
         ...(gate.identityDegraded ? { identityDegraded: true, code: gate.code } : {}),
       });
     } catch (e) {
-      // Cloudflare's own prompt-content filter (error code 8007, "Input prompt
-      // contains NSFW content") rejects a specific PROMPT, not the provider
-      // itself — it's not a signal that Cloudflare is unhealthy. Tripping the
-      // circuit over it would needlessly push OTHER, unrelated concurrent
-      // requests (e.g. every other panel in the same comic) onto paid Klein
-      // for the circuit's whole open duration, over a single prompt's wording.
-      // Recognized by the literal body content, not HTTP status — Cloudflare
-      // returns this as a plain 400, identical to a real schema/request error.
-      const isContentFilterReject = provider.key === 'cloudflare' && /\b8007\b|NSFW/i.test(e.message);
-      if (isContentFilterReject) {
-        console.warn(`⚠️ cloudflare content-filter reject, falling through: ${e.message}`);
-      } else {
-        const code = extractStatusCode(e.message);
-        await recordFailure(redis, provider.key, code);
-        console.warn(`⚠️ ${provider.key} failed: ${e.message}`);
+      // A CONTENT REFUSAL (Cloudflare's own prompt filter, error code 8007 "Input prompt contains NSFW content"; an
+      // OpenRouter / Grok / Gemini safety block) is a decision about THIS prompt, not a provider outage: it does not
+      // touch the circuit breaker, and it ENDS the request. Re-sending a refused prompt to the next provider is how an
+      // unfiltered engine ended up drawing what a filtered one had declined. Technical failures fall through as before.
+      if (isContentRefusal(e)) {
+        console.warn(`🛑 ${provider.key} refused the content — ending the request, no fallback to another provider: ${e.message}`);
+        refused = true;
+        break;
       }
+      const code = extractStatusCode(e.message);
+      await recordFailure(redis, provider.key, code);
+      console.warn(`⚠️ ${provider.key} failed: ${e.message}`);
     }
+  }
+
+  if (refused) {
+    await releaseReservations(); // nothing was produced → no poster slot, replacement or identity credit is spent
+    return res.status(200).json({
+      success: true,
+      code: CODES.CONTENT_REFUSED,
+      imageUrl: makePlaceholderImage('Scene unavailable', 'Content not allowed'),
+      provider: 'placeholder',
+      isPlaceholder: true,
+      contentRefused: true,
+      details: `Content refused by a provider (${trackLabel}).`,
+    });
   }
 
   // All cascade providers failed. Return a placeholder so the frontend always
