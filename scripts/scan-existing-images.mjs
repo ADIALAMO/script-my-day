@@ -70,6 +70,7 @@ async function pool(items, n, worker) {
 export async function run({ argv, deps }) {
   const { r2, fileio, classify, log = console.log, now = Date.now } = deps;
   const out = arg(argv, 'out', 'scan-results.json');
+  if (has(argv, 'recheck-from') && (has(argv, 'count-only') || has(argv, 'quarantine-from'))) { log('--recheck-from cannot be combined with --count-only or --quarantine-from'); return { code: 2 }; }
 
   // ── quarantine step (separate, typed confirmation) ─────────────────────────────────────────────────────────────
   if (has(argv, 'quarantine-from')) {
@@ -108,7 +109,6 @@ export async function run({ argv, deps }) {
   let firstOpinion = null;       // key → the verdict the first run recorded
   let recheckLocal = false;
   if (has(argv, 'recheck-from')) {
-    if (has(argv, 'count-only') || has(argv, 'quarantine-from')) { log('--recheck-from cannot be combined with --count-only or --quarantine-from'); return { code: 2 }; }
     if (!recheckFile || !fileio.exists(recheckFile)) { log(`results file not found: ${recheckFile}`); return { code: 2 }; }
     // The second opinion lives in its OWN file: the first verdicts must stay exactly as they are.
     if (!has(argv, 'out') || !arg(argv, 'out') || path.resolve(out) === path.resolve(recheckFile)) { log('--out is required for --recheck-from and must be a DIFFERENT file than --recheck-from (the first results are never overwritten)'); return { code: 2 }; }
