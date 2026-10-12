@@ -164,11 +164,11 @@ scenario('T10', 'everything else ALLOWS the upload (it is a best-effort screen, 
       ['unsure', () => { providers.ageVerdict.value = 'unsure'; }],
       ['unreadable', () => { providers.ageVerdict.raw = 'probably a kid'; }],
       ['refusal', () => { providers.ageVerdict.block = true; }],
-      ['http 500', () => { providers.mode['gemini-check'] = 500; }],
+      ['http 500', () => { providers.mode['gemini-check-age'] = 500; }],
     ];
     let n = 0;
     for (const [label, set] of cases) {
-      providers.ageVerdict.value = 'adult'; providers.ageVerdict.raw = undefined; providers.ageVerdict.block = false; delete providers.mode['gemini-check']; ctx.advance(120_000);
+      providers.ageVerdict.value = 'adult'; providers.ageVerdict.raw = undefined; providers.ageVerdict.block = false; delete providers.mode['gemini-check-age']; ctx.advance(120_000);
       set();
       const u = await makeUser(`t10-${n++}`, 'free');
       const r = await up(u, `198.51.100.${230 + n}`);
@@ -179,7 +179,7 @@ scenario('T10', 'everything else ALLOWS the upload (it is a best-effort screen, 
     const u2 = await makeUser('t10-circuit', 'free'); const r2 = await up(u2, '198.51.100.240');
     assert.equal(r2.status, 200); assert.equal(ageChecks(), before, 'open circuit → no call');
     // budget spent → skipped without a call
-    delete providers.mode['gemini-check']; ctx.advance(120_000);
+    delete providers.mode['gemini-check-age']; ctx.advance(120_000);
     const keep = process.env.DAILY_CHECK_BUDGET; process.env.DAILY_CHECK_BUDGET = '0';
     const u3 = await makeUser('t10-budget', 'free'); const r3 = await up(u3, '198.51.100.241');
     process.env.DAILY_CHECK_BUDGET = keep;
@@ -197,4 +197,24 @@ scenario('T11', 'refused uploads cost nothing: a quota-refused or consent-refuse
     assert.equal((await invoke(upload, { body: { selfieBase64: PNG_DATA_URI, adult: true }, cookies: u.cookies, ip: '198.51.100.250' })).status, 400);   // no consent
     assert.equal(providers.counts['gemini-check'] ?? 0, before);
     return { actual: 'no paid call on refused uploads' };
+  });
+
+scenario('T12', 'the minor screen has its OWN circuit: a failing face-photo screen opens only `check_minor` — the image output checks (`check_gemini`) stay closed and still work when Nemotron is down',
+  'circuit:img:check_minor open, check_gemini absent; poster with Nemotron 500 → served by the fallback', async () => {
+    const poster = await ctx.route('generate-poster');
+    providers.mode['gemini-check-age'] = 500;
+    const u = await makeUser('t12', 'free');
+    const r = await up(u, '198.51.100.251');
+    assert.equal(r.status, 200, 'a failed screen still allows the upload');
+    assert.equal(fake.keys('circuit:img:check_minor').length, 1, 'the screen\'s own circuit opened');
+    assert.equal(fake.keys('circuit:img:check_gemini').length, 0, 'the image-check fallback circuit is untouched');
+    // …and the image fallback checker is still usable: Nemotron down → Gemini decides → the image is served
+    providers.mode.moderation = 500;
+    const p = await invoke(poster, { body: { prompt: 'A lone figure walks into the rain' }, cookies: (await makeUser('t12b', 'free')).cookies, ip: '198.51.100.252' });
+    assert.equal(p.status, 200); assert.ok(!p.body.isPlaceholder, 'image check fallback works while the screen circuit is open');
+    assert.ok(providers.log.some((l) => l.provider === 'gemini-check' && l.hasImage && l.model), 'the image fallback made its call');
+    // and the other direction: the screen being open does not need the shared key to be open
+    const circuitState = fake.keys('circuit:img:');
+    assert.ok(circuitState.includes('circuit:img:check_minor') && !circuitState.includes('circuit:img:check_gemini'));
+    return { actual: 'separate circuits' };
   });

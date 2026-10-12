@@ -172,7 +172,8 @@ classifier (via OpenRouter, `DAILY_CHECK_BUDGET`, shared `check_gemini` circuit 
 regeneration with `REGENERATION_SAFETY_LINE` (only if enough of the 60 s route budget is left) → `CONTENT_REFUSED`; classifier needed but
 unavailable → `CONTENT_CHECK_UNAVAILABLE` (503); quota released in every refusal. `lib/minor-screen.js`: best-effort apparent-minor screen at
 Star Yourself upload (after the quota reservations, before anything is stored): rejects ONLY on a clear "minor" (`MINOR_REJECTED`), every
-other outcome allows. It is NOT age verification — never describe it so (tests/text-safety.test.js scans the repo).
+other outcome allows. It has its OWN circuit key `check_minor` (the text classifier shares `check_gemini` with the image fallback; the screen must never
+pause the image output checks). All three paid uses share the DAILY_CHECK_BUDGET counter. It is NOT age verification — never describe it so (tests/text-safety.test.js scans the repo).
 
 ### 4b. Android app (Capacitor) — Google Play payments policy
 Inside the native shell **nothing may show a price, a subscription, Stripe or an "upgrade" prompt**. `hooks/useNative.js`
