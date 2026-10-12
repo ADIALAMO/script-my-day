@@ -28,6 +28,7 @@ import { blobConfigured, putImage, decodeDataUri, deleteObject } from '../../lib
 import { buildCharacterKeys, objectKeySecretConfigured } from '../../lib/upload-image.js';
 import { RETENTION } from '../../config/limits.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
+import { checkImage } from '../../lib/image-check.js';
 
 export const maxDuration = 60;
 // Selfies are large base64 blobs; raise the default 1mb body limit.
@@ -173,6 +174,18 @@ export default async function handler(req, res) {
     } catch (e) {
       console.warn(`⚠️ Character sheet generation failed, using raw selfie as reference: ${e.message}`);
       await giveBackReservation();
+    }
+    // The generated sheet is the reference EVERY later poster/panel is conditioned on, so it gets the same output check as
+    // any other generated image before it is stored. If it does not pass (unsafe or checker unavailable) it is not stored and
+    // the already-moderated raw selfie stays the reference — the same degraded path as a failed sheet. The paid call WAS made:
+    // an unsafe sheet keeps the charge (no free retries); an unavailable checker hands back only the user's sheet quota.
+    if (sheetDataUri) {
+      const check = await checkImage(sheetDataUri, { budgetMs: 25000 });
+      if (check.verdict !== 'safe') {
+        console.warn(`🛑 upload-character: generated sheet not stored — output check ${check.verdict} (via ${check.via}${check.why ? `, ${check.why}` : ''})`);
+        sheetDataUri = null;
+        if (check.verdict === 'unavailable') await releaseSheetQuota(sheetKey);
+      }
     }
     if (sheetDataUri) {
       try {

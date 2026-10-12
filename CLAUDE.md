@@ -64,7 +64,16 @@ Two independent cascades, each tries providers in order and returns the first su
   **A content refusal ends the request** (Cloudflare 8007 NSFW, an OpenRouter/Grok/Gemini safety
   block → `isContentRefusal` in [lib/content-safety.js](lib/content-safety.js)): placeholder +
   `CODES.CONTENT_REFUSED`, reservations released, **never retried on another provider**. Only technical
-  failures (timeout, 429, 5xx, schema errors) fall through. Cloudflare's request body is `{ prompt, steps: 6 }`
+  failures (timeout, 429, 5xx, schema errors) fall through.
+  **Output check** ([lib/image-check.js](lib/image-check.js)): every generated image (poster, panel, identity
+  image, Character Sheet) is classified BEFORE it is shown or stored. Primary = Nemotron free (strict, pinned
+  `User Safety: safe|unsafe` parse); fallback = `google/gemini-2.5-flash-lite` **via OpenRouter** (same key, `provider.data_collection:"deny"`, strict
+  JSON verdict, paid ≈ $0.00012/image, capped by `DAILY_CHECK_BUDGET`, default $0.50/day, 0 = off; no Google key needed) after a 429/5xx/timeout OR an unreadable reply of the primary (a clear
+  primary "unsafe" is final, never re-asked); once consulted, the fallback's verdict alone decides. Nemotron is called with `reasoning:{effort:"none"}`, `max_tokens:512` and the
+  neutral text "Image to check." (probe-verified; the old "Classify … safe or unsafe" prompt gave false positives). Unsafe → placeholder +
+  `CONTENT_REFUSED`; no checker available → placeholder + `CONTENT_CHECK_UNAVAILABLE` (retryable, quota back).
+  generate-poster leaves an `imgok:<sha256>` marker (6 h) so upload-panel stores the same bytes without a second
+  call and re-checks (fail-closed) anything else. Circuit keys `check_nemotron` / `check_gemini` reuse circuit-breaker.js. Cloudflare's request body is `{ prompt, steps: 6 }`
   ONLY — confirmed empirically against the real API that `seed` and `negative_prompt` are both
   rejected as unknown properties (code 5006); every call 400'd before this was fixed.
 - **Circuit breaker** ([lib/circuit-breaker.js](lib/circuit-breaker.js)): Redis `circuit:img:*`,

@@ -70,6 +70,7 @@ the loop degrades into the faceless cascade above.
 ## Hard-won lessons (don't relitigate)
 - **Prodia = dead end** (paywall). Do not re-add it.
 - **Pollinations was removed** (Google Play AI-Generated Content policy: no unfiltered last resort). Do not re-add it.
+- **Every generated image passes `checkImage()` (lib/image-check.js) before it is returned or stored** — a new image route/provider must call it and honour `unsafe` (refusal) / `unavailable` (retryable placeholder). Never fall back to another image provider because of a check result.
 - **A content refusal is final.** Never route a refused prompt to the next provider — `isContentRefusal()`
   (lib/content-safety.js) must be consulted in any new cascade loop before falling through.
 - FLUX prompting has its own rules — see the `flux-prompt` skill before touching any

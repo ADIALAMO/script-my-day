@@ -8,7 +8,8 @@
  *   klein             OpenRouter black-forest-labs/flux.2-klein-4b                   PAID
  *   grok              OpenRouter x-ai/grok-imagine-image-quality (identity)          PAID
  *   gemini-image      OpenRouter google/gemini-2.5-flash-image (identity)            PAID
- *   moderation        OpenRouter nvidia/nemotron ":free"                             free
+ *   moderation        OpenRouter nvidia/nemotron ":free" (selfie moderation AND the output-image check)  free
+ *   gemini-check      OpenRouter google/gemini-2.5-flash-lite, the PAID fallback of the output-image check   PAID
  *   cohere            Cohere chat                                                    PAID
  *   cloudflare        Cloudflare Workers AI flux-1-schnell                           free tier
  *   pollinations      image.pollinations.ai                                          free
@@ -16,7 +17,7 @@
  *   telegram          api.telegram.org (alerts)                                      recorder
  *   r2                @aws-sdk S3 PutObject (patched at the SDK class, see setup.mjs) recorder
  */
-export const PAID = new Set(['gemini', 'openrouter-text', 'klein', 'grok', 'gemini-image', 'cohere']);
+export const PAID = new Set(['gemini-check', 'gemini', 'openrouter-text', 'klein', 'grok', 'gemini-image', 'cohere']);
 
 // 1x1 transparent PNG
 export const PNG_B64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
@@ -59,7 +60,10 @@ export function createProviders() {
   const s3deletes = [];
   const mode = {};   // provider -> HTTP status to fail with, or 'ok'
   const latency = { gemini: null };   // e.g. { gemini: { 'gemini-2.5-flash': 400, default: 50 } } (ms)
-  const moderationVerdict = { value: 'safe' };
+  // value 'safe' | 'unsafe' are rendered in NVIDIA's documented template ("User Safety: …"); `raw` overrides the whole reply text
+  // (use it for the malformed shapes: "not safe", "", ...). `nonString` makes the content a number.
+  const moderationVerdict = { value: 'safe', raw: undefined, nonString: false, nullLength: false, queue: [] };   // queue: one-shot replies consumed in order (each a raw string)
+  const checkGemini = { value: 'safe', raw: undefined, block: false };   // paid fallback checker reply: 'safe' | 'unsafe' | raw text | block
   const handlers = { r2: null, font: null };   // overridable per test
   const unexpected = [];
   const refuse = {};   // provider -> true: answer with that provider's CONTENT REFUSAL (safety filter) instead of an image/script
@@ -104,10 +108,26 @@ export function createProviders() {
       bodies.push({ provider: model, body });
       const refusedImage = json({ choices: [{ finish_reason: 'content_filter', native_finish_reason: 'IMAGE_SAFETY', message: { content: null } }] });
       const img = { choices: [{ message: { content: null, images: [{ image_url: { url: PNG_DATA_URI } }] } }] };
+      if (model.includes('gemini-2.5-flash-lite') && body?.response_format) {   // the output-image check FALLBACK, through OpenRouter
+        count('gemini-check', { model, hasImage: JSON.stringify(body.messages).includes('image_url') }); bodies.push({ provider: 'gemini-check', body });
+        const f = failing('gemini-check'); if (f === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; } if (f) return text('mock failure', Number(f));
+        if (checkGemini.block) return json({ choices: [{ finish_reason: 'content_filter', native_finish_reason: 'IMAGE_SAFETY', message: { content: null } }] });
+        const t = checkGemini.raw ?? JSON.stringify({ verdict: checkGemini.value });
+        return json({ choices: [{ finish_reason: 'stop', message: { content: t } }] });
+      }
       if (model.includes('flux.2-klein')) { count('klein', { model }); const f = failing('klein'); if (f) return text('mock failure', Number(f)); if (refuse.klein) return refusedImage; return json(img); }
       if (model.includes('grok-imagine')) { count('grok', { model }); const f = failing('grok'); if (f) return text('mock failure', Number(f)); if (refuse.grok) return refusedImage; return json(img); }
       if (model.includes('gemini-2.5-flash-image')) { count('gemini-image', { model }); const f = failing('gemini-image'); if (f) return text('mock failure', Number(f)); return json(img); }
-      if (model.includes('nemotron')) { count('moderation', { model }); const f = failing('moderation'); if (f) return text('mock failure', Number(f)); return json({ choices: [{ message: { content: moderationVerdict.value } }] }); }
+      if (model.includes('nemotron')) {
+        count('moderation', { model }); bodies.push({ provider: 'moderation', body });
+        if (mode.moderation === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; }
+        const f = failing('moderation'); if (f) return text('mock failure', Number(f));
+        const v = moderationVerdict;
+        if (v.nullLength) return json({ choices: [{ finish_reason: 'length', message: { content: null, reasoning: 'thinking about the image ...' } }], usage: { prompt_tokens: 300, completion_tokens: 40 } });   // what the real route returned with max_tokens: 40
+        if (v.queue.length) { const q = v.queue.shift(); return typeof q === 'number' ? text('mock failure', q) : json({ choices: [{ message: { content: q } }] }); }
+        const content = v.nonString ? 42 : (v.raw !== undefined ? v.raw : v.value === 'safe' ? 'User Safety: safe' : v.value === 'unsafe' ? 'User Safety: unsafe\nSafety Categories: Sexual' : v.value);
+        return json({ choices: [{ message: { content } }] });
+      }
       const system = (body?.messages || []).find((m) => m.role === 'system')?.content || '';
       const isStoryboard = /storyboard artist/i.test(system);
       const prov = model.endsWith(':free') ? 'openrouter-free' : 'openrouter-text';
@@ -159,8 +179,8 @@ export function createProviders() {
   }
 
   return {
-    handle, refuse, bodies, counts, log, telegram, s3puts, s3deletes, mode, latency, moderationVerdict, handlers, unexpected,
-    reset() { for (const k of Object.keys(counts)) delete counts[k]; log.length = 0; telegram.length = 0; s3puts.length = 0; s3deletes.length = 0; for (const k of Object.keys(mode)) delete mode[k]; latency.gemini = null; moderationVerdict.value = 'safe'; handlers.r2 = null; for (const k of Object.keys(refuse)) delete refuse[k]; bodies.length = 0; },
+    handle, refuse, bodies, counts, log, telegram, s3puts, s3deletes, mode, latency, moderationVerdict, checkGemini, handlers, unexpected,
+    reset() { for (const k of Object.keys(counts)) delete counts[k]; log.length = 0; telegram.length = 0; s3puts.length = 0; s3deletes.length = 0; for (const k of Object.keys(mode)) delete mode[k]; latency.gemini = null; moderationVerdict.value = 'safe'; moderationVerdict.raw = undefined; moderationVerdict.nonString = false; moderationVerdict.nullLength = false; moderationVerdict.queue.length = 0; checkGemini.value = 'safe'; checkGemini.raw = undefined; checkGemini.block = false; handlers.r2 = null; for (const k of Object.keys(refuse)) delete refuse[k]; bodies.length = 0; },
     snapshot() { return { ...counts, 'r2-put': s3puts.length }; },
     paidTotal() { return Object.entries(counts).filter(([k]) => PAID.has(k)).reduce((n, [, v]) => n + v, 0); },
     paid() { return Object.fromEntries(Object.entries(counts).filter(([k]) => PAID.has(k))); },
