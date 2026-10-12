@@ -1,12 +1,13 @@
 /**
  * POST /api/report-content — "Report" button for generated posters, comic panels and reels.
  *
- *   body: { kind: 'poster'|'panel'|'reel', reason: 'sexual'|'violent'|'other', refs: [{ url } | { hash }]  (1–8) }
+ *   body: { kind: 'poster'|'panel'|'reel', reason: 'sexual'|'violent'|'other', refs: [{ url } | { hash } | { gallery: 'poster:<id>'|'reel:<id>' }]  (1–8) }
  *
  * No free text, no image bytes, nothing personal is accepted or stored: a ref is either an object URL under our own R2 public
  * URL (panels/ or posters/ only) or the SHA-256 of the image bytes. The reporter is counted by a one-way HMAC (lib/report.js).
  * The owner's report hides the image at once; anyone else needs two distinct reporters. Hiding = the object moves to the
  * private quarantine bucket, the image proxy answers 410 and upload-panel refuses the same bytes.
+ * A { gallery } ref is a static showcase item (lib/gallery-report.js): the client hides it locally and the owner is alerted with the file path.
  */
 import { CODES } from '../../lib/messages.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
@@ -42,7 +43,7 @@ export default async function handler(req, res) {
     const results = [];
     for (const t of targets) {
       if (!t) { results.push({ ok: false }); continue; }
-      const id = t.kind === 'key' ? t.key : `h:${t.hash}`;
+      const id = t.kind === 'key' ? t.key : t.kind === 'gallery' ? `g:${t.id}` : `h:${t.hash}`;
       if (seen.has(id)) { results.push({ ok: true, hidden: false, already: true }); continue; }
       seen.add(id);
       const r = await registerReport(t, { identifier, reportKind: kind, reason });
