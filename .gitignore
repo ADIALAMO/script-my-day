@@ -24,4 +24,8 @@ tests/integration/.results/
 
 # Private working notes (analysis, audits, reports, checklists) live in docs-private/ and are never committed.
 docs-private/
-quality-eval*
+/quality-eval*
+
+# Script-quality benchmark: the tooling in tools/quality-eval/ is tracked; what it generates stays local.
+tools/quality-eval/outputs/
+tools/quality-eval/.cache/
