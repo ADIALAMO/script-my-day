@@ -22,12 +22,12 @@ const gem = () => providers.counts['gemini-check'] ?? 0;
 const up = (u, ip, imageData = PNG_DATA_URI, key = 'panels/x_00.png') => invoke(uploadPanel, { body: { imageData, key }, cookies: u.cookies, ip });
 const marker = (uri = PNG_DATA_URI) => fake.get(`imgok:${imageHash(uri)}`);
 
-scenario('O1', 'a clean image: ONE free Nemotron call (image first, then the neutral text), no paid call, imgok marker written, the poster is returned and counted',
-  'moderation=1, gemini-check=0, 200 with imageUrl, marker present, usage:poster=1', async () => {
+scenario('O1', 'a clean image: ONE free Nemotron call (image first, then the neutral text) plus ONE second-opinion call, no fallback call, imgok marker written, the poster is returned and counted',
+  'moderation=1, gemini-check=0, gemini-imgsafety=1, 200 with imageUrl, marker present, usage:poster=1', async () => {
     const u = await makeUser('o1', 'free');
     const r = await plain(u, '198.51.100.201');
     assert.equal(r.status, 200); assert.equal(r.body.provider, 'Cloudflare-Flux'); assert.ok(!r.body.isPlaceholder);
-    assert.equal(nem(), 1); assert.equal(gem(), 0); assert.equal(providers.paidTotal(), 0);
+    assert.equal(nem(), 1); assert.equal(gem(), 0); assert.equal(providers.counts['gemini-imgsafety'], 1); assert.equal(providers.paidTotal(), 1);
     const sent = providers.bodies.find((b) => b.provider === 'moderation').body;
     assert.equal(sent.model, 'nvidia/nemotron-3.5-content-safety:free');
     assert.equal(sent.messages[0].content[0].type, 'image_url', 'image first');
@@ -35,7 +35,7 @@ scenario('O1', 'a clean image: ONE free Nemotron call (image first, then the neu
     assert.equal(sent.max_tokens, 512); assert.deepEqual(sent.reasoning, { effort: 'none' });
     assert.ok(marker(r.body.imageUrl), 'imgok marker written for the exact bytes');
     assert.equal(posterCount(u), 1);
-    return { actual: '1 free check, 0 paid, marker written' };
+    return { actual: '1 free check + 1 second opinion, marker written' };
   });
 
 scenario('O2', 'an image the checker calls UNSAFE is never returned: placeholder + CONTENT_REFUSED, no second provider, no paid fallback, poster slot returned, no marker',

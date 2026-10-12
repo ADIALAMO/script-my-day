@@ -18,6 +18,7 @@ const COMIC_USED = (u) => fake.num(`usage:comic:${u.identifier}:2026-10`);
 const SPEND = () => fake.num('usage:check:paid:global:2026-10-15');            // IMAGE check budget (DAILY_CHECK_BUDGET)
 const TEXT_SPEND = () => fake.num('usage:check:text:global:2026-10-15');        // text classifier budget (DAILY_TEXT_CHECK_BUDGET)
 const MINOR_SPEND = () => fake.num('usage:check:minor:global:2026-10-15');      // minor screen budget (DAILY_MINOR_CHECK_BUDGET)
+const IMGSAFETY_SPEND = () => fake.num('usage:check:imgsafety:global:2026-10-15'); // second-opinion image check budget (DAILY_IMAGE_SAFETY_BUDGET)
 const DEGRADED = () => fake.num('stats:textcheck:degraded:2026-10-15');
 const textChecks = () => providers.log.filter((l) => l.provider === 'gemini-check' && !l.hasImage).length;
 const ageChecks = () => providers.log.filter((l) => l.provider === 'gemini-check' && l.hasImage).length;
@@ -283,15 +284,15 @@ scenario('T15', 'budget independence: exhausting the MINOR budget (DAILY_MINOR_C
     return { actual: 'minor budget empty; image and text unaffected' };
   });
 
-scenario('T16', 'the three counters are separate keys: one call of each kind moves only its own counter',
-  'image 1, text 1, minor 1 (each in its own key)', async () => {
+scenario('T16', 'the four counters are separate keys: one call of each kind moves only its own counter',
+  'image 1, text 1, minor 1, image-safety second opinion 1 (each in its own key)', async () => {
     await posterWithNemotronDown('d');
     ctx.advance(120_000);   // let the Nemotron circuit that the poster's failures opened expire, so the upload's own image check uses Nemotron again
     await callScript(await makeUser('t16a', 'free'), 'drama', '198.51.100.38');
     await up(await makeUser('t16b', 'free'), '198.51.100.39');
-    assert.deepEqual([SPEND(), TEXT_SPEND(), MINOR_SPEND()], [1, 1, 1]);
-    assert.deepEqual(fake.keys('usage:check:').sort(), ['usage:check:minor:global:2026-10-15', 'usage:check:paid:global:2026-10-15', 'usage:check:text:global:2026-10-15']);
-    return { actual: 'three independent counters' };
+    assert.deepEqual([SPEND(), TEXT_SPEND(), MINOR_SPEND(), IMGSAFETY_SPEND()], [1, 1, 1, 1]);
+    assert.deepEqual(fake.keys('usage:check:').sort(), ['usage:check:imgsafety:global:2026-10-15', 'usage:check:minor:global:2026-10-15', 'usage:check:paid:global:2026-10-15', 'usage:check:text:global:2026-10-15']);
+    return { actual: 'four independent counters' };
   });
 
 scenario('T17', 'circuit independence: a failing text classifier opens ONLY check_text, a failing image fallback ONLY check_gemini, a failing screen ONLY check_minor — and the others keep serving',

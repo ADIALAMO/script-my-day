@@ -10,6 +10,7 @@
  *   gemini-image      OpenRouter google/gemini-2.5-flash-image (identity)            PAID
  *   moderation        OpenRouter nvidia/nemotron ":free" (selfie moderation AND the output-image check)  free
  *   gemini-check      OpenRouter google/gemini-2.5-flash-lite, the PAID fallback of the output-image check   PAID
+ *   gemini-imgsafety  the SAME model asked the second-opinion question (schema name 'image_safety'), own counter/failure switch   PAID
  *   cohere            Cohere chat                                                    PAID
  *   cloudflare        Cloudflare Workers AI flux-1-schnell                           free tier
  *   pollinations      image.pollinations.ai                                          free
@@ -17,7 +18,7 @@
  *   telegram          api.telegram.org (alerts)                                      recorder
  *   r2                @aws-sdk S3 PutObject (patched at the SDK class, see setup.mjs) recorder
  */
-export const PAID = new Set(['gemini-check', 'gemini', 'openrouter-text', 'klein', 'grok', 'gemini-image', 'cohere']);
+export const PAID = new Set(['gemini-check', 'gemini-imgsafety', 'gemini', 'openrouter-text', 'klein', 'grok', 'gemini-image', 'cohere']);
 
 // 1x1 transparent PNG
 export const PNG_B64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
@@ -68,6 +69,7 @@ export function createProviders() {
   const scriptOutputs = { queue: [] };   // one-shot script texts consumed in order (to simulate a model that wrote something held back)
   const sbVisuals = { queue: [] };       // one-shot storyboard 'visual' strings
   const ageVerdict = { value: 'adult', raw: undefined, block: false, queue: [] };   // the apparent-minor screen (schema name 'apparent_age'): 'adult' | 'minor' | 'unsure' | raw
+  const imgSafety = { value: 'safe', raw: undefined, block: false, queue: [] };   // second-opinion image check (schema name 'image_safety'): 'safe' | 'unsafe' | raw text | block
   const checkGemini = { value: 'safe', raw: undefined, block: false, queue: [] };   // paid fallback checker reply: 'safe' | 'unsafe' | raw text | block
   const handlers = { r2: null, font: null };   // overridable per test
   const unexpected = [];
@@ -114,6 +116,13 @@ export function createProviders() {
       bodies.push({ provider: model, body });
       const refusedImage = json({ choices: [{ finish_reason: 'content_filter', native_finish_reason: 'IMAGE_SAFETY', message: { content: null } }] });
       const img = { choices: [{ message: { content: null, images: [{ image_url: { url: PNG_DATA_URI } }] } }] };
+      if (model.includes('gemini-2.5-flash-lite') && body?.response_format?.json_schema?.name === 'image_safety') {   // the SECOND-OPINION image check (own counter, switch and control)
+        count('gemini-imgsafety', { model }); bodies.push({ provider: 'gemini-imgsafety', body });
+        const f = failing('gemini-imgsafety'); if (f === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; } if (f) return text('mock failure', Number(f));
+        if (imgSafety.queue.length) imgSafety.value = imgSafety.queue.shift();
+        if (imgSafety.block) return json({ choices: [{ finish_reason: 'content_filter', native_finish_reason: 'IMAGE_SAFETY', message: { content: null } }] });
+        return json({ choices: [{ finish_reason: 'stop', message: { content: imgSafety.raw ?? JSON.stringify({ verdict: imgSafety.value }) } }] });
+      }
       if (model.includes('gemini-2.5-flash-lite') && body?.response_format) {   // the output-image check FALLBACK, through OpenRouter
         count('gemini-check', { model, hasImage: JSON.stringify(body.messages).includes('image_url'), isAge: body?.response_format?.json_schema?.name === 'apparent_age' }); bodies.push({ provider: 'gemini-check', body });
         const hasImage = JSON.stringify(body.messages).includes('image_url');
@@ -190,8 +199,8 @@ export function createProviders() {
   }
 
   return {
-    handle, refuse, bodies, counts, log, telegram, s3puts, s3deletes, s3copies, s3objects, hooks, mode, latency, moderationVerdict, checkGemini, ageVerdict, scriptOutputs, sbVisuals, handlers, unexpected,
-    reset() { for (const k of Object.keys(counts)) delete counts[k]; log.length = 0; telegram.length = 0; s3puts.length = 0; s3deletes.length = 0; s3copies.length = 0; s3objects.clear(); for (const k of Object.keys(mode)) delete mode[k]; latency.gemini = null; moderationVerdict.value = 'safe'; moderationVerdict.raw = undefined; moderationVerdict.nonString = false; moderationVerdict.nullLength = false; moderationVerdict.queue.length = 0; checkGemini.value = 'safe'; checkGemini.raw = undefined; checkGemini.block = false; ageVerdict.value = 'adult'; ageVerdict.raw = undefined; ageVerdict.block = false; scriptOutputs.queue.length = 0; sbVisuals.queue.length = 0; checkGemini.queue.length = 0; ageVerdict.queue.length = 0; handlers.r2 = null; hooks.afterPut = null; for (const k of Object.keys(refuse)) delete refuse[k]; bodies.length = 0; },
+    handle, refuse, bodies, counts, log, telegram, s3puts, s3deletes, s3copies, s3objects, hooks, mode, latency, moderationVerdict, checkGemini, imgSafety, ageVerdict, scriptOutputs, sbVisuals, handlers, unexpected,
+    reset() { for (const k of Object.keys(counts)) delete counts[k]; log.length = 0; telegram.length = 0; s3puts.length = 0; s3deletes.length = 0; s3copies.length = 0; s3objects.clear(); for (const k of Object.keys(mode)) delete mode[k]; latency.gemini = null; moderationVerdict.value = 'safe'; moderationVerdict.raw = undefined; moderationVerdict.nonString = false; moderationVerdict.nullLength = false; moderationVerdict.queue.length = 0; checkGemini.value = 'safe'; checkGemini.raw = undefined; checkGemini.block = false; ageVerdict.value = 'adult'; ageVerdict.raw = undefined; ageVerdict.block = false; scriptOutputs.queue.length = 0; sbVisuals.queue.length = 0; checkGemini.queue.length = 0; ageVerdict.queue.length = 0; imgSafety.value = 'safe'; imgSafety.raw = undefined; imgSafety.block = false; imgSafety.queue.length = 0; handlers.r2 = null; hooks.afterPut = null; for (const k of Object.keys(refuse)) delete refuse[k]; bodies.length = 0; },
     snapshot() { return { ...counts, 'r2-put': s3puts.length }; },
     paidTotal() { return Object.entries(counts).filter(([k]) => PAID.has(k)).reduce((n, [, v]) => n + v, 0); },
     paid() { return Object.fromEntries(Object.entries(counts).filter(([k]) => PAID.has(k))); },

@@ -72,6 +72,11 @@ Two independent cascades, each tries providers in order and returns the first su
   primary "unsafe" is final, never re-asked); once consulted, the fallback's verdict alone decides. Nemotron is called with `reasoning:{effort:"none"}`, `max_tokens:512` and the
   neutral text "Image to check." (probe-verified; the old "Classify … safe or unsafe" prompt gave false positives). Unsafe → placeholder +
   `CONTENT_REFUSED`; no checker available → placeholder + `CONTENT_CHECK_UNAVAILABLE` (retryable, quota back).
+  **Second opinion** (`secondOpinion` in image-check.js): when Nemotron says "safe", the SAME bytes get one more paid question to Gemini Flash-Lite — nudity / sexualized
+  content / any sexualized depiction of a person who looks like a minor? — strict `image_safety` json_schema, parsed with the fallback's strict parser; "unsafe", a refusal and
+  an unreadable reply hold the image back (`CONTENT_REFUSED`); no answer (circuit open, budget spent or 0, failure, timeout, no time left) → `CONTENT_CHECK_UNAVAILABLE`
+  (fail-closed). Own budget `DAILY_IMAGE_SAFETY_BUDGET` (default $0.50, 0 = off = fail closed) and own circuit `check_imgsafety`. An image the Gemini FALLBACK
+  already approved is not asked twice. One image = one extra call: the `imgok` marker below carries the result.
   generate-poster leaves an `imgok:<sha256>` marker (6 h) and upload-panel stores ONLY bytes that carry it (no marker — a direct API
   POST, an edited file, an expired marker, a Redis outage — → `{url:null,unverified:true}`, nothing written to `panels/`/`posters/`, no model call, no quota spent; admin key
   does not bypass). It does no checking of its own.
@@ -175,13 +180,14 @@ budget is left) → `CONTENT_REFUSED`; quota released in every refusal. Classifi
 `stats:textcheck:degraded:<day>` is incremented (a number, never text or keys). `lib/minor-screen.js`: best-effort apparent-minor screen at Star Yourself
 upload (after the quota reservations, before anything is stored): rejects ONLY on a clear "minor" (`MINOR_REJECTED`), every other outcome allows. It is
 NOT age verification — never describe it so (tests/text-safety.test.js scans the repo).
-**Three independent paid-check budgets and circuits** (nothing is shared, so one running dry or failing can never switch off another):
+**Four independent paid-check budgets and circuits** (nothing is shared, so one running dry or failing can never switch off another):
 
 | check | budget env (default) | counter key | circuit |
 |---|---|---|---|
 | image fallback | `DAILY_CHECK_BUDGET` ($0.50) | `usage:check:paid:global:<day>` | `check_gemini` |
 | text classifier | `DAILY_TEXT_CHECK_BUDGET` ($0.30) | `usage:check:text:global:<day>` | `check_text` |
 | minor screen | `DAILY_MINOR_CHECK_BUDGET` ($0.20) | `usage:check:minor:global:<day>` | `check_minor` |
+| image second opinion | `DAILY_IMAGE_SAFETY_BUDGET` ($0.50) | `usage:check:imgsafety:global:<day>` | `check_imgsafety` |
 
 ### 4c. Report gaps + one-time scan (`fix/report-gaps-and-scan`)
 Legacy object keys (no owner segment) count as owner-equivalent in `lib/report.js` (one report hides). `quarantineObject` retries the copy and the delete
