@@ -203,19 +203,6 @@ A massive saucer blots out the sun. She cocks her rifle and never looks away.
 "If this is the last day," she says, "they'll remember it."`,
   },
   {
-    id: 64,
-    type: 'comic',
-    src: '/gallery/comics/toon-07.webp',
-    titleHe: 'הקצה הראשון',
-    titleEn: 'The First Lead',
-    excerptHe: `פנים. סמטת אבן — אחר חצות.
-היא מצביעה על המסך, הוא קורא בריכוז. התעלומה רק מתחילה להיפרם.
-"זה לא צירוף מקרים," הוא אומר, "אף פעם לא."`,
-    excerptEn: `INT. A STONE ALLEY — PAST MIDNIGHT.
-She points at the screen, he reads intently. The mystery is just starting to unravel.
-"This isn't a coincidence," he says, "it never is."`,
-  },
-  {
     id: 65,
     type: 'comic',
     src: '/gallery/comics/toon-08.webp',
