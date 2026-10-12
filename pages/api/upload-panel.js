@@ -4,7 +4,7 @@ import { isAdminRequest } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 import { UPLOAD_LIMITS } from '../../config/limits.js';
-import { checkImage, markImageChecked, getImageMark, imageHash, cleanProviderTag } from '../../lib/image-check.js';
+import { getImageMark, imageHash, cleanProviderTag } from '../../lib/image-check.js';
 import { CODES } from '../../lib/messages.js';
 import { takedownAfterUpload } from '../../lib/report.js';
 import { MAX_IMAGE_BYTES, sniffImage, decodeDataUriBytes, buildObjectKey, objectKeySecretConfigured } from '../../lib/upload-image.js';
@@ -46,8 +46,6 @@ export const config = {
   api: { bodyParser: { sizeLimit: '4mb' } },
 };
 
-// The fail-closed re-check below (only when the image was not already checked by generate-poster) can take up to ~16 s.
-export const maxDuration = 30;
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
@@ -100,16 +98,18 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'R2_BUCKET_NAME or R2_PUBLIC_URL not configured.' });
   }
 
-  // ── Output-image safety check ──────────────────────────────────────────────
-  // generate-poster checks every image it returns and leaves an `imgok:<sha256 of the bytes>` marker (6 h). The browser
-  // uploads those SAME bytes, so a marker hit stores them with no second model call. Anything else — a direct API upload, an
-  // edited image, an expired marker — is checked here, fail-closed, before it can become a public R2 URL. Runs before the
-  // upload quota is touched, so a rejected or unverifiable image costs the caller nothing.
+  // ── Output-image safety: marker-only storage ───────────────────────────────
+  // generate-poster checks every image it returns and leaves an `imgok:<sha256 of the bytes>` marker (6 h). The browser uploads
+  // those SAME bytes right after generation, so this route stores ONLY bytes that carry the marker. It does not check anything
+  // itself any more: an arbitrary image POSTed straight to this endpoint (a direct API call, an edited file, an expired marker,
+  // a Redis outage) is never written to the public folders. The caller gets the same quiet `{ url: null }` as the storage quota
+  // gate — the browser keeps showing its in-session image and only the permanent CDN copy is missing. Runs before the upload
+  // quota is touched, so a skipped upload costs the caller nothing.
   const checkedUri = `data:${sniffed.mime};base64,${imageBuffer.toString('base64')}`;
   const bytesHash = imageHash(checkedUri);
 
-  // Bytes a user already reported (before they were uploaded) are never stored. A Redis error fails OPEN here — the output check
-  // below still runs, and hiding is enforced again by the image proxy.
+  // Bytes a user already reported (before they were uploaded) are never stored. A Redis error fails OPEN here — the marker
+  // requirement below still applies, and hiding is enforced again by the image proxy.
   try {
     if (await redis.get(`report:hidden:h:${bytesHash}`)) {
       return res.status(422).json({ error: 'Image rejected.', code: CODES.CONTENT_REFUSED });
@@ -118,15 +118,8 @@ export default async function handler(req, res) {
 
   const mark = await getImageMark(checkedUri);   // null | '1' | provider tag written by generate-poster
   if (mark === null) {
-    const check = await checkImage(checkedUri, { budgetMs: 20000 });
-    if (check.verdict === 'unsafe') {
-      console.warn(`🛑 upload-panel: image rejected by the output check (via ${check.via}${check.why ? `, ${check.why}` : ''})`);
-      return res.status(422).json({ error: 'Image rejected.', code: CODES.CONTENT_REFUSED });
-    }
-    if (check.verdict !== 'safe') {
-      return res.status(503).json({ error: 'Safety check unavailable.', code: CODES.CONTENT_CHECK_UNAVAILABLE });
-    }
-    await markImageChecked(checkedUri);
+    console.warn('🛑 upload-panel: bytes carry no approval marker (not produced by generate-poster, marker expired, or Redis unavailable) — not stored');
+    return res.status(200).json({ url: null, unverified: true });
   }
 
   // ── Upload gate ───────────────────────────────────────────────────────────

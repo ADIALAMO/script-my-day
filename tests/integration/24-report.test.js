@@ -197,14 +197,14 @@ scenario('R10', 'a reel report lists its frames: each is counted separately, dup
     return { actual: 'frames handled one by one' };
   });
 
-scenario('R11', 'provider tag: only a server-written marker reaches the object metadata — a direct upload (no marker) carries none, and a hostile tag is never produced',
-  'marker upload has provider; checked direct upload has none', async () => {
+scenario('R11', 'provider tag: only a server-written marker reaches the object metadata — a direct upload (no marker) is not stored at all, and a hostile tag is never produced',
+  'marker upload has provider; unmarked direct upload is not stored', async () => {
     const u = await makeUser('r11', 'free');
     const withMark = await makeImage(u);
     assert.equal(providers.s3objects.get(`${PUB}/${withMark.key}`).metadata.provider, 'Cloudflare-Flux');
     const direct = await invoke(uploadPanel, { body: { imageData: `data:image/png;base64,${Buffer.concat([Buffer.from(PNG_DATA_URI.split(',')[1], 'base64'), Buffer.from([7])]).toString('base64')}`, key: 'panels/x_00.png' }, cookies: u.cookies, ip: ip() });
-    assert.equal(direct.status, 200);
-    assert.equal(providers.s3objects.get(`${PUB}/${direct.body.url.slice(BASE.length + 1)}`).metadata?.provider, undefined);
+    assert.equal(direct.status, 200); assert.equal(direct.body.url, null);   // no marker → not stored at all, so no object can carry a hostile tag
+    assert.equal(providers.s3objects.size, 1, 'only the marked upload exists');
     return { actual: 'metadata comes from the server marker only' };
   });
 
