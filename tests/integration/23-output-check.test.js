@@ -49,17 +49,47 @@ scenario('O2', 'an image the checker calls UNSAFE is never returned: placeholder
     return { actual: 'rejected, nothing else tried, slot returned' };
   });
 
-scenario('O3', 'UNREADABLE verdicts ("not safe", "cannot confirm this is safe", empty, non-string) are rejected as unsafe and do NOT trigger the paid fallback',
-  'each → CONTENT_REFUSED, gemini-check=0', async () => {
-    const cases = [['not safe', 'a'], ['cannot confirm this is safe', 'b'], ['', 'c'], [null, 'd'], ['safe', 'e'], ['User Safety: safe\nSafety Categories: Sexual', 'f']];
+scenario('O3', 'an UNREADABLE primary reply ("not safe", "cannot confirm this is safe", empty, non-string, categories on a safe verdict) is NOT a rejection: it asks the paid Gemini fallback (one call, counted against the cap, no retry of the primary) and Gemini decides',
+  'primary unreadable → gemini-check=1 each → safe → image served; spend counted; primary circuit stays closed', async () => {
+    const cases = [['not safe', 'a'], ['cannot confirm this is safe', 'b']];
     for (const [raw, tag] of cases) {
-      providers.moderationVerdict.raw = raw ?? undefined; providers.moderationVerdict.nonString = raw === null;
+      providers.moderationVerdict.raw = raw;
       const u = await makeUser(`o3${tag}`, 'free');
+      const before = nem();
       const r = await plain(u, `198.51.100.${210 + tag.charCodeAt(0) - 97}`);
-      assert.equal(r.body.code, 'CONTENT_REFUSED', JSON.stringify(raw)); assert.ok(r.body.isPlaceholder);
+      assert.equal(r.status, 200); assert.ok(!r.body.isPlaceholder, JSON.stringify(raw));
+      assert.equal(nem(), before + 1, 'an unreadable reply is not retried');
     }
-    assert.equal(gem(), 0, 'an unreadable answer is a rejection, not a reason to spend money');
-    return { actual: `${cases.length} malformed replies, all rejected, 0 paid calls` };
+    assert.equal(gem(), 2); assert.equal(checkSpend(), 2, 'both fallbacks counted against DAILY_CHECK_BUDGET');
+    assert.equal(fake.keys('circuit:img:check_nemotron').length, 0, 'the service answered — no circuit');
+    return { actual: '2 unreadable primary replies → Gemini said safe → served' };
+  });
+
+scenario('O3b', 'after an unreadable primary reply, ONLY Gemini decides: its "unsafe" refuses, its block refuses, its own unreadable reply refuses',
+  'each → CONTENT_REFUSED', async () => {
+    providers.moderationVerdict.raw = '';   // empty reply
+    providers.checkGemini.value = 'unsafe';
+    const a = await plain(await makeUser('o3b-a', 'free'), '198.51.100.216');
+    assert.equal(a.body.code, 'CONTENT_REFUSED');
+    providers.checkGemini.value = 'safe'; providers.checkGemini.raw = 'perhaps';
+    const b = await plain(await makeUser('o3b-b', 'free'), '198.51.100.217');
+    assert.equal(b.body.code, 'CONTENT_REFUSED');
+    assert.equal(gem(), 2);
+    return { actual: 'Gemini unsafe → refused; Gemini unreadable → refused' };
+  });
+
+scenario('O3c', 'unreadable primary reply + fallback unavailable (down, or cap spent) → CONTENT_CHECK_UNAVAILABLE, never shown; a failed paid call is not billed',
+  'unavailable; spend 0 when Gemini is down; no third paid call at the cap', async () => {
+    providers.moderationVerdict.nonString = true;
+    providers.mode['gemini-check'] = 500;
+    const a = await plain(await makeUser('o3c-a', 'free'), '198.51.100.218');
+    assert.equal(a.body.code, 'CONTENT_CHECK_UNAVAILABLE'); assert.equal(checkSpend(), 0);
+    delete providers.mode['gemini-check']; ctx.advance(60_000);
+    const keep = process.env.DAILY_CHECK_BUDGET; process.env.DAILY_CHECK_BUDGET = '0';
+    const b = await plain(await makeUser('o3c-b', 'free'), '198.51.100.219');
+    process.env.DAILY_CHECK_BUDGET = keep;
+    assert.equal(b.body.code, 'CONTENT_CHECK_UNAVAILABLE'); assert.equal(gem(), 1, 'budget 0: no new paid call');
+    return { actual: 'unavailable both ways' };
   });
 
 scenario('O4', 'Nemotron 5xx → ONE short retry (2 calls) → paid Gemini fallback says safe → the image is served; the paid spend is counted against the daily cap',
