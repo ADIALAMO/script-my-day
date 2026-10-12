@@ -340,7 +340,7 @@ export function usePosterGeneration({
     const wantDownload = isDesktop && (mode === 'download' || mode === 'auto');
     const method = wantDownload ? 'download' : 'share';
 
-    track('Poster Shared', { genre, language: lang, title: posterTitle, method });
+    track('Poster Shared', { genre, language: lang, method });
     if (typeof window !== 'undefined' && window.gtag) {
       window.gtag('event', 'content_export', { method, genre, title: posterTitle });
     }

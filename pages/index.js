@@ -776,7 +776,6 @@ function HomePage() {
         track('Script Created', {
           genre: selectedGenre,
           language: lang,
-          producer: producerName || 'Guest'
         });
         if (typeof window !== 'undefined' && window.gtag) {
           window.gtag('event', 'script_generation_success', {

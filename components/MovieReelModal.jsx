@@ -956,7 +956,6 @@ export default function MovieReelModal({
         genre, language: lang,
         panel_count: validItems.length,
         soundtrack, visual_grade: visualGrade,
-        producer: producerName || 'Guest',
         reel_tier: tier.key,
       });
 
