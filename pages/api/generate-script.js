@@ -161,20 +161,26 @@ export default async function handler(req, res) {
       await giveBack();
       return res.status(503).json({ success: false, code: CODES.CONTENT_CHECK_UNAVAILABLE, message: 'Safety check unavailable.' });
     };
-    let check = await checkTextOutput(result.output, { genre: cleanGenre, budgetMs: left() });
-    if (check.verdict === 'unavailable') return unavailable();
-    if (check.verdict !== 'safe') {
-      if (left() < REGEN_MIN_LEFT_MS) return refuse(`${check.stage}, no time to regenerate`);
-      console.warn(`🛑 generate-script: output held back (${check.stage}) — regenerating once`);
-      let again;
-      try {
-        again = await generateScript(safeJournalEntry, cleanGenre, cleanGender, { extraSafety: REGENERATION_SAFETY_LINE, budgetMs: left() - 9000 });
-      } catch { again = { success: false }; }
-      if (!again.success) return refuse('regeneration failed');
-      check = await checkTextOutput(again.output, { genre: cleanGenre, budgetMs: left() });
+    // Anything unexpected inside the output check (a thrown error) must never leak the reserved quota slot: give it back and say the check is unavailable.
+    try {
+      let check = await checkTextOutput(result.output, { genre: cleanGenre, budgetMs: left() });
       if (check.verdict === 'unavailable') return unavailable();
-      if (check.verdict !== 'safe') return refuse(`${check.stage} (after regeneration)`);
-      result = again;
+      if (check.verdict !== 'safe') {
+        if (left() < REGEN_MIN_LEFT_MS) return refuse(`${check.stage}, no time to regenerate`);
+        console.warn(`🛑 generate-script: output held back (${check.stage}) — regenerating once`);
+        let again;
+        try {
+          again = await generateScript(safeJournalEntry, cleanGenre, cleanGender, { extraSafety: REGENERATION_SAFETY_LINE, budgetMs: left() - 9000 });
+        } catch { again = { success: false }; }
+        if (!again.success) return refuse('regeneration failed');
+        check = await checkTextOutput(again.output, { genre: cleanGenre, budgetMs: left() });
+        if (check.verdict === 'unavailable') return unavailable();
+        if (check.verdict !== 'safe') return refuse(`${check.stage} (after regeneration)`);
+        result = again;
+      }
+    } catch (e) {
+      console.error('generate-script: output check failed unexpectedly:', e.message);
+      return unavailable();
     }
 
     // ── Global activity counters (all tiers) — powers /api/admin/stats ─────────
