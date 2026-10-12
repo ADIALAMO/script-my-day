@@ -166,6 +166,22 @@ processing only, does not itself delete any keys) is detected at read time in `u
 missing `user:<id>` record excludes it from the response and opportunistically `ZREM`s it, self-healing
 the index regardless of how the deletion actually happened.
 
+### 4a. Text output safety + minors screen (`fix/text-safety`)
+`lib/text-check.js`: every script/storyboard OUTPUT passes the blocklist (all genres) and then the paid Gemini Flash-Lite JSON classifier on **every genre**
+(via OpenRouter, `runFallbackJson` in lib/image-check.js). Held back → ONE regeneration with `REGENERATION_SAFETY_LINE` (only if enough of the 60 s route
+budget is left) → `CONTENT_REFUSED`; quota released in every refusal. Classifier unavailable (down / own circuit open / own budget spent / no time):
+**romance + horror fail CLOSED** (`CONTENT_CHECK_UNAVAILABLE`, 503); **every other genre is returned on the blocklist result alone** and
+`stats:textcheck:degraded:<day>` is incremented (a number, never text or keys). `lib/minor-screen.js`: best-effort apparent-minor screen at Star Yourself
+upload (after the quota reservations, before anything is stored): rejects ONLY on a clear "minor" (`MINOR_REJECTED`), every other outcome allows. It is
+NOT age verification — never describe it so (tests/text-safety.test.js scans the repo).
+**Three independent paid-check budgets and circuits** (nothing is shared, so one running dry or failing can never switch off another):
+
+| check | budget env (default) | counter key | circuit |
+|---|---|---|---|
+| image fallback | `DAILY_CHECK_BUDGET` ($0.50) | `usage:check:paid:global:<day>` | `check_gemini` |
+| text classifier | `DAILY_TEXT_CHECK_BUDGET` ($0.30) | `usage:check:text:global:<day>` | `check_text` |
+| minor screen | `DAILY_MINOR_CHECK_BUDGET` ($0.20) | `usage:check:minor:global:<day>` | `check_minor` |
+
 ### 4b. Android app (Capacitor) — Google Play payments policy
 Inside the native shell **nothing may show a price, a subscription, Stripe or an "upgrade" prompt**. `hooks/useNative.js`
 (true after mount; SSR/first render false) hides Manage Subscription, the LaunchTicket Pro card, the Go-Pro chip, locked-panel

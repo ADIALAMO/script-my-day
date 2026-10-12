@@ -45,8 +45,8 @@ function scriptText(prompt) {
     : `**TEST TITLE**\n\n**OPENING:** drama\n\nINT. KITCHEN - DAY\n(${body})\n\n**THE END**\n[image: a lone figure at dawn, cinematic]`;
 }
 
-function storyboardJson() {
-  const visual = 'A calm person stands near a window in soft morning light, medium shot, gentle rim lighting on the face and shoulders';
+function storyboardJson(visualOverride) {
+  const visual = visualOverride ?? 'A calm person stands near a window in soft morning light, medium shot, gentle rim lighting on the face and shoulders';
   return JSON.stringify(Array.from({ length: 7 }, (_, i) => ({
     panel: i + 1, scene: `INT. ROOM ${i + 1} - DAY`, visual, dialogue: `Line ${i + 1}`, hero: [0, 3, 6].includes(i),
   })));
@@ -65,7 +65,10 @@ export function createProviders() {
   // value 'safe' | 'unsafe' are rendered in NVIDIA's documented template ("User Safety: …"); `raw` overrides the whole reply text
   // (use it for the malformed shapes: "not safe", "", ...). `nonString` makes the content a number.
   const moderationVerdict = { value: 'safe', raw: undefined, nonString: false, nullLength: false, queue: [] };   // queue: one-shot replies consumed in order (each a raw string)
-  const checkGemini = { value: 'safe', raw: undefined, block: false };   // paid fallback checker reply: 'safe' | 'unsafe' | raw text | block
+  const scriptOutputs = { queue: [] };   // one-shot script texts consumed in order (to simulate a model that wrote something held back)
+  const sbVisuals = { queue: [] };       // one-shot storyboard 'visual' strings
+  const ageVerdict = { value: 'adult', raw: undefined, block: false, queue: [] };   // the apparent-minor screen (schema name 'apparent_age'): 'adult' | 'minor' | 'unsure' | raw
+  const checkGemini = { value: 'safe', raw: undefined, block: false, queue: [] };   // paid fallback checker reply: 'safe' | 'unsafe' | raw text | block
   const handlers = { r2: null, font: null };   // overridable per test
   const unexpected = [];
   const refuse = {};   // provider -> true: answer with that provider's CONTENT REFUSAL (safety filter) instead of an image/script
@@ -101,7 +104,7 @@ export function createProviders() {
       if (refuse.gemini) return json({ promptFeedback: { blockReason: 'SAFETY' } });
       const isStoryboard = !!body?.systemInstruction;
       const userText = (body?.contents || []).map((c) => (c.parts || []).map((p) => p.text).join(' ')).join(' ');
-      return json({ candidates: [{ content: { parts: [{ text: isStoryboard ? storyboardJson() : scriptText(userText) }] } }] });
+      return json({ candidates: [{ content: { parts: [{ text: isStoryboard ? storyboardJson(sbVisuals.queue.shift()) : (scriptOutputs.queue.length ? scriptOutputs.queue.shift() : scriptText(userText)) }] } }] });
     }
 
     if (host === 'openrouter.ai') {
@@ -111,10 +114,15 @@ export function createProviders() {
       const refusedImage = json({ choices: [{ finish_reason: 'content_filter', native_finish_reason: 'IMAGE_SAFETY', message: { content: null } }] });
       const img = { choices: [{ message: { content: null, images: [{ image_url: { url: PNG_DATA_URI } }] } }] };
       if (model.includes('gemini-2.5-flash-lite') && body?.response_format) {   // the output-image check FALLBACK, through OpenRouter
-        count('gemini-check', { model, hasImage: JSON.stringify(body.messages).includes('image_url') }); bodies.push({ provider: 'gemini-check', body });
-        const f = failing('gemini-check'); if (f === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; } if (f) return text('mock failure', Number(f));
-        if (checkGemini.block) return json({ choices: [{ finish_reason: 'content_filter', native_finish_reason: 'IMAGE_SAFETY', message: { content: null } }] });
-        const t = checkGemini.raw ?? JSON.stringify({ verdict: checkGemini.value });
+        count('gemini-check', { model, hasImage: JSON.stringify(body.messages).includes('image_url'), isAge: body?.response_format?.json_schema?.name === 'apparent_age' }); bodies.push({ provider: 'gemini-check', body });
+        const hasImage = JSON.stringify(body.messages).includes('image_url');
+        // three independent failure switches: image check, text classifier, minor screen
+        const f = failing(body?.response_format?.json_schema?.name === 'apparent_age' ? 'gemini-check-age' : hasImage ? 'gemini-check' : 'gemini-check-text'); if (f === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; } if (f) return text('mock failure', Number(f));
+        const isAge = body?.response_format?.json_schema?.name === 'apparent_age';
+        const ctl = isAge ? ageVerdict : checkGemini;
+        if (ctl.queue.length) ctl.value = ctl.queue.shift();   // per-call sequence: ['unsafe', 'safe'] …
+        if (ctl.block) return json({ choices: [{ finish_reason: 'content_filter', native_finish_reason: 'IMAGE_SAFETY', message: { content: null } }] });
+        const t = ctl.raw ?? JSON.stringify(isAge ? { apparent_age: ctl.value } : { verdict: ctl.value });
         return json({ choices: [{ finish_reason: 'stop', message: { content: t } }] });
       }
       if (model.includes('flux.2-klein')) { count('klein', { model }); const f = failing('klein'); if (f) return text('mock failure', Number(f)); if (refuse.klein) return refusedImage; return json(img); }
@@ -136,7 +144,7 @@ export function createProviders() {
       count(prov, { model });
       const f = failing(prov); if (f) return text('mock failure', Number(f));
       const userText = (body?.messages || []).map((m) => (typeof m.content === 'string' ? m.content : '')).join(' ');
-      return json({ choices: [{ message: { content: isStoryboard ? storyboardJson() : scriptText(userText) } }] });
+      return json({ choices: [{ message: { content: isStoryboard ? storyboardJson(sbVisuals.queue.shift()) : (scriptOutputs.queue.length ? scriptOutputs.queue.shift() : scriptText(userText)) } }] });
     }
 
     if (host === 'api.cohere.ai') {
@@ -181,8 +189,8 @@ export function createProviders() {
   }
 
   return {
-    handle, refuse, bodies, counts, log, telegram, s3puts, s3deletes, s3copies, s3objects, mode, latency, moderationVerdict, checkGemini, handlers, unexpected,
-    reset() { for (const k of Object.keys(counts)) delete counts[k]; log.length = 0; telegram.length = 0; s3puts.length = 0; s3deletes.length = 0; s3copies.length = 0; s3objects.clear(); for (const k of Object.keys(mode)) delete mode[k]; latency.gemini = null; moderationVerdict.value = 'safe'; moderationVerdict.raw = undefined; moderationVerdict.nonString = false; moderationVerdict.nullLength = false; moderationVerdict.queue.length = 0; checkGemini.value = 'safe'; checkGemini.raw = undefined; checkGemini.block = false; handlers.r2 = null; for (const k of Object.keys(refuse)) delete refuse[k]; bodies.length = 0; },
+    handle, refuse, bodies, counts, log, telegram, s3puts, s3deletes, s3copies, s3objects, mode, latency, moderationVerdict, checkGemini, ageVerdict, scriptOutputs, sbVisuals, handlers, unexpected,
+    reset() { for (const k of Object.keys(counts)) delete counts[k]; log.length = 0; telegram.length = 0; s3puts.length = 0; s3deletes.length = 0; s3copies.length = 0; s3objects.clear(); for (const k of Object.keys(mode)) delete mode[k]; latency.gemini = null; moderationVerdict.value = 'safe'; moderationVerdict.raw = undefined; moderationVerdict.nonString = false; moderationVerdict.nullLength = false; moderationVerdict.queue.length = 0; checkGemini.value = 'safe'; checkGemini.raw = undefined; checkGemini.block = false; ageVerdict.value = 'adult'; ageVerdict.raw = undefined; ageVerdict.block = false; scriptOutputs.queue.length = 0; sbVisuals.queue.length = 0; checkGemini.queue.length = 0; ageVerdict.queue.length = 0; handlers.r2 = null; for (const k of Object.keys(refuse)) delete refuse[k]; bodies.length = 0; },
     snapshot() { return { ...counts, 'r2-put': s3puts.length }; },
     paidTotal() { return Object.entries(counts).filter(([k]) => PAID.has(k)).reduce((n, [, v]) => n + v, 0); },
     paid() { return Object.fromEntries(Object.entries(counts).filter(([k]) => PAID.has(k))); },

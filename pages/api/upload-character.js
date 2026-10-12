@@ -29,6 +29,7 @@ import { buildCharacterKeys, objectKeySecretConfigured } from '../../lib/upload-
 import { RETENTION } from '../../config/limits.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 import { checkImage } from '../../lib/image-check.js';
+import { screenApparentMinor } from '../../lib/minor-screen.js';
 
 export const maxDuration = 60;
 // Selfies are large base64 blobs; raise the default 1mb body limit.
@@ -144,6 +145,16 @@ export default async function handler(req, res) {
       await releaseSheetQuota(sheetKey);
       if (budgetReserved) await releaseIdentityBudget();
     };
+
+    // (4b) Best-effort screen for a photo that CLEARLY shows a child ("Star Yourself" is 18+). NOT age verification: unsure, an unreadable
+    // reply, a refusal, a failed call, an open circuit or a spent daily budget all ALLOW the photo. Runs after the reservations (so the
+    // refusal paths above stay free) and before anything is stored or any paid sheet is generated; a rejection gives the reservations back.
+    const minor = await screenApparentMinor(selfieBase64);
+    if (minor.reject) {
+      console.warn('🛑 upload-character: photo appears to show a child — rejected before storing or generating anything');
+      await giveBackReservation();
+      return res.status(422).json({ success: false, code: CODES.MINOR_REJECTED });
+    }
 
     const stamp = Date.now();
     // Random, unguessable names under an HMAC owner segment (no user id in the public URL; see lib/upload-image.js).
