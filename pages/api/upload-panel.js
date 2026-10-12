@@ -4,7 +4,7 @@ import { isAdminRequest } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 import { UPLOAD_LIMITS } from '../../config/limits.js';
-import { checkImage, markImageChecked, wasImageChecked } from '../../lib/image-check.js';
+import { checkImage, markImageChecked, getImageMark, imageHash, cleanProviderTag } from '../../lib/image-check.js';
 import { CODES } from '../../lib/messages.js';
 import { MAX_IMAGE_BYTES, sniffImage, decodeDataUriBytes, buildObjectKey, objectKeySecretConfigured } from '../../lib/upload-image.js';
 
@@ -105,7 +105,18 @@ export default async function handler(req, res) {
   // edited image, an expired marker — is checked here, fail-closed, before it can become a public R2 URL. Runs before the
   // upload quota is touched, so a rejected or unverifiable image costs the caller nothing.
   const checkedUri = `data:${sniffed.mime};base64,${imageBuffer.toString('base64')}`;
-  if (!(await wasImageChecked(checkedUri))) {
+  const bytesHash = imageHash(checkedUri);
+
+  // Bytes a user already reported (before they were uploaded) are never stored. A Redis error fails OPEN here — the output check
+  // below still runs, and hiding is enforced again by the image proxy.
+  try {
+    if (await redis.get(`report:hidden:h:${bytesHash}`)) {
+      return res.status(422).json({ error: 'Image rejected.', code: CODES.CONTENT_REFUSED });
+    }
+  } catch (e) { console.warn(`⚠️ report-hidden check skipped: ${e.message}`); }
+
+  const mark = await getImageMark(checkedUri);   // null | '1' | provider tag written by generate-poster
+  if (mark === null) {
     const check = await checkImage(checkedUri, { budgetMs: 20000 });
     if (check.verdict === 'unsafe') {
       console.warn(`🛑 upload-panel: image rejected by the output check (via ${check.via}${check.why ? `, ${check.why}` : ''})`);
@@ -178,9 +189,15 @@ export default async function handler(req, res) {
       Key:          objectKey,
       Body:         imageBuffer,
       ContentType:  mimeType,
+      // Which engine produced it (server-written marker, never client input) — for diagnostics and report triage; no personal data.
+      ...(cleanProviderTag(mark !== '1' ? mark : null) ? { Metadata: { provider: cleanProviderTag(mark) } } : {}),
       // Assets are immutable once generated — aggressive CDN caching is safe.
       CacheControl: 'public, max-age=31536000, immutable',
     }));
+
+    // hash → key, so a report made while the image was still only in the browser (hash-based) can find the stored object.
+    try { await redis.set(`objkey:${bytesHash}`, objectKey, { ex: 400 * 24 * 60 * 60 }); }
+    catch (e) { console.warn(`⚠️ objkey mapping skipped: ${e.message}`); }
 
     const url = `${publicUrl}/${objectKey}`;
     return res.status(200).json({ url });

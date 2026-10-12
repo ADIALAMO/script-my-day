@@ -4,6 +4,9 @@ import { X, Share2, Download, Loader2, AlertCircle, Video, VolumeX, Volume2 } fr
 import { track } from '@vercel/analytics';
 import { shareReadyFile, makeShareFile, exportCapabilities } from '../utils/export-image.js';
 import { reelBreadcrumb } from '../utils/reel-diagnostics.js'; // TEMP DIAGNOSTIC (reel-crash)
+import ReportButton from './ReportButton.jsx';
+import { isReported } from '../utils/reported-store.js';
+import { REPORT_COPY, reportText } from '../constants/report-copy.js';
 
 // ── Canvas dimensions ────────────────────────────────────────────────────────
 const CANVAS_W      = 720;
@@ -514,11 +517,15 @@ export default function MovieReelModal({
   }, [phase]);
 
   // ── Panels with loaded images ───────────────────────────────────────────
+  // `reportTick` bumps after a report so reported frames drop out of any new reel (isReported reads the reported-store).
+  const [reportTick, setReportTick] = useState(0);
+  const [reelReportedNotice, setReelReportedNotice] = useState(false);
   const usablePanelData = useMemo(
     () => panels
       .map((p, i) => ({ panel: p, idx: i, url: panelImages[i]?.url }))
-      .filter(item => !!item.url),
-    [panels, panelImages]
+      .filter(item => !!item.url && !isReported(item.url)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [panels, panelImages, reportTick]
   );
   const readyCount = usablePanelData.length;
   const totalCount = panels.length;
@@ -1294,6 +1301,10 @@ export default function MovieReelModal({
                   </motion.div>
                 )}
 
+                {phase === 'idle' && reelReportedNotice && (
+                  <p role="status" className="text-center text-[10px] text-white/45 pb-2">{reportText(REPORT_COPY.reelNotice, isHebrew ? 'he' : 'en')}</p>
+                )}
+
                 {/* ── DONE PHASE ───────────────────────────────────────── */}
                 {phase === 'done' && videoUrl && (
                   <motion.div
@@ -1347,6 +1358,15 @@ export default function MovieReelModal({
                       <p className="text-green-400 text-[9.5px] font-black uppercase tracking-widest text-center">
                         ✓ {isHebrew ? 'הריל מוכן!' : 'Reel Ready!'}
                       </p>
+
+                      {/* Report the reel = report the frames it is made of (the video itself is never uploaded) */}
+                      <div className="flex justify-center">
+                        <ReportButton
+                          kind="reel" lang={lang}
+                          sources={usablePanelData.slice(0, 8).map((d) => d.url)}
+                          onReported={() => { setReelReportedNotice(true); setReportTick((n) => n + 1); handleReset(); }}
+                        />
+                      </div>
 
                       {/* Apple / iOS compatibility note */}
                       <motion.div

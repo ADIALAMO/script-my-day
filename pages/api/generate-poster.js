@@ -556,7 +556,7 @@ export default async function handler(req, res) {
         producedWithFace = result.faceApplied === true;
         break;
       }
-      await markImageChecked(result.imageUrl);   // lets upload-panel store these exact bytes without a second check
+      await markImageChecked(result.imageUrl, result.provider);   // lets upload-panel store these exact bytes without a second check
       await trackUsage();
       // The identity credit and the global identity budget slot were RESERVED atomically in the gate. Keep them
       // only when the winning provider actually applied the face — a degraded (faceless) result must not cost

@@ -4,6 +4,9 @@ import { Loader2, VolumeX, Share2, Download, X } from 'lucide-react'; // ווד�
 import * as htmlToImage from 'html-to-image'; // וודא שזה מיובא אם handleCapturePoster מועבר
 import { exportCapabilities } from '../utils/export-image.js';
 import { isCapacitorNative } from '../utils/platform.js';
+import ReportButton from './ReportButton.jsx';
+import { isReported } from '../utils/reported-store.js';
+import { REPORT_COPY, reportText } from '../constants/report-copy.js';
 
 function PosterRenderer({
   posterUrl,
@@ -40,6 +43,11 @@ function PosterRenderer({
   // Dismissible, not tied to posterError — a degraded (faceless) poster is still a
   // SUCCESS, so this must never block or hide the result above it. Re-arms whenever
   // a new notice comes in (e.g. a different generation also degrades).
+  // The user reported this poster (ReportButton): it is replaced by a "hidden" tile and every export action is removed.
+  const [posterReported, setPosterReported] = React.useState(false);
+  React.useEffect(() => { setPosterReported(false); }, [posterUrl]);
+  const posterHidden = posterReported || isReported(posterUrl);
+
   const [identityNoticeDismissed, setIdentityNoticeDismissed] = React.useState(false);
   React.useEffect(() => { setIdentityNoticeDismissed(false); }, [identityNotice]);
 
@@ -50,7 +58,12 @@ function PosterRenderer({
       className="relative max-w-2xl mx-auto w-full pb-2 px-4 z-10"
     >
       <div ref={posterRef} className="relative aspect-[2/3] w-full max-w-[450px] mx-auto rounded-[3.5rem] md:rounded-[4.5rem] overflow-hidden bg-[#030712] shadow-4xl border border-[#d4a373]/30">
-        {posterUrl && (
+        {posterUrl && posterHidden && (
+          <div className="absolute inset-0 flex items-center justify-center bg-[#06040a] px-6 text-center" role="status">
+            <span className="text-white/40 text-xs font-bold tracking-wide">{reportText(REPORT_COPY.hiddenTile, isHebrew ? 'he' : 'en')}</span>
+          </div>
+        )}
+        {posterUrl && !posterHidden && (
           <img
             src={posterUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(posterUrl)}` : posterUrl}
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${posterLoading ? 'opacity-0' : 'opacity-100'}`}
@@ -240,7 +253,7 @@ function PosterRenderer({
       )}
 
       {/* פעולת הייצוא — דסקטופ: הורדה ראשית + שיתוף משני · מובייל: שיתוף נייטיב בלבד */}
-      {!posterLoading && posterUrl && (
+      {!posterLoading && posterUrl && !posterHidden && (
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
@@ -322,6 +335,7 @@ function PosterRenderer({
             </motion.button>
           )}
           </div>
+          <ReportButton kind="poster" sources={[posterUrl]} lang={lang} onReported={() => setPosterReported(true)} />
         </motion.div>
       )}
     </motion.div>

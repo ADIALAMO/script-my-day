@@ -14,6 +14,7 @@ import { enforceRateLimit } from '../../lib/rate-limit.js';
 import { extractTrustedIp } from '../../lib/api-utils.js';
 import { resolveAllowedUrl, readCapped } from '../../lib/proxy-url.js';
 import { PROXY_IMAGE } from '../../config/limits.js';
+import redis from '../../lib/redis.js';
 
 export const config = {
   api: { responseLimit: '8mb' },
@@ -40,6 +41,19 @@ export default async function handler(req, res) {
   const target = resolveAllowedUrl(url, allowed);
   if (!target) {
     return res.status(403).end();
+  }
+
+  // Reported + hidden images (lib/report.js): answer 410, never cached, before touching R2. The object has normally been moved to the
+  // private quarantine bucket already; this also covers the window before that finishes and a quarantine bucket that is not configured.
+  // A Redis error must not take the image proxy down: it fails OPEN (the quarantine move is the real control).
+  try {
+    const objectKey = decodeURIComponent(String(target).split(/[?#]/)[0].slice(allowed.length + 1));
+    if (objectKey && await redis.get(`report:hidden:${objectKey}`)) {
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(410).end();
+    }
+  } catch (e) {
+    console.warn(`⚠️ proxy-image hidden-check skipped: ${e.message}`);
   }
 
   try {
