@@ -35,6 +35,6 @@ export const privacyProvidersEn = () =>
   ' For these reasons we cannot promise that your content is not retained or used by these providers. Do not enter highly sensitive information, or photos of other people without their consent. We do not sell your content or use it for advertising.';
 
 export const privacySharingHe = () =>
-  'אנחנו לא מוכרים את המידע שלך. אנחנו משתפים אותו רק עם ספקי השירות הנחוצים להפעלת השירות (סעיפים 3, 5 ו-7), ולא משתמשים בקלטים שלך לפרסום. LIFESCRIPT מרוויחה מהיכולת לייצר עבורך — לא ממה שאתה כותב.';
+  'אנחנו לא מוכרים את המידע שלך. אנחנו משתפים אותו רק עם ספקי השירות הנחוצים להפעלת השירות (סעיפים 3, 4, 5 ו-7), ולא משתמשים בקלטים שלך לפרסום. LIFESCRIPT מרוויחה מהיכולת לייצר עבורך — לא ממה שאתה כותב.';
 export const privacySharingEn = () =>
-  'We do not sell your data. We share it only with the service providers needed to run the service (sections 3, 5 and 7), and we do not use your inputs for advertising. LIFESCRIPT profits from the ability to generate for you — not from what you write.';
+  'We do not sell your data. We share it only with the service providers needed to run the service (sections 3, 4, 5 and 7), and we do not use your inputs for advertising. LIFESCRIPT profits from the ability to generate for you — not from what you write.';
