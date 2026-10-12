@@ -43,7 +43,7 @@ use the same order** (`POSTER_CASCADE` / `COMIC_CASCADE`):
 | 1 | `runCloudflareAI` | CF Workers AI `@cf/black-forest-labs/flux-1-schnell`, `steps:6` | `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` | ~170 free img/day (10K neurons), no CC |
 | 2 | `runOpenRouterKlein` | `black-forest-labs/flux.2-klein-4b` | `OPENROUTER_API_KEY` | paid, solid fallback |
 | 3 | `runHuggingFace` | `FLUX.1-schnell`, steps 4, guidance 3.5, `x-wait-for-model`, `x-use-cache:false` | `HF_TOKEN` | free, cold-start aware |
-| 4 | `runPollinationsFlux` | Pollinations `model=flux` | none (anonymous) | **throttled 1 req/15s** — final safety net only |
+| — | ~~`runPollinationsFlux`~~ | removed (content-safety hotfix) | — | unfiltered anonymous service; do not re-add |
 
 If all fail, the handler returns a **placeholder SVG** with HTTP 200 (never a JSON
 error) so the frontend never shows a broken image. Don't "fix" this into a 500.
@@ -69,8 +69,9 @@ the loop degrades into the faceless cascade above.
 
 ## Hard-won lessons (don't relitigate)
 - **Prodia = dead end** (paywall). Do not re-add it.
-- **Pollinations is throttled** to ~1 req/15s anonymous — keep it last, never in a
-  hot/burst path.
+- **Pollinations was removed** (Google Play AI-Generated Content policy: no unfiltered last resort). Do not re-add it.
+- **A content refusal is final.** Never route a refused prompt to the next provider — `isContentRefusal()`
+  (lib/content-safety.js) must be consulted in any new cascade loop before falling through.
 - FLUX prompting has its own rules — see the `flux-prompt` skill before touching any
   image prompt string. Do **not** add negative prompts / anatomy guards here.
 

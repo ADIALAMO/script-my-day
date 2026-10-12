@@ -101,9 +101,10 @@ scenario('F4', 'Free lifetime-credit rule: once the single free identity poster 
 scenario('F5', 'a Free user who has NOT used the free poster can upload up to 3 times and the lifetime credit is untouched by uploads',
   'uploads never consume usage:identity:lifetime', async () => {
     const u = await makeUser('f5', 'free');
-    for (let i = 0; i < 3; i++) assert.equal((await up(u, '198.51.100.63')).status, 200);
+    let sheetUrl;
+    for (let i = 0; i < 3; i++) { const r = await up(u, '198.51.100.63'); assert.equal(r.status, 200); sheetUrl = r.body.characterImageUrl; }
     assert.equal(fake.num(`usage:identity:lifetime:${u.identifier}`), 0);
-    const p = await invoke(poster, { body: { prompt: 'A hero', characterImageUrl: FACE }, cookies: u.cookies, ip: '198.51.100.63' });
+    const p = await invoke(poster, { body: { prompt: 'A hero', characterImageUrl: sheetUrl }, cookies: u.cookies, ip: '198.51.100.63' });
     assert.equal(p.body.faceApplied, true);
     return { actual: '3 uploads, lifetime credit still available, then the face poster works' };
   });

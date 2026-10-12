@@ -21,7 +21,7 @@ export const privacyProvidersHe = () =>
     : '') +
   ' (ב) OpenRouter מנתבת בקשות למודלים של ספקים נוספים (למשל Gemma, DeepSeek, FLUX, xAI Grok, Gemini לתמונות, ומודל בטיחות שבודק תמונות פנים); חלק מהמסלולים הם חינמיים. לכל ספק מדיניות משלו בנוגע לתיעוד, שמירה ואימון, שלא אימתנו מול כולם, וחלקם עשויים לעבד מידע מחוץ לישראל ולאזור הכלכלי האירופי.' +
   ' (ג) Cloudflare Workers AI מקבלת תיאורי תמונה ליצירת תמונות.' +
-  ' (ד) ספקי גיבוי כגון Cohere ו-Pollinations; Pollinations הוא שירות ציבורי אנונימי שמקבל את תיאור התמונה בתוך כתובת הבקשה.' +
+  ' (ד) ספק גיבוי נוסף: Cohere.' +
   ' לכן איננו יכולים להבטיח שהתוכן שלך אינו נשמר או משמש אצל ספקים אלה. אל תזין מידע רגיש במיוחד או תמונות של אנשים אחרים ללא הסכמתם. אנחנו לא מוכרים את התוכן ולא משתמשים בו לפרסום.';
 export const privacyProvidersEn = () =>
   'To create scripts, comics and posters we send to external AI providers (over HTTPS) the text you wrote, image descriptions derived from it and, for "Star Yourself", your face photo. The providers: ' +
@@ -31,7 +31,7 @@ export const privacyProvidersEn = () =>
     : '') +
   ' (b) OpenRouter routes requests to models from other providers (for example Gemma, DeepSeek, FLUX, xAI Grok, Gemini for images, and a content-safety model that checks face photos); some of these run on free routes. Each provider has its own policy on logging, retention and training, which we have not verified for all of them, and some may process data outside Israel and the EEA.' +
   ' (c) Cloudflare Workers AI receives image descriptions to create images.' +
-  ' (d) Backup providers such as Cohere and Pollinations; Pollinations is an anonymous public service that receives the image description inside the request address.' +
+  ' (d) A backup provider: Cohere.' +
   ' For these reasons we cannot promise that your content is not retained or used by these providers. Do not enter highly sensitive information, or photos of other people without their consent. We do not sell your content or use it for advertising.';
 
 export const privacySharingHe = () =>

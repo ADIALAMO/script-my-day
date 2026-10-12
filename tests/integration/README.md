@@ -17,7 +17,7 @@ process. Per-run artefacts (scenario rows, call counts, the cost table) go to `t
 | API route handlers (`pages/api/*.js`) | **the real files, unmodified**, called with fake `req`/`res` |
 | NextAuth, JWT sessions, `@upstash/redis`, `@upstash/ratelimit` | **real libraries** |
 | Redis | in-process **fake Upstash REST server** on 127.0.0.1 (`lib/fake-upstash.mjs`): the real clients talk to it over HTTP, so no production code is swapped. Single-threaded command execution = atomic; TTLs follow the mocked clock; the sliding-window Lua script of `@upstash/ratelimit` is emulated (`00-infra` proves it) |
-| Paid providers (Gemini, OpenRouter text/Klein/Grok/Gemini-image/moderation, Cohere, Cloudflare Workers AI, Pollinations, HuggingFace) | local mocks in `lib/providers.mjs` that **count every call per provider** (`providers.counts`) |
+| Paid providers (Gemini, OpenRouter text/Klein/Grok/Gemini-image/moderation, Cohere, Cloudflare Workers AI, HuggingFace; Pollinations is still mocked only so a regression that calls it is counted) | local mocks in `lib/providers.mjs` that **count every call per provider** (`providers.counts`) |
 | Telegram, SMTP (nodemailer), R2/S3 | recorders (`providers.telegram`, `mails`, `providers.s3puts`) — the SDK senders are patched, nothing is sent |
 | Time | `node:test` mock `Date` (UTC): `ctx.setNow()` / `ctx.advance()` cross day and month boundaries |
 | Environment | `process.env` is **purged** and only `tests/integration/test.env` (fake values) is loaded. Your real env / `.env.local` / Vercel values are never read |

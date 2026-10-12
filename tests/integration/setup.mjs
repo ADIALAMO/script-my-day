@@ -158,6 +158,10 @@ export async function boot({ env = {}, nodeEnv = 'test', startAt = '2026-10-15T1
     return { status: res.statusCode, body: res.body, headers: res.headers, res };
   }
 
+  /** the Redis pointer upload-character.js writes; generate-poster only accepts a characterImageUrl that matches it */
+  const FACE_URL = 'https://pub-test.r2.dev/characters/face.jpg';
+  const seedCharacter = (identifier, url = FACE_URL) => fake.set(`character:${identifier}`, JSON.stringify({ url, styledUrl: url, status: 'ready' }));
+
   // ---- sessions & users -----------------------------------------------------------------------
   await import('next-auth');                       // initialise next-auth's CJS graph first (Node-ESM interop order quirk; webpack does not care)
   const { encode } = await import('next-auth/jwt');
@@ -180,6 +184,7 @@ export async function boot({ env = {}, nodeEnv = 'test', startAt = '2026-10-15T1
     if (kind === 'adminGranted') await plan.setTierByAdmin(id, 'pro', 'boss@test.example');
     if (kind === 'admin') await plan.setTierByAdmin(id, 'admin', 'boss@test.example');
     const s = await sessionFor({ id, email, name: label });
+    seedCharacter(`u:${id}`);   // every test user already "has" the shared test face (generate-poster only accepts the caller's own stored reference)
     return { id, identifier: `u:${id}`, email, kind, ...s };
   }
   const anonymous = (ip = '198.51.100.99') => ({ id: null, identifier: ip, kind: 'anonymous', cookies: {}, ip });
@@ -214,7 +219,7 @@ export async function boot({ env = {}, nodeEnv = 'test', startAt = '2026-10-15T1
     assert.deepEqual(violations, [], `network guard triggered: ${violations.join(', ')}`);
   }
 
-  return { fake, providers, mails, fresh, startAt, setNow, advance, invoke, makeReq, makeRes, makeUser, anonymous, adminKeyHeader, route, scenario, afterAll, plan, violations, env: process.env, ROOT };
+  return { fake, providers, mails, seedCharacter, FACE_URL, fresh, startAt, setNow, advance, invoke, makeReq, makeRes, makeUser, anonymous, adminKeyHeader, route, scenario, afterAll, plan, violations, env: process.env, ROOT };
 }
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

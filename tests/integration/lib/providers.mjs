@@ -62,6 +62,8 @@ export function createProviders() {
   const moderationVerdict = { value: 'safe' };
   const handlers = { r2: null, font: null };   // overridable per test
   const unexpected = [];
+  const refuse = {};   // provider -> true: answer with that provider's CONTENT REFUSAL (safety filter) instead of an image/script
+  const bodies = [];   // { provider, body } of every request, so tests can assert what was (not) sent
 
   const count = (provider, extra = {}) => { counts[provider] = (counts[provider] || 0) + 1; log.push({ provider, ...extra }); };
   const failing = (provider) => (mode[provider] && mode[provider] !== 'ok' ? mode[provider] : null);
@@ -76,7 +78,7 @@ export function createProviders() {
 
     if (host === 'generativelanguage.googleapis.com') {
       const model = decodeURIComponent(u.pathname.split('/models/')[1] || '').split(':')[0];
-      count('gemini', { model });
+      count('gemini', { model }); bodies.push({ provider: 'gemini', body });
       const f = (mode[`gemini:${model}`] && mode[`gemini:${model}`] !== 'ok' ? mode[`gemini:${model}`] : null) || failing('gemini');   // per-model failure: mode['gemini:gemini-2.5-flash'] = 500
       if (f) return json({ error: { message: 'mock failure' } }, Number(f));
       // optional per-model latency; honours AbortSignal like a real fetch (counted in `gemini-aborted`, which is NOT a paid call)
@@ -90,6 +92,7 @@ export function createProviders() {
         });
         if (aborted) { count('gemini-aborted', { model }); const e = new Error('The operation was aborted'); e.name = 'AbortError'; throw e; }
       }
+      if (refuse.gemini) return json({ promptFeedback: { blockReason: 'SAFETY' } });
       const isStoryboard = !!body?.systemInstruction;
       const userText = (body?.contents || []).map((c) => (c.parts || []).map((p) => p.text).join(' ')).join(' ');
       return json({ candidates: [{ content: { parts: [{ text: isStoryboard ? storyboardJson() : scriptText(userText) }] } }] });
@@ -98,9 +101,11 @@ export function createProviders() {
     if (host === 'openrouter.ai') {
       if (u.pathname === '/api/v1/credits') return json({ data: { total_credits: 10, total_usage: 1 } });
       const model = body?.model || '';
+      bodies.push({ provider: model, body });
+      const refusedImage = json({ choices: [{ finish_reason: 'content_filter', native_finish_reason: 'IMAGE_SAFETY', message: { content: null } }] });
       const img = { choices: [{ message: { content: null, images: [{ image_url: { url: PNG_DATA_URI } }] } }] };
-      if (model.includes('flux.2-klein')) { count('klein', { model }); const f = failing('klein'); if (f) return text('mock failure', Number(f)); return json(img); }
-      if (model.includes('grok-imagine')) { count('grok', { model }); const f = failing('grok'); if (f) return text('mock failure', Number(f)); return json(img); }
+      if (model.includes('flux.2-klein')) { count('klein', { model }); const f = failing('klein'); if (f) return text('mock failure', Number(f)); if (refuse.klein) return refusedImage; return json(img); }
+      if (model.includes('grok-imagine')) { count('grok', { model }); const f = failing('grok'); if (f) return text('mock failure', Number(f)); if (refuse.grok) return refusedImage; return json(img); }
       if (model.includes('gemini-2.5-flash-image')) { count('gemini-image', { model }); const f = failing('gemini-image'); if (f) return text('mock failure', Number(f)); return json(img); }
       if (model.includes('nemotron')) { count('moderation', { model }); const f = failing('moderation'); if (f) return text('mock failure', Number(f)); return json({ choices: [{ message: { content: moderationVerdict.value } }] }); }
       const system = (body?.messages || []).find((m) => m.role === 'system')?.content || '';
@@ -118,11 +123,13 @@ export function createProviders() {
     }
 
     if (host === 'api.cloudflare.com' && u.pathname.includes('/ai/run/')) {
-      count('cloudflare'); const f = failing('cloudflare'); if (f) return text('mock failure', Number(f));
+      count('cloudflare'); bodies.push({ provider: 'cloudflare', body }); const f = failing('cloudflare'); if (f) return text('mock failure', Number(f));
+      if (refuse.cloudflare) return text('{"errors":[{"code":8007,"message":"AiError: Input prompt contains NSFW content"}],"success":false}', 400);
+      if (mode.cloudflareSchema) return text('{"errors":[{"code":5006,"message":"Additional or unevaluated properties \'/seed\' at \'/\' not allowed"}]}', 400);
       return json({ result: { image: PNG_B64 }, success: true });
     }
 
-    if (host === 'image.pollinations.ai') {
+    if (host === 'image.pollinations.ai') {   // still mocked so that a regression (anything calling it) is COUNTED and asserted on
       count('pollinations'); const f = failing('pollinations'); if (f) return text('mock failure', Number(f));
       return new Response(PNG_BYTES, { status: 200, headers: { 'content-type': 'image/png' } });
     }
@@ -152,8 +159,8 @@ export function createProviders() {
   }
 
   return {
-    handle, counts, log, telegram, s3puts, s3deletes, mode, latency, moderationVerdict, handlers, unexpected,
-    reset() { for (const k of Object.keys(counts)) delete counts[k]; log.length = 0; telegram.length = 0; s3puts.length = 0; s3deletes.length = 0; for (const k of Object.keys(mode)) delete mode[k]; latency.gemini = null; moderationVerdict.value = 'safe'; handlers.r2 = null; },
+    handle, refuse, bodies, counts, log, telegram, s3puts, s3deletes, mode, latency, moderationVerdict, handlers, unexpected,
+    reset() { for (const k of Object.keys(counts)) delete counts[k]; log.length = 0; telegram.length = 0; s3puts.length = 0; s3deletes.length = 0; for (const k of Object.keys(mode)) delete mode[k]; latency.gemini = null; moderationVerdict.value = 'safe'; handlers.r2 = null; for (const k of Object.keys(refuse)) delete refuse[k]; bodies.length = 0; },
     snapshot() { return { ...counts, 'r2-put': s3puts.length }; },
     paidTotal() { return Object.entries(counts).filter(([k]) => PAID.has(k)).reduce((n, [, v]) => n + v, 0); },
     paid() { return Object.fromEntries(Object.entries(counts).filter(([k]) => PAID.has(k))); },

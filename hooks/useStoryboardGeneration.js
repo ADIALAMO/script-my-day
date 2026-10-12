@@ -241,7 +241,7 @@ export function useStoryboardGeneration({
       // actually generated. Must be treated as a failure here: never uploaded to
       // R2, never persisted to history, never shown as if it were a real panel.
       if (data.isPlaceholder) {
-        if (data.code === CODES.IMAGE_BUDGET_REACHED) setComicNotice(getMsg(data.code, lang));
+        if (data.code === CODES.IMAGE_BUDGET_REACHED || data.code === CODES.CONTENT_REFUSED) setComicNotice((n) => n || getMsg(data.code, lang));
         dispatchPanelImages({
           type: 'SET_PANEL', idx,
           payload: { loading: false, url: null, error: true },
@@ -298,6 +298,8 @@ export function useStoryboardGeneration({
           });
 
       } else {
+        // The server's keyword blocklist rejected this panel's prompt (nothing was generated or charged).
+        if (data.code === CODES.CONTENT_BLOCKED) setComicNotice((n) => n || getMsg(data.code, lang));
         dispatchPanelImages({
           type: 'SET_PANEL', idx,
           payload: { loading: false, url: null, error: true },
@@ -392,6 +394,7 @@ export function useStoryboardGeneration({
 
       // A placeholder/failure must NOT replace a good image or burn a replacement.
       if (!data.success || !data.imageUrl || data.isPlaceholder) {
+        if (data.code === CODES.CONTENT_BLOCKED || data.code === CODES.CONTENT_REFUSED) setComicNotice(getMsg(data.code, lang));
         dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: false, url: oldUrl, error: !oldUrl } });
         return;
       }

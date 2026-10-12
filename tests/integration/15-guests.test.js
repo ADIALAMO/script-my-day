@@ -61,14 +61,16 @@ scenario('N3', 'cost of guest scripts per day: each guest IP gets 2 scripts, so 
     return { actual: `${N} guest IPs → ${calls} paid Gemini calls = $${lo.toFixed(2)}–$${hi.toFixed(2)}/day (price × assumed 2.8k in / 3k out tokens)`, evidence: `extrapolation per day: ${[100, 1000, 10000].map(row).join(' | ')}` };
   });
 
-scenario('N4', 'cost of guest posters per day: free Cloudflare first; when it is down, paid Klein is bounded by DAILY_IMAGE_BUDGET (here 10 images), then free Pollinations',
-  'Klein calls ≤ 10 for 30 guest IPs; the rest served by the free provider', async () => {
+scenario('N4', 'cost of guest posters per day: free Cloudflare first; when it is down, paid Klein is bounded by DAILY_IMAGE_BUDGET (here 10 images), then the placeholder (no unfiltered last-resort provider)',
+  'Klein calls ≤ 10 for 30 guest IPs; the rest get the IMAGE_BUDGET_REACHED placeholder', async () => {
     providers.mode.cloudflare = 500;
-    for (let i = 1; i <= 30; i++) assert.equal((await guestPoster(`198.19.0.${i}`)).status, 200);
+    let placeholders = 0;
+    for (let i = 1; i <= 30; i++) { const r = await guestPoster(`198.19.0.${i}`); assert.equal(r.status, 200); if (r.body.isPlaceholder) placeholders++; }
     assert.equal(providers.counts.klein, 10);
-    assert.ok(providers.counts.pollinations >= 20);
+    assert.equal(placeholders, 20);
+    assert.equal(providers.counts.pollinations ?? 0, 0);
     assert.equal(fake.num('usage:image:paid:global:2026-10-15'), 10);
-    return { actual: `Klein ${providers.counts.klein} (= budget 0.14 / 0.014), Pollinations ${providers.counts.pollinations}: image spend per day ≤ DAILY_IMAGE_BUDGET`, evidence: 'guest posters are lifetime-1 per IP; the budget is shared with all users' };
+    return { actual: `Klein ${providers.counts.klein} (= budget 0.14 / 0.014), placeholders ${placeholders}: image spend per day ≤ DAILY_IMAGE_BUDGET`, evidence: 'guest posters are lifetime-1 per IP; the budget is shared with all users' };
   });
 
 scenario('N5', 'guests cannot reach any other paid feature: storyboard, comic panels, identity upload, face poster (covered in A1–A4) and their upload-panel allowance is tiny',

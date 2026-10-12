@@ -7,6 +7,7 @@ import { getSessionAndTier } from '../../lib/auth.js';
 import { reserveScriptQuota, releaseScriptQuota } from '../../lib/script-quota.js';
 import { reserveGuestScriptBudget, releaseGuestScriptBudget } from '../../lib/guest-budget.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
+import { checkContent } from '../../lib/content-blocklist.js';
 
 // Must be a top-level export — NOT nested inside config — for Vercel to honour it.
 export const maxDuration = 60;
@@ -59,6 +60,14 @@ export default async function handler(req, res) {
     }
 
     const safeJournalEntry = sanitize(journalEntry);
+
+    // Keyword blocklist (lib/content-blocklist.js) — before any quota is reserved, so a hit costs the user nothing.
+    // Only the category is logged, never the text.
+    const screened = checkContent(`${safeJournalEntry}\n${cleanGenre}`);
+    if (screened.blocked) {
+      console.warn(`🛑 generate-script: input blocked by content blocklist (category=${screened.category})`);
+      return res.status(400).json({ success: false, code: CODES.CONTENT_BLOCKED, message: 'Content not allowed.' });
+    }
 
     // Never trust the client blindly — coerce to the only three values we speak.
     const cleanGender = ['male', 'female', 'neutral'].includes(gender) ? gender : 'neutral';
@@ -117,6 +126,10 @@ export default async function handler(req, res) {
     if (!result.success) {
       await releaseScriptQuota(reservation); // nothing was produced → no script spent
       if (guestBudgetReserved) await releaseGuestScriptBudget();
+      if (result.refused) {
+        console.warn('🛑 generateScript: a provider refused the content — request ended');
+        return res.status(422).json({ success: false, code: CODES.CONTENT_REFUSED, message: 'Content refused.' });
+      }
       console.error('❌ generateScript failed:', result.error);
       return res.status(500).json({
         success: false,

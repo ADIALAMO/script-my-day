@@ -9,6 +9,8 @@ import { reserveComicQuota, releaseComicQuota, unlockedPanelsForNewComic } from 
 import { openComicSession } from '../../lib/comic-guard.js';
 import { COMIC } from '../../config/limits.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
+import { checkContent } from '../../lib/content-blocklist.js';
+import { CONTENT_SAFETY_RULE, GEMINI_SAFETY_SETTINGS, geminiBlockReason } from '../../lib/content-safety.js';
 
 export const maxDuration = 60;
 
@@ -143,6 +145,8 @@ Field rules:
 - "dialogue": single most important line or caption, match script language
 - "hero": boolean — true only when the main character is the focal subject of the panel (used for image budgeting); when in doubt, false.
 
+${CONTENT_SAFETY_RULE}
+
 Story arc required: opening → development → conflict peak → climax → resolution.`;
 }
 
@@ -169,13 +173,16 @@ async function runGeminiModel(model, staticInstruction, script, apiKey, timeoutM
           maxOutputTokens: 2000,
           responseMimeType: 'application/json',
           thinkingConfig: { thinkingBudget: 0 },
-        }
+        },
+        safetySettings: GEMINI_SAFETY_SETTINGS,
       }),
       signal: controller.signal
     });
     clearTimeout(timeoutId);
     if (!resp.ok) return null;
     const data = await resp.json();
+    const blocked = geminiBlockReason(data);
+    if (blocked) { console.warn(`🛑 Storyboard ${model}: Gemini safety block (${blocked})`); return null; }
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) return null;
     const panels = extractPanels(text);
@@ -312,6 +319,14 @@ export default async function handler(req, res) {
 
     if (!cleanScript || cleanScript.length < 20) {
       return res.status(400).json({ success: false, code: CODES.INPUT_TOO_SHORT, message: 'Script text too short.' });
+    }
+
+    // Keyword blocklist (lib/content-blocklist.js) — before the comic quota is reserved, so a hit costs nothing.
+    // Only the category is logged, never the text.
+    const screened = checkContent(`${cleanScript}\n${heroDescriptor || ''}`);
+    if (screened.blocked) {
+      console.warn(`🛑 generate-storyboard: input blocked by content blocklist (category=${screened.category})`);
+      return res.status(400).json({ success: false, code: CODES.CONTENT_BLOCKED });
     }
 
     // Reserve this comic atomically (INCR then compare) now that the input is valid; given back
