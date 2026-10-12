@@ -89,6 +89,12 @@ export async function createFakeUpstash() {
       case 'PTTL': { if (!alive(a[0])) return -2; const e = expiry.get(a[0]); return e === undefined ? -1 : e - now(); }
       case 'SADD': { alive(a[0]); const s = sets.get(a[0]) || new Set(); let n = 0; for (const m of a.slice(1)) if (!s.has(m)) { s.add(m); n++; } sets.set(a[0], s); return n; }
       case 'SREM': { alive(a[0]); const s = sets.get(a[0]); if (!s) return 0; let n = 0; for (const m of a.slice(1)) if (s.delete(m)) n++; return n; }
+      case 'SCAN': {   // SCAN cursor [MATCH pattern] [COUNT n] — single page: every live matching key, cursor back to "0"
+        let match = '*'; for (let i = 1; i < a.length; i += 2) if (String(a[i]).toUpperCase() === 'MATCH') match = String(a[i + 1]);
+        const re = new RegExp(`^${match.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`);
+        const all = [...strings.keys(), ...sets.keys(), ...zsets.keys()].filter((k) => alive(k) && re.test(k));
+        return ['0', all];
+      }
       case 'SCARD': { alive(a[0]); return sets.get(a[0])?.size ?? 0; }
       case 'SMEMBERS': { alive(a[0]); return [...(sets.get(a[0]) || [])]; }
       case 'SISMEMBER': { alive(a[0]); return sets.get(a[0])?.has(a[1]) ? 1 : 0; }

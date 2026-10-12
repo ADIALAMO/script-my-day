@@ -3,8 +3,23 @@
   "framework": "nextjs",
   "cleanUrls": true,
   "functions": {
-    "pages/api/generate-script.js": { "maxDuration": 60 },
-    "pages/api/generate-storyboard.js": { "maxDuration": 60 },
-    "pages/api/generate-poster.js": { "maxDuration": 60 }
-  }
+    "pages/api/generate-script.js": {
+      "maxDuration": 60
+    },
+    "pages/api/generate-storyboard.js": {
+      "maxDuration": 60
+    },
+    "pages/api/generate-poster.js": {
+      "maxDuration": 60
+    },
+    "pages/api/cron/sweep-hidden.js": {
+      "maxDuration": 60
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/sweep-hidden",
+      "schedule": "0 4 * * *"
+    }
+  ]
 }

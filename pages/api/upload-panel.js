@@ -6,6 +6,7 @@ import { enforceRateLimit } from '../../lib/rate-limit.js';
 import { UPLOAD_LIMITS } from '../../config/limits.js';
 import { checkImage, markImageChecked, getImageMark, imageHash, cleanProviderTag } from '../../lib/image-check.js';
 import { CODES } from '../../lib/messages.js';
+import { takedownAfterUpload } from '../../lib/report.js';
 import { MAX_IMAGE_BYTES, sniffImage, decodeDataUriBytes, buildObjectKey, objectKeySecretConfigured } from '../../lib/upload-image.js';
 
 // ── R2 client singleton ───────────────────────────────────────────────────────
@@ -198,6 +199,15 @@ export default async function handler(req, res) {
     // hash → key, so a report made while the image was still only in the browser (hash-based) can find the stored object.
     try { await redis.set(`objkey:${bytesHash}`, objectKey, { ex: 400 * 24 * 60 * 60 }); }
     catch (e) { console.warn(`⚠️ objkey mapping skipped: ${e.message}`); }
+
+    // Race with the Report button: the user may have reported these bytes (by hash) while this upload was in flight — after the early check
+    // above but before the object existed. Re-check now that it is stored (and mapped), and take it down ourselves if so.
+    try {
+      if (await redis.get(`report:hidden:h:${bytesHash}`)) {
+        await takedownAfterUpload(objectKey, bytesHash);
+        return res.status(422).json({ error: 'Image rejected.', code: CODES.CONTENT_REFUSED });
+      }
+    } catch (e) { console.warn(`⚠️ post-upload report re-check skipped: ${e.message}`); }
 
     const url = `${publicUrl}/${objectKey}`;
     return res.status(200).json({ url });

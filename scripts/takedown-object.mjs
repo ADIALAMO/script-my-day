@@ -7,6 +7,8 @@
  *   node scripts/takedown-object.mjs delete <key>                  PERMANENT delete (from whichever bucket holds it)
  *   node scripts/takedown-object.mjs list-recent --since <ISO> [--until <ISO>] [--prefix panels/]
  *                                                                  key, size, last-modified ONLY (no content) — to find an object by time
+ *   node scripts/takedown-object.mjs sweep [--apply]               list reported (hidden) images that are STILL in the public bucket; with --apply (typed
+ *                                                                  confirmation) move them to quarantine — the same job the daily cron does
  *   node scripts/takedown-object.mjs owner <identifier>            list one owner's objects (identifier as stored: "u:<userId>" or the guest IP)
  *
  * quarantine / restore / delete print the plan and ask you to type a confirmation word; without an interactive terminal they refuse.
@@ -16,6 +18,7 @@
  */
 import readline from 'node:readline/promises';
 import { pathToFileURL } from 'node:url';
+import { sweepHidden, scanHiddenKeys } from '../lib/report-sweep.js';
 
 const REPORTABLE = /^(panels|posters)\/[A-Za-z0-9_./-]{1,180}\.(png|jpg|webp)$/;
 const HIDDEN_TTL = 400 * 24 * 60 * 60;
@@ -57,7 +60,23 @@ export async function run({ argv, redis, r2, confirm, log = console.log, publicB
     log(`${n} object(s) for that owner`); return { code: 0 };
   }
 
-  if (!['quarantine', 'restore', 'delete'].includes(cmd)) { log('usage: quarantine <key|url> | restore <key> | delete <key> | list-recent --since <ISO> | owner <identifier>'); return { code: 2 }; }
+  if (cmd === 'sweep') {
+    const keys = await redis.scanHidden(5000);
+    const found = await sweepHidden({ keys, headPublic: (k) => r2.head('public', k), apply: false });
+    log(`${found.examined} hidden item(s) checked; ${found.stillPublic.length} still in the PUBLIC bucket`);
+    for (const k of found.stillPublic) log(`  still public: ${k}`);
+    if (!rest.includes('--apply')) { if (found.stillPublic.length) log('dry run — add --apply to move them to quarantine'); return { code: 0 }; }
+    if (!found.stillPublic.length) return { code: 0 };
+    if (!(await confirm(`Move ${found.stillPublic.length} reported object(s) from the PUBLIC bucket to the private quarantine bucket.`, `SWEEP ${found.stillPublic.length}`))) { log('aborted'); return { code: 1 }; }
+    let moved = 0; const failed = [];
+    for (const k of found.stillPublic) {
+      try { await r2.copy('public', 'quarantine', k); await r2.del('public', k); moved += 1; } catch (e) { failed.push(k); log(`  failed: ${k} (${e.message})`); }
+    }
+    log(`moved ${moved}, failed ${failed.length}`);
+    return { code: failed.length ? 1 : 0 };
+  }
+
+  if (!['quarantine', 'restore', 'delete'].includes(cmd)) { log('usage: quarantine <key|url> | restore <key> | delete <key> | sweep [--apply] | list-recent --since <ISO> | owner <identifier>'); return { code: 2 }; }
   const key = keyFromArg(rest[0], publicBase);
   if (!key) { log('not a panels/ or posters/ object key (or a URL under R2_PUBLIC_URL)'); return { code: 2 }; }
 
@@ -123,6 +142,7 @@ async function main() {
   };
   let ownerSegment;
   if (process.argv[2] === 'owner') ownerSegment = (await import('../lib/upload-image.js')).ownerSegment;
+  redis.scanHidden = (max) => scanHiddenKeys(redis, max);   // the sweep command needs SCAN; wire it onto the real client
   const { code } = await run({ argv: process.argv.slice(2), redis, r2, confirm, publicBase: process.env.R2_PUBLIC_URL, ownerSegment });
   process.exit(code);
 }
