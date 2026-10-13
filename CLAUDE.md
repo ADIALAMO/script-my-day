@@ -183,7 +183,7 @@ budget is left) → `CONTENT_REFUSED`; quota released in every refusal. Classifi
 `stats:textcheck:degraded:<day>` is incremented (a number, never text or keys). `lib/minor-screen.js`: best-effort apparent-minor screen at Star Yourself
 upload (after the quota reservations, before anything is stored): rejects ONLY on a clear "minor" (`MINOR_REJECTED`), every other outcome allows. It is
 NOT age verification — never describe it so (tests/text-safety.test.js scans the repo).
-**Four independent paid-check budgets and circuits** (nothing is shared, so one running dry or failing can never switch off another):
+**Five independent paid budgets and circuits** (four checks + the storyboard first engine; nothing is shared, so one running dry or failing can never switch off another):
 
 | check | budget env (default) | counter key | circuit |
 |---|---|---|---|
@@ -191,6 +191,7 @@ NOT age verification — never describe it so (tests/text-safety.test.js scans t
 | text classifier | `DAILY_TEXT_CHECK_BUDGET` ($0.30) | `usage:check:text:global:<day>` | `check_text` |
 | minor screen | `DAILY_MINOR_CHECK_BUDGET` ($0.20) | `usage:check:minor:global:<day>` | `check_minor` |
 | image second opinion | `DAILY_IMAGE_SAFETY_BUDGET` ($0.50) | `usage:check:imgsafety:global:<day>` | `check_imgsafety` |
+| storyboard first engine (Gemini Flash-Lite via OpenRouter) | `DAILY_STORYBOARD_BUDGET` ($1.00) | `usage:storyboard:paid:global:<day>` | `storyboard_gemini` |
 
 ### 4c. Report gaps + one-time scan (`fix/report-gaps-and-scan`)
 Legacy object keys (no owner segment) count as owner-equivalent in `lib/report.js` (one report hides). `quarantineObject` retries the copy and the delete
@@ -199,6 +200,23 @@ Legacy object keys (no owner segment) count as owner-equivalent in `lib/report.j
 public into the private bucket (`lib/report-sweep.js`; MOVE only, never deletes; digest to Telegram only when there is something to say);
 `scripts/takedown-object.mjs sweep [--apply]` is the manual twin. `scripts/scan-existing-images.mjs` is the MANUAL one-time scan of old
 objects (dry run by default; `--quarantine-from` is a separate typed-confirmation step; never automated). `--recheck-from <first.json> --out <second.json>` gives the flagged ones a second opinion (paid route by default, separate file, first file never modified). A failed `--quarantine-from` move prints only `stage=… class=… [http=…]` (class from an allowlist in [lib/safe-error.js](lib/safe-error.js), never a key, bucket, URL or body).
+
+### 4d. Comic storyboard cascade + frame resilience (`fix/storyboard-resilience`)
+**Server** ([pages/api/generate-storyboard.js](pages/api/generate-storyboard.js), [lib/storyboard-parse.js](lib/storyboard-parse.js), [lib/storyboard-engines.js](lib/storyboard-engines.js)): the LEADER is **Gemini 2.5 Flash-Lite THROUGH OpenRouter**
+(`runPrimaryPaid`: same OpenRouter key, `provider.data_collection:"deny"`, strict `json_schema`, `max_tokens:2000`; slug overridable with `STORYBOARD_PRIMARY_MODEL`) — the direct Google key is on the FREE tier (no billing) so it is
+only the LAST fallback. It is metered like the other paid Gemini calls: its OWN budget `DAILY_STORYBOARD_BUDGET` (default $1.00 ≈ 833 calls at 0.0012; key `usage:storyboard:paid:global:<day>`; 0 = off; `reserveCheckBudget('storyboard')`, slot
+released when no completion was produced) and its OWN circuit `storyboard_gemini` (429 → 45 s …); budget spent / circuit open / budget unverifiable (Redis down, fail-closed) = the engine is SKIPPED, never a failure. The HEDGE OpenRouter
+`gemma-3-27b-it` joins after 4 s, or AT ONCE when the leader fails or is skipped; then one after another gemma-3-12b, deepseek, the free net, and LAST direct Gemini flash, then flash-lite. OpenRouter calls ask for `json_schema` ({panels:[...]} wrapper —
+a strict root must be an object) with `provider.require_parameters:true`; on 400/404/422 the SAME model is asked once more without the schema (data_collection kept). `max_tokens` was 750: it cut 7-panel / Hebrew answers off mid-array
+(unparseable). `parseStoryboard` accepts bare / fenced / wrapper / prose-wrapped answers and SALVAGES a truncated array (complete panels with a `visual`, >= 4). One shared engine deadline (`ENGINE_DEADLINE_MS` 38 s; every attempt gets
+min(12 s, time left), none starts with < 3 s left); a regeneration ends by 48 s; past `ROUTE_HARD_MS` (55 s) the route answers a clean JSON failure and RELEASES the comic quota (a function killed at 60 s never does). Each attempt logs engine,
+model, finish reason, token counts, panels, how it parsed, ms, and for the paid engine `usedToday` / `maxToday` / `capUsd` (or `skipped: budget|circuit-open|budget-unverifiable`) — never prompts, outputs or keys. The image-safety pipeline is untouched.
+**Client** ([hooks/useStoryboardGeneration.js](hooks/useStoryboardGeneration.js), [utils/frame-error.js](utils/frame-error.js), [constants/comic-copy.js](constants/comic-copy.js)): every storyboard / panel fetch has an AbortController timeout (62 s / 55 s).
+A frame failure is classified: network, timeout, non-JSON, 5xx, placeholder, unchecked image = RETRYABLE; refusals, blocked prompts, image budget and quota answers = terminal ("Frame Lost"); `COMIC_SESSION_EXPIRED` = offer a new comic;
+`RATE_LIMITED` keeps its amber path. A connection-level failure gets ONE automatic retry after ~1.5 s (deferred while the tab is hidden); a comic generated THIS session also retries its failed frames once when the tab becomes visible again
+(never a restored comic — that would spend credits unasked). The retryable tile says "Frame didn't load" + "Retry this frame"; two or more show "Generate missing frames" (2 at a time). The comic's session (`comicSeed`, `sessionId`, `unlocked`) is
+saved in the History entry (`comicMeta`) together with the text-only panels, so reopening an entry whose images never arrived makes its frames "missing, retryable" (the server session lasts 24 h); an old entry without it shows plain lost frames.
+A retry of a frame whose request never arrived / failed is a normal first attempt (the server rolls failed attempts back); if the server DID render it and only the answer was lost, it counts as one of the comic's replacements.
 
 ### 4b. Android app (Capacitor) — Google Play payments policy
 Inside the native shell **nothing may show a price, a subscription, Stripe or an "upgrade" prompt**. `hooks/useNative.js`

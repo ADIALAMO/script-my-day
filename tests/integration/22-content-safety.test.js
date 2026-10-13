@@ -167,7 +167,7 @@ scenario('S11', 'every Gemini text call carries safetySettings and the script / 
     providers.bodies.length = 0;
     const sb = await invoke(storyboard, { body: { script: 'INT. HALL - DAY. A calm person waits in a quiet hall while the rain falls.', lang: 'en', genre: 'drama', comicStyle: 'anime', comicSeed: seed() }, cookies: u.cookies, ip: '198.51.100.170' });
     assert.equal(sb.status, 200);
-    const sys = providers.bodies.map((b) => b.body?.messages?.find?.((m) => m.role === 'system')?.content).find(Boolean);
+    const sys = providers.bodies.map((b) => b.body?.messages?.find?.((m) => m.role === 'system')?.content ?? b.body?.systemInstruction?.parts?.[0]?.text).find(Boolean);
     assert.ok(sys && sys.includes('CONTENT SAFETY') && /fully clothed/.test(sys), 'rule is in the storyboard instruction');
     return { actual: 'safetySettings + rule present on script and storyboard' };
   });
