@@ -128,7 +128,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
 
   // ── Identity Track (character consistency) ──────────────────────────────────
   const {
-    characterImageUrl, activeCharacterUrl, heroDescriptor, starring, setStarring,
+    characterImageUrl, hasCharacter, activeCharacterUrl, heroDescriptor, starring, setStarring,
     status: characterStatus, uploadCharacter, clearCharacter, removeCharacter,
   } = useCharacter(gender);
   const [showCharacterModal, setShowCharacterModal] = useState(false);
@@ -828,7 +828,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
 
           {/* ── CHARACTER CHIP — governs both poster & comic (Identity Track) ── */}
           <div data-tour="star" className="flex items-center justify-center pb-1">
-            {characterStatus === 'ready' && characterImageUrl ? (
+            {hasCharacter ? (
               <div className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#d4a373]/[0.06] border border-[#d4a373]/25">
                 <button onClick={() => setShowCharacterModal(true)} className="relative shrink-0" title={uiHebrew ? 'החלף דמות' : 'Change character'}>
                   <img src={characterImageUrl} alt={uiHebrew ? 'הדמות שלך' : 'Your character'} className="w-9 h-9 rounded-xl object-cover border border-[#d4a373]/40" />
