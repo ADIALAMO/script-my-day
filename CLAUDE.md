@@ -255,6 +255,13 @@ rejection needs the same "this is a handled cancel, not a failure" treatment as 
 `AbortError`, extend the shared check (`shareHandled()` here) rather than special-casing it
 at each call site.
 
+### 7. Guided tour + "next step" pills (UI only)
+First-run tour of the real UI: [components/GuidedTour.jsx](components/GuidedTour.jsx) (lazy, `ssr:false`), state machine in [hooks/useGuidedTour.js](hooks/useGuidedTour.js), steps + he/en copy in
+[constants/tour.js](constants/tour.js) (anchors = `data-tour="…"` attributes on real elements), pure logic in [utils/tour-logic.js](utils/tour-logic.js), flag `ls_tour_done_v1` in
+[utils/tour-state.js](utils/tour-state.js). Auto-starts only on a device with no history/prior-use keys, no script on screen, nothing blocking (dialogs, lightboxes, generations, the cookie banner);
+the "How it works" card in ScriptForm stays hidden while the tour is pending/running. The "Guide" button in the Navbar restarts it any time. No body scroll lock (index.js owns that), no network,
+no analytics. A missing/hidden anchor skips its step. `NextStepButton` pills show only while their scroll target is off-screen. Copy must avoid pricing/plan words (native-app policy; tests/tour.test.js).
+
 ## Conventions & gotchas
 - Provider errors are thrown as `"<Name> <httpStatus>: <body slice>"` so
   `extractStatusCode` can parse them for the circuit breaker. Preserve this shape.

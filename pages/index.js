@@ -18,6 +18,7 @@ import ScriptForm from '../components/ScriptForm';
 import { Analytics } from '@vercel/analytics/react';
 import { track } from '@vercel/analytics';
 import { SHOWCASE_POSTERS, SHOWCASE_REELS } from '../constants/showcase';
+import { useGuidedTour } from '../hooks/useGuidedTour.js';
 import { modalDataFor } from '../constants/modalData';
 import ReportButton from '../components/ReportButton';
 import { reportedGalleryRefs } from '../utils/reported-store';
@@ -35,6 +36,7 @@ import { useGender } from '../hooks/useGender';
 // content Next.js needs to server-render for the initial HTML.
 const AuthModal    = dynamic(() => import('../components/AuthModal'),    { ssr: false });
 const UpgradeModal = dynamic(() => import('../components/UpgradeModal'), { ssr: false });
+const GuidedTour = dynamic(() => import('../components/GuidedTour'), { ssr: false });
 const HistoryPanel = dynamic(() => import('../components/HistoryPanel'), { ssr: false });
 
 // ── Genre metadata for filmstrip grouping ────────────────────────────────────
@@ -646,7 +648,16 @@ function HomePage() {
   // effect lag possible) instead of closing over the state variables.
   const lastBackPressRef = useRef(0);
   const backStateRef = useRef(null);
+
+  // ── Guided tour (UI only) ─────────────────────────────────────────────────
+  // `generationBusy` mirrors ScriptOutput's poster / comic loading state (same bridge pattern as characterModalOpenMirror).
+  const [generationBusy, setGenerationBusy] = useState(false);
+  const tourBlocked = !!modalContent || !!selectedPoster || !!selectedReel || showAuthModal || showUpgradeModal || showWaitlistModal
+    || showHistory || showFeedback || showTips || characterModalOpenMirror || dropdownOpenMirror
+    || scriptLoading || generationBusy;
+  const tour = useGuidedTour({ blocked: tourBlocked, hasScript: !!script, historyCount: history.length });
   backStateRef.current = {
+    tourRunning: tour.running, tourFinish: tour.finish,
     selectedReel, selectedPoster, modalContent, characterModalOpenMirror,
     dropdownOpenMirror,
     showAuthModal, showUpgradeModal, showWaitlistModal,
@@ -657,6 +668,7 @@ function HomePage() {
 
     const listenerPromise = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
       const s = backStateRef.current;
+      if (s.tourRunning)           { s.tourFinish();           return; }
       if (s.selectedReel)          { setSelectedReel(null);    return; }
       if (s.selectedPoster)        { setSelectedPoster(null);  return; }
       if (s.modalContent)          { setModalContent(null);    return; }
@@ -881,7 +893,10 @@ function HomePage() {
         isMusicMuted={isMusicMuted}
         onToggleMute={toggleMute}
         isMuteLocked={scriptLoading}
+        onStartTour={tour.start}
+        tourDisabled={tourBlocked}
       />
+      {tour.running && <GuidedTour lang={lang} onFinish={tour.finish} onAbort={tour.abort} />}
 
       <main className="container mx-auto pt-4 md:pt-8 pb-12 px-6 max-w-5xl flex-grow relative">
 
@@ -1162,7 +1177,7 @@ function HomePage() {
                 : ['Story', 'Script', 'Poster'];
               const pct = step === 1 ? 0 : step === 2 ? 50 : 100;
               return (
-                <div className="mb-8 md:mb-10" aria-label={lang === 'he' ? `שלב ${step} מתוך 3` : `Step ${step} of 3`}>
+                <div data-tour="stepper" className="mb-8 md:mb-10" aria-label={lang === 'he' ? `שלב ${step} מתוך 3` : `Step ${step} of 3`}>
                   <div className="flex justify-between mb-2">
                     {steps.map((label, i) => {
                       const s = i + 1;
@@ -1225,6 +1240,7 @@ function HomePage() {
               onInputChange={(val) => setIsTyping(val)}
               showTips={showTips}
               setShowTips={setShowTips}
+              holdHowTo={tour.holdHowTo}
             />
 
             {/* שמירה על מנגנון השגיאות המקורי שלך */}
@@ -1464,6 +1480,7 @@ function HomePage() {
                 genre={selectedGenre}
                 setIsTypingGlobal={setIsTyping}
                 instant={scriptSource === 'history'}
+                onBusyChange={setGenerationBusy}
                 producerName={producerName}
                 gender={gender}
                 setGender={setGender}

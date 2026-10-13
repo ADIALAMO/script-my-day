@@ -21,6 +21,8 @@ import { usePosterGeneration } from '../hooks/usePosterGeneration.js';
 import { useStoryboardGeneration } from '../hooks/useStoryboardGeneration.js';
 import { useCharacter } from '../hooks/useCharacter.js';
 import { shareData } from '../utils/export-image.js';
+import NextStepButton from './NextStepButton';
+import { NEXT_STEPS } from '../constants/tour.js';
 import { reelBreadcrumb } from '../utils/reel-diagnostics.js'; // TEMP DIAGNOSTIC (reel-crash)
 
 // ── Interaction-gated views — code-split out of the initial bundle ─────────
@@ -61,7 +63,7 @@ const getCinematicTitle = (text) => {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, gender, setGender, onPosterGenerated, onScriptEdited, onAuthRequired, onPanelsGenerated, initialPanels, initialPosterUrl, journalEntry, onCharacterModalToggle, closeCharacterModalRef, instant = false }) {
+function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, gender, setGender, onPosterGenerated, onScriptEdited, onAuthRequired, onPanelsGenerated, initialPanels, initialPosterUrl, journalEntry, onCharacterModalToggle, closeCharacterModalRef, onBusyChange, instant = false }) {
   const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST');
 
   // ── Language: UI chrome vs generated content ────────────────────────────────
@@ -197,6 +199,12 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
   }, [script, initialPosterUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Editor state ───────────────────────────────────────────────────────────
+  // Tell the page when a poster / comic is generating (the guided tour never starts or keeps running over a generation).
+  useEffect(() => {
+    onBusyChange?.(!!posterLoading || !!storyboardLoading);
+    return () => onBusyChange?.(false);
+  }, [posterLoading, storyboardLoading, onBusyChange]);
+
   const [isEditing,  setIsEditing]  = useState(false);
   const [editedText, setEditedText] = useState('');
   const [isEdited,   setIsEdited]   = useState(false);
@@ -596,6 +604,8 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
         </div>
       </div>
 
+      <NextStepButton show={!isTyping && currentDisplayText.length > 0 && !showPoster && !showStoryboard} step={NEXT_STEPS.script} lang={lang} />
+
       {/* ── Journal ↔ Script toggle — reveals the raw diary behind the screenplay ── */}
       {journalEntry && !isTyping && (
         <div className="flex justify-center px-6">
@@ -786,6 +796,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
 
           {/* ── POSTER SECTION ── */}
           <button
+            data-tour="poster-cta"
             onClick={generatePoster}
             disabled={posterLoading}
             className="w-full bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black font-black py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-60 transition-opacity"
@@ -883,6 +894,8 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
         )}
       </AnimatePresence>
 
+      <NextStepButton show={showPoster && !!posterUrl && !posterLoading && !isTyping && !showStoryboard} step={NEXT_STEPS.poster} lang={lang} />
+
       {/* ── Comic controls — rendered BELOW the poster so it reads as the next ── */}
       {/* logical step and never jumps above the generated poster. ────────────── */}
       {!isTyping && currentDisplayText.length > 0 && !showStoryboard && (
@@ -916,6 +929,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
             </div>
           )}
           <button
+            data-tour="comic-cta"
             onClick={generateStoryboard}
             disabled={storyboardLoading}
             className="w-full border border-[#d4a373]/40 bg-[#050710] text-[#d4a373] font-black py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-[#d4a373]/10 hover:border-[#d4a373]/70 transition-all duration-300 disabled:opacity-60"
