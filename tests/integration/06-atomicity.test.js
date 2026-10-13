@@ -85,7 +85,8 @@ scenario('G4', '10 PARALLEL storyboards for a Free user (3 comics/month): exactl
     const u = await makeUser('g4', 'free');
     const rs = await Promise.all(Array.from({ length: 10 }, (_, i) => invoke(storyboard, { body: { script: SCRIPT, lang: 'en', genre: 'drama', comicSeed: `9100000000${i}` }, cookies: u.cookies, ip: '198.51.100.74' })));
     assert.equal(ok(rs), 3); assert.equal(count(rs, 'QUOTA_COMIC_MONTH'), 7);
-    assert.equal(providers.counts['openrouter-text'], 3);
+    assert.equal(providers.counts['gemini'], 3, 'Gemini leads the storyboard cascade');
+    assert.equal(providers.counts['openrouter-text'] ?? 0, 0, 'the hedge never starts when Gemini answers at once');
     const unlocked = rs.filter((r) => r.status === 200).map((r) => r.body.unlockedPanels).sort();
     assert.deepEqual(unlocked, [3, 3, 7], '"first comic" bonus granted exactly once even in a race');
     return { actual: `200×3 (unlocked ${unlocked}), 429×7; model calls ${providers.counts['openrouter-text']}` };

@@ -5,10 +5,11 @@ import { shareReadyFile, makeShareFile, shareBlobs, downloadBlob, downloadBlobs,
 import { isCapacitorNative } from '../utils/platform.js';
 import { useNative } from '../hooks/useNative.js';
 import ReportButton from './ReportButton.jsx';
+import { COMIC_COPY, comicText } from '../constants/comic-copy.js';
 import { isReported } from '../utils/reported-store.js';
 import { REPORT_COPY, reportText } from '../constants/report-copy.js';
 
-export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade, onRegenerate, onRetryRateLimited, regensLeft = 0, notice = '' }) {
+export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade, onRegenerate, onRetryRateLimited, onRetryFrame, onGenerateMissing, onNewComic, missingCount = 0, sessionExpired = false, regensLeft = 0, notice = '' }) {
   const isHebrew = lang === 'he';
   const native = useNative();   // Android app: locked panels say "Locked", never "Pro only" / "Upgrade"
   const [copiedIndex, setCopiedIndex] = useState(null);
@@ -221,6 +222,32 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
         </p>
       )}
 
+      {/* ── Frames that did not load: one clear way forward (retry them all, or start a new comic when the session is gone) ── */}
+      {(sessionExpired || missingCount >= 2) && (
+        <div
+          role="status"
+          dir={isHebrew ? 'rtl' : 'ltr'}
+          className="mx-5 md:mx-7 mt-5 px-4 py-3 rounded-2xl bg-amber-500/[0.07] border border-amber-500/25 flex flex-wrap items-center justify-between gap-3"
+        >
+          <p className="text-[11px] leading-snug text-white/75">
+            {sessionExpired ? comicText(COMIC_COPY.sessionExpiredBanner, lang) : comicText(COMIC_COPY.missingBanner, lang, missingCount)}
+          </p>
+          {sessionExpired ? (
+            onNewComic && (
+              <button type="button" onClick={onNewComic} className="px-4 py-2 rounded-xl bg-[#d4a373] text-black text-[11px] font-black uppercase tracking-wider">
+                {comicText(COMIC_COPY.newComic, lang)}
+              </button>
+            )
+          ) : (
+            onGenerateMissing && (
+              <button type="button" onClick={onGenerateMissing} className="px-4 py-2 rounded-xl bg-[#d4a373] text-black text-[11px] font-black uppercase tracking-wider">
+                {comicText(COMIC_COPY.generateMissing, lang)}
+              </button>
+            )
+          )}
+        </div>
+      )}
+
       {/* ── Panel Grid ─────────────────────────────────────────── */}
       <div className="p-5 md:p-7">
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -391,12 +418,33 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                         animate={{ opacity: 1 }}
                         className="absolute inset-0 flex items-center justify-center bg-[#06040a]"
                       >
-                        <div className="flex flex-col items-center gap-2 opacity-35">
-                          <X size={22} className="text-red-400" />
-                          <span className="text-red-300/70 text-[9px] font-mono uppercase tracking-widest">
-                            {isHebrew ? 'שגיאת פריים' : 'Frame Lost'}
-                          </span>
-                        </div>
+                        {panelImages?.[idx]?.sessionExpired ? (
+                          <div className="flex flex-col items-center gap-2.5 px-3 text-center">
+                            <X size={20} className="text-amber-400/70" />
+                            <span className="text-amber-200/80 text-[10px] font-bold">{comicText(COMIC_COPY.sessionExpiredTile, lang)}</span>
+                            {onNewComic && (
+                              <button type="button" onClick={onNewComic} className="px-3.5 py-2 rounded-xl bg-[#d4a373]/15 border border-[#d4a373]/50 text-[#d4a373] text-[10px] font-black uppercase tracking-wider">
+                                {comicText(COMIC_COPY.newComic, lang)}
+                              </button>
+                            )}
+                          </div>
+                        ) : panelImages?.[idx]?.retryable && onRetryFrame ? (
+                          // a connection-level failure (or a frame that was never generated): asking again can work
+                          <div className="flex flex-col items-center gap-2.5 px-3 text-center">
+                            <X size={20} className="text-amber-400/70" />
+                            <span className="text-amber-200/80 text-[10px] font-bold">{comicText(COMIC_COPY.frameFailed, lang)}</span>
+                            <button type="button" onClick={() => onRetryFrame(idx)} className="px-3.5 py-2 rounded-xl bg-[#d4a373]/15 border border-[#d4a373]/50 text-[#d4a373] text-[10px] font-black uppercase tracking-wider">
+                              {comicText(COMIC_COPY.retryFrame, lang)}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center gap-2 opacity-35">
+                            <X size={22} className="text-red-400" />
+                            <span className="text-red-300/70 text-[9px] font-mono uppercase tracking-widest">
+                              {isHebrew ? 'שגיאת פריים' : 'Frame Lost'}
+                            </span>
+                          </div>
+                        )}
                       </motion.div>
                     )}
 

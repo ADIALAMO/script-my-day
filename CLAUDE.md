@@ -200,6 +200,20 @@ public into the private bucket (`lib/report-sweep.js`; MOVE only, never deletes;
 `scripts/takedown-object.mjs sweep [--apply]` is the manual twin. `scripts/scan-existing-images.mjs` is the MANUAL one-time scan of old
 objects (dry run by default; `--quarantine-from` is a separate typed-confirmation step; never automated). `--recheck-from <first.json> --out <second.json>` gives the flagged ones a second opinion (paid route by default, separate file, first file never modified). A failed `--quarantine-from` move prints only `stage=… class=… [http=…]` (class from an allowlist in [lib/safe-error.js](lib/safe-error.js), never a key, bucket, URL or body).
 
+### 4d. Comic storyboard cascade + frame resilience (`fix/storyboard-resilience`)
+**Server** ([pages/api/generate-storyboard.js](pages/api/generate-storyboard.js), [lib/storyboard-parse.js](lib/storyboard-parse.js), [lib/storyboard-engines.js](lib/storyboard-engines.js)): Gemini 2.5 flash LEADS (JSON mode + `responseSchema` +
+`thinkingBudget:0`, 2000 tokens, ~2-3 s) and OpenRouter `gemma-3-27b-it` is the HEDGE (joins after 4 s, or AT ONCE when Gemini fails); then one after another Gemini flash-lite, gemma-3-12b, deepseek, the free net. OpenRouter asks for a strict
+`json_schema` ({panels:[...]} wrapper — a strict root must be an object) with `provider.require_parameters:true` and `max_tokens:2000` (it was 750, which cut 7-panel / Hebrew answers off mid-array: unparseable); on 400/404/422 the SAME model is
+asked once more without the schema. `parseStoryboard` accepts bare / fenced / wrapper / prose-wrapped answers and SALVAGES a truncated array (complete panels with a `visual`, >= 4). One shared engine deadline (`ENGINE_DEADLINE_MS` 38 s; every attempt
+gets min(12 s, time left), none starts with < 3 s left); a regeneration ends by 48 s; past `ROUTE_HARD_MS` (55 s) the route answers a clean JSON failure and RELEASES the comic quota (a function killed at 60 s never does). Each attempt logs finish
+reason, token counts, panels, how it parsed and ms (never prompts, outputs or keys). The image-safety pipeline is untouched.
+**Client** ([hooks/useStoryboardGeneration.js](hooks/useStoryboardGeneration.js), [utils/frame-error.js](utils/frame-error.js), [constants/comic-copy.js](constants/comic-copy.js)): every storyboard / panel fetch has an AbortController timeout (62 s / 55 s).
+A frame failure is classified: network, timeout, non-JSON, 5xx, placeholder, unchecked image = RETRYABLE; refusals, blocked prompts, image budget and quota answers = terminal ("Frame Lost"); `COMIC_SESSION_EXPIRED` = offer a new comic;
+`RATE_LIMITED` keeps its amber path. A connection-level failure gets ONE automatic retry after ~1.5 s (deferred while the tab is hidden); a comic generated THIS session also retries its failed frames once when the tab becomes visible again
+(never a restored comic — that would spend credits unasked). The retryable tile says "Frame didn't load" + "Retry this frame"; two or more show "Generate missing frames" (2 at a time). The comic's session (`comicSeed`, `sessionId`, `unlocked`) is
+saved in the History entry (`comicMeta`) together with the text-only panels, so reopening an entry whose images never arrived makes its frames "missing, retryable" (the server session lasts 24 h); an old entry without it shows plain lost frames.
+A retry of a frame whose request never arrived / failed is a normal first attempt (the server rolls failed attempts back); if the server DID render it and only the answer was lost, it counts as one of the comic's replacements.
+
 ### 4b. Android app (Capacitor) — Google Play payments policy
 Inside the native shell **nothing may show a price, a subscription, Stripe or an "upgrade" prompt**. `hooks/useNative.js`
 (true after mount; SSR/first render false) hides Manage Subscription, the LaunchTicket Pro card, the Go-Pro chip, locked-panel

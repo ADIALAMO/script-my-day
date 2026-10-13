@@ -63,7 +63,7 @@ const getCinematicTitle = (text) => {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, gender, setGender, onPosterGenerated, onScriptEdited, onAuthRequired, onPanelsGenerated, initialPanels, initialPosterUrl, journalEntry, onCharacterModalToggle, closeCharacterModalRef, onBusyChange, onMilestone, instant = false }) {
+function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, gender, setGender, onPosterGenerated, onScriptEdited, onAuthRequired, onPanelsGenerated, initialPanels, initialComicMeta, initialPosterUrl, journalEntry, onCharacterModalToggle, closeCharacterModalRef, onBusyChange, onMilestone, instant = false }) {
   const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST');
 
   // ── Language: UI chrome vs generated content ────────────────────────────────
@@ -151,9 +151,10 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     comicStyle, setComicStyle, currentStoryboardMessage,
     generateStoryboard, closeStoryboard, cancelStoryboard,
     regeneratePanel, retryRateLimitedPanel, regensLeft, comicNotice,
+    retryFrame, generateMissingFrames, startNewComic, missingCount, sessionExpired,
     comicSource, comicCompletedAtRef, // TEMP DIAGNOSTIC (reel-crash)
   } = useStoryboardGeneration({
-    lang, genre, cleanScript, script, onAuthRequired, onPanelsGenerated, initialPanels,
+    lang, genre, cleanScript, script, onAuthRequired, onPanelsGenerated, initialPanels, initialComicMeta,
     characterImageUrl: activeCharacterUrl,
     // Dynamic protagonist descriptor from the user's gender choice (useCharacter).
     // Non-null only when the Identity Track is active → tells Gemini who the
@@ -1036,6 +1037,11 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               // CTA in the native app, per the mobile-wrapper plan).
               onUpgrade={isCapacitorNative() ? undefined : () => onAuthRequired('upgrade')}
               onRegenerate={regeneratePanel}
+              onRetryFrame={retryFrame}
+              onGenerateMissing={generateMissingFrames}
+              onNewComic={startNewComic}
+              missingCount={missingCount}
+              sessionExpired={sessionExpired}
               onRetryRateLimited={retryRateLimitedPanel}
               regensLeft={regensLeft}
               notice={comicNotice}

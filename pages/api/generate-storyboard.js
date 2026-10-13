@@ -12,6 +12,8 @@ import { enforceRateLimit } from '../../lib/rate-limit.js';
 import { checkContent } from '../../lib/content-blocklist.js';
 import { CONTENT_SAFETY_RULE, GEMINI_SAFETY_SETTINGS, geminiBlockReason, REGENERATION_SAFETY_LINE } from '../../lib/content-safety.js';
 import { checkTextOutput, storyboardText } from '../../lib/text-check.js';
+import { parseStoryboard, GEMINI_RESPONSE_SCHEMA, OPENROUTER_RESPONSE_FORMAT } from '../../lib/storyboard-parse.js';
+import { ENGINE_DEADLINE_MS, HEDGE_DELAY_MS, ROUTE_HARD_MS, attemptTimeout, raceWithHedge, runUntilDeadline } from '../../lib/storyboard-engines.js';
 
 export const maxDuration = 60;
 
@@ -19,21 +21,14 @@ export const maxDuration = 60;
 // this budget, and a regeneration only starts when enough of it is left.
 const ROUTE_BUDGET_MS = 57000;
 const REGEN_MIN_LEFT_MS = 30000;
+const REGEN_DEADLINE_MS = 48000; // the second (safety) engine run ends by then, leaving room for the re-check and the answer
 
 // Comic limit is now tier-aware — see lib/quota.js TIER_LIMITS.
 
-function extractPanels(rawText) {
-  const text = rawText.trim();
-  try { const p = JSON.parse(text); if (Array.isArray(p) && p.length) return p; } catch {}
-  const stripped = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
-  try { const p = JSON.parse(stripped); if (Array.isArray(p) && p.length) return p; } catch {}
-  const first = rawText.indexOf('[');
-  const last = rawText.lastIndexOf(']');
-  if (first !== -1 && last !== -1 && last > first) {
-    try { const p = JSON.parse(rawText.slice(first, last + 1)); if (Array.isArray(p) && p.length) return p; } catch {}
-  }
-  console.warn('⚠️ extractPanels: all JSON parse strategies failed — model returned unparseable output');
-  return null;
+// Parsing (direct / fenced / {panels:[...]} wrapper / prose-wrapped / salvaged-from-truncation) lives in lib/storyboard-parse.js.
+// One log line per model attempt: model, finish reason, token counts, panels, how it parsed, elapsed — never the prompt, the output text or a key.
+function logAttempt(engine, model, info) {
+  console.log(`📊 storyboard ${engine} ${model}: ${JSON.stringify(info)}`);
 }
 
 // FLUX.1 performs best on clean natural-language prose, not SD-era keyword stacks. Each track is
@@ -158,13 +153,12 @@ Story arc required: opening → development → conflict peak → climax → res
 }
 
 // Opt 2: systemInstruction carries the cached static block; contents carries only the dynamic screenplay.
-// Opt 3: JSON mode + thinking disabled is what makes Gemini reliable here. gemini-2.5-flash is a
-// "thinking" model — at a tight token cap it spends the budget on reasoning and returns truncated,
-// non-JSON output (finishReason MAX_TOKENS). That was the #1 cause of the storyboard falling all the
-// way through to the slow free-tier fallback (~76s). responseMimeType forces a pure JSON array,
-// thinkingConfig.thinkingBudget:0 stops the reasoning overrun, and 2000 tokens leaves headroom —
-// together they yield a clean first-try parse in ~2-3s (verified).
+// Opt 3: JSON mode + responseSchema + thinking disabled is what makes Gemini reliable here. gemini-2.5-flash is a "thinking" model —
+// at a tight token cap it spends the budget on reasoning and returns truncated, non-JSON output (finishReason MAX_TOKENS). responseMimeType
+// forces JSON, responseSchema fixes the shape (5-7 panels with the five fields), thinkingConfig.thinkingBudget:0 stops the reasoning overrun,
+// and 2000 tokens leaves headroom — together a clean first-try parse in ~2-3s.
 async function runGeminiModel(model, staticInstruction, script, apiKey, timeoutMs) {
+  const t0 = Date.now();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -179,6 +173,7 @@ async function runGeminiModel(model, staticInstruction, script, apiKey, timeoutM
           temperature: 0.25,
           maxOutputTokens: 2000,
           responseMimeType: 'application/json',
+          responseSchema: GEMINI_RESPONSE_SCHEMA,
           thinkingConfig: { thinkingBudget: 0 },
         },
         safetySettings: GEMINI_SAFETY_SETTINGS,
@@ -186,86 +181,80 @@ async function runGeminiModel(model, staticInstruction, script, apiKey, timeoutM
       signal: controller.signal
     });
     clearTimeout(timeoutId);
-    if (!resp.ok) return null;
+    if (!resp.ok) { logAttempt('gemini', model, { status: resp.status, ms: Date.now() - t0 }); return null; }
     const data = await resp.json();
     const blocked = geminiBlockReason(data);
     if (blocked) { console.warn(`🛑 Storyboard ${model}: Gemini safety block (${blocked})`); return null; }
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) return null;
-    const panels = extractPanels(text);
-    if (panels) return panels;
-    return null;
+    const parsed = text ? parseStoryboard(text) : null;
+    logAttempt('gemini', model, {
+      finish: data?.candidates?.[0]?.finishReason ?? null,
+      promptTokens: data?.usageMetadata?.promptTokenCount ?? null,
+      outputTokens: data?.usageMetadata?.candidatesTokenCount ?? null,
+      panels: parsed?.panels.length ?? 0, parsed: parsed?.how ?? 'failed', ms: Date.now() - t0,
+    });
+    return parsed ? parsed.panels : null;
   } catch (e) {
     clearTimeout(timeoutId);
-    if (e.name !== 'AbortError') console.warn(`⚠️ Storyboard ${model}: ${e.message}`);
+    logAttempt('gemini', model, { error: e.name === 'AbortError' ? 'timeout' : 'fetch', ms: Date.now() - t0 });
     return null;
   }
 }
 
-// Opt 4: Hedged fallback — primary fires immediately; backup fires in parallel after 6s if primary
-// has not yet resolved. Promise.any() takes the first winner. P95 latency drops from ~20s to ~8-10s.
-async function tryGemini(staticInstruction, script, apiKey) {
-  let hedgeTimerId;
-  const primary = runGeminiModel('gemini-2.5-flash', staticInstruction, script, apiKey, 20000);
-  const hedge = new Promise((resolve) => {
-    hedgeTimerId = setTimeout(
-      () => runGeminiModel('gemini-2.5-flash-lite', staticInstruction, script, apiKey, 14000).then(resolve),
-      6000
-    );
-  });
-  const winner = await Promise.any([
-    primary.then(r => r ?? Promise.reject()),
-    hedge.then(r => r ?? Promise.reject())
-  ]).catch(() => null);
-  clearTimeout(hedgeTimerId);
-  if (winner) return winner;
-  // Final retry: a fresh gemini-2.5-flash-lite attempt. The old 'gemini-flash-latest'
-  // alias now resolves to a "thinking" model that emits reasoning prose instead of
-  // JSON and overruns the 750-token cap (finishReason MAX_TOKENS), so extractPanels
-  // always returned null — it was dead weight (~4s wasted). flash-lite reliably
-  // respects both the budget and the JSON-only format for this constrained task.
-  return runGeminiModel('gemini-2.5-flash-lite', staticInstruction, script, apiKey, 14000);
-}
-
-// Opt 2 (OpenRouter): system role carries static instruction for providers that support prefix caching.
-// Opt 3: max_tokens calibrated to 750.
-async function tryOpenRouter(staticInstruction, script, apiKey, models = ['google/gemma-3-27b-it', 'google/gemma-3-12b-it', 'deepseek/deepseek-chat']) {
-  for (const model of models) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          'HTTP-Referer': 'https://lifescript.app',
-          'X-Title': 'LifeScript Studio'
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: staticInstruction },
-            { role: 'user', content: `SCREENPLAY:\n${script}` }
-          ],
-          temperature: 0.25,
-          max_tokens: 750
-        }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      if (!resp.ok) continue;
-      const data = await resp.json();
-      const text = data?.choices?.[0]?.message?.content;
-      if (!text) continue;
-      const panels = extractPanels(text);
-      if (panels) return panels;
-    } catch (e) {
-      clearTimeout(timeoutId);
-      if (e.name !== 'AbortError') console.warn(`⚠️ Storyboard ${model}: ${e.message}`);
+// OpenRouter chat model. First asks for a strict json_schema ({panels:[...]} wrapper — a strict root must be an object) with
+// provider.require_parameters:true, so a provider that cannot honour it is skipped at once instead of rambling for 15 s. If OpenRouter says
+// no endpoint supports that (400/404/422) the SAME model is asked once more without the schema inside the same time budget.
+// max_tokens 2000 (was 750: a 7-panel answer — more in Hebrew — was cut off mid-array, which no parse strategy could read).
+async function runOpenRouterModel(model, staticInstruction, script, apiKey, timeoutMs, { schema = true } = {}) {
+  const t0 = Date.now();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://lifescript.app',
+        'X-Title': 'LifeScript Studio'
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: staticInstruction },
+          { role: 'user', content: `SCREENPLAY:\n${script}` }
+        ],
+        temperature: 0.25,
+        max_tokens: 2000,
+        ...(schema ? { response_format: OPENROUTER_RESPONSE_FORMAT, provider: { require_parameters: true } } : {}),
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if (!resp.ok) {
+      logAttempt('openrouter', model, { schema, status: resp.status, ms: Date.now() - t0 });
+      const left = timeoutMs - (Date.now() - t0);
+      if (schema && [400, 404, 422].includes(resp.status) && left >= 3000) {
+        return runOpenRouterModel(model, staticInstruction, script, apiKey, left, { schema: false });
+      }
+      return null;
     }
+    const data = await resp.json();
+    const text = data?.choices?.[0]?.message?.content;
+    const parsed = typeof text === 'string' ? parseStoryboard(text) : null;
+    logAttempt('openrouter', model, {
+      schema,
+      finish: data?.choices?.[0]?.finish_reason ?? null,
+      promptTokens: data?.usage?.prompt_tokens ?? null,
+      outputTokens: data?.usage?.completion_tokens ?? null,
+      panels: parsed?.panels.length ?? 0, parsed: parsed?.how ?? 'failed', ms: Date.now() - t0,
+    });
+    return parsed ? parsed.panels : null;
+  } catch (e) {
+    clearTimeout(timeoutId);
+    logAttempt('openrouter', model, { schema, error: e.name === 'AbortError' ? 'timeout' : 'fetch', ms: Date.now() - t0 });
+    return null;
   }
-  return null;
 }
 
 export default async function handler(req, res) {
@@ -372,27 +361,35 @@ export default async function handler(req, res) {
     const enrich = (panels) => panels.map(p => ({ ...p, visual: `${track.prefix} ${p.visual} ${track.suffix}` }));
 
     // The engine cascade as a function, because the output check below may run it a SECOND time (with a safety reminder appended).
-    // OpenRouter runs FIRST (paid → free) so the gemma/deepseek/llama/qwen engines are the primary path; both Gemini models are the LAST resort.
-    const runEngines = async (instruction) => {
-      let panelsOut = null; let engine = null;
-      if (openrouterKey) {
-        const panels = await tryOpenRouter(instruction, cleanScript, openrouterKey);
-        if (panels) { panelsOut = enrich(panels); engine = 'OpenRouter'; }
+    // Every attempt gets min(12 s, time left before `deadlineAt`) and nothing starts with < 3 s left, so a failing cascade costs seconds and the route
+    // can answer (and release the comic quota) in time. Order:
+    //   1. Gemini 2.5 flash (JSON mode + responseSchema, ~2-3 s) leads; OpenRouter gemma-3-27b is the HEDGE — it joins after 4 s, or at once if Gemini fails;
+    //   2. then one after another: Gemini flash-lite, OpenRouter gemma-3-12b, deepseek, and the free OpenRouter net.
+    const runEngines = async (instruction, deadlineAt) => {
+      const timed = (engine, run) => async () => {
+        const t = attemptTimeout(deadlineAt);
+        if (!t) return null;
+        const panels = await run(t);
+        return panels ? { panels, engine } : null;
+      };
+      const leader = geminiKey ? timed('Gemini', (t) => runGeminiModel('gemini-2.5-flash', instruction, cleanScript, geminiKey, t)) : null;
+      const hedge = openrouterKey ? timed('OpenRouter', (t) => runOpenRouterModel('google/gemma-3-27b-it', instruction, cleanScript, openrouterKey, t)) : null;
+      const race = [];
+      if (leader) race.push({ run: leader, delayMs: 0 });
+      if (hedge) race.push({ run: hedge, delayMs: leader ? HEDGE_DELAY_MS : 0 });
+      let won = await raceWithHedge(race);
+      if (!won) {
+        const fallbacks = [];
+        const step = (engine, run) => async (t) => { const panels = await run(t); return panels ? { panels, engine } : null; };
+        if (geminiKey) fallbacks.push(step('Gemini', (t) => runGeminiModel('gemini-2.5-flash-lite', instruction, cleanScript, geminiKey, t)));
+        if (openrouterKey) for (const m of ['google/gemma-3-12b-it', 'deepseek/deepseek-chat']) fallbacks.push(step('OpenRouter', (t) => runOpenRouterModel(m, instruction, cleanScript, openrouterKey, t)));
+        if (openrouterFreeKey) for (const m of FREE_STORYBOARD_MODELS) fallbacks.push(step('OpenRouter (free)', (t) => runOpenRouterModel(m, instruction, cleanScript, openrouterFreeKey, t)));
+        won = await runUntilDeadline(fallbacks, deadlineAt);
       }
-      // Free net — only when the paid OpenRouter tier came up empty.
-      if (!panelsOut && openrouterFreeKey) {
-        const panels = await tryOpenRouter(instruction, cleanScript, openrouterFreeKey, FREE_STORYBOARD_MODELS);
-        if (panels) { panelsOut = enrich(panels); engine = 'OpenRouter (free)'; }
-      }
-      // Gemini LAST (gemini-2.5-flash and its flash-lite hedge/retry live inside tryGemini).
-      if (!panelsOut && geminiKey) {
-        const panels = await tryGemini(instruction, cleanScript, geminiKey);
-        if (panels) { panelsOut = enrich(panels); engine = 'Gemini'; }
-      }
-      return { panelsOut, engine };
+      return won ? { panelsOut: enrich(won.panels), engine: won.engine } : { panelsOut: null, engine: null };
     };
 
-    let { panelsOut: enrichedPanels, engine: storyboardEngine } = await runEngines(staticInstruction);
+    let { panelsOut: enrichedPanels, engine: storyboardEngine } = await runEngines(staticInstruction, startedAt + ENGINE_DEADLINE_MS);
 
     if (!enrichedPanels) {
       await releaseComicQuota(comicReservationKey); // nothing was produced → no comic spent
@@ -413,7 +410,7 @@ export default async function handler(req, res) {
       console.warn(`🛑 generate-storyboard: output held back (${outCheck.stage})`);
       let again = null;
       if (left() >= REGEN_MIN_LEFT_MS) {
-        again = (await runEngines(`${staticInstruction}\n\n${REGENERATION_SAFETY_LINE}`)).panelsOut;
+        again = (await runEngines(`${staticInstruction}\n\n${REGENERATION_SAFETY_LINE}`, startedAt + REGEN_DEADLINE_MS)).panelsOut;
       }
       const recheck = again ? await checkTextOutput(storyboardText(again), { genre, budgetMs: left() }) : null;
       if (recheck?.verdict === 'unavailable') {
@@ -430,6 +427,14 @@ export default async function handler(req, res) {
     // Selective Framing: enforce the hard hero cap server-side so a model overshoot
     // (or a tampered client) can never push more than MAX_HERO paid identity panels.
     enrichedPanels = applyHeroCap(enrichedPanels);
+
+    // Last line of defence for the 60 s function limit: a function killed by Vercel never releases the reserved comic quota, so if the work
+    // ran this long we answer with a clean JSON failure (quota given back) instead of racing the kill.
+    if (Date.now() - startedAt > ROUTE_HARD_MS) {
+      console.warn(`⏱️ generate-storyboard: ${Date.now() - startedAt} ms — answering with a clean failure before the 60 s limit`);
+      await releaseComicQuota(comicReservationKey);
+      return res.status(503).json({ success: false, code: CODES.STORYBOARD_FAIL, message: 'Storyboard took too long.' });
+    }
 
     // ── Global activity counters (all tiers) — powers /api/admin/stats ─────────
     // Outside the quota guard so Pro/admin comics are counted too. One storyboard
@@ -509,7 +514,7 @@ export default async function handler(req, res) {
     // per-panel/replacement counters). Admins are exempt there.
     if (!isAdmin) await openComicSession(comicSeed, identifier, unlockedCount);
 
-    console.log(`🦸‍♂️ Comic Panel generated successfully via: ${storyboardEngine}`);
+    console.log(`🦸‍♂️ Comic Panel generated successfully via: ${storyboardEngine} in ${Date.now() - startedAt} ms`);
     return res.status(200).json({
       success: true,
       panels: cappedPanels,

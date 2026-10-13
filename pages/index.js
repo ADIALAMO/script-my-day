@@ -412,6 +412,7 @@ function HomePage() {
   const { gender, setGender, suggestGender, genderTouched } = useGender();
   const [showHistory, setShowHistory] = useState(false);
   const [initialPanels,    setInitialPanels]    = useState(null);
+  const [initialComicMeta, setInitialComicMeta] = useState(null); // { comicSeed, sessionId, unlocked } of the reopened History entry (resume missing frames)
   const [initialPosterUrl, setInitialPosterUrl] = useState(null);
   const [journalText,      setJournalText]      = useState(''); // raw diary behind the script → journal/script toggle
 
@@ -734,6 +735,7 @@ function HomePage() {
     setScript('');
     setSelectedGenre(genre);
     setInitialPanels(null);
+    setInitialComicMeta(null);
     setInitialPosterUrl(null);
     setJournalText(journalEntry);
 
@@ -1498,9 +1500,10 @@ function HomePage() {
                   setInitialPosterUrl(url);
                 }}
                 onScriptEdited={(text) => updateEntry(currentEntryIdRef.current, { script: text })}
-                onPanelsGenerated={(panels) => updateEntry(currentEntryIdRef.current, { panels: panels.filter(p => !p.isLocked) })}
+                onPanelsGenerated={(panels, meta) => updateEntry(currentEntryIdRef.current, { panels: panels.filter(p => !p.isLocked), ...(meta?.comicSeed ? { comicMeta: { comicSeed: meta.comicSeed, sessionId: meta.sessionId || null, unlocked: meta.unlocked ?? null, savedAt: Date.now() } } : {}) })}
                 onAuthRequired={openAuthModal}
                 initialPanels={initialPanels}
+                initialComicMeta={initialComicMeta}
                 initialPosterUrl={initialPosterUrl}
                 onCharacterModalToggle={setCharacterModalOpenMirror}
                 closeCharacterModalRef={closeCharacterModalRef}
@@ -1698,6 +1701,7 @@ function HomePage() {
           setError('');
           currentEntryIdRef.current = entry.id;
           setInitialPanels(entry.panels?.length > 0 ? entry.panels : null);
+          setInitialComicMeta(entry.panels?.length > 0 ? (entry.comicMeta || null) : null);
           setInitialPosterUrl(entry.posterUrl || null);
           setJournalText(entry.journalEntry || '');
         }}

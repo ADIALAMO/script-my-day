@@ -2,6 +2,37 @@ import { useState, useEffect, useRef, useReducer, useCallback } from 'react';
 import { track } from '@vercel/analytics';
 import { getMsg, CODES, isQuotaError } from '../lib/messages.js';
 import { useRotatingMessages } from './useRotatingMessages.js';
+import {
+  classifyFrameFailure, missingFrames, anySessionExpired, shouldAutoRetry, restoredPanelState,
+  FETCH_TIMEOUT_MS, AUTO_RETRY_DELAY_MS, RESUME_CONCURRENCY,
+} from '../utils/frame-error.js';
+
+const makeSessionId = () => `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+/**
+ * fetch + JSON with a hard timeout (AbortController). Resolves { status, ok, headers, data, nonJson }; a non-JSON body (e.g. Vercel's 504 page) gives
+ * nonJson:true and data {}. Rejects with e.kind = 'timeout' | 'network' (offline, iOS "Load failed" after the tab was suspended, user abort).
+ * `onController` lets the caller abort the request (Cancel).
+ */
+async function fetchJson(url, init, ms, onController) {
+  const controller = new AbortController();
+  onController?.(controller);
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, ms);
+  try {
+    const resp = await fetch(url, { ...init, signal: controller.signal });
+    let data = {};
+    let nonJson = false;
+    try { data = await resp.json(); } catch { nonJson = true; }
+    return { status: resp.status, ok: resp.ok, headers: resp.headers, data: data && typeof data === 'object' ? data : {}, nonJson };
+  } catch (e) {
+    const err = new Error(timedOut ? 'timeout' : 'network');
+    err.kind = timedOut ? 'timeout' : 'network';
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 // ── Panel image state machine ────────────────────────────────────────────────
 
@@ -13,12 +44,9 @@ function panelImagesReducer(state, action) {
       return next;
     }
     case 'INIT_FROM_HISTORY': {
+      // a panel that never got its image is "missing": retryable when the comic's session (seed) was saved with the entry, else a plain lost frame
       const next = {};
-      action.panels.forEach((p, i) => {
-        next[i] = p.imageUrl
-          ? { loading: false, url: p.imageUrl, error: false }
-          : { loading: false, url: null, error: true };
-      });
+      action.panels.forEach((p, i) => { next[i] = restoredPanelState(p, action.canResume); });
       return next;
     }
     case 'SET_PANEL':
@@ -80,6 +108,7 @@ export function useStoryboardGeneration({
   onAuthRequired,
   onPanelsGenerated,
   initialPanels,
+  initialComicMeta,  // { comicSeed, sessionId, unlocked } saved with the History entry — lets missing frames be resumed
   characterImageUrl, // Identity Track — null/undefined → standard generation
   heroDescriptor,    // e.g. 'male hero' — only set when Identity Track is active
 }) {
@@ -115,6 +144,16 @@ export function useStoryboardGeneration({
   // of re-opening the storyboard after the user has backed out.
   const storyboardCancelledRef = useRef(false);
 
+  // Aborts the in-flight storyboard text request (Cancel) — and the timeout controller lives in fetchJson.
+  const storyboardAbortRef = useRef(null);
+  // Latest values for the resume / visibility code (no stale closures, no dep churn).
+  const unlockedRef = useRef(0);
+  const panelsRef = useRef([]);
+  const panelImagesRef = useRef({});
+  // true only for a comic generated in THIS session — the automatic "tab is visible again" retry never spends credits on a restored comic
+  const freshComicRef = useRef(false);
+  const visRetriedRef = useRef(new Set());
+
   // Accumulates R2 CDN URLs as each panel upload completes.
   // Reset at the start of every new generation run.
   const panelCdnUrlsRef = useRef({});
@@ -139,12 +178,18 @@ export function useStoryboardGeneration({
   const characterImageUrlRef = useRef(characterImageUrl);
   useEffect(() => { characterImageUrlRef.current = characterImageUrl; }, [characterImageUrl]);
 
+  panelImagesRef.current = panelImages;
+  panelsRef.current      = storyboardPanels;
+  unlockedRef.current    = unlockedPanels;
+
   const messages       = isHebrew ? STORYBOARD_MESSAGES_HE : STORYBOARD_MESSAGES_EN;
   const currentMessage = useRotatingMessages(messages, 2200, storyboardLoading);
 
   // ── Reset on new script / restore from history ──────────────────────────
   useEffect(() => {
     storyboardActiveRef.current = false;
+    freshComicRef.current       = false;
+    visRetriedRef.current       = new Set();
     panelCdnUrlsRef.current     = {};
     panelSessionRef.current     = null;
     comicSeedRef.current        = null;
@@ -164,10 +209,17 @@ export function useStoryboardGeneration({
       // Seed the CDN-url ref so a later REPLACE rebuilds the full history array without
       // dropping the other panels' existing images.
       ownedPanels.forEach((p, i) => { if (p.imageUrl) panelCdnUrlsRef.current[i] = p.imageUrl; });
+      // The comic's server session (seed) was saved with the entry: restore it so missing frames can be resumed (and Replace works) for 24 h.
+      const canResume = !!(initialComicMeta && typeof initialComicMeta.comicSeed === 'string' && initialComicMeta.comicSeed);
+      if (canResume) {
+        comicSeedRef.current = initialComicMeta.comicSeed;
+        panelSessionRef.current = initialComicMeta.sessionId || makeSessionId();
+        storyboardActiveRef.current = true;   // a restored comic is live: retry / replace results must not be dropped
+      }
       setStoryboardPanels(ownedPanels);
       setUnlockedPanels(ownedPanels.length);
       setShowStoryboard(true);
-      dispatchPanelImages({ type: 'INIT_FROM_HISTORY', panels: ownedPanels });
+      dispatchPanelImages({ type: 'INIT_FROM_HISTORY', panels: ownedPanels, canResume });
       setComicSource('restored'); // TEMP DIAGNOSTIC (reel-crash)
       comicCompletedAtRef.current = Date.now(); // TEMP DIAGNOSTIC (reel-crash) — already "finished"
     } else {
@@ -177,7 +229,7 @@ export function useStoryboardGeneration({
       setUnlockedPanels(0);
       dispatchPanelImages({ type: 'RESET' });
     }
-  }, [script, initialPanels]);
+  }, [script, initialPanels, initialComicMeta]);
 
   // ── Panel image generation + R2 upload ───────────────────────────────────
   //
@@ -191,9 +243,34 @@ export function useStoryboardGeneration({
   // setStoryboardPanels in generateStoryboard may not have committed yet by
   // the time a fast response comes back, so the literal array argument is
   // used there; the retry path passes the (by-then-settled) state instead.
-  const generatePanelImage = useCallback(async (idx, panel, sessionId, allPanels, onSettled) => {
+  const generatePanelImage = useCallback(async (idx, panel, sessionId, allPanels, onSettled, attempt = 0) => {
+    // A frame that failed ends in an error state that SAYS whether asking again can help (retryable) or the comic's session is gone.
+    const settleError = (f) => {
+      dispatchPanelImages({
+        type: 'SET_PANEL', idx,
+        payload: { loading: false, url: null, error: true, retryable: f.retryable, sessionExpired: f.sessionExpired },
+      });
+      onSettled?.();
+    };
+    // ONE automatic retry for connection-level failures, after ~1.5 s and only while the tab is visible (iOS suspends background pages, and the
+    // requests of a page that was just resumed often fail instantly). The frame stays "loading" meanwhile.
+    const retryOnce = () => {
+      const run = () => { if (storyboardActiveRef.current) generatePanelImage(idx, panel, sessionId, allPanels, onSettled, attempt + 1); };
+      const later = () => setTimeout(run, AUTO_RETRY_DELAY_MS);
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        const onVis = () => { if (document.visibilityState === 'visible') { document.removeEventListener('visibilitychange', onVis); later(); } };
+        document.addEventListener('visibilitychange', onVis);
+      } else later();
+    };
+    // network-level failures (offline, timeout, non-JSON body, 5xx): auto-retry once, then show the "Retry this frame" state
+    const connectionFailure = (kind, status) => {
+      const f = classifyFrameFailure({ kind, status });
+      if (shouldAutoRetry({ attempt, retryable: f.retryable })) retryOnce(); else settleError(f);
+    };
+
+    let res;
     try {
-      const resp = await fetch('/api/generate-poster', {
+      res = await fetchJson('/api/generate-poster', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -208,111 +285,99 @@ export function useStoryboardGeneration({
           // free faceless cascade automatically (objects/locations/secondaries).
           characterImageUrl: (panel.hero && characterImageUrlRef.current) ? characterImageUrlRef.current : undefined,
         }),
-      });
+      }, FETCH_TIMEOUT_MS.panel);
+    } catch (e) {
+      if (!storyboardActiveRef.current) return;
+      connectionFailure(e?.kind || 'network');
+      return;
+    }
+    if (!storyboardActiveRef.current) return;
+    const { status, data, nonJson, headers } = res;
 
-      if (resp.status === 429) {
-        if (!storyboardActiveRef.current) return;
-        // Only the sliding-window limiter is a "wait a moment and retry" case. A quota answer
-        // (daily panel cap, replacements used up) will not clear by retrying — show a failure.
-        const limited = await resp.clone().json().catch(() => ({}));
-        if (limited?.code && limited.code !== CODES.RATE_LIMITED) {
-          dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: false, url: null, error: true } });
-          onSettled?.();
-          return;
-        }
-        const retryAfterSec = parseInt(resp.headers.get('Retry-After'), 10);
-        dispatchPanelImages({
-          type: 'SET_PANEL', idx,
-          payload: {
-            loading: false, url: null, error: false,
-            rateLimited: true,
-            retryAvailableAt: Date.now() + (Number.isFinite(retryAfterSec) ? retryAfterSec : 8) * 1000,
-          },
-        });
-        onSettled?.();
+    if (nonJson) { connectionFailure('nonjson', status); return; }
+    if (status >= 500) { connectionFailure('http', status); return; }
+
+    if (status === 429) {
+      // Only the sliding-window limiter is a "wait a moment and retry" case. A quota answer
+      // (daily panel cap, replacements used up) will not clear by retrying — show a failure.
+      if (data?.code && data.code !== CODES.RATE_LIMITED) {
+        settleError(classifyFrameFailure({ kind: 'api', status, code: data.code }));
         return;
       }
-
-      const data = await resp.json();
-      if (!storyboardActiveRef.current) return;
-
-      // A placeholder (all providers exhausted) is server-shaped like a success
-      // (success: true, a real imageUrl — the placeholder SVG) but no image was
-      // actually generated. Must be treated as a failure here: never uploaded to
-      // R2, never persisted to history, never shown as if it were a real panel.
-      if (data.isPlaceholder) {
-        if (data.code === CODES.IMAGE_BUDGET_REACHED || data.code === CODES.CONTENT_REFUSED || data.code === CODES.CONTENT_CHECK_UNAVAILABLE) setComicNotice((n) => n || getMsg(data.code, lang));
-        dispatchPanelImages({
-          type: 'SET_PANEL', idx,
-          payload: { loading: false, url: null, error: true },
-        });
-        onSettled?.();
-        return;
-      }
-
-      if (data.success && data.imageUrl) {
-        // A hero panel that came out without the user's face because identity is capped/used up:
-        // say why (once per comic) instead of leaving a silent substitution.
-        if (data.identityDegraded && data.code) setComicNotice((n) => n || getMsg(data.code, lang));
-        // ── Phase 2: show data URI immediately (instant UX) ────────────
-        dispatchPanelImages({
-          type: 'SET_PANEL', idx,
-          payload: { loading: false, url: data.imageUrl, error: false },
-        });
-        onSettled?.();
-
-        // ── Phase 3: background R2 upload (does NOT block the image) ───
-        // Determine extension from data URI prefix.
-        const ext = data.imageUrl.startsWith('data:image/png') ? 'png' : 'jpg';
-        const key = `panels/${sessionId}_${String(idx).padStart(2, '0')}.${ext}`;
-
-        fetch('/api/upload-panel', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageData: data.imageUrl, key }),
-        })
-          .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-          .then(({ url: cdnUrl }) => {
-            if (!cdnUrl || !storyboardActiveRef.current) return;
-
-            // ── Phase 4: hot-swap data URI → permanent CDN URL ──────────
-            dispatchPanelImages({
-              type: 'SET_PANEL', idx,
-              payload: { loading: false, url: cdnUrl, error: false },
-            });
-
-            // ── Phase 5: persist updated panels to history ──────────────
-            // Build the full merged array with all CDN URLs known so far.
-            panelCdnUrlsRef.current[idx] = cdnUrl;
-            const merged = allPanels.map((p, i) => ({
-              ...p,
-              imageUrl: panelCdnUrlsRef.current[i] ?? null,
-            }));
-            onPanelsGeneratedRef.current?.(merged);
-          })
-          .catch((err) => {
-            // Upload failed silently — the data URI keeps displaying for
-            // the current session; history entry has imageUrl: null for
-            // this panel and can be regenerated later.
-            console.warn(`⚠️ R2 upload skipped for panel ${idx}: ${err.message}`);
-          });
-
-      } else {
-        // The server's keyword blocklist rejected this panel's prompt (nothing was generated or charged).
-        if (data.code === CODES.CONTENT_BLOCKED) setComicNotice((n) => n || getMsg(data.code, lang));
-        dispatchPanelImages({
-          type: 'SET_PANEL', idx,
-          payload: { loading: false, url: null, error: true },
-        });
-        onSettled?.();
-      }
-    } catch {
-      if (!storyboardActiveRef.current) return;
+      const retryAfterSec = parseInt(headers.get('Retry-After'), 10);
       dispatchPanelImages({
         type: 'SET_PANEL', idx,
-        payload: { loading: false, url: null, error: true },
+        payload: {
+          loading: false, url: null, error: false,
+          rateLimited: true,
+          retryAvailableAt: Date.now() + (Number.isFinite(retryAfterSec) ? retryAfterSec : 8) * 1000,
+        },
       });
       onSettled?.();
+      return;
+    }
+
+    // A placeholder (all providers exhausted) is server-shaped like a success
+    // (success: true, a real imageUrl — the placeholder SVG) but no image was
+    // actually generated. Must be treated as a failure here: never uploaded to
+    // R2, never persisted to history, never shown as if it were a real panel.
+    if (data.isPlaceholder) {
+      if (data.code === CODES.IMAGE_BUDGET_REACHED || data.code === CODES.CONTENT_REFUSED || data.code === CODES.CONTENT_CHECK_UNAVAILABLE) setComicNotice((n) => n || getMsg(data.code, lang));
+      settleError(classifyFrameFailure({ kind: 'placeholder', status, code: data.code }));
+      return;
+    }
+
+    if (data.success && data.imageUrl) {
+      // A hero panel that came out without the user's face because identity is capped/used up:
+      // say why (once per comic) instead of leaving a silent substitution.
+      if (data.identityDegraded && data.code) setComicNotice((n) => n || getMsg(data.code, lang));
+      // ── Phase 2: show data URI immediately (instant UX) ────────────
+      dispatchPanelImages({
+        type: 'SET_PANEL', idx,
+        payload: { loading: false, url: data.imageUrl, error: false },
+      });
+      onSettled?.();
+
+      // ── Phase 3: background R2 upload (does NOT block the image) ───
+      // Determine extension from data URI prefix.
+      const ext = data.imageUrl.startsWith('data:image/png') ? 'png' : 'jpg';
+      const key = `panels/${sessionId}_${String(idx).padStart(2, '0')}.${ext}`;
+
+      fetch('/api/upload-panel', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData: data.imageUrl, key }),
+      })
+        .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+        .then(({ url: cdnUrl }) => {
+          if (!cdnUrl || !storyboardActiveRef.current) return;
+
+          // ── Phase 4: hot-swap data URI → permanent CDN URL ──────────
+          dispatchPanelImages({
+            type: 'SET_PANEL', idx,
+            payload: { loading: false, url: cdnUrl, error: false },
+          });
+
+          // ── Phase 5: persist updated panels to history ──────────────
+          // Build the full merged array with all CDN URLs known so far (plus the comic's session, so missing frames can be resumed later).
+          panelCdnUrlsRef.current[idx] = cdnUrl;
+          const merged = allPanels.map((p, i) => ({
+            ...p,
+            imageUrl: panelCdnUrlsRef.current[i] ?? null,
+          }));
+          onPanelsGeneratedRef.current?.(merged, { comicSeed: comicSeedRef.current, sessionId: panelSessionRef.current, unlocked: unlockedRef.current });
+        })
+        .catch((err) => {
+          // Upload failed silently — the data URI keeps displaying for
+          // the current session; history entry has imageUrl: null for
+          // this panel and can be regenerated later.
+          console.warn(`⚠️ R2 upload skipped for panel ${idx}: ${err.message}`);
+        });
+
+    } else {
+      // The server's keyword blocklist rejected this panel's prompt (nothing was generated or charged).
+      if (data.code === CODES.CONTENT_BLOCKED) setComicNotice((n) => n || getMsg(data.code, lang));
+      settleError(classifyFrameFailure({ kind: 'api', status, code: data.code }));
     }
   }, [genre, lang]); // onPanelsGeneratedRef is a ref — intentionally excluded from deps
 
@@ -354,6 +419,47 @@ export function useStoryboardGeneration({
     generatePanelImage(idx, panel, panelSessionRef.current, storyboardPanels);
   }, [storyboardPanels, panelImages, generatePanelImage]);
 
+  // ── "Retry this frame" / "Generate missing frames" ─────────────────────────
+  // A frame that failed for a connection reason (or was never generated because the tab was suspended / closed first) can be asked for again.
+  // The server gave a failed attempt back, and a request that never arrived never counted, so this is a normal first attempt for that panel.
+  // (If the server DID render it and only the answer was lost, this counts as one of the comic's replacements — QUOTA_PANEL_REGEN then says so.)
+  const retryOne = useCallback((idx) => new Promise((resolve) => {
+    const panel = panelsRef.current[idx];
+    if (!panel || panel.isLocked || !panel.visual || panelImagesRef.current[idx]?.loading) { resolve(); return; }
+    if (!panelSessionRef.current) panelSessionRef.current = makeSessionId();
+    storyboardActiveRef.current = true;
+    dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: true, url: null, error: false } });
+    const guard = setTimeout(resolve, FETCH_TIMEOUT_MS.panel + 8000);        // never hang the pool on a path that does not settle
+    generatePanelImage(idx, panel, panelSessionRef.current, panelsRef.current, () => { clearTimeout(guard); resolve(); }, 1);
+  }), [generatePanelImage]);
+
+  const retryFrame = useCallback((idx) => { retryOne(idx); }, [retryOne]);
+
+  // RESUME_CONCURRENCY (2) frames at a time, so a resume never looks like a burst
+  const runPool = useCallback(async (indexes) => {
+    const queue = [...indexes];
+    const worker = async () => { while (queue.length) { await retryOne(queue.shift()); } };
+    await Promise.all(Array.from({ length: Math.min(RESUME_CONCURRENCY, queue.length) }, worker));
+  }, [retryOne]);
+
+  const generateMissingFrames = useCallback(() => {
+    const list = missingFrames(panelImagesRef.current, unlockedRef.current);
+    if (list.length) runPool(list);
+  }, [runPool]);
+
+  // Back in the foreground: frames of a comic generated in THIS session that failed while the page was suspended get one more chance, once each.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible' || !freshComicRef.current || !storyboardActiveRef.current) return;
+      const todo = missingFrames(panelImagesRef.current, unlockedRef.current).filter((i) => !visRetriedRef.current.has(i));
+      if (!todo.length) return;
+      todo.forEach((i) => visRetriedRef.current.add(i));
+      runPool(todo);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [runPool]);
+
   // ── Replace a single panel image (user-initiated, budget-limited) ──────────
   // Re-runs image generation for ONE unlocked panel with the same visual prompt (a fresh
   // server-side seed → a new image). The old image stays visible under a spinner, so a
@@ -372,7 +478,7 @@ export function useStoryboardGeneration({
     dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: true, url: oldUrl, error: false, regenerating: true } });
 
     try {
-      const resp = await fetch('/api/generate-poster', {
+      const { data } = await fetchJson('/api/generate-poster', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -384,8 +490,7 @@ export function useStoryboardGeneration({
           comicSeed:   comicSeedRef.current,
           characterImageUrl: (panel.hero && characterImageUrlRef.current) ? characterImageUrlRef.current : undefined,
         }),
-      });
-      const data = await resp.json();
+      }, FETCH_TIMEOUT_MS.panel);   // a timeout / network error lands in the catch below: the old image stays
       if (!storyboardActiveRef.current) return;  // user closed the storyboard mid-flight
 
       // The server is the authority on the replacement budget: when it says the budget is
@@ -422,7 +527,7 @@ export function useStoryboardGeneration({
           const merged = storyboardPanels.map((p, i) => ({
             ...p, imageUrl: panelCdnUrlsRef.current[i] ?? p.imageUrl ?? null,
           }));
-          onPanelsGeneratedRef.current?.(merged);
+          onPanelsGeneratedRef.current?.(merged, { comicSeed: comicSeedRef.current, sessionId: panelSessionRef.current, unlocked: unlockedRef.current });
         })
         .catch((err) => console.warn(`⚠️ R2 upload skipped for replaced panel ${idx}: ${err.message}`));
     } catch {
@@ -447,7 +552,8 @@ export function useStoryboardGeneration({
     const deviceId = typeof window !== 'undefined' ? localStorage.getItem('lifescript_device_id') || '' : '';
 
     try {
-      const response = await fetch('/api/generate-storyboard', {
+      // 62 s ceiling (the route is killed at 60 s): a hung request becomes a normal, retryable error instead of an endless spinner.
+      const { status, data } = await fetchJson('/api/generate-storyboard', {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -461,13 +567,12 @@ export function useStoryboardGeneration({
           // already generated above but never sent to this endpoint before.
           comicSeed: comicSeedRef.current,
         }),
-      });
-      const data = await response.json();
+      }, FETCH_TIMEOUT_MS.storyboard, (c) => { storyboardAbortRef.current = c; });
 
       // User cancelled while the text request was in flight — drop the result.
       if (storyboardCancelledRef.current) return;
 
-      if (response.status === 403) {
+      if (status === 403) {
         onAuthRequired?.('comic');
         return;
       }
@@ -478,6 +583,9 @@ export function useStoryboardGeneration({
           : data.panels.length;
 
         storyboardActiveRef.current = true;
+        freshComicRef.current = true;
+        visRetriedRef.current = new Set();
+        unlockedRef.current = unlocked;
         // The server may have issued the seed (older clients) — panel requests must carry it.
         if (typeof data.comicSeed === 'string' && data.comicSeed) comicSeedRef.current = data.comicSeed;
         const serverRegenLimit = Number.isFinite(data.regenLimit) ? data.regenLimit : REGEN_LIMIT;
@@ -488,13 +596,13 @@ export function useStoryboardGeneration({
         setShowStoryboard(true);
         track('Storyboard Generated', { genre, language: lang });
 
-        // Persist panel text to history immediately (imageUrl: null per panel).
-        // Even if the user closes before images finish, the narrative plan is saved.
-        onPanelsGeneratedRef.current?.(data.panels.map(p => ({ ...p, imageUrl: null })));
-
         // Unique session ID scopes all R2 keys for this generation run (and later replaces).
-        const sessionId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const sessionId = makeSessionId();
         panelSessionRef.current = sessionId;
+
+        // Persist panel text to history immediately (imageUrl: null per panel), TOGETHER with the comic's session (seed, id, unlocked count):
+        // even if the tab is suspended or closed before the images finish, reopening the entry can resume the missing frames.
+        onPanelsGeneratedRef.current?.(data.panels.map(p => ({ ...p, imageUrl: null })), { comicSeed: comicSeedRef.current, sessionId, unlocked });
         setComicSource('fresh'); comicCompletedAtRef.current = null; // TEMP DIAGNOSTIC (reel-crash)
         generateStoryboardImages(data.panels, unlocked, sessionId);
 
@@ -504,12 +612,14 @@ export function useStoryboardGeneration({
         setStoryboardError(getMsg(code, lang));
       }
     } catch {
+      if (storyboardCancelledRef.current) return;
       const code = (typeof navigator !== 'undefined' && navigator.onLine)
         ? CODES.STORYBOARD_FAIL
         : CODES.NETWORK_OFFLINE;
       setStoryboardErrorCode(code);
       setStoryboardError(getMsg(code, lang));
     } finally {
+      storyboardAbortRef.current = null;
       setStoryboardLoading(false);
     }
   }, [lang, genre, cleanScript, comicStyle, heroDescriptor, generateStoryboardImages]);
@@ -531,6 +641,7 @@ export function useStoryboardGeneration({
   const cancelStoryboard = useCallback(() => {
     storyboardCancelledRef.current = true;
     storyboardActiveRef.current    = false;
+    storyboardAbortRef.current?.abort();   // frees the connection too (the route may still finish on the server)
     setStoryboardLoading(false);
     setShowStoryboard(false);
     setStoryboardPanels([]);
@@ -541,7 +652,17 @@ export function useStoryboardGeneration({
     track('Storyboard Cancelled', { genre, language: lang });
   }, [genre, lang]);
 
+  // The comic's server session is gone (24 h) or unusable: the only way forward is a new comic (the user's explicit choice — it uses a comic).
+  const startNewComic = useCallback(() => {
+    closeStoryboard();
+    generateStoryboard();
+  }, [closeStoryboard, generateStoryboard]);
+
+  const missingCount = missingFrames(panelImages, unlockedPanels).length;
+  const sessionExpired = anySessionExpired(panelImages, unlockedPanels);
+
   return {
+    retryFrame, generateMissingFrames, startNewComic, missingCount, sessionExpired,
     showStoryboard,
     storyboardPanels,
     storyboardLoading,
