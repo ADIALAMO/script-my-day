@@ -22,6 +22,8 @@ import { SHOWCASE_POSTERS, SHOWCASE_REELS } from '../constants/showcase';
 import { useGuidedTour } from '../hooks/useGuidedTour.js';
 import { skipPageAutoScroll } from '../utils/scroll-mode.js';
 import { scrollToScriptWindow } from '../utils/scroll-to-anchor.js';
+import { createScriptFlow } from '../utils/script-flow.js';
+import ConfirmReplaceDialog from '../components/ConfirmReplaceDialog.jsx';
 import { readEffectiveFlags } from '../utils/variant-flags.js';
 import { modalDataFor } from '../constants/modalData';
 import ReportButton from '../components/ReportButton';
@@ -657,9 +659,21 @@ function HomePage() {
   // ── Guided tour (UI only) ─────────────────────────────────────────────────
   // `generationBusy` mirrors ScriptOutput's poster / comic loading state (same bridge pattern as characterModalOpenMirror).
   const [generationBusy, setGenerationBusy] = useState(false);
+  // "Create script" flow (utils/script-flow.js): locks the button from the tap until the typewriter has finished, and asks before replacing a script that is on screen.
+  const generateRef = useRef(null);
+  const scriptRef = useRef('');
+  scriptRef.current = script;
+  const flowRef = useRef(null);
+  if (!flowRef.current) flowRef.current = createScriptFlow({ onStart: (entry, genre) => generateRef.current?.(entry, genre) });
+  const scriptFlow = flowRef.current;
+  const [flowState, setFlowState] = useState(scriptFlow.getState());
+  useEffect(() => scriptFlow.subscribe(setFlowState), [scriptFlow]);
+  const requestGenerate = useCallback((entry, genre) => (!entry || entry.trim().length < 5) ? 'ignored' : scriptFlow.request(entry, genre, { hasScript: !!scriptRef.current }), [scriptFlow]);
+  // ScriptOutput reports its typewriter here (start / finished / skipped / unmounted); `isTyping` stays what it was (the form's textarea also writes it)
+  const onOutputTyping = useCallback((on) => { setIsTyping(on); scriptFlow.outputTyping(on); }, [scriptFlow]);
   const tourBlocked = !!modalContent || !!selectedPoster || !!selectedReel || showAuthModal || showUpgradeModal || showWaitlistModal
     || showHistory || showFeedback || showTips || characterModalOpenMirror || dropdownOpenMirror
-    || scriptLoading || generationBusy;
+    || scriptLoading || generationBusy || flowState.confirming;
   // ?debug=1 shows the scroll overlay (components/ScrollDebug.jsx); decided once, after mount
   const [debugScroll, setDebugScroll] = useState(false);
   useEffect(() => { setDebugScroll(readEffectiveFlags().flags.debug); }, []);   // URL or stored flags (utils/variant-flags.js)
@@ -670,12 +684,14 @@ function HomePage() {
     dropdownOpenMirror,
     showAuthModal, showUpgradeModal, showWaitlistModal,
     showHistory, showFeedback, showTips,
+    replaceConfirming: flowState.confirming,
   };
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
     const listenerPromise = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
       const s = backStateRef.current;
+      if (s.replaceConfirming)     { scriptFlow.cancel();       return; }
       if (s.tourRunning)           { s.tourFinish();           return; }
       if (s.selectedReel)          { setSelectedReel(null);    return; }
       if (s.selectedPoster)        { setSelectedPoster(null);  return; }
@@ -732,10 +748,11 @@ function HomePage() {
   const handleCancelGeneration = () => {
     abortControllerRef.current?.abort();
     setScriptLoading(false);
+    scriptFlow.generationEnded();
   };
 
   const handleGenerateScript = async (journalEntry, genre) => {
-    if (!journalEntry || journalEntry.trim().length < 5) return;
+    if (!journalEntry || journalEntry.trim().length < 5) { scriptFlow.generationEnded(); return; }
 
     abortControllerRef.current?.abort();
     const controller = new AbortController();
@@ -819,6 +836,7 @@ function HomePage() {
 
       if (finalScript) {
         setScript(finalScript);
+        scriptFlow.scriptReady();   // the button stays locked until the typewriter has finished
         currentEntryIdRef.current = addEntry({
           genre,
           lang,
@@ -858,8 +876,10 @@ function HomePage() {
       setError(getMsg(code, lang));
     } finally {
       setScriptLoading(false);
+      scriptFlow.generationEnded();   // no-op once a script is on its way; unlocks after an error / quota / auth prompt / abort
     }
   };
+  generateRef.current = handleGenerateScript;
 
   if (!mounted) return null;
 
@@ -1244,7 +1264,8 @@ function HomePage() {
             })()}
 
             <ScriptForm
-              onSubmit={handleGenerateScript}
+              onSubmit={requestGenerate}
+              locked={flowState.locked}
               onCancel={handleCancelGeneration}
               loading={scriptLoading}
               lang={lang}
@@ -1278,7 +1299,7 @@ function HomePage() {
                   {lastJournalEntryRef.current.entry && (
                     <button
                       type="button"
-                      onClick={() => handleGenerateScript(lastJournalEntryRef.current.entry, lastJournalEntryRef.current.genre)}
+                      onClick={() => requestGenerate(lastJournalEntryRef.current.entry, lastJournalEntryRef.current.genre)}
                       className="px-6 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 text-sm font-black uppercase tracking-widest transition-all"
                     >
                       {lang === 'he' ? '↺ נסה שוב' : '↺ RETRY'}
@@ -1495,7 +1516,7 @@ function HomePage() {
                 script={script}
                 lang={lang}
                 genre={selectedGenre}
-                setIsTypingGlobal={setIsTyping}
+                setIsTypingGlobal={onOutputTyping}
                 instant={scriptSource === 'history'}
                 onBusyChange={setGenerationBusy}
                 onMilestone={tour.notify}
@@ -1702,6 +1723,8 @@ function HomePage() {
         </div>
       </footer>
       
+      <ConfirmReplaceDialog open={flowState.confirming} lang={lang} onConfirm={() => scriptFlow.confirm()} onCancel={() => scriptFlow.cancel()} />
+
       {/* Cinematic fullscreen loader — script generation */}
       <HistoryPanel
         isOpen={showHistory}
@@ -1709,6 +1732,7 @@ function HomePage() {
         history={history}
         onReload={(entry) => {
           setScriptSource('history');
+          scriptFlow.scriptReplaced();   // opened without typing: never locked
           setScript(entry.script);
           setSelectedGenre(entry.genre);
           setShowGallery(false);
