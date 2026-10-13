@@ -82,23 +82,58 @@ test('runUntilDeadline: returns the first non-null; a throwing attempt is a fail
   assert.equal(r, 'win');
 });
 
-test('the route wires it: Gemini leads, gemma-3-27b hedges, structured output, 2000 tokens, deadline + clean failure with quota release, log without prompts', () => {
+const { checkMaxCalls, checkBudgetUsd, globalCheckKey } = await import('../lib/budget.js');
+const { PROVIDERS } = await import('../lib/circuit-breaker.js');
+
+test('the paid first engine has its OWN budget (DAILY_STORYBOARD_BUDGET, default $1.00, 0 = off) and its OWN circuit key — not shared with any check', () => {
+  const prev = { b: process.env.DAILY_STORYBOARD_BUDGET, c: process.env.STORYBOARD_COST_USD };
+  delete process.env.DAILY_STORYBOARD_BUDGET; delete process.env.STORYBOARD_COST_USD;
+  try {
+    assert.equal(checkBudgetUsd('storyboard'), 1);
+    assert.equal(checkMaxCalls('storyboard'), 833);                       // floor(1.00 / 0.0012)
+    process.env.DAILY_STORYBOARD_BUDGET = '0';
+    assert.equal(checkMaxCalls('storyboard'), 0);                         // 0 = the paid first engine is off
+    process.env.DAILY_STORYBOARD_BUDGET = '0.0024';
+    assert.equal(checkMaxCalls('storyboard'), 2);
+    process.env.DAILY_STORYBOARD_BUDGET = 'garbage';
+    assert.equal(checkBudgetUsd('storyboard'), 1);                        // unreadable -> the default, never "unlimited"
+  } finally {
+    for (const [k, v] of [['DAILY_STORYBOARD_BUDGET', prev.b], ['STORYBOARD_COST_USD', prev.c]]) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+  }
+  const keys = ['image', 'text', 'minor', 'imgsafety', 'storyboard'].map((p) => globalCheckKey(p));
+  assert.equal(new Set(keys).size, 5, 'five independent counters');
+  assert.match(globalCheckKey('storyboard'), /^usage:storyboard:paid:global:\d{4}-\d{2}-\d{2}$/);
+  assert.ok(PROVIDERS.includes('storyboard_gemini'));
+});
+
+test('the route wires it: OpenRouter Gemini Flash-Lite leads (deny, schema, budget, circuit), gemma hedges, direct Google is LAST, deadline + clean failure with quota release, logs without prompts', () => {
   const src = readFileSync(path.join(ROOT, 'pages/api/generate-storyboard.js'), 'utf8');
   assert.match(src, /raceWithHedge\(race\)/);
-  assert.match(src, /runGeminiModel\('gemini-2\.5-flash'/);
-  assert.match(src, /'google\/gemma-3-27b-it'/);
-  assert.match(src, /responseSchema: GEMINI_RESPONSE_SCHEMA/);
+  assert.match(src, /PRIMARY_MODEL = process\.env\.STORYBOARD_PRIMARY_MODEL\?\.trim\(\) \|\| 'google\/gemini-2\.5-flash-lite'/);
+  assert.match(src, /PRIMARY_PROVIDER = \{ data_collection: 'deny' \}/);
+  assert.match(src, /runPrimaryPaid\(instruction, cleanScript, openrouterKey, t\)/);
+  assert.match(src, /reserveCheckBudget\('storyboard'\)/);
+  assert.match(src, /releaseCheckBudget\('storyboard'\)/);
+  assert.match(src, /PRIMARY_CIRCUIT = 'storyboard_gemini'/);
+  // order inside runEngines: leader, hedge, gemma-12b/deepseek, free net, THEN the direct Google key
+  const run = src.slice(src.indexOf('const runEngines'), src.indexOf('let { panelsOut: enrichedPanels'));
+  const at = (re) => run.search(re);
+  assert.ok(at(/runPrimaryPaid/) < at(/gemma-3-27b-it/));
+  assert.ok(at(/gemma-3-27b-it/) < at(/gemma-3-12b-it/));
+  assert.ok(at(/FREE_STORYBOARD_MODELS/) < at(/runGeminiModel\('gemini-2\.5-flash'/));
+  assert.ok(at(/runGeminiModel\('gemini-2\.5-flash'/) < at(/runGeminiModel\('gemini-2\.5-flash-lite'/));
+  assert.ok(!/raceWithHedge[^;]*runGeminiModel/.test(run), 'direct Gemini is not in the race');
+  assert.match(src, /responseSchema: GEMINI_RESPONSE_SCHEMA/);       // the direct fallback keeps its JSON mode
   assert.match(src, /thinkingBudget: 0/);
-  assert.match(src, /response_format: OPENROUTER_RESPONSE_FORMAT, provider: \{ require_parameters: true \}/);
+  assert.match(src, /response_format: OPENROUTER_RESPONSE_FORMAT/);
   assert.match(src, /max_tokens: 2000/);
   assert.ok(!/max_tokens: 750/.test(src));
   assert.match(src, /startedAt \+ ENGINE_DEADLINE_MS/);
   assert.match(src, /ROUTE_HARD_MS/);
   const hard = src.slice(src.indexOf('Last line of defence'), src.indexOf('Last line of defence') + 700);
   assert.match(hard, /releaseComicQuota\(comicReservationKey\)/);
-  // the per-attempt log carries finish reason + token counts but never prompts, outputs or keys
+  // the per-attempt log carries finish reason, token counts and (paid) usedToday/maxToday/capUsd but never prompts, outputs or keys
   const log = src.slice(src.indexOf('function logAttempt'), src.indexOf('function logAttempt') + 300);
   assert.ok(!/instruction|script|apiKey|text\b/.test(log.replace(/info\)/g, '')));
-  for (const field of ['finish:', 'promptTokens:', 'outputTokens:']) assert.ok(src.includes(field), field);
-  assert.ok(!/console\.\w+\([^)]*(apiKey|staticInstruction|cleanScript)/.test(src.replace(/`[^`]*\$\{[^}]*\}[^`]*`/g, '')) || true);
+  for (const field of ['finish:', 'promptTokens:', 'outputTokens:', 'usedToday', 'maxToday', 'capUsd']) assert.ok(src.includes(field), field);
 });

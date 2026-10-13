@@ -18,7 +18,7 @@
  *   telegram          api.telegram.org (alerts)                                      recorder
  *   r2                @aws-sdk S3 PutObject (patched at the SDK class, see setup.mjs) recorder
  */
-export const PAID = new Set(['gemini-check', 'gemini-imgsafety', 'gemini', 'openrouter-text', 'klein', 'grok', 'gemini-image', 'cohere']);
+export const PAID = new Set(['gemini-check', 'gemini-imgsafety', 'storyboard-gemini', 'gemini', 'openrouter-text', 'klein', 'grok', 'gemini-image', 'cohere']);
 
 // 1x1 transparent PNG
 export const PNG_B64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
@@ -117,6 +117,12 @@ export function createProviders() {
       bodies.push({ provider: model, body });
       const refusedImage = json({ choices: [{ finish_reason: 'content_filter', native_finish_reason: 'IMAGE_SAFETY', message: { content: null } }] });
       const img = { choices: [{ message: { content: null, images: [{ image_url: { url: PNG_DATA_URI } }] } }] };
+      if (model.includes('gemini-2.5-flash') && /storyboard artist/i.test((body?.messages || []).find((m) => m.role === 'system')?.content || '')) {   // the PAID FIRST engine of the storyboard: Gemini Flash-Lite through OpenRouter
+        count('storyboard-gemini', { model }); bodies.push({ provider: 'storyboard-gemini', body });
+        const f = failing('storyboard-gemini'); if (f === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; } if (f) return text('mock failure', Number(f));
+        if (mode.orNoSchema && body?.response_format) return text('{"error":{"message":"No endpoints found that can handle the requested parameters"}}', 404);
+        return json({ choices: [{ finish_reason: 'stop', message: { content: sbRaw.queue.length ? sbRaw.queue.shift() : storyboardJson(sbVisuals.queue.shift()) } }], usage: { prompt_tokens: 2500, completion_tokens: 700 } });
+      }
       if (model.includes('gemini-2.5-flash-lite') && body?.response_format?.json_schema?.name === 'image_safety') {   // the SECOND-OPINION image check (own counter, switch and control)
         count('gemini-imgsafety', { model }); bodies.push({ provider: 'gemini-imgsafety', body });
         const f = failing('gemini-imgsafety'); if (f === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; } if (f) return text('mock failure', Number(f));

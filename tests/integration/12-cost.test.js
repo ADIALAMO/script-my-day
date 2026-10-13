@@ -30,6 +30,7 @@ const SB_SCRIPT = 'INT. BEACH - DAY. A family laughs together by the water while
 export const PRICES = {
   'gemini:gemini-2.5-flash':       { usd: 0.0084, note: 'Google list price × assumed 2.8k in / 3k out tokens (rates VERIFIED, tokens estimated); upper bound: the raced loser is really aborted' },
   'gemini:gemini-3-flash-preview': { usd: 0.0104, note: 'same basis' },
+  'storyboard-gemini':             { usd: 0.0005, note: 'PAID (OpenRouter credits), google/gemini-2.5-flash-lite: $0.10 in / $0.40 out per M (VERIFIED 2026-10-12, see lib/budget.js) × assumed ~2.5k in / ~0.7k out tokens (estimated) — the storyboard FIRST engine' },
   'openrouter-text':               { usd: 0.0006, note: 'PAID (OpenRouter credits). Rates VERIFIED at openrouter.ai/api/v1/models for google/gemma-3-27b-it ($0.08 in / $0.45 out per M) × assumed ~2k in / 1k out tokens; tokens estimated' },
   klein:                           { usd: 0.014,  note: 'UNVERIFIED (KLEIN_COST_USD from OpenRouter logs, not an official page)' },
   grok:                            { usd: 0.06,   note: 'UNVERIFIED (code comment; OpenRouter page showed no price)' },

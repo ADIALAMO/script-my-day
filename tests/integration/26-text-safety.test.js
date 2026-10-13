@@ -126,7 +126,7 @@ scenario('T7', 'STORYBOARD: blocklisted output → one regeneration with the rem
     const a = await makeUser('t7a', 'free');
     const ok = await callStoryboard(a, 'drama', '198.51.100.212');
     assert.equal(ok.status, 200); assert.ok(!JSON.stringify(ok.body.panels).toLowerCase().includes('nude'));
-    const sys = providers.bodies.map((b) => b.body?.messages?.find?.((m) => m.role === 'system')?.content ?? b.body?.systemInstruction?.parts?.[0]?.text).filter(Boolean); // Gemini leads the storyboard cascade (systemInstruction)
+    const sys = [...new Set(providers.bodies.map((b) => b.body))].map((b) => b?.messages?.find?.((m) => m.role === 'system')?.content ?? b?.systemInstruction?.parts?.[0]?.text).filter(Boolean); // one entry per storyboard model call (the mock records some calls under two provider names)
     assert.equal(sys.length, 2); assert.ok(!sys[0].includes(REMINDER) && sys[1].includes(REMINDER));
     assert.equal(COMIC_USED(a), 1);
     providers.sbVisuals.queue.push(`A ${BLATANT}, wide shot`, `A ${BLATANT}, close up`);

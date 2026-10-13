@@ -2,7 +2,8 @@ import { sanitize } from '../../utils/input-processor';
 import redis from '../../lib/redis.js';
 import { CODES } from '../../lib/messages.js';
 import { nextMidnightUTC, isAdminRequest, extractDevTier, isValidComicSeed } from '../../lib/api-utils.js';
-import { paidImageBudgetReached, getOpenProviders } from '../../lib/circuit-breaker.js';
+import { paidImageBudgetReached, getOpenProviders, recordFailure, recordSuccess } from '../../lib/circuit-breaker.js';
+import { reserveCheckBudget, releaseCheckBudget, checkMaxCalls, checkBudgetUsd } from '../../lib/budget.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { limitFor } from '../../lib/quota.js';
 import { reserveComicQuota, releaseComicQuota, unlockedPanelsForNewComic } from '../../lib/comic-quota.js';
@@ -152,6 +153,7 @@ ${CONTENT_SAFETY_RULE}
 Story arc required: opening → development → conflict peak → climax → resolution.`;
 }
 
+// DIRECT Google Gemini (the owner's free-tier key, no billing): the LAST fallback only, never the primary engine.
 // Opt 2: systemInstruction carries the cached static block; contents carries only the dynamic screenplay.
 // Opt 3: JSON mode + responseSchema + thinking disabled is what makes Gemini reliable here. gemini-2.5-flash is a "thinking" model —
 // at a tight token cap it spends the budget on reasoning and returns truncated, non-JSON output (finishReason MAX_TOKENS). responseMimeType
@@ -205,7 +207,7 @@ async function runGeminiModel(model, staticInstruction, script, apiKey, timeoutM
 // provider.require_parameters:true, so a provider that cannot honour it is skipped at once instead of rambling for 15 s. If OpenRouter says
 // no endpoint supports that (400/404/422) the SAME model is asked once more without the schema inside the same time budget.
 // max_tokens 2000 (was 750: a 7-panel answer — more in Hebrew — was cut off mid-array, which no parse strategy could read).
-async function runOpenRouterModel(model, staticInstruction, script, apiKey, timeoutMs, { schema = true } = {}) {
+async function runOpenRouterModel(model, staticInstruction, script, apiKey, timeoutMs, { schema = true, provider = null, meta = null, tag = {} } = {}) {
   const t0 = Date.now();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -226,23 +228,27 @@ async function runOpenRouterModel(model, staticInstruction, script, apiKey, time
         ],
         temperature: 0.25,
         max_tokens: 2000,
-        ...(schema ? { response_format: OPENROUTER_RESPONSE_FORMAT, provider: { require_parameters: true } } : {}),
+        ...(schema || provider ? { provider: { ...(provider || {}), ...(schema ? { require_parameters: true } : {}) } } : {}),
+        ...(schema ? { response_format: OPENROUTER_RESPONSE_FORMAT } : {}),
       }),
       signal: controller.signal
     });
     clearTimeout(timeoutId);
     if (!resp.ok) {
-      logAttempt('openrouter', model, { schema, status: resp.status, ms: Date.now() - t0 });
+      logAttempt('openrouter', model, { ...tag, schema, status: resp.status, ms: Date.now() - t0 });
       const left = timeoutMs - (Date.now() - t0);
       if (schema && [400, 404, 422].includes(resp.status) && left >= 3000) {
-        return runOpenRouterModel(model, staticInstruction, script, apiKey, left, { schema: false });
+        return runOpenRouterModel(model, staticInstruction, script, apiKey, left, { schema: false, provider, meta, tag });
       }
+      if (meta) { meta.technical = true; meta.status = resp.status; }   // no completion was produced: nothing was billed
       return null;
     }
     const data = await resp.json();
     const text = data?.choices?.[0]?.message?.content;
     const parsed = typeof text === 'string' ? parseStoryboard(text) : null;
+    if (meta) { meta.technical = false; meta.status = 200; }
     logAttempt('openrouter', model, {
+      ...tag,
       schema,
       finish: data?.choices?.[0]?.finish_reason ?? null,
       promptTokens: data?.usage?.prompt_tokens ?? null,
@@ -252,9 +258,44 @@ async function runOpenRouterModel(model, staticInstruction, script, apiKey, time
     return parsed ? parsed.panels : null;
   } catch (e) {
     clearTimeout(timeoutId);
-    logAttempt('openrouter', model, { schema, error: e.name === 'AbortError' ? 'timeout' : 'fetch', ms: Date.now() - t0 });
+    if (meta) { meta.technical = false; meta.status = e.name === 'AbortError' ? 408 : null; meta.timedOut = e.name === 'AbortError'; }   // a timeout may still have been billed: the slot stays spent
+    logAttempt('openrouter', model, { ...tag, schema, error: e.name === 'AbortError' ? 'timeout' : 'fetch', ms: Date.now() - t0 });
     return null;
   }
+}
+
+// ── The PAID first engine: Gemini Flash-Lite THROUGH OpenRouter ───────────────────────────────────────────────────────────────
+// Same pattern as the image second opinion (lib/image-check.js): the OpenRouter key, provider.data_collection = "deny", strict json_schema.
+// It is metered like the other paid Gemini calls: its OWN daily budget (DAILY_STORYBOARD_BUDGET, key usage:storyboard:paid:global:<day>, default $1.00,
+// 0 = off) and its OWN circuit (`storyboard_gemini`) — neither is shared with the output checks, so one running dry or failing never switches
+// another off. Budget spent / circuit open / budget unverifiable (Redis down: fail-closed, no paid call without a verified count) -> the engine is
+// SKIPPED (not an error): the hedge (gemma-3-27b) starts at once and the fallbacks follow. The direct Google key (free tier, no billing) is only the LAST fallback.
+const PRIMARY_MODEL = process.env.STORYBOARD_PRIMARY_MODEL?.trim() || 'google/gemini-2.5-flash-lite';
+const PRIMARY_PROVIDER = { data_collection: 'deny' };
+const PRIMARY_CIRCUIT = 'storyboard_gemini';
+
+async function runPrimaryPaid(instruction, script, apiKey, timeoutMs) {
+  let open = new Set();
+  try { open = await getOpenProviders(redis); } catch { /* fail-open on the circuit read only */ }
+  if (open.has(PRIMARY_CIRCUIT)) { logAttempt('openrouter', PRIMARY_MODEL, { paid: true, skipped: 'circuit-open' }); return null; }
+  let b;
+  try { b = await reserveCheckBudget('storyboard'); } catch (e) {
+    console.warn(`⚠️ storyboard paid budget unverifiable (${e.message}) — no paid call`);
+    logAttempt('openrouter', PRIMARY_MODEL, { paid: true, skipped: 'budget-unverifiable' });
+    return null;
+  }
+  if (!b.ok) { logAttempt('openrouter', PRIMARY_MODEL, { paid: true, skipped: 'budget', usedToday: b.used, maxToday: b.max }); return null; }
+  const meta = {};
+  const tag = { paid: true, usedToday: b.used, maxToday: b.max, capUsd: checkBudgetUsd('storyboard') };
+  const panels = await runOpenRouterModel(PRIMARY_MODEL, instruction, script, apiKey, timeoutMs, { schema: true, provider: PRIMARY_PROVIDER, meta, tag });
+  if (panels) { await recordSuccess(redis, PRIMARY_CIRCUIT); return panels; }
+  if (meta.technical) {
+    await releaseCheckBudget('storyboard');                       // no completion -> nothing billed -> the slot goes back
+    await recordFailure(redis, PRIMARY_CIRCUIT, meta.status ?? null);
+  } else if (meta.timedOut) {
+    await recordFailure(redis, PRIMARY_CIRCUIT, 408);              // slow = a failure for the circuit; the slot stays spent (it may have been billed)
+  }
+  return null;                                                    // an unparseable answer was billed and is not the circuit's fault
 }
 
 export default async function handler(req, res) {
@@ -363,8 +404,10 @@ export default async function handler(req, res) {
     // The engine cascade as a function, because the output check below may run it a SECOND time (with a safety reminder appended).
     // Every attempt gets min(12 s, time left before `deadlineAt`) and nothing starts with < 3 s left, so a failing cascade costs seconds and the route
     // can answer (and release the comic quota) in time. Order:
-    //   1. Gemini 2.5 flash (JSON mode + responseSchema, ~2-3 s) leads; OpenRouter gemma-3-27b is the HEDGE — it joins after 4 s, or at once if Gemini fails;
-    //   2. then one after another: Gemini flash-lite, OpenRouter gemma-3-12b, deepseek, and the free OpenRouter net.
+    //   1. LEADER Gemini Flash-Lite via OpenRouter (data_collection deny, strict json_schema, own budget + circuit — see runPrimaryPaid); the HEDGE
+    //      OpenRouter gemma-3-27b joins after 4 s, or AT ONCE when the leader fails or is skipped (budget spent / circuit open);
+    //   2. then one after another: gemma-3-12b, deepseek, the free OpenRouter net, and LAST the direct Google key (free tier, no billing):
+    //      gemini-2.5-flash, then flash-lite.
     const runEngines = async (instruction, deadlineAt) => {
       const timed = (engine, run) => async () => {
         const t = attemptTimeout(deadlineAt);
@@ -372,18 +415,21 @@ export default async function handler(req, res) {
         const panels = await run(t);
         return panels ? { panels, engine } : null;
       };
-      const leader = geminiKey ? timed('Gemini', (t) => runGeminiModel('gemini-2.5-flash', instruction, cleanScript, geminiKey, t)) : null;
-      const hedge = openrouterKey ? timed('OpenRouter', (t) => runOpenRouterModel('google/gemma-3-27b-it', instruction, cleanScript, openrouterKey, t)) : null;
       const race = [];
-      if (leader) race.push({ run: leader, delayMs: 0 });
-      if (hedge) race.push({ run: hedge, delayMs: leader ? HEDGE_DELAY_MS : 0 });
+      if (openrouterKey) {
+        race.push({ run: timed('Gemini Flash-Lite (OpenRouter)', (t) => runPrimaryPaid(instruction, cleanScript, openrouterKey, t)), delayMs: 0 });
+        race.push({ run: timed('OpenRouter', (t) => runOpenRouterModel('google/gemma-3-27b-it', instruction, cleanScript, openrouterKey, t)), delayMs: HEDGE_DELAY_MS });
+      }
       let won = await raceWithHedge(race);
       if (!won) {
         const fallbacks = [];
         const step = (engine, run) => async (t) => { const panels = await run(t); return panels ? { panels, engine } : null; };
-        if (geminiKey) fallbacks.push(step('Gemini', (t) => runGeminiModel('gemini-2.5-flash-lite', instruction, cleanScript, geminiKey, t)));
         if (openrouterKey) for (const m of ['google/gemma-3-12b-it', 'deepseek/deepseek-chat']) fallbacks.push(step('OpenRouter', (t) => runOpenRouterModel(m, instruction, cleanScript, openrouterKey, t)));
         if (openrouterFreeKey) for (const m of FREE_STORYBOARD_MODELS) fallbacks.push(step('OpenRouter (free)', (t) => runOpenRouterModel(m, instruction, cleanScript, openrouterFreeKey, t)));
+        if (geminiKey) {
+          fallbacks.push(step('Gemini (direct)', (t) => runGeminiModel('gemini-2.5-flash', instruction, cleanScript, geminiKey, t)));
+          fallbacks.push(step('Gemini (direct)', (t) => runGeminiModel('gemini-2.5-flash-lite', instruction, cleanScript, geminiKey, t)));
+        }
         won = await runUntilDeadline(fallbacks, deadlineAt);
       }
       return won ? { panelsOut: enrich(won.panels), engine: won.engine } : { panelsOut: null, engine: null };
@@ -514,7 +560,7 @@ export default async function handler(req, res) {
     // per-panel/replacement counters). Admins are exempt there.
     if (!isAdmin) await openComicSession(comicSeed, identifier, unlockedCount);
 
-    console.log(`🦸‍♂️ Comic Panel generated successfully via: ${storyboardEngine} in ${Date.now() - startedAt} ms`);
+    console.log(`🦸‍♂️ Comic Panel generated successfully via: ${storyboardEngine} in ${Date.now() - startedAt} ms (paid first-engine cap ${checkMaxCalls('storyboard')} calls/day = $${checkBudgetUsd('storyboard')})`);
     return res.status(200).json({
       success: true,
       panels: cappedPanels,
