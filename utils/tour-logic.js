@@ -36,9 +36,35 @@ export function autoStartDecision({ done, priorActivity, hasScript, blocked, coo
 
 export const isUsableRect = (r) => !!r && r.width > 0 && r.height > 0;
 
-/** keep the steps whose anchor exists and is visible. lookup(anchor) -> rect | null */
+/** the first of a step's anchors (several = fallbacks) that exists and is visible, else null. lookup(anchor) -> rect | null */
+export function findUsableAnchor(step, lookup) {
+  return step.anchors.find((a) => isUsableRect(lookup(a))) || null;
+}
+
+/** keep the steps with a usable anchor right now */
 export function resolveSteps(steps, lookup) {
-  return steps.filter((s) => isUsableRect(lookup(s.anchor)));
+  return steps.filter((s) => findUsableAnchor(s, lookup));
+}
+
+/**
+ * One step's lifecycle, polled. Not shown yet: 'show' when its anchor is there, 'wait' until `waitMs` has passed, then 'drop' (silently).
+ * Shown: 'keep' while the anchor is there; once it has been missing `misses` polls in a row (>= 2, so a re-render can't drop it) 'drop'.
+ */
+export function stepOutcome({ found, shown, elapsedMs = 0, waitMs = 0, misses = 0 }) {
+  if (!shown) return found ? 'show' : (elapsedMs >= waitMs ? 'drop' : 'wait');
+  if (found) return 'keep';
+  return misses >= 2 ? 'drop' : 'wait';
+}
+
+/** "k of M" total after silent drops */
+export const chapterTotal = (length, dropped) => Math.max(0, length - dropped);
+
+/** the Guide menu offers a chapter only when its screen is there. hasAnchor(name) -> boolean */
+export const chapterAvailable = (chapter, hasAnchor) => chapter.requires.every((a) => hasAnchor(a));
+
+/** chapters 2+ start on their own only for a user who finished chapter 1 (never after a skip), once each */
+export function chapterAutoEligible(state, id) {
+  return id > 1 && !state.off && state.done.includes(1) && !state.done.includes(id);
 }
 
 /**

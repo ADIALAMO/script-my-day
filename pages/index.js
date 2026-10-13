@@ -896,7 +896,7 @@ function HomePage() {
         onStartTour={tour.start}
         tourDisabled={tourBlocked}
       />
-      {tour.running && <GuidedTour lang={lang} onFinish={tour.finish} onAbort={tour.abort} />}
+      {tour.running && <GuidedTour key={tour.chapter} chapter={tour.chapter} lang={lang} onFinish={tour.finish} onAbort={tour.abort} />}
 
       <main className="container mx-auto pt-4 md:pt-8 pb-12 px-6 max-w-5xl flex-grow relative">
 
@@ -1481,6 +1481,7 @@ function HomePage() {
                 setIsTypingGlobal={setIsTyping}
                 instant={scriptSource === 'history'}
                 onBusyChange={setGenerationBusy}
+                onMilestone={tour.notify}
                 producerName={producerName}
                 gender={gender}
                 setGender={setGender}

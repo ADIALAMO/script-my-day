@@ -327,7 +327,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                 className="group bg-[#050710] border border-[#d4a373]/12 rounded-[1.75rem] overflow-hidden hover:border-[#d4a373]/30 hover:shadow-[0_8px_40px_rgba(212,163,115,0.08)] transition-all duration-400"
               >
                 {/* ── Image zone ──────────────────────────────── */}
-                <div className="relative aspect-[3/2] overflow-hidden bg-[#02040a]">
+                <div className="relative aspect-[3/2] overflow-hidden bg-[#02040a]" data-tour={(onRegenerate && imgState === 'loaded' && imgUrl && idx < unlockedPanels && regensLeft > 0) ? 'comic-panel' : undefined}>
                   <AnimatePresence>
                     {(imgState === 'loading' || imgState === 'pending') && !isRegenerating && (
                       <motion.div
@@ -492,7 +492,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
 
                   {/* Report — always reachable (not hover-only): small flag, top-right of a finished image */}
                   {imgState === 'loaded' && imgUrl && (
-                    <div className="absolute top-3 right-3 z-30">
+                    <div className="absolute top-3 right-3 z-30" data-tour="report-panel">
                       <ReportButton
                         kind="panel" compact lang={lang}
                         sources={[imgUrl]}
