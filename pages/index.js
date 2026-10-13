@@ -1310,12 +1310,12 @@ function HomePage() {
             </AnimatePresence>
           </div>
 
-          {/* Inline cinematic loader — overlays this panel only, never full-screen */}
+          {/* Inline cinematic loader — overlays this panel only, never full-screen. NO onCancel here: while a script is generated the only cancel action is the full-width
+              button under the Create button (ScriptForm); a second, tiny one stacked on it was a duplicate (tests/cancel-actions.test.js). */}
           <CinematicLoader
             isVisible={scriptLoading}
             lang={lang}
             producerName={displayProducerName(producerName, lang)}
-            onCancel={handleCancelGeneration}
             phase="script"
           />
         </motion.section>
