@@ -31,7 +31,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline/promises';
 import { pathToFileURL } from 'node:url';
-import { safeErrInfo, formatSafeErr } from '../lib/safe-error.js';
+import { safeErrInfo, safeClass, formatSafeErr, printableError } from '../lib/safe-error.js';
 
 // A results file is just JSON: whatever names a key must be a generated panel / poster (R2) or a plain relative path inside --dir (local).
 const R2_SCOPE = /^(panels|posters)\//;
@@ -100,7 +100,7 @@ export async function run({ argv, deps }) {
           stage = 'redis-mark';
           await deps.redis.set(`report:hidden:${key}`, JSON.stringify({ at: Math.floor(now() / 1000), via: 'scan', n: 0 }), { ex: 400 * 24 * 60 * 60 });
         } else if (q.status === 'not-configured') { log('R2_QUARANTINE_BUCKET_NAME is not set — nothing was moved'); return { code: 2 }; }
-        else failed.push({ stage: q.stage || 'move', cls: q.cls || 'Unknown', http: q.http ?? null });
+        else failed.push({ stage: ['copy', 'delete-original', 'key-guard'].includes(q.stage) ? q.stage : 'move', cls: safeClass(q.cls), http: Number.isInteger(q.http) ? q.http : null });
       } catch (e) { failed.push({ stage, ...safeErrInfo(e) }); }
     }
     log(`moved ${moved}, already gone ${missing}, failed ${failed.length}`);
@@ -297,5 +297,5 @@ async function main() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => { console.error(`scan-existing-images: ${e.message}`); process.exit(1); });
+  main().catch((e) => { console.error(`scan-existing-images: ${printableError(e)}`); process.exit(1); });
 }

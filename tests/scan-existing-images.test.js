@@ -368,3 +368,33 @@ test('quarantineObject failures carry stage + class + status, and the original i
   const g = await quarantineObject('characters/x/y.jpg');
   assert.deepEqual([g.status, g.stage, g.cls], ['failed', 'key-guard', 'OutOfScope']);
 });
+
+test('safe failure reason: error names are an ALLOWLIST (a name taken from a response can never smuggle a key, bucket or URL), status is a number only', async () => {
+  const { safeErrInfo, safeClass, formatSafeErr, printableError } = await import('../lib/safe-error.js');
+  for (const hostile of ['panels4a3fd2ed618879c285c84e566c100739', 'my-secret-bucket.r2.cloudflarestorage.com', 'https://x.example/panels/a.jpg', 'Some Custom Code', 'AccessDenied: key=panels/a.jpg', '', null, undefined, 42, {}]) {
+    assert.equal(safeClass(hostile), 'Error', JSON.stringify(hostile));
+    assert.deepEqual(safeErrInfo({ name: hostile, message: 'bucket/key', $metadata: { httpStatusCode: 'panels/a.jpg' } }), { cls: 'Error', http: null });
+  }
+  assert.equal(safeClass('AccessDenied'), 'AccessDenied'); assert.equal(safeClass('NoSuchBucket'), 'NoSuchBucket');
+  assert.equal(formatSafeErr({ cls: 'AccessDenied', http: 403 }), 'class=AccessDenied http=403');
+  assert.equal(formatSafeErr({ cls: 'Error', http: null }), 'class=Error');
+  assert.deepEqual(safeErrInfo({ name: 'x', $metadata: { httpStatusCode: 99999 } }).http, null);
+  // a crash message is printed only when it is one of our own fixed env-var lines
+  assert.equal(printableError(new Error('R2_BUCKET_NAME is not set')), 'R2_BUCKET_NAME is not set');
+  assert.equal(printableError(new Error('CLOUDFLARE_ACCOUNT_ID not configured.')), 'CLOUDFLARE_ACCOUNT_ID not configured.');
+  for (const msg of ['Unexpected token p in JSON at position 3 "panels/a"', 'GET https://x.r2.cloudflarestorage.com/bucket/panels/a.jpg 403', 'Access Denied for my-bucket', 'R2_BUCKET_NAME is not set; key=panels/a.jpg', 'secret R2_BUCKET_NAME is not set']) {
+    const out = printableError(Object.assign(new Error(msg), { name: 'AccessDenied', $metadata: { httpStatusCode: 403 } }));
+    assert.equal(out, 'failed (class=AccessDenied http=403)', msg); assert.doesNotMatch(out, /panels|bucket|https|secret|R2_/i);
+  }
+});
+
+test('quarantine step: a hostile reason returned by the quarantine layer (wrong stage, odd class, url as status) is normalised before printing', async () => {
+  const results = { entries: { 'panels/a/1.png': { v: 'unsafe' } } };
+  const f = setup([]); f.files.set('res.json', JSON.stringify(results));
+  const deps = { ...f.deps, confirm: async () => true, headPublic: async () => true, redis: { set: async () => {} },
+    quarantine: async () => ({ status: 'failed', error: 'copy: boom https://leak', stage: 'panels/a/1.png', cls: 'my-secret-bucket', http: 'https://leak' }) };
+  const r = await run({ argv: ['--quarantine-from', 'res.json'], deps });
+  const out = f.log.join('\n');
+  assert.equal(r.code, 1); assert.match(out, /failed ×1: stage=move class=Error/);
+  assert.doesNotMatch(out, /panels|my-secret-bucket|leak|https/);
+});
