@@ -102,3 +102,35 @@ test('list-leftover-raw-selfies is read-only: it lists the characters/ prefix on
   assert.ok(!/DeleteObject|PutObject|CopyObject|GetObject|HeadObject/.test(src), 'the script only imports ListObjectsV2Command');
   assert.ok(!/redis/i.test(src.replace(/never touches Redis/, '')), 'no Redis access');
 });
+
+test('list-leftover-raw-selfies failures: stage + allowlisted reason only, never the error message, key, bucket or account id', async () => {
+  const { missingEnv, describeFailure, StageError, ENV_NAMES, run } = await import('../scripts/list-leftover-raw-selfies.mjs');
+  assert.deepEqual(missingEnv({}), ENV_NAMES); assert.deepEqual(missingEnv({ CLOUDFLARE_ACCOUNT_ID: 'a', R2_BUCKET_NAME: ' ', R2_ACCESS_KEY_ID: 'k', R2_SECRET_ACCESS_KEY: 's' }), ['R2_BUCKET_NAME']);
+  assert.equal(describeFailure(new StageError('config', 'missing env R2_BUCKET_NAME')), 'stage=config reason=missing env R2_BUCKET_NAME');
+  const hostile = Object.assign(new Error('The specified bucket my-secret-bucket does not exist; key characters/abc; https://acct123.r2.cloudflarestorage.com'), { name: 'NoSuchBucket', $metadata: { httpStatusCode: 404 } });
+  const line = describeFailure(hostile);
+  assert.match(line, /^stage=list reason=bucket not found/); assert.match(line, /class=NoSuchBucket http=404/);
+  for (const leak of ['my-secret-bucket', 'characters/abc', 'acct123', 'https://']) assert.ok(!line.includes(leak), leak);
+  assert.match(describeFailure(Object.assign(new Error('x'), { name: 'AccessDenied', $metadata: { httpStatusCode: 403 } })), /access denied.*Object Read only/);
+  assert.match(describeFailure(new Error('whatever my-secret')), /reason=unexpected error class=Error$/);
+  await assert.rejects(run({ r2: { list: async () => { throw hostile; } }, log() {} }), (e) => e instanceof StageError && e.stage === 'list' && !e.message.includes('my-secret-bucket'));
+});
+
+test('hidden-prompt reader: prints the label first, echoes only when not hidden, handles backspace / paste / Ctrl+C, restores the terminal', async () => {
+  const { readValue, StageError } = await import('../scripts/list-leftover-raw-selfies.mjs');
+  const { EventEmitter } = await import('node:events');
+  const mk = () => { const i = new EventEmitter(); i.raw = null; i.setRawMode = (v) => { i.raw = v; }; i.resume = () => {}; i.pause = () => {}; i.setEncoding = () => {}; i.off = i.removeListener; return i; };
+  const run = async (label, hidden, feed) => {
+    const input = mk(); const written = []; const output = { write: (s) => written.push(s) };
+    const p = readValue({ input, output, label, hidden });
+    assert.equal(written[0], `${label}: `, 'label is written before waiting'); assert.equal(input.raw, true);
+    for (const f of feed) input.emit('data', f);
+    return { p, written, input };
+  };
+  let r = await run('Bucket name', false, ['my-b', 'x', '\u007f', 'ucket\r']);
+  assert.equal(await r.p, 'my-bucket'); assert.ok(r.written.join('').includes('my-b')); assert.equal(r.input.raw, false);
+  r = await run('Secret Access Key (hidden)', true, ['s3cr\u001b[Aet\n']);
+  assert.equal(await r.p, 's3cret'); assert.ok(!r.written.join('').includes('s3cr'), 'a hidden value is never echoed');
+  r = await run('Access Key ID (hidden)', true, ['abc', '\u0003']);
+  await assert.rejects(r.p, (e) => e instanceof StageError && e.stage === 'config' && e.reason === 'cancelled'); assert.equal(r.input.raw, false);
+});

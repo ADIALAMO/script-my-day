@@ -145,6 +145,8 @@ enforces tier + quota **before** any paid call. Faces stored in R2 (`characters/
 - Creator credit (`producerName`) is free text printed on the poster: `utils/producer-name.js` runs the keyword blocklist client-side (blocked → "Guest" + a hint); no server route stores or renders it (the only server
   consumer, `feedback.js` → owner's Telegram, applies the same blocklist).
 - READ-ONLY inventory of leftover raw selfies (counts/ages only, no keys): `node scripts/list-leftover-raw-selfies.mjs` (docs-private/legacy-raw-selfie-cleanup-plan.md for the cleanup decision).
+- Legacy raw selfies (`characters/<id>-raw-<stamp>.jpg`) are cleaned up with `scripts/quarantine-legacy-raw-selfies.mjs`: dry run by default, `--apply` = typed confirmation, MOVE to the private quarantine bucket only
+  (never delete), each one only if its sheet exists and no Redis pointer names it (re-checked right before the move). Counts-only output, `stage=… class=… http=…` failures.
 
 ### 4. Tiers & quota → skill `quota`
 Single source of truth: `TIER_LIMITS` in [config/limits.js](config/limits.js) (re-exported by [lib/quota.js](lib/quota.js)). Always use
