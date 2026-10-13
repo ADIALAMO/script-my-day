@@ -22,7 +22,7 @@ scenario('Q1', 'new character uploads and panel/poster uploads write random keys
     assert.equal(r.status, 200);
     const keys = providers.s3puts.slice(before).map((p) => p.key);
     assert.equal(keys.length, 2);
-    assert.match(keys[0], /^characters\/[0-9a-f]{32}\/[0-9a-f-]{36}-raw\.jpg$/);
+    assert.match(keys[0], /^characters\/[0-9a-f]{32}\/[0-9a-f-]{36}-raw\.(png|jpg|webp)$/);   // the extension comes from the photo's own bytes
     assert.match(keys[1], /^characters\/[0-9a-f]{32}\/[0-9a-f-]{36}-sheet\.jpg$/);
     assert.equal(keys[0].split('/')[1], ownerSegment(u.identifier));
     assert.ok(keys.every((k) => !k.includes(u.identifier)), 'user id not in any key');

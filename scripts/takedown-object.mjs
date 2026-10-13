@@ -19,6 +19,7 @@
 import readline from 'node:readline/promises';
 import { pathToFileURL } from 'node:url';
 import { sweepHidden, scanHiddenKeys } from '../lib/report-sweep.js';
+import { isCharacterKey } from '../lib/object-scope.js';
 
 const REPORTABLE = /^(panels|posters)\/[A-Za-z0-9_./-]{1,180}\.(png|jpg|webp)$/;
 const HIDDEN_TTL = 400 * 24 * 60 * 60;
@@ -28,7 +29,7 @@ export function keyFromArg(arg, publicBase) {
   if (!a) return null;
   const base = String(publicBase || '').replace(/\/$/, '');
   const key = base && a.startsWith(`${base}/`) ? decodeURIComponent(a.slice(base.length + 1).split(/[?#]/)[0]) : a;
-  return REPORTABLE.test(key) && !key.includes('..') ? key : null;
+  return (REPORTABLE.test(key) || isCharacterKey(key)) && !key.includes('..') ? key : null;
 }
 
 /**
@@ -78,7 +79,7 @@ export async function run({ argv, redis, r2, confirm, log = console.log, publicB
 
   if (!['quarantine', 'restore', 'delete'].includes(cmd)) { log('usage: quarantine <key|url> | restore <key> | delete <key> | sweep [--apply] | list-recent --since <ISO> | owner <identifier>'); return { code: 2 }; }
   const key = keyFromArg(rest[0], publicBase);
-  if (!key) { log('not a panels/ or posters/ object key (or a URL under R2_PUBLIC_URL)'); return { code: 2 }; }
+  if (!key) { log('not a panels/, posters/ or current-format characters/ object key (or a URL under R2_PUBLIC_URL)'); return { code: 2 }; }
 
   if (cmd === 'quarantine') {
     if (!(await r2.head('public', key))) { log(`not found in the public bucket: ${key}`); return { code: 1 }; }

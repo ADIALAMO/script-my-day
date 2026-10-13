@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { displayProducerName } from '../utils/producer-name.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import {
@@ -67,7 +68,7 @@ const getCinematicTitle = (text) => {
 // ── Component ────────────────────────────────────────────────────────────────
 
 function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, gender, setGender, onPosterGenerated, onScriptEdited, onAuthRequired, onPanelsGenerated, initialPanels, initialComicMeta, initialPosterUrl, journalEntry, onCharacterModalToggle, closeCharacterModalRef, onBusyChange, onMilestone, instant = false }) {
-  const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST');
+  const finalProducerName = displayProducerName(producerName, lang, 'GUEST');
 
   // ── Language: UI chrome vs generated content ────────────────────────────────
   // `uiHebrew` follows the GLOBAL language toggle (`lang`) — every button, label,
@@ -128,7 +129,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
   // ── Identity Track (character consistency) ──────────────────────────────────
   const {
     characterImageUrl, activeCharacterUrl, heroDescriptor, starring, setStarring,
-    status: characterStatus, uploadCharacter, clearCharacter,
+    status: characterStatus, uploadCharacter, clearCharacter, removeCharacter,
   } = useCharacter(gender);
   const [showCharacterModal, setShowCharacterModal] = useState(false);
 
@@ -841,7 +842,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
                     {uiHebrew ? 'בכיכובי' : 'Starring me'}
                   </span>
                 </button>
-                <button onClick={clearCharacter} className="text-gray-600 hover:text-red-400 transition-colors" title={uiHebrew ? 'הסר' : 'Remove'}>
+                <button onClick={() => setShowCharacterModal(true)} className="text-gray-600 hover:text-red-400 transition-colors" title={uiHebrew ? 'הסר / נהל את הדמות' : 'Remove / manage character'}>
                   <X size={13} />
                 </button>
               </div>
@@ -1148,6 +1149,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
         characterImageUrl={characterImageUrl}
         uploadCharacter={uploadCharacter}
         clearCharacter={clearCharacter}
+        removeCharacter={removeCharacter}
         gender={gender}
         setGender={setGender}
         onUpgrade={() => onAuthRequired?.('upgrade')}

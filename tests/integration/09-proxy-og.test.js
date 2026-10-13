@@ -13,13 +13,13 @@ const R2 = 'https://pub-test.r2.dev';
 const get = (url, ip = '203.0.113.20') => invoke(proxy, { method: 'GET', query: { url }, ip });
 const image = () => new Response(PNG_BYTES, { status: 200, headers: { 'content-type': 'image/png', 'content-length': String(PNG_BYTES.length) } });
 
-scenario('J1', 'allow-listed R2 object is proxied (200, image, immutable cache headers, nosniff, sandbox CSP)',
+scenario('J1', 'allow-listed R2 object is proxied (200, image, ONE-DAY (not immutable) cache headers, nosniff, sandbox CSP)',
   '200 image/png with the security headers; exactly one upstream fetch', async () => {
     providers.handlers.r2 = () => image();
     const r = await get(`${R2}/panels/ab/1_x.png`);
     assert.equal(r.status, 200); assert.equal(r.headers['content-type'], 'image/png');
     assert.equal(r.headers['x-content-type-options'], 'nosniff'); assert.equal(r.headers['content-security-policy'], 'sandbox');
-    assert.match(r.headers['cache-control'], /immutable/);
+    assert.equal(r.headers['cache-control'], 'public, max-age=86400'); assert.ok(!/immutable/.test(`${r.headers['cache-control']} ${r.headers['vercel-cdn-cache-control']}`), 'a quarantined image must not live in caches for a year');
     assert.ok(Buffer.isBuffer(r.body) && r.body.length === PNG_BYTES.length);
     assert.equal(providers.counts['r2-public'], 1);
     return { actual: '200 image/png, nosniff, CSP sandbox, immutable cache', evidence: `upstream fetches: ${providers.counts['r2-public']}` };

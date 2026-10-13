@@ -9,6 +9,7 @@ import { useRotatingMessages } from '../hooks/useRotatingMessages';
 import { useCinematicAudio } from '../hooks/useCinematicAudio';
 import NextStepButton from './NextStepButton';
 import { NEXT_STEPS } from '../constants/tour.js';
+import { cleanProducerName } from '../utils/producer-name.js';
 
 const LOADING_MESSAGES_HE = ["סורק זכרונות...", "מנתח DNA סיפורי...", "בונה מתח דרמטי...", "מלטש דיאלוגים...", "מעבה דמויות...", "פורש קווי עלילה...", "מדפיס עותקים..."];
 const LOADING_MESSAGES_EN = ["Scanning memories...", "Analyzing story DNA...", "Building tension...", "Polishing dialogue...", "Developing characters...", "Plotting twists...", "Printing scripts..."];
@@ -393,12 +394,19 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
             setProducerName(val);
             localStorage.setItem('lifescript_producer_name', val);
           }}
+          aria-invalid={cleanProducerName(producerName).blocked || undefined}
           className="w-full bg-black/40 border-b border-[#d4a373]/30 p-3 text-white focus:border-[#d4a373] outline-none transition-all italic tracking-widest text-sm placeholder:text-white/25 placeholder:not-italic placeholder:tracking-normal"
           maxLength={22}
         />
-        <p className="mt-1.5 text-[9px] text-white/28 tracking-wide">
-          {lang === 'he' ? 'אופציונלי · מופיע בפוסטר ובפתיח התסריט' : 'Optional · shown in the poster & script header'}
-        </p>
+        {cleanProducerName(producerName).blocked ? (
+          <p role="alert" className="mt-1.5 text-[9px] text-red-300/90 tracking-wide">
+            {lang === 'he' ? 'לא ניתן להשתמש בשם הזה בקרדיטים — יוצג "אורח" במקומו' : "This name can't be used in the credits — \"Guest\" will be shown instead"}
+          </p>
+        ) : (
+          <p className="mt-1.5 text-[9px] text-white/28 tracking-wide">
+            {lang === 'he' ? 'אופציונלי · מופיע בפוסטר ובפתיח התסריט' : 'Optional · shown in the poster & script header'}
+          </p>
+        )}
       </div>
 
       <motion.button

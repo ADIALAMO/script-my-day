@@ -129,6 +129,22 @@ export function useCharacter(gender = 'neutral') {
     }
   }, [defaultStarringOnIfUnset]);
 
+  // ── Remove my character: deletes the photo/sheet objects and the saved pointer ON THE SERVER (owner only), then forgets it on this client ──
+  const removeCharacter = useCallback(async () => {
+    try {
+      const r = await fetch('/api/character', { method: 'DELETE' });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d.success) {
+        setCharacterImageUrl(''); setStatus('idle'); setError('');
+        if (typeof window !== 'undefined') localStorage.removeItem(LS_KEY);
+        return { ok: true };
+      }
+      return { ok: false, code: d.code || (r.status === 429 ? 'RATE_LIMITED' : 'SERVER_ERROR') };
+    } catch {
+      return { ok: false, code: 'NETWORK_OFFLINE' };
+    }
+  }, []);
+
   // ── Forget the character on this client (does not delete from R2/Redis) ─────
   const clearCharacter = useCallback(() => {
     setCharacterImageUrl('');
@@ -154,5 +170,6 @@ export function useCharacter(gender = 'neutral') {
     error,
     uploadCharacter,
     clearCharacter,
+    removeCharacter,
   };
 }

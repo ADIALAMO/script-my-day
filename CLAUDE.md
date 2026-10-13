@@ -129,8 +129,22 @@ Reference-conditioned image gen via OpenRouter: **Grok** (`x-ai/grok-imagine-ima
 Pro+/admin run QUALITY (Grok→Gemini); the free lifetime taste runs VALUE (Gemini→Grok) to
 cap cost. Identity providers are prepended to the faceless cascade; on failure it degrades
 to faceless and **no credit is spent** (gated on `faceApplied`). `resolveIdentityGate`
-enforces tier + quota **before** any paid call. Moderation (nemotron) is **fail-closed**.
-Faces stored in R2 (`characters/`), Redis holds only the URL.
+enforces tier + quota **before** any paid call. Faces stored in R2 (`characters/`), Redis holds only the URL.
+**Selfie upload = user-supplied media (`fix/ugc-selfie-hardening`)** — the only place a user supplies an image (there is no replace-panel / own-image upload anywhere):
+- Type by BYTES: JPEG/PNG/WebP only (`sniffImage`), content type + key extension from the bytes; SVG/GIF/anything else → `IMAGE_UNSUPPORTED` before any reservation or call.
+- The SAME `checkImage` as generated images (Nemotron + Gemini second opinion) on the exact stored bytes, **fail-closed** (`SAFETY_REJECTED` / `CONTENT_CHECK_UNAVAILABLE`, reservations given back), then the
+  best-effort minor screen. It shares the existing `DAILY_IMAGE_SAFETY_BUDGET` / `check_imgsafety` (one extra ≈ $0.00012 call per upload, rate-limited 4 / 5 min; no separate budget so far — watch `usage:check:imgsafety:global:<day>`).
+- The raw selfie (public R2, the provider fetches it by URL) is **deleted after EVERY attempt** and is **never the reference**. If the sheet fails the request fails (503 `CHARACTER_SHEET_FAILED` / 422 refused /
+  503 unavailable) — provider error refunds quota + budget slot; an unsafe/unavailable/unstorable sheet refunds the user's sheet quota and keeps the global slot. A delete that keeps failing
+  → `report:hidden:<raw>` + Telegram alert; the daily sweep moves it to quarantine ([lib/character-store.js](lib/character-store.js)).
+- Owner controls: `DELETE /api/character` ("Remove my character" in CharacterModal) deletes the caller's own `characters/<owner>/` objects + pointer. `characters/<owner>/<uuid>-raw|sheet.<ext>` keys are reportable
+  (kind `character`, same Telegram alert), quarantinable and sweepable — one scope definition in [lib/object-scope.js](lib/object-scope.js) (legacy `characters/u:<id>-…` keys: manual only,
+  scripts/takedown-object.mjs / delete-user-data.js). Hidden references are never used (identity gate + `GET /api/character`). `/api/proxy-image` serves `panels/` + `posters/` ONLY.
+- All stored images (R2 objects, the proxy) are cached **one day, not immutable** (`IMAGE_CACHE_CONTROL` / `IMAGE_CACHE_SECONDS`, config/limits.js) so a quarantined image leaves caches soon. Objects uploaded BEFORE
+  this change keep their old `immutable` header (can't change without a copy).
+- Creator credit (`producerName`) is free text printed on the poster: `utils/producer-name.js` runs the keyword blocklist client-side (blocked → "Guest" + a hint); no server route stores or renders it (the only server
+  consumer, `feedback.js` → owner's Telegram, applies the same blocklist).
+- READ-ONLY inventory of leftover raw selfies (counts/ages only, no keys): `node scripts/list-leftover-raw-selfies.mjs` (docs-private/legacy-raw-selfie-cleanup-plan.md for the cleanup decision).
 
 ### 4. Tiers & quota → skill `quota`
 Single source of truth: `TIER_LIMITS` in [config/limits.js](config/limits.js) (re-exported by [lib/quota.js](lib/quota.js)). Always use
@@ -313,7 +327,7 @@ is the ONLY inner scroll container.** Rules ([utils/scroll-mode.js](utils/scroll
 - Quota/identity checks **fail-open** on Redis outages (never block paying users);
   increments are best-effort and happen **after** success.
 - Never trust client-supplied tier/userId — resolve via `getSessionAndTier`.
-- R2 character assets are immutable (`max-age=…, immutable`); Redis stores only pointers.
+- Stored images are cached ONE DAY (`IMAGE_CACHE_CONTROL`, not immutable — a quarantined image must leave caches soon); Redis stores only pointers.
 - `.env.example` documents every required env var.
 - If magic links fail with 535 BadCredentials, create a new Gmail App Password and update
   `EMAIL_SERVER_PASSWORD` in Vercel (Production and Preview), then redeploy. Changing the

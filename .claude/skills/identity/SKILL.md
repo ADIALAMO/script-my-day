@@ -90,14 +90,23 @@ Gate order (memorize — subtle):
 ## Face validation & storage
 - `validFaceUrl(u)`: must be `https://` or `data:image/`, and < 2,000,000 chars.
 - Reference is passed to providers as `opts.characterImageUrl`.
-- **Moderation is fail-closed**: `moderateImage` (nvidia nemotron content-safety,
-  free) returns `false` on any error/non-OK — we never store or use an unmoderated
-  face. Keep it fail-closed.
+- **The selfie gets the FULL image check, fail-closed** (`pages/api/upload-character.js`): type by BYTES (JPEG/PNG/WebP via `sniffImage`; SVG/GIF/other →
+  `IMAGE_UNSUPPORTED`; content type + key extension come from the bytes), then the same `checkImage` as every generated image (Nemotron + Gemini second opinion) on the
+  EXACT bytes that are stored — unsafe → `SAFETY_REJECTED`, no answer → `CONTENT_CHECK_UNAVAILABLE`; both after the reservations and both give them back. Then the best-effort
+  minor screen. (`moderateImage` no longer exists: Nemotron alone was weaker than the generated-image pipeline.)
+- **The raw selfie is NEVER the reference and is deleted after EVERY attempt** (`dropRaw` → `deleteRawSelfie`, lib/character-store.js; 3 tries, then marked
+  `report:hidden:<key>` for the daily sweep + a Telegram alert). If the sheet fails (provider error → 503 `CHARACTER_SHEET_FAILED`, refused → 422, unsafe/unavailable output check,
+  storage failure) the request FAILS: provider error gives back quota AND budget slot; an unsafe/unavailable/unstorable sheet gives back the user's sheet quota and keeps the global
+  budget slot (the provider call happened). There is no degraded "raw selfie as reference" path any more.
+- **Owner controls**: `DELETE /api/character` (rate-limited `remove-character`) deletes every object under the caller's own HMAC folder `characters/<owner>/` + what the pointer
+  names (only keys in that folder) and then `character:<id>`; a failed delete keeps the pointer (retry). `characters/<owner>/<uuid>-raw|sheet.<ext>` keys are reportable (kind
+  `character`), quarantinable and sweepable ([lib/object-scope.js](lib/object-scope.js) is the one definition; legacy `characters/u:<id>-…` keys are manual-only). A hidden reference is never
+  used (`ownsCharacterReference` checks `report:hidden:<key>`; `GET /api/character` returns null and forgets the pointer). `/api/proxy-image` serves `panels/`+`posters/` ONLY.
 - Storage: **Cloudflare R2** via [lib/blob-store.js](lib/blob-store.js), prefix
   `characters/`, alongside `panels/`/`posters/`. Reuses the SAME R2 creds as panels.
   Redis holds only the URL pointer, never the bytes (`putImage` → public URL;
-  `decodeDataUri` for base64 → bytes). Character assets are immutable → cached
-  `max-age=31536000, immutable`.
+  `decodeDataUri` for base64 → bytes). Stored images are cached ONE DAY
+  (`IMAGE_CACHE_CONTROL`, config/limits.js) — not immutable — so a quarantined image leaves caches soon.
 
 ## Common pitfalls
 - Don't consume a credit unless `result.faceApplied === true`.

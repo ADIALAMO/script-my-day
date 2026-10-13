@@ -144,14 +144,15 @@ scenario('G8', 'sweep cron: nothing to do → 200 with zero counts and NO Telegr
     return { actual: 'quiet when idle' };
   });
 
-scenario('G9', 'sweep cron safety: it NEVER touches characters/ (or any non-panels/posters key) even if a hidden mark exists for it; it does not run from a Preview deployment; the cursor key is cleared after a full pass',
+scenario('G9', 'sweep cron safety: it NEVER touches LEGACY characters/ keys or any other out-of-scope key even if a hidden mark exists for it (a current-format characters/ object IS swept); it does not run from a Preview deployment; the cursor key is cleared after a full pass',
   'characters/ object stays public & untouched; preview → skipped; cursor deleted', async () => {
-    const sel = 'characters/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/11111111-1111-1111-1111-111111111111-sheet.jpg';
+    const sel = 'characters/u:123-sheet-1700000000000.jpg';   // legacy key (embeds a user id): manual handling only
+    const cur = `characters/${SEG}/11111111-1111-1111-1111-111111111111-sheet.jpg`;
     const odd = 'something-else/x.png';
-    put(sel); put(odd); hide(sel); hide(odd);
+    put(sel); put(odd); put(cur); hide(sel); hide(odd); hide(cur);
     const good = newKey(9); put(good); hide(good);
     const r = await cron();
-    assert.equal(r.body.moved, 1); assert.equal(inPublic(sel), true); assert.equal(inPublic(odd), true); assert.equal(inQ(good), true);
+    assert.equal(r.body.moved, 2); assert.equal(inQ(cur), true); assert.equal(inPublic(cur), false); assert.equal(inPublic(sel), true); assert.equal(inPublic(odd), true); assert.equal(inQ(good), true);
     assert.equal(providers.s3deletes.filter((d) => d.key === sel || d.key === odd).length, 0);
     assert.equal(fake.get('report:sweep:cursor'), null);
     // never from a Preview deployment (it may share the production variables)

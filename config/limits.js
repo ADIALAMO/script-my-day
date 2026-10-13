@@ -96,6 +96,12 @@ export const AUTH_EMAIL_LIMITS = {
 // ─── Public image endpoints ───────────────────────────────────────────────────────────
 // /api/proxy-image (R2 → same-origin for canvas/reel) and /api/og (invite card). Per client IP
 // per minute; the responses are CDN-cacheable so only cache MISSES really reach the function.
+// Browser / CDN lifetime of every stored image (R2 objects, the image proxy). NOT immutable: an image that is reported and quarantined must stop being
+// served within a day, instead of living on in caches for a year. The hidden check (410, no-store) runs on every cache miss.
+// Largest decoded selfie accepted by /api/upload-character (the client downscales to ~1024px, a real photo is well below this; the route body limit is 8 MB of base64).
+export const SELFIE_MAX_BYTES = envInt('SELFIE_MAX_BYTES', 6 * 1024 * 1024);
+export const IMAGE_CACHE_SECONDS = envInt('IMAGE_CACHE_SECONDS', 24 * 60 * 60);
+export const IMAGE_CACHE_CONTROL = `public, max-age=${IMAGE_CACHE_SECONDS}`;
 export const PROXY_IMAGE = {
   perIpPerMinute: envInt('PROXY_IMAGE_PER_IP_PER_MINUTE', 120),
   maxBytes:       envInt('PROXY_IMAGE_MAX_BYTES', 3 * 1024 * 1024), // = MAX_IMAGE_BYTES of upload-panel

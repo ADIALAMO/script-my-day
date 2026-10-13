@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { displayProducerName } from '../utils/producer-name.js';
 import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -491,7 +492,7 @@ function HomePage() {
         body: JSON.stringify({
           text: feedbackText,
           lang: lang,
-          producerName: producerName || (lang === 'he' ? 'אורח' : 'Guest')
+          producerName: displayProducerName(producerName, lang)
         }),
       });
 
@@ -763,7 +764,7 @@ function HomePage() {
           journalEntry,
           genre,
           gender,
-          producerName: producerName || (lang === 'he' ? 'אורח' : 'Guest'),
+          producerName: displayProducerName(producerName, lang),
           deviceId: deviceId,
         }),
       });
@@ -818,7 +819,7 @@ function HomePage() {
         currentEntryIdRef.current = addEntry({
           genre,
           lang,
-          producerName: producerName || (lang === 'he' ? 'אורח' : 'Guest'),
+          producerName: displayProducerName(producerName, lang),
           journalEntry,
           script: finalScript,
           posterUrl: '',
@@ -1289,7 +1290,7 @@ function HomePage() {
           <CinematicLoader
             isVisible={scriptLoading}
             lang={lang}
-            producerName={producerName || (lang === 'he' ? 'אורח' : 'Guest')}
+            producerName={displayProducerName(producerName, lang)}
             onCancel={handleCancelGeneration}
             phase="script"
           />
