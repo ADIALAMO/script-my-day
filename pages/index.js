@@ -20,6 +20,7 @@ import { track } from '@vercel/analytics';
 import { SHOWCASE_POSTERS, SHOWCASE_REELS } from '../constants/showcase';
 import { useGuidedTour } from '../hooks/useGuidedTour.js';
 import { isDebugRequested } from '../utils/scroll-debug.js';
+import { skipPageAutoScroll } from '../utils/scroll-mode.js';
 import { modalDataFor } from '../constants/modalData';
 import ReportButton from '../components/ReportButton';
 import { reportedGalleryRefs } from '../utils/reported-store';
@@ -714,6 +715,10 @@ function HomePage() {
   // landed, regardless of which one commits first.
   useEffect(() => {
     if (script && !scriptLoading) {
+      // not in a touch script-box preview variant (?scriptbox=1): there the page must never be scrolled programmatically (utils/scroll-mode.js)
+      let coarse = false;
+      try { coarse = window.matchMedia('(pointer: coarse)').matches; } catch { /* default: scroll as before */ }
+      if (skipPageAutoScroll({ coarsePointer: coarse, search: window.location.search })) return;
       scriptOutputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [script, scriptLoading]);

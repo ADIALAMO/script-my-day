@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (f) => readFileSync(path.join(ROOT, f), 'utf8');
-const { COARSE_QUERY, scriptWindowMode, scriptWindowClasses } = await import('../utils/scroll-mode.js');
+const { COARSE_QUERY, scriptWindowMode, scriptWindowClasses, scriptFrameGutter, parseScriptVariant, variantId, variantLabel, isTouchBoxVariant, skipPageAutoScroll, TOUCH_BOX_HEIGHT } = await import('../utils/scroll-mode.js');
 const { isDebugRequested, isRootScrollRequested, createRateCounter, pageScroller, verdict } = await import('../utils/scroll-debug.js');
 
 test('script window mode: touch (coarse pointer) = page flow, precise pointer = inner window', () => {
@@ -66,15 +66,86 @@ test('page scroller detection: the BODY scrolling inside the viewport (window.sc
   assert.match(verdict({ scroller: 'document', innerMode: 'page' }), /document.*page flow/);
 });
 
-test('the script window obeys the iOS rule: touch = page flow, no scroll handlers, no programmatic follow', () => {
+test('the script window obeys the iOS rule: touch default = page flow, no scroll handlers, no programmatic follow; the preview variants are opt-in', () => {
   const out = read('components/ScriptOutput.jsx');
-  assert.match(out, /const windowMode = scriptWindowMode\(\{ coarsePointer \}\)/);
+  assert.match(out, /const windowMode = scriptWindowMode\(\{ coarsePointer, search: urlSearch \}\)/);
   assert.match(out, /followTyping: innerScroll/);
-  assert.match(out, /className=\{scriptWindowClasses\(windowMode\)\}/);
-  assert.match(out, /\.\.\.\(innerScroll \? \{ onWheel: pauseAutoScroll, onTouchStart: pauseAutoScroll, onPointerDown: pauseAutoScroll, onScroll: handleScrollPosition \} : \{\}\)/);
+  assert.match(out, /className=\{scriptWindowClasses\(windowMode, \{ touch: touchBox, contain: touchBox && variant\.contain \}\)\}/);
+  assert.match(out, /\.\.\.\(innerScroll \? \{ onWheel: pauseAutoScroll, onTouchStart: pauseAutoScroll, onPointerDown: pauseAutoScroll, onTouchEnd: handleScrollPosition, onPointerUp: handleScrollPosition, onScroll: handleScrollPosition \} : \{\}\)/);
+  assert.match(out, /style=\{touchBox \? \{ height: TOUCH_BOX_HEIGHT \} : undefined\}/);
   assert.ok(!/className="h-\[500px\] md:h-\[650px\]/.test(out), 'the fixed-height window class is only reachable through scriptWindowClasses("inner")');
   const tw = read('hooks/useTypewriter.js');
   assert.match(tw, /followTyping && i > 15 && scrollRef\.current && !isAutoScrollPaused\.current/);
+});
+
+test('variants: ?scriptbox=1 = A, +rootscroll=1 = B, +contain=1 = C; exact flags only; default is untouched', () => {
+  assert.deepEqual(parseScriptVariant('?scriptbox=1'), { scriptbox: true, rootscroll: false, contain: false });
+  assert.deepEqual(parseScriptVariant('?scriptbox=1&rootscroll=1&contain=1'), { scriptbox: true, rootscroll: true, contain: true });
+  assert.deepEqual(parseScriptVariant('?debug=1&contain=1&scriptbox=1'), { scriptbox: true, rootscroll: false, contain: true });
+  assert.deepEqual(parseScriptVariant('?scriptbox=10&xrootscroll=1&contain=0'), { scriptbox: false, rootscroll: false, contain: false });
+  assert.deepEqual(parseScriptVariant(''), { scriptbox: false, rootscroll: false, contain: false });
+  assert.deepEqual(parseScriptVariant(undefined), { scriptbox: false, rootscroll: false, contain: false });
+  assert.equal(variantId(parseScriptVariant('?scriptbox=1')), 'A');
+  assert.equal(variantId(parseScriptVariant('?scriptbox=1&rootscroll=1')), 'B');
+  assert.equal(variantId(parseScriptVariant('?scriptbox=1&rootscroll=1&contain=1')), 'C');
+  assert.equal(variantId(parseScriptVariant('?scriptbox=1&contain=1')), 'custom');
+  assert.equal(variantId(parseScriptVariant('?rootscroll=1&contain=1')), 'default');   // without scriptbox nothing changes the script window
+  assert.match(variantLabel(parseScriptVariant('?scriptbox=1&rootscroll=1&contain=1')), /^C: box on \| scroller document \| overscroll contain$/);
+  assert.match(variantLabel(parseScriptVariant('?scriptbox=1')), /^A: box on \| scroller body \| overscroll auto$/);
+});
+
+test('mode selection: desktop is ALWAYS the window; touch is page flow unless ?scriptbox=1', () => {
+  assert.equal(scriptWindowMode({ coarsePointer: false, search: '' }), 'inner');
+  assert.equal(scriptWindowMode({ coarsePointer: false, search: '?scriptbox=1' }), 'inner');
+  assert.equal(scriptWindowMode({ coarsePointer: true, search: '' }), 'page');
+  assert.equal(scriptWindowMode({ coarsePointer: true, search: '?rootscroll=1&contain=1' }), 'page');   // rootscroll / contain alone never bring the box back
+  for (const q of ['?scriptbox=1', '?scriptbox=1&rootscroll=1', '?scriptbox=1&rootscroll=1&contain=1']) assert.equal(scriptWindowMode({ coarsePointer: true, search: q }), 'inner', q);
+  assert.equal(isTouchBoxVariant({ coarsePointer: true, search: '?scriptbox=1' }), true);
+  assert.equal(isTouchBoxVariant({ coarsePointer: false, search: '?scriptbox=1' }), false);
+  assert.equal(isTouchBoxVariant({ coarsePointer: true, search: '' }), false);
+});
+
+test('touch box: height min(60svh, 520px) — svh (stable while the Safari toolbar collapses), never vh/dvh; contain only on request; gutters with contain', () => {
+  assert.equal(TOUCH_BOX_HEIGHT, 'min(60svh, 520px)');
+  assert.ok(!/dvh|\bvh\b/.test(TOUCH_BOX_HEIGHT));
+  const a = scriptWindowClasses('inner', { touch: true });
+  assert.match(a, /overflow-y-auto/); assert.match(a, /overscroll-y-auto/); assert.ok(!/overscroll-y-contain/.test(a));
+  assert.ok(!/md:h-\[650px\]/.test(a), 'the touch box has one height, not the desktop md height');
+  const c = scriptWindowClasses('inner', { touch: true, contain: true });
+  assert.match(c, /overscroll-y-contain/); assert.ok(!/overscroll-y-auto/.test(c));
+  assert.match(scriptWindowClasses('inner'), /h-\[500px\] md:h-\[650px\]/);               // desktop window unchanged
+  assert.ok(!/contain/.test(scriptWindowClasses('inner')));
+  assert.equal(scriptFrameGutter({ touch: true, contain: true }), 'mx-5 my-6');            // visible page gutters beside / above / below the box
+  assert.equal(scriptFrameGutter({ touch: true, contain: false }), 'mx-2 md:mx-4');
+  assert.equal(scriptFrameGutter({}), 'mx-2 md:mx-4');
+});
+
+test('the page never scrolls itself in a touch variant: the index auto-scroll to the script is skipped there only', () => {
+  assert.equal(skipPageAutoScroll({ coarsePointer: true, search: '?scriptbox=1&rootscroll=1' }), true);
+  assert.equal(skipPageAutoScroll({ coarsePointer: true, search: '' }), false);
+  assert.equal(skipPageAutoScroll({ coarsePointer: false, search: '?scriptbox=1' }), false);
+  assert.match(read('pages/index.js'), /if \(skipPageAutoScroll\(\{ coarsePointer: coarse, search: window\.location\.search \}\)\) return;/);
+  const out = read('components/ScriptOutput.jsx');
+  const box = out.slice(out.indexOf('data-script-scroller'), out.indexOf('data-script-scroller') + 900);
+  assert.ok(!/window\.scrollTo|scrollIntoView/.test(box));
+  const tw = read('hooks/useTypewriter.js');
+  assert.ok(!/window\.scroll|scrollIntoView/.test(tw), 'the typewriter only ever scrolls the box itself');
+});
+
+test('no state update or rAF on scroll in the box handlers: they only write refs', () => {
+  const tw = read('hooks/useTypewriter.js');
+  const h = tw.slice(tw.indexOf('const handleScrollPosition'), tw.indexOf('return { displayText'));
+  assert.ok(!/setState|set[A-Z]\w*\(|requestAnimationFrame/.test(h), h);
+  const pause = tw.slice(tw.indexOf('const pauseAutoScroll'), tw.indexOf('const pauseAutoScroll') + 200);
+  assert.ok(!/set[A-Z]\w*\(|requestAnimationFrame/.test(pause));
+});
+
+test('the debug overlay shows the active variant and the box css', () => {
+  const src = read('components/ScrollDebug.jsx');
+  assert.match(src, /data-script-variant/);
+  assert.match(src, /overscrollBehaviorY/);
+  assert.match(src, /url flags/);
+  assert.match(verdict({ scroller: 'document', innerMode: 'inner', variant: 'B' }), /^variant B \|/);
 });
 
 test('the next-step pill keeps its box (no layout shift while the user scrolls) — it only toggles what is inside', () => {
@@ -100,4 +171,11 @@ test('debug overlay: passive listeners only, no network, no page writes', () => 
   const idx = read('pages/index.js');
   assert.match(idx, /const ScrollDebug = dynamic\(\(\) => import\('\.\.\/components\/ScrollDebug'\), \{ ssr: false \}\)/);
   assert.match(idx, /setDebugScroll\(isDebugRequested\(window\.location\.search\)\)/);
+});
+
+test('Tailwind scans utils/: class lists built in pure helpers (scriptWindowClasses) must exist in the CSS (the md:h-[650px] desktop window and overscroll-y-contain were silently missing without it)', () => {
+  const cfg = read('tailwind.config.js');
+  assert.match(cfg, /"\.\/utils\/\*\*\/\*\.\{js,ts,jsx,tsx\}"/);
+  const src = read('utils/scroll-mode.js');
+  for (const cls of ['md:h-[650px]', 'overscroll-y-contain', 'overscroll-y-auto', 'custom-scrollbar']) assert.ok(src.includes(cls), cls);
 });

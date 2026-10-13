@@ -29,8 +29,9 @@ export function pageScroller(snap) {
 }
 
 /** one-line verdict for the overlay */
-export function verdict({ scroller, innerMode }) {
+export function verdict({ scroller, innerMode, variant = null }) {
   const parts = [];
+  if (variant) parts.push(`variant ${variant}`);
   parts.push(scroller === 'body' ? 'page scroller: BODY (nested in the viewport)' : scroller === 'document' ? 'page scroller: document' : 'page scroller: none yet');
   parts.push(innerMode === 'inner' ? 'script box: INNER scroll' : 'script box: page flow');
   return parts.join(' | ');

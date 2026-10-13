@@ -296,6 +296,10 @@ iPhone Safari shook while scrolling over the script window. Rules that came out 
 - **The page scroller is the `body`, not the document** (known, deliberately unchanged): `pages/_document.js` sets `html, body {height:100%; overflow:hidden}` for the splash and the loader script later sets `overflow:auto` on both without restoring the height, so
   `window.scrollY` stays 0 and the body scrolls inside the viewport (so a script box is a THIRD nested scroller: viewport > body > box). Use `scrollIntoView` / element scroll APIs, never `window.scrollTo`, for page positions. `?rootscroll=1` is an EXPERIMENT switch that lets the
   document scroll instead (html overflow visible, auto heights; the `body.style.overflow='hidden'` modal locks still work because the body's overflow then propagates to the viewport) — nothing changes without the flag.
+- **Script-box preview variants (touch only, query flags; the DEFAULT stays page flow until one is proven on a real phone):** `?scriptbox=1` = **A** (fixed-height window, page scroller = body), `?scriptbox=1&rootscroll=1` = **B** (window + document scrolls the page),
+  `?scriptbox=1&rootscroll=1&contain=1` = **C** (B + `overscroll-behavior: contain` on the box, page gutters `mx-5 my-6` around it). Box height `min(60svh, 520px)` (svh, never vh/dvh: it does not change while Safari's toolbar collapses, so no layout shift),
+  auto-follow only while the user is not touching (existing logic from `2ce5775`; ref writes only on scroll/touch, no state, no rAF), the page's own `scrollIntoView` to the script is skipped there, nothing calls `window.scrollTo`. Desktop ignores the flags.
+- **Tailwind only scans `pages/`, `components/`, `app/` and `utils/`.** A class that exists only in another folder (hooks/, constants/, lib/) is silently missing from the CSS (this hid `md:h-[650px]` and `overscroll-y-contain`); put class lists in components or utils.
 - **`?debug=1`** shows an overlay with which element scrolls (body vs document), scroll events/s, the script box's scrollTop/scrollHeight/clientHeight, window.scrollY vs body.scrollTop, visualViewport height/offset and page-height changes/s.
 
 ## Conventions & gotchas

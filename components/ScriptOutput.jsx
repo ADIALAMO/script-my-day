@@ -23,7 +23,7 @@ import { useCharacter } from '../hooks/useCharacter.js';
 import { shareData } from '../utils/export-image.js';
 import NextStepButton from './NextStepButton';
 import { useCoarsePointer } from '../hooks/useCoarsePointer.js';
-import { scriptWindowMode, scriptWindowClasses } from '../utils/scroll-mode.js';
+import { scriptWindowMode, scriptWindowClasses, scriptFrameGutter, parseScriptVariant, variantId, isTouchBoxVariant, TOUCH_BOX_HEIGHT } from '../utils/scroll-mode.js';
 import { NEXT_STEPS } from '../constants/tour.js';
 import { reelBreadcrumb } from '../utils/reel-diagnostics.js'; // TEMP DIAGNOSTIC (reel-crash)
 
@@ -91,7 +91,11 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
   // iOS rule (utils/scroll-mode.js): on touch devices the script flows in the PAGE — no nested scroll container, nothing scrolled programmatically.
   // Desktop keeps the fixed-height screenplay window that follows the typewriter.
   const coarsePointer = useCoarsePointer();
-  const windowMode = scriptWindowMode({ coarsePointer });
+  // Preview variants (?scriptbox=1 [&rootscroll=1] [&contain=1], touch only; utils/scroll-mode.js): read once per mount, the default stays page flow.
+  const [urlSearch] = useState(() => (typeof window !== 'undefined' ? window.location.search : ''));
+  const variant = parseScriptVariant(urlSearch);
+  const touchBox = isTouchBoxVariant({ coarsePointer, search: urlSearch });
+  const windowMode = scriptWindowMode({ coarsePointer, search: urlSearch });
   const innerScroll = windowMode === 'inner';
   const { displayText, isTyping, skip, scrollRef, pauseAutoScroll, handleScrollPosition } = useTypewriter({
     cleanScript,
@@ -680,7 +684,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
 
       {/* ── Script View ──────────────────────────────────────────────────── */}
       <div
-        className={`relative rounded-[3.5rem] overflow-hidden bg-[#030712]/90 mx-2 md:mx-4 transition-all duration-500
+        className={`relative rounded-[3.5rem] overflow-hidden bg-[#030712]/90 ${scriptFrameGutter({ touch: touchBox, contain: variant.contain })} transition-all duration-500
           ${isEditing
             ? 'border border-[#d4a373]/45 shadow-[0_0_40px_rgba(212,163,115,0.10),inset_0_0_40px_rgba(212,163,115,0.03)]'
             : 'border border-white/5'
@@ -705,8 +709,10 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
           // On touch devices (windowMode 'page') this container has NO height, overflow or scroll handlers: the script is part of the page flow
           // (see the iOS rule in utils/scroll-mode.js — a nested scroller here made iPhone Safari shake).
           data-script-scroller={windowMode}
-          className={scriptWindowClasses(windowMode)}
-          {...(innerScroll ? { onWheel: pauseAutoScroll, onTouchStart: pauseAutoScroll, onPointerDown: pauseAutoScroll, onScroll: handleScrollPosition } : {})}
+          data-script-variant={touchBox ? variantId(variant) : 'default'}
+          className={scriptWindowClasses(windowMode, { touch: touchBox, contain: touchBox && variant.contain })}
+          style={touchBox ? { height: TOUCH_BOX_HEIGHT } : undefined}
+          {...(innerScroll ? { onWheel: pauseAutoScroll, onTouchStart: pauseAutoScroll, onPointerDown: pauseAutoScroll, onTouchEnd: handleScrollPosition, onPointerUp: handleScrollPosition, onScroll: handleScrollPosition } : {})}
         >
           {showJournal ? (
             <div

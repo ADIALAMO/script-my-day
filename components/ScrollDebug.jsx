@@ -34,10 +34,12 @@ export default function ScrollDebug() {
       const scroller = pageScroller({ docScrollHeight: de.scrollHeight, docClientHeight: de.clientHeight, bodyScrollHeight: body.scrollHeight, bodyClientHeight: body.clientHeight });
       const mode = inner?.getAttribute('data-script-scroller') || '-';
       setS({
-        verdict: verdict({ scroller, innerMode: mode }),
+        verdict: verdict({ scroller, innerMode: mode, variant: inner?.getAttribute('data-script-variant') || null }),
         scrollY: Math.round(window.scrollY), bodyTop: Math.round(body.scrollTop), htmlTop: Math.round(de.scrollTop),
         evAny: any.current.rate(), evBox: box.current.rate(), layoutChanges: heights.current.changes.rate(),
         box: inner && mode === 'inner' ? `${Math.round(inner.scrollTop)} / ${inner.scrollHeight} / ${inner.clientHeight}` : 'page flow',
+        boxStyle: inner && mode === 'inner' ? `h=${getComputedStyle(inner).height} overscroll-y=${getComputedStyle(inner).overscrollBehaviorY || 'n/a'}` : '-',
+        flags: window.location.search || '(none)',
         vv: vv ? `${Math.round(vv.height)} (+${Math.round(vv.offsetTop)}) x${vv.scale.toFixed(2)}` : 'n/a',
         inner: window.innerHeight, doc: `${body.scrollHeight}/${body.clientHeight}`,
         rootscroll: /[?&]rootscroll=1/.test(window.location.search),
@@ -63,6 +65,8 @@ export default function ScrollDebug() {
       {row('window.scrollY / body.scrollTop / html', `${s.scrollY} / ${s.bodyTop} / ${s.htmlTop}`)}
       {row('scroll events/s (any | script box)', `${s.evAny} | ${s.evBox}`)}
       {row('script box top/height/client', s.box)}
+      {row('script box css', s.boxStyle)}
+      {row('url flags', s.flags)}
       {row('visualViewport h (+top) scale | inner', `${s.vv} | ${s.inner}`)}
       {row('page height scrollH/clientH | changes/s', `${s.doc} | ${s.layoutChanges}`)}
     </div>
