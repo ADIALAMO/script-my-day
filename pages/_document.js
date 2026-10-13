@@ -183,19 +183,18 @@ export default function Document() {
                     loader.style.display = 'none';
                   }, 420);
                 }
-                // Default (unchanged): html AND body get overflow:auto while both keep the splash's height:100% — which makes the BODY the page's
-                // scroll container (window.scrollY stays 0). EXPERIMENT for iOS scroll debugging: open the site with ?rootscroll=1 to let the
-                // DOCUMENT scroll instead (html overflow visible + auto heights, the body's overflow propagates to the viewport, so the existing
-                // body.style.overflow='hidden' modal locks keep working). Nothing changes without the flag.
-                // The flag comes from the URL OR from localStorage key ls_variant_flags (the app stores the flags it sees: utils/variant-flags.js); ?variant=off clears them.
-                var rootScroll = false;
+                // The DOCUMENT is the page scroller (the verified iOS fix): html overflow visible + auto heights, so the body's overflow (hidden auto) propagates to the
+                // viewport and the body.style.overflow='hidden' modal locks keep working. The splash CSS above (html, body {height:100%; overflow:hidden}) is undone here.
+                // Escape hatch: ?variant=off (or a stored ls_variant_flags {off:1}; ?variant=on undoes it) keeps the LEGACY model: html AND body overflow:auto with the splash's
+                // height:100%, which makes the BODY the page scroller. (The app persists the flags; this snippet only reads them.)
+                var legacy = false;
                 try {
                   var q = location.search;
-                  if (/[?&]variant=off(&|$)/.test(q)) { localStorage.removeItem('ls_variant_flags'); }
-                  else if (/[?&](scriptbox|rootscroll|contain|debug)=/.test(q)) { rootScroll = /[?&]rootscroll=1(&|$)/.test(q); }
-                  else { var st = JSON.parse(localStorage.getItem('ls_variant_flags') || 'null'); rootScroll = !!st && (st.rootscroll === 1 || st.rootscroll === true); }
+                  var m = /[?&]variant=(off|on)(&|$)/.exec(q);
+                  if (m) { legacy = m[1] === 'off'; }
+                  else { var st = JSON.parse(localStorage.getItem('ls_variant_flags') || 'null'); legacy = !!st && (st.off === 1 || st.off === true); }
                 } catch (e) {}
-                if (rootScroll) {
+                if (!legacy) {
                   document.documentElement.style.overflow = 'visible';
                   document.documentElement.style.height = 'auto';
                   document.body.style.height = 'auto';

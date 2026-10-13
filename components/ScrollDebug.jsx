@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRateCounter, pageScroller, verdict, explainScriptBox } from '../utils/scroll-debug.js';
 import { readEffectiveFlags, FLAGS_KEY } from '../utils/variant-flags.js';
-import { parseScriptVariant, variantId } from '../utils/scroll-mode.js';
 
 /**
  * ?debug=1 overlay: read on the phone WHICH element scrolls and how busy scrolling is, to tell the iOS "shake" causes apart.
@@ -41,22 +40,19 @@ export default function ScrollDebug() {
         evAny: any.current.rate(), evBox: box.current.rate(), layoutChanges: heights.current.changes.rate(),
         box: inner && mode === 'inner' ? `${Math.round(inner.scrollTop)} / ${inner.scrollHeight} / ${inner.clientHeight}` : 'page flow',
         boxStyle: inner && mode === 'inner' ? `h=${getComputedStyle(inner).height} overscroll-y=${getComputedStyle(inner).overscrollBehaviorY || 'n/a'}` : '-',
-        flags: window.location.search || '(none)',
         vv: vv ? `${Math.round(vv.height)} (+${Math.round(vv.offsetTop)}) x${vv.scale.toFixed(2)}` : 'n/a',
         inner: window.innerHeight, doc: `${body.scrollHeight}/${body.clientHeight}`,
-        rootscroll: /[?&]rootscroll=1/.test(window.location.search),
         ...(() => {
           const f = readEffectiveFlags();
           let stored = null;
           try { stored = window.localStorage.getItem(FLAGS_KEY); } catch { stored = '(storage unavailable)'; }
           const mq = (q) => { try { return window.matchMedia(q).matches; } catch { return 'n/a'; } };
           const coarse = mq('(pointer: coarse)');
-          const resolved = parseScriptVariant(f.effectiveSearch);
           return {
             rawSearch: window.location.search || '(empty)', storedFlags: stored || '(none)', source: f.source,
-            resolved: `${variantId(resolved)} [${f.effectiveSearch || 'no flags'}]`,
+            resolved: `off=${f.flags.off ? 1 : 0} debug=${f.flags.debug ? 1 : 0}`,
             media: `pointer:coarse=${coarse} hover:none=${mq('(hover: none)')}`,
-            why: explainScriptBox({ mounted: !!inner, mode, coarse: coarse === true, scriptbox: resolved.scriptbox, source: f.source }),
+            why: explainScriptBox({ mounted: !!inner, mode, coarse: coarse === true, off: f.flags.off, source: f.source }),
           };
         })(),
       });
@@ -77,14 +73,14 @@ export default function ScrollDebug() {
         font: '10px/1.35 ui-monospace, Menlo, monospace', padding: '6px 8px', width: 'min(300px, calc(100vw - 12px))',
       }}
     >
-      <div style={{ color: '#fff', marginBottom: 2 }}>{s.verdict}{s.rootscroll ? ' | rootscroll=1' : ''}</div>
+      <div style={{ color: '#fff', marginBottom: 2 }}>{s.verdict}</div>
       {row('window.scrollY / body.scrollTop / html', `${s.scrollY} / ${s.bodyTop} / ${s.htmlTop}`)}
       {row('scroll events/s (any | script box)', `${s.evAny} | ${s.evBox}`)}
       {row('script box top/height/client', s.box)}
       {row('script box css', s.boxStyle)}
       {row('location.search', s.rawSearch)}
       {row('stored flags (ls_variant_flags)', s.storedFlags)}
-      {row('resolved variant | source', `${s.resolved} | ${s.source}`)}
+      {row('resolved flags | source', `${s.resolved} | ${s.source}`)}
       {row('media', s.media)}
       <div style={{ color: '#ffd479', marginTop: 2 }}>{s.why}</div>
       {row('visualViewport h (+top) scale | inner', `${s.vv} | ${s.inner}`)}

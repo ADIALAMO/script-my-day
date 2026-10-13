@@ -103,7 +103,7 @@ for (const [name, b] of [['webkit(mac)', wk], ['chromium', ch]]) {
   if (!b) continue;
   for (const w of [1440, 1280, 1024, 820]) for (const [label, script, ui, lang] of CASES) failures += await runCase(b, { viewport: { width: w, height: 800 } }, `${name} ${w}px ${label}`, '', script, ui, lang);
 }
-for (const [label, script, ui, lang] of CASES) failures += await runCase(wk, { ...devices['iPhone 14'] }, `iPhone14 ?scriptbox=1 ${label}`, '?scriptbox=1', script, ui, lang);
+for (const [label, script, ui, lang] of CASES) failures += await runCase(wk, { ...devices['iPhone 14'] }, `iPhone14 ${label}`, '', script, ui, lang);
 await wk.close(); await ch?.close();
 console.log(failures ? `\n${failures} problem(s)` : '\nno glyph outside the content area, no corner clipping, no badge overlap');
 process.exit(failures ? 1 : 0);

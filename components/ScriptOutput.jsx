@@ -24,7 +24,7 @@ import { shareData } from '../utils/export-image.js';
 import NextStepButton from './NextStepButton';
 import { useCoarsePointer } from '../hooks/useCoarsePointer.js';
 import { readEffectiveFlags } from '../utils/variant-flags.js';
-import { scriptWindowMode, scriptWindowClasses, scriptFrameGutter, scriptFrameRadius, parseScriptVariant, variantId, isTouchBoxVariant, TOUCH_BOX_HEIGHT } from '../utils/scroll-mode.js';
+import { scriptWindowMode, scriptWindowClasses, scriptFrameRadius, isTouchBox, TOUCH_BOX_HEIGHT } from '../utils/scroll-mode.js';
 import { NEXT_STEPS } from '../constants/tour.js';
 import { reelBreadcrumb } from '../utils/reel-diagnostics.js'; // TEMP DIAGNOSTIC (reel-crash)
 
@@ -92,12 +92,11 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
   // iOS rule (utils/scroll-mode.js): on touch devices the script flows in the PAGE — no nested scroll container, nothing scrolled programmatically.
   // Desktop keeps the fixed-height screenplay window that follows the typewriter.
   const coarsePointer = useCoarsePointer();
-  // Preview variants (?scriptbox=1 [&rootscroll=1] [&contain=1], touch only; utils/scroll-mode.js): read once per mount, the default stays page flow.
-  // (the flags come from the URL OR from localStorage `ls_variant_flags`, so a redirect that drops the query does not lose the variant: utils/variant-flags.js)
-  const [urlSearch] = useState(() => readEffectiveFlags().effectiveSearch);
-  const variant = parseScriptVariant(urlSearch);
-  const touchBox = isTouchBoxVariant({ coarsePointer, search: urlSearch });
-  const windowMode = scriptWindowMode({ coarsePointer, search: urlSearch });
+  // The script window with its own inner scroll is the DEFAULT (touch and desktop). `?variant=off` (stored in localStorage `ls_variant_flags`, `?variant=on` undoes it)
+  // restores the legacy page flow on touch. Flags: utils/variant-flags.js, rule: utils/scroll-mode.js.
+  const [legacyOff] = useState(() => readEffectiveFlags().flags.off);
+  const touchBox = isTouchBox({ coarsePointer, off: legacyOff });
+  const windowMode = scriptWindowMode({ coarsePointer, off: legacyOff });
   const innerScroll = windowMode === 'inner';
   const { displayText, isTyping, skip, scrollRef, pauseAutoScroll, handleScrollPosition } = useTypewriter({
     cleanScript,
@@ -686,7 +685,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
 
       {/* ── Script View ──────────────────────────────────────────────────── */}
       <div
-        className={`relative ${scriptFrameRadius(windowMode)} overflow-hidden bg-[#030712]/90 ${scriptFrameGutter({ touch: touchBox, contain: variant.contain })} transition-all duration-500
+        className={`relative ${scriptFrameRadius(windowMode)} overflow-hidden bg-[#030712]/90 mx-2 md:mx-4 transition-all duration-500
           ${isEditing
             ? 'border border-[#d4a373]/45 shadow-[0_0_40px_rgba(212,163,115,0.10),inset_0_0_40px_rgba(212,163,115,0.03)]'
             : 'border border-white/5'
@@ -711,8 +710,8 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
           // On touch devices (windowMode 'page') this container has NO height, overflow or scroll handlers: the script is part of the page flow
           // (see the iOS rule in utils/scroll-mode.js — a nested scroller here made iPhone Safari shake).
           data-script-scroller={windowMode}
-          data-script-variant={touchBox ? variantId(variant) : 'default'}
-          className={scriptWindowClasses(windowMode, { touch: touchBox, contain: touchBox && variant.contain })}
+          data-script-variant={legacyOff ? 'off' : 'default'}
+          className={scriptWindowClasses(windowMode, { touch: touchBox })}
           style={touchBox ? { height: TOUCH_BOX_HEIGHT } : undefined}
           {...(innerScroll ? { onWheel: pauseAutoScroll, onTouchStart: pauseAutoScroll, onPointerDown: pauseAutoScroll, onTouchEnd: handleScrollPosition, onPointerUp: handleScrollPosition, onScroll: handleScrollPosition } : {})}
         >
