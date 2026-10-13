@@ -183,8 +183,19 @@ export default function Document() {
                     loader.style.display = 'none';
                   }, 420);
                 }
-                document.body.style.overflow = 'auto';
-                document.documentElement.style.overflow = 'auto';
+                // Default (unchanged): html AND body get overflow:auto while both keep the splash's height:100% — which makes the BODY the page's
+                // scroll container (window.scrollY stays 0). EXPERIMENT for iOS scroll debugging: open the site with ?rootscroll=1 to let the
+                // DOCUMENT scroll instead (html overflow visible + auto heights, the body's overflow propagates to the viewport, so the existing
+                // body.style.overflow='hidden' modal locks keep working). Nothing changes without the flag.
+                if (/[?&]rootscroll=1(&|$)/.test(location.search)) {
+                  document.documentElement.style.overflow = 'visible';
+                  document.documentElement.style.height = 'auto';
+                  document.body.style.height = 'auto';
+                  document.body.style.overflow = 'hidden auto';
+                } else {
+                  document.body.style.overflow = 'auto';
+                  document.documentElement.style.overflow = 'auto';
+                }
               }
               if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', removeLoader);

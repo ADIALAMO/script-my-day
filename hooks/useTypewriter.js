@@ -13,10 +13,13 @@ const BOTTOM_THRESHOLD_PX = 40;
  * @param {string}   opts.cleanScript       - The fully parsed script text to animate.
  * @param {Function} opts.setIsTypingGlobal - Parent callback to sync typing state upward.
  * @param {Function} opts.playSound         - Typewriter sound callback fired per character.
+
+ * @param {boolean}  [opts.followTyping] - Keep the script box scrolled to the newest character (only meaningful when the box is its own scroller:
+ *                                        touch devices render the script in page flow and must never scroll anything programmatically).
  * @param {boolean}  [opts.instant]         - Show the full text immediately (saved/history scripts):
  *                                            no animation, no sound, no auto-scroll, never "typing".
  */
-export function useTypewriter({ cleanScript, setIsTypingGlobal, playSound, instant = false }) {
+export function useTypewriter({ cleanScript, setIsTypingGlobal, playSound, instant = false, followTyping = true }) {
   const [displayText, setDisplayText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
 
@@ -74,7 +77,7 @@ export function useTypewriter({ cleanScript, setIsTypingGlobal, playSound, insta
       // smooth (see ScriptOutput.jsx) — scrollTo's 'auto' means "use the
       // element's CSS scroll-behavior", so it would silently still animate if
       // that CSS property were still set.
-      if (i > 15 && scrollRef.current && !isAutoScrollPaused.current) {
+      if (followTyping && i > 15 && scrollRef.current && !isAutoScrollPaused.current) {
         scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'auto' });
       }
 

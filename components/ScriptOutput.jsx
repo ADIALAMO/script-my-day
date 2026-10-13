@@ -22,6 +22,8 @@ import { useStoryboardGeneration } from '../hooks/useStoryboardGeneration.js';
 import { useCharacter } from '../hooks/useCharacter.js';
 import { shareData } from '../utils/export-image.js';
 import NextStepButton from './NextStepButton';
+import { useCoarsePointer } from '../hooks/useCoarsePointer.js';
+import { scriptWindowMode, scriptWindowClasses } from '../utils/scroll-mode.js';
 import { NEXT_STEPS } from '../constants/tour.js';
 import { reelBreadcrumb } from '../utils/reel-diagnostics.js'; // TEMP DIAGNOSTIC (reel-crash)
 
@@ -86,11 +88,17 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
   // ── Custom hooks ───────────────────────────────────────────────────────────
   const { isMuted, setIsMuted, playSound, playFlashSound, unlockFlashAudio } = useCinematicAudio();
 
+  // iOS rule (utils/scroll-mode.js): on touch devices the script flows in the PAGE — no nested scroll container, nothing scrolled programmatically.
+  // Desktop keeps the fixed-height screenplay window that follows the typewriter.
+  const coarsePointer = useCoarsePointer();
+  const windowMode = scriptWindowMode({ coarsePointer });
+  const innerScroll = windowMode === 'inner';
   const { displayText, isTyping, skip, scrollRef, pauseAutoScroll, handleScrollPosition } = useTypewriter({
     cleanScript,
     setIsTypingGlobal,
     playSound,
     instant,
+    followTyping: innerScroll,
   });
 
   const posterTitle = useMemo(() => getCinematicTitle(displayText || cleanScript), [displayText, cleanScript]);
@@ -693,11 +701,12 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
           // 'auto' per character, which only means "instant" because this
           // element has no competing scroll-behavior override; restoring one
           // here would silently re-smooth it.
-          className="h-[500px] md:h-[650px] overflow-y-auto overscroll-y-auto p-10 md:p-20 custom-scrollbar relative"
-          onWheel={pauseAutoScroll}
-          onTouchStart={pauseAutoScroll}
-          onPointerDown={pauseAutoScroll}
-          onScroll={handleScrollPosition}
+          //
+          // On touch devices (windowMode 'page') this container has NO height, overflow or scroll handlers: the script is part of the page flow
+          // (see the iOS rule in utils/scroll-mode.js — a nested scroller here made iPhone Safari shake).
+          data-script-scroller={windowMode}
+          className={scriptWindowClasses(windowMode)}
+          {...(innerScroll ? { onWheel: pauseAutoScroll, onTouchStart: pauseAutoScroll, onPointerDown: pauseAutoScroll, onScroll: handleScrollPosition } : {})}
         >
           {showJournal ? (
             <div
