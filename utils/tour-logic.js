@@ -59,8 +59,8 @@ export function stepOutcome({ found, shown, elapsedMs = 0, waitMs = 0, misses = 
 /** "k of M" total after silent drops */
 export const chapterTotal = (length, dropped) => Math.max(0, length - dropped);
 
-/** the Guide menu offers a chapter only when its screen is there. hasAnchor(name) -> boolean */
-export const chapterAvailable = (chapter, hasAnchor) => chapter.requires.every((a) => hasAnchor(a));
+/** a chapter can start when the stage it needs was reached (on screen, or earlier in this session). reached = {script, poster, comic} */
+export const chapterAvailable = (chapter, reached) => !chapter.stage || !!reached?.[chapter.stage];
 
 /** chapters 2+ start on their own only for a user who finished chapter 1 (never after a skip), once each */
 export function chapterAutoEligible(state, id) {
@@ -102,4 +102,55 @@ export function computePlacement({ rect, bubble, vp, insets = {}, rtl = false, g
 export function stepAfter(index, dir, n) {
   const next = index + dir;
   return next < 0 || next >= n ? -1 : next;
+}
+
+// ── Spotlight positioning (pure) ─────────────────────────────────────────────
+
+const near = (a, b, eps) => Math.abs(a - b) <= eps;
+
+/** two DOMRect-like boxes are the same place (sub-pixel noise tolerated) */
+export const rectsClose = (a, b, eps = 0.5) => !!a && !!b
+  && near(a.left, b.left, eps) && near(a.top, b.top, eps) && near(a.width, b.width, eps) && near(a.height, b.height, eps);
+
+/**
+ * "Stable" = the anchor's rect has not moved for `frames` consecutive animation frames. push(rect) once per frame; a null rect (anchor
+ * missing / zero-size) or any movement restarts the count. Used to show the spotlight only after a scroll or an entrance animation settled.
+ */
+export function createStability({ frames = 3, eps = 0.5 } = {}) {
+  let last = null;
+  let still = 0;
+  return {
+    push(rect) {
+      if (!isUsableRect(rect)) { last = null; still = 0; return false; }
+      still = rectsClose(last, rect, eps) ? still + 1 : 0;
+      last = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+      return still >= frames;
+    },
+    reset() { last = null; still = 0; },
+  };
+}
+
+/** scroll only when the anchor is not already comfortably visible: clear of the sticky navbar and leaving `room` px below for the bubble */
+export function needsScroll({ rect, navH = 0, vh, room = 220 }) {
+  if (rect.top < navH + 8) return true;
+  const tall = rect.height > vh - navH - room;
+  return tall ? rect.top > navH + 8 + 40 : rect.bottom > vh - room;
+}
+
+/**
+ * Spotlight + bubble layout. `rect` is getBoundingClientRect() (layout-viewport coordinates, which is also what position:fixed uses);
+ * `off` = visualViewport.offsetLeft/offsetTop and `vp` its width/height (iOS: the visible part moves inside the layout viewport while the
+ * toolbar collapses or the page is zoomed). The anchor is clipped to the VISIBLE part, the bubble is placed inside it, and both are returned
+ * in layout coordinates again so they line up with the real element.
+ */
+export function layoutFor({ rect, off = { x: 0, y: 0 }, vp, insets = {}, bubble, rtl = false, pad = 6 }) {
+  const top = Math.max(rect.top - off.y, 0);
+  const bottom = Math.min(rect.bottom - off.y, vp.h);
+  const left = Math.max(rect.left - off.x, 0);
+  const right = Math.min(rect.right - off.x, vp.w);
+  const vis = { left, right, top, bottom, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
+  const spot = { left: vis.left - pad + off.x, top: vis.top - pad + off.y, width: vis.width + pad * 2, height: vis.height + pad * 2 };
+  const padded = { left: vis.left - pad, right: vis.right + pad, top: vis.top - pad, bottom: vis.bottom + pad, width: vis.width + pad * 2, height: vis.height + pad * 2 };
+  const p = computePlacement({ rect: padded, bubble, vp, insets, rtl });
+  return { spot, place: { ...p, left: p.left + off.x, top: p.top + off.y } };
 }

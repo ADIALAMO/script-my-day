@@ -5,11 +5,12 @@
 // `wait` = ms the step waits for its anchor to appear (it is not on screen yet) before it is dropped silently.
 // `interactive` = the spotlighted control stays clickable (the tour never blocks the one control it explains).
 // A step whose anchor vanishes while shown (e.g. the typewriter's Skip once typing ends) is dropped silently and the chapter continues.
-// `requires` = anchors that must exist for the Guide menu to offer the chapter; `unavailable` = what to do first.
+// `stage` = the screen a chapter needs to have been reached ('script' | 'poster' | 'comic'; null = always). The Guide menu starts the chapter
+// when the stage was reached (on screen or earlier in this session), otherwise it says what to do first (`unavailable` label, `note` sentence).
 export const CHAPTERS = [
   {
-    id: 1, name: { he: 'סיפור', en: 'Story' }, requires: ['journal'],
-    unavailable: { he: '', en: '' },
+    id: 1, name: { he: 'סיפור', en: 'Story' }, stage: null,
+    unavailable: { he: '', en: '' }, note: { he: '', en: '' },
     steps: [
       { id: 'spark', anchors: ['spark'], copy: {
         he: 'תקוע? "הצתת השראה" ממלאת את הדף ברעיון להתחלה.',
@@ -32,8 +33,9 @@ export const CHAPTERS = [
     ],
   },
   {
-    id: 2, name: { he: 'תסריט', en: 'Script' }, requires: ['poster-cta'],
+    id: 2, name: { he: 'תסריט', en: 'Script' }, stage: 'script',
     unavailable: { he: 'זמין אחרי שתיצור תסריט', en: 'Available after you make a script' },
+    note: { he: 'ההדרכה הזו מתחילה אחרי שתיצור את התסריט הראשון שלך.', en: 'This guide starts after you create your first script.' },
     steps: [
       // The typewriter's SKIP only completes the animation (shows the whole script at once) — nothing more.
       { id: 'skip-typing', anchors: ['skip-typing'], interactive: true, copy: {
@@ -52,8 +54,9 @@ export const CHAPTERS = [
     ],
   },
   {
-    id: 3, name: { he: 'פוסטר', en: 'Poster' }, requires: ['poster-share'],
+    id: 3, name: { he: 'פוסטר', en: 'Poster' }, stage: 'poster',
     unavailable: { he: 'זמין אחרי שתיצור פוסטר', en: 'Available after you make a poster' },
+    note: { he: 'ההדרכה הזו מתחילה אחרי שתיצור את הפוסטר הראשון שלך.', en: 'This guide starts after you create your first poster.' },
     steps: [
       { id: 'poster-share', anchors: ['poster-share'], wait: 4000, copy: {
         he: 'אהבת? שתף או שמור את הפוסטר.',
@@ -67,8 +70,9 @@ export const CHAPTERS = [
     ],
   },
   {
-    id: 4, name: { he: 'קומיקס', en: 'Comic' }, requires: ['reel-cta'],
+    id: 4, name: { he: 'קומיקס', en: 'Comic' }, stage: 'comic',
     unavailable: { he: 'זמין אחרי שתיצור קומיקס', en: 'Available after you make a comic' },
+    note: { he: 'ההדרכה הזו מתחילה אחרי שתיצור את הקומיקס הראשון שלך.', en: 'This guide starts after you create your first comic.' },
     steps: [
       // Replace re-renders ONE finished, unlocked panel (the old image stays if the new one fails); the budget is shared across the
       // whole comic (server value, default 2) and the button itself shows how many are left. It lives in a hover/tap bar on the panel.

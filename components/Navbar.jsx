@@ -234,7 +234,7 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, 
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHistoryOpen, onOpenAuthModal, tierRefreshToken = 0, onDropdownToggle, closeDropdownRef, isMusicMuted, onToggleMute, isMuteLocked = false, onStartTour, tourDisabled = false }) {
+export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHistoryOpen, onOpenAuthModal, tierRefreshToken = 0, onDropdownToggle, closeDropdownRef, isMusicMuted, onToggleMute, isMuteLocked = false, onStartTour, tourDisabled = false, tourStages }) {
   const native = useNative();
   const { data: session, status } = useSession();
   const isAuthenticated = status === 'authenticated';
@@ -474,6 +474,7 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
       <GuideMenu
         anchor={guideBtnRef.current}
         lang={lang}
+        stages={tourStages}
         onClose={() => setGuideOpen(false)}
         onPick={(id) => { setGuideOpen(false); setTimeout(() => onStartTour?.(id), 80); /* after the menu's open-state has been mirrored, so it no longer counts as blocking */ }}
       />

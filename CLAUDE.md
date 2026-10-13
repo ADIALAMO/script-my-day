@@ -265,6 +265,9 @@ a user who FINISHED chapter 1; any Skip/Esc/Android Back sets `off` for good. A 
 `interactive` steps keep the spotlighted control clickable. The Navbar "Guide" button opens [components/GuideMenu.jsx](components/GuideMenu.jsx) (chapter list; unavailable chapters say what to do first).
 No body scroll lock (index.js owns that), no network, no analytics, ReportButton untouched (anchors are wrappers at the call sites). Copy must avoid pricing/plan/upgrade/offer words (native-app policy; tests/tour.test.js).
 `NextStepButton` pills show only while their scroll target is off-screen.
+Spotlight sync (iOS-proven rules, see utils/tour-logic.js `createStability` / `layoutFor` / `needsScroll`): tour scrolls are INSTANT (never smooth), the spotlight + bubble show only after the anchor's rect held still for a few frames, then a
+requestAnimationFrame loop tracks it every frame (body is the page scroller, scroll events are unreliable on iOS); positions use the visual-viewport offset; focus moves to Next once the bubble is visible. Guide menu availability is by STAGE reached
+(`chapter.stage`: script / poster / comic, tracked from ScriptOutput milestones incl. `*-shown` for History reopen), not by whether an anchor is on screen; every row is tappable and a not-yet row shows `chapter.note`.
 
 ## Conventions & gotchas
 - Provider errors are thrown as `"<Name> <httpStatus>: <body slice>"` so

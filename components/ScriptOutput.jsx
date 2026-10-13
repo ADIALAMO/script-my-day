@@ -217,6 +217,9 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     if (posterLoading) { sawPosterLoading.current = true; return; }
     if (sawPosterLoading.current && posterUrl && !posterError) { sawPosterLoading.current = false; onMilestone?.('poster-done'); }
   }, [posterLoading, posterUrl, posterError, onMilestone]);
+  // Stage markers for the Guide menu (a poster / comic on screen counts even when reopened from History; these never start a chapter)
+  useEffect(() => { if (showPoster && posterUrl && !posterLoading) onMilestone?.('poster-shown'); }, [showPoster, posterUrl, posterLoading, onMilestone]);
+  useEffect(() => { if (showStoryboard && storyboardPanels.length > 0) onMilestone?.('comic-shown'); }, [showStoryboard, storyboardPanels.length, onMilestone]);
   const sawComicLoading = useRef(false);
   const comicSettled = (() => {
     if (!showStoryboard || storyboardLoading || !storyboardPanels.length) return false;
