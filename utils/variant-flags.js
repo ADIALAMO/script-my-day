@@ -1,58 +1,53 @@
-// Persistent preview-variant flags (pure resolution + a thin browser layer). Unit-tested in tests/variant-flags.test.js.
+// Persistent debug / escape-hatch flags (pure resolution + a thin browser layer). Unit-tested in tests/variant-flags.test.js.
 //
-// ?scriptbox=1 / ?rootscroll=1 / ?contain=1 / ?debug=1 select the script-box preview variants (utils/scroll-mode.js). A query string does not survive
-// everything (an auth / SSO redirect, a bookmark, a link without it), so when any of them is in the URL the set is STORED (localStorage `ls_variant_flags`)
-// and read on every load; `?variant=off` clears it. No flag in the URL and nothing stored = the default (unchanged for everyone else).
+//   ?variant=off  -> the LEGACY scroll behaviour (touch: the script flows in the page; the old body page scroller). Stored, so it sticks across loads.
+//   ?variant=on   -> undoes it.
+//   ?debug=1 / ?debug=0 -> the scroll overlay (components/ScrollDebug.jsx). Stored too.
+// Stored as JSON {off:0|1, debug:0|1} in localStorage `ls_variant_flags` (iOS home-screen web apps have their OWN localStorage). Nothing in the URL and
+// nothing stored = the default (the script window + the document as page scroller). Older stored sets from the preview comparison are ignored.
 export const FLAGS_KEY = 'ls_variant_flags';
-export const FLAG_NAMES = ['scriptbox', 'rootscroll', 'contain', 'debug'];
-const EMPTY = { scriptbox: false, rootscroll: false, contain: false, debug: false };
+const EMPTY = { off: false, debug: false };
 
 const param = (search, name) => {
   const m = new RegExp(`(?:^|[?&])${name}=([^&#]*)`).exec(search || '');
   return m ? m[1] : null;
 };
 
-/** stored JSON -> flags (anything unreadable = nothing stored) */
+/** stored JSON -> flags (anything unreadable or without off / debug = nothing stored) */
 export function parseStored(raw) {
   if (typeof raw !== 'string' || !raw) return null;
   try {
     const o = JSON.parse(raw);
     if (!o || typeof o !== 'object') return null;
-    const flags = { ...EMPTY };
-    let any = false;
-    for (const n of FLAG_NAMES) { if (o[n] === 1 || o[n] === true) { flags[n] = true; any = true; } }
-    return any ? flags : null;
+    const flags = { off: o.off === 1 || o.off === true, debug: o.debug === 1 || o.debug === true };
+    return flags.off || flags.debug ? flags : null;
   } catch { return null; }
 }
 
 /**
- * -> { flags, source: 'url' | 'stored' | 'cleared' | 'none', store: object | null, clear: boolean }
- * `store` = what to write (numbers 0/1), `clear` = remove the stored value.
+ * -> { flags: {off, debug}, source: 'url' | 'stored' | 'none', store: object | null, clear: boolean }
+ * A flag in the URL overrides the stored value of THAT flag only (so `?debug=1` keeps a stored `off`); `store` = what to write (numbers 0/1), `clear` = remove it.
  */
 export function resolveFlags({ search = '', stored = null } = {}) {
-  if (param(search, 'variant') === 'off') return { flags: { ...EMPTY }, source: 'cleared', store: null, clear: true };
-  const present = FLAG_NAMES.filter((n) => param(search, n) !== null);
-  if (present.length) {
-    const flags = { ...EMPTY };
-    for (const n of present) flags[n] = param(search, n) === '1';
-    return { flags, source: 'url', store: Object.fromEntries(FLAG_NAMES.map((n) => [n, flags[n] ? 1 : 0])), clear: false };
-  }
-  const s = parseStored(stored);
-  return s ? { flags: s, source: 'stored', store: null, clear: false } : { flags: { ...EMPTY }, source: 'none', store: null, clear: false };
-}
-
-/** flags -> a search string the existing parsers understand ('?scriptbox=1&rootscroll=1') */
-export function flagsToSearch(flags) {
-  const parts = FLAG_NAMES.filter((n) => flags?.[n]).map((n) => `${n}=1`);
-  return parts.length ? `?${parts.join('&')}` : '';
+  const prev = parseStored(stored) || { ...EMPTY };
+  const variant = param(search, 'variant');
+  const debug = param(search, 'debug');
+  const hasUrl = (variant === 'off' || variant === 'on') || debug === '1' || debug === '0';
+  if (!hasUrl) return { flags: prev, source: parseStored(stored) ? 'stored' : 'none', store: null, clear: false };
+  const flags = {
+    off: variant === 'off' ? true : variant === 'on' ? false : prev.off,
+    debug: debug === '1' ? true : debug === '0' ? false : prev.debug,
+  };
+  if (!flags.off && !flags.debug) return { flags, source: 'url', store: null, clear: true };
+  return { flags, source: 'url', store: { off: flags.off ? 1 : 0, debug: flags.debug ? 1 : 0 }, clear: false };
 }
 
 let memo = null;
 
-/** Browser layer: resolve once per page load (writes / clears localStorage, every access guarded) and return the effective search + diagnostics. */
+/** Browser layer: resolve once per page load (writes / clears localStorage, every access guarded) and return the flags + diagnostics. */
 export function readEffectiveFlags(win = typeof window !== 'undefined' ? window : null) {
   if (memo && memo.win === win) return memo.value;
-  if (!win) return { search: '', stored: null, source: 'none', flags: { ...EMPTY }, effectiveSearch: '' };
+  if (!win) return { search: '', stored: null, source: 'none', flags: { ...EMPTY } };
   let storedRaw = null;
   try { storedRaw = win.localStorage.getItem(FLAGS_KEY); } catch { /* storage unavailable: URL only */ }
   const search = win.location?.search || '';
@@ -61,7 +56,7 @@ export function readEffectiveFlags(win = typeof window !== 'undefined' ? window 
     if (r.clear) win.localStorage.removeItem(FLAGS_KEY);
     else if (r.store) win.localStorage.setItem(FLAGS_KEY, JSON.stringify(r.store));
   } catch { /* the in-memory result still holds for this page load */ }
-  const value = { search, stored: storedRaw, source: r.source, flags: r.flags, effectiveSearch: flagsToSearch(r.flags) };
+  const value = { search, stored: storedRaw, source: r.source, flags: r.flags };
   memo = { win, value };
   return value;
 }

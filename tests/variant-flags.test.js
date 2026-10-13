@@ -6,9 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (f) => readFileSync(path.join(ROOT, f), 'utf8');
-const { FLAGS_KEY, parseStored, resolveFlags, flagsToSearch, readEffectiveFlags, _resetFlagsMemo } = await import('../utils/variant-flags.js');
-const { parseScriptVariant, variantId, scriptWindowMode } = await import('../utils/scroll-mode.js');
-const { explainScriptBox } = await import('../utils/scroll-debug.js');
+const { FLAGS_KEY, parseStored, resolveFlags, readEffectiveFlags, _resetFlagsMemo } = await import('../utils/variant-flags.js');
 
 const fakeWin = ({ search = '', stored = null, throwing = false } = {}) => {
   const m = stored === null ? {} : { [FLAGS_KEY]: stored };
@@ -20,109 +18,95 @@ const fakeWin = ({ search = '', stored = null, throwing = false } = {}) => {
   };
 };
 
-test('resolve: URL flags win, are stored whole (absent = 0), and replace an older stored set', () => {
-  const a = resolveFlags({ search: '?scriptbox=1' });
-  assert.deepEqual(a.flags, { scriptbox: true, rootscroll: false, contain: false, debug: false });
-  assert.equal(a.source, 'url');
-  assert.deepEqual(a.store, { scriptbox: 1, rootscroll: 0, contain: 0, debug: 0 });
-  // B after a stored C: contain must not survive
-  const b = resolveFlags({ search: '?scriptbox=1&rootscroll=1', stored: JSON.stringify({ scriptbox: 1, rootscroll: 1, contain: 1, debug: 0 }) });
-  assert.equal(variantId(parseScriptVariant(flagsToSearch(b.flags))), 'B');
-  assert.deepEqual(b.store, { scriptbox: 1, rootscroll: 1, contain: 0, debug: 0 });
-  // an explicit =0 turns a flag off
-  const c = resolveFlags({ search: '?scriptbox=0&debug=1' });
-  assert.deepEqual(c.flags, { scriptbox: false, rootscroll: false, contain: false, debug: true });
-  assert.equal(resolveFlags({ search: '?foo=1&debug=1' }).source, 'url');
+test('default: no flag in the URL and nothing stored = NOT off, NOT debug (the new default for everyone)', () => {
+  const r = resolveFlags({ search: '' });
+  assert.deepEqual(r.flags, { off: false, debug: false }); assert.equal(r.source, 'none'); assert.equal(r.store, null); assert.equal(r.clear, false);
+  assert.deepEqual(resolveFlags({ search: '?ref=abc&checkout=success' }).flags, { off: false, debug: false });
+  // the preview-comparison flags are gone: they change nothing
+  for (const q of ['?scriptbox=1', '?scriptbox=1&rootscroll=1&contain=1', '?rootscroll=1']) assert.deepEqual(resolveFlags({ search: q }).flags, { off: false, debug: false }, q);
 });
 
-test('resolve: no flag in the URL = the STORED set (a redirect / bookmark that drops the query keeps the variant)', () => {
-  const stored = JSON.stringify({ scriptbox: 1, rootscroll: 1, contain: 1, debug: 1 });
-  const r = resolveFlags({ search: '', stored });
-  assert.equal(r.source, 'stored'); assert.equal(r.store, null); assert.equal(r.clear, false);
-  assert.equal(flagsToSearch(r.flags), '?scriptbox=1&rootscroll=1&contain=1&debug=1');
-  assert.equal(variantId(parseScriptVariant(flagsToSearch(r.flags))), 'C');
-  assert.equal(scriptWindowMode({ coarsePointer: true, search: flagsToSearch(r.flags) }), 'inner');
-  assert.equal(resolveFlags({ search: '?checkout=success', stored }).source, 'stored');   // unrelated params do not hide the stored variant
+test('?variant=off is the escape hatch: stored, sticky across loads, undone by ?variant=on; ?debug=1 / 0 independent and merged', () => {
+  const off = resolveFlags({ search: '?variant=off' });
+  assert.deepEqual(off.flags, { off: true, debug: false }); assert.equal(off.source, 'url'); assert.deepEqual(off.store, { off: 1, debug: 0 });
+  const sticky = resolveFlags({ search: '', stored: JSON.stringify(off.store) });
+  assert.deepEqual(sticky.flags, { off: true, debug: false }); assert.equal(sticky.source, 'stored');
+  const on = resolveFlags({ search: '?variant=on', stored: JSON.stringify(off.store) });
+  assert.deepEqual(on.flags, { off: false, debug: false }); assert.equal(on.clear, true);
+  // ?debug=1 keeps a stored off, ?debug=0 turns only debug off
+  const dbg = resolveFlags({ search: '?debug=1', stored: JSON.stringify({ off: 1, debug: 0 }) });
+  assert.deepEqual(dbg.flags, { off: true, debug: true }); assert.deepEqual(dbg.store, { off: 1, debug: 1 });
+  const dbgOff = resolveFlags({ search: '?debug=0', stored: JSON.stringify({ off: 0, debug: 1 }) });
+  assert.deepEqual(dbgOff.flags, { off: false, debug: false }); assert.equal(dbgOff.clear, true);
+  assert.deepEqual(resolveFlags({ search: '?variant=off&debug=1' }).store, { off: 1, debug: 1 });
+  assert.deepEqual(resolveFlags({ search: '?variant=maybe' }).flags, { off: false, debug: false });   // anything else is ignored
 });
 
-test('resolve: ?variant=off clears everything (even with other flags in the same URL); unreadable / empty storage = default', () => {
-  const stored = JSON.stringify({ scriptbox: 1, rootscroll: 1, contain: 0, debug: 0 });
-  const off = resolveFlags({ search: '?variant=off', stored });
-  assert.equal(off.clear, true); assert.equal(off.source, 'cleared'); assert.equal(flagsToSearch(off.flags), '');
-  assert.equal(resolveFlags({ search: '?scriptbox=1&variant=off', stored }).clear, true);
-  for (const bad of [null, '', 'garbage', '{', '[]', '{"scriptbox":0}', '{"scriptbox":"yes"}', 'null']) {
-    const r = resolveFlags({ search: '', stored: bad });
-    assert.equal(r.source, 'none', String(bad)); assert.equal(flagsToSearch(r.flags), '');
-  }
-  assert.equal(parseStored('{"scriptbox":true,"debug":1}').debug, true);
+test('stored values: old preview sets and garbage are ignored, never "off" by accident', () => {
+  for (const bad of [null, '', 'garbage', '{', '[]', 'null', '{"off":0,"debug":0}', '{"off":"yes"}']) assert.equal(parseStored(bad), null, String(bad));
+  assert.equal(parseStored(JSON.stringify({ scriptbox: 1, rootscroll: 1, contain: 1, debug: 0 })), null);     // an old variant set from the preview
+  assert.deepEqual(parseStored(JSON.stringify({ scriptbox: 1, rootscroll: 1, contain: 0, debug: 1 })), { off: false, debug: true });
+  assert.deepEqual(parseStored('{"off":true}'), { off: true, debug: false });
+  assert.equal(resolveFlags({ search: '', stored: '{"scriptbox":1,"rootscroll":1,"contain":1,"debug":0}' }).flags.off, false);
 });
 
-test('browser layer: stores on first sight, survives a reload without the query, is cleared by ?variant=off, tolerates blocked storage', () => {
+test('browser layer: persists off / debug, survives a reload without the query, ?variant=on clears, tolerates blocked storage', () => {
   _resetFlagsMemo();
-  const w1 = fakeWin({ search: '?scriptbox=1&rootscroll=1' });
-  const r1 = readEffectiveFlags(w1);
-  assert.equal(r1.effectiveSearch, '?scriptbox=1&rootscroll=1'); assert.equal(r1.source, 'url');
-  assert.equal(w1.localStorage._m[FLAGS_KEY], JSON.stringify({ scriptbox: 1, rootscroll: 1, contain: 0, debug: 0 }));
-  _resetFlagsMemo();                                                    // a reload / redirect that lost the query
+  const w1 = fakeWin({ search: '?variant=off&debug=1' });
+  assert.deepEqual(readEffectiveFlags(w1).flags, { off: true, debug: true });
+  assert.equal(w1.localStorage._m[FLAGS_KEY], JSON.stringify({ off: 1, debug: 1 }));
+  _resetFlagsMemo();
   const w2 = fakeWin({ search: '', stored: w1.localStorage._m[FLAGS_KEY] });
   const r2 = readEffectiveFlags(w2);
-  assert.equal(r2.effectiveSearch, '?scriptbox=1&rootscroll=1'); assert.equal(r2.source, 'stored');
+  assert.deepEqual(r2.flags, { off: true, debug: true }); assert.equal(r2.source, 'stored');
   assert.equal(readEffectiveFlags(w2), r2, 'resolved once per page load');
   _resetFlagsMemo();
-  const w3 = fakeWin({ search: '?variant=off', stored: w1.localStorage._m[FLAGS_KEY] });
-  assert.equal(readEffectiveFlags(w3).effectiveSearch, ''); assert.ok(!(FLAGS_KEY in w3.localStorage._m));
+  const w3 = fakeWin({ search: '?variant=on&debug=0', stored: w1.localStorage._m[FLAGS_KEY] });
+  assert.deepEqual(readEffectiveFlags(w3).flags, { off: false, debug: false }); assert.ok(!(FLAGS_KEY in w3.localStorage._m));
   _resetFlagsMemo();
-  const w4 = fakeWin({ search: '?scriptbox=1', throwing: true });
-  assert.equal(readEffectiveFlags(w4).effectiveSearch, '?scriptbox=1');   // storage blocked: the URL still works for this page load
+  assert.equal(readEffectiveFlags(fakeWin({ search: '?variant=off', throwing: true })).flags.off, true);   // blocked storage: the URL still works for this load
   _resetFlagsMemo();
-  assert.equal(readEffectiveFlags(fakeWin({ search: '', throwing: true })).effectiveSearch, '');
+  assert.equal(readEffectiveFlags(fakeWin({ search: '', throwing: true })).flags.off, false);
   _resetFlagsMemo();
-  assert.equal(readEffectiveFlags(null).effectiveSearch, '');
+  assert.deepEqual(readEffectiveFlags(null).flags, { off: false, debug: false });
   _resetFlagsMemo();
 });
 
-test('the inline _document script decides rootscroll exactly like resolveFlags (URL, stored, ?variant=off)', () => {
+test('the inline _document script decides the scroll model exactly like resolveFlags().flags.off (URL, stored, ?variant=on)', () => {
   const doc = read('pages/_document.js');
-  const snippet = doc.slice(doc.indexOf('var rootScroll = false;'), doc.indexOf('if (rootScroll) {'));
+  const snippet = doc.slice(doc.indexOf('var legacy = false;'), doc.indexOf('if (!legacy) {'));
   assert.ok(snippet.includes('ls_variant_flags'));
-  const decide = (search, stored) => {
-    const m = stored === null ? {} : { ls_variant_flags: stored };
-    const ls = { getItem: (k) => (k in m ? m[k] : null), removeItem: (k) => { delete m[k]; } };
-    const rootScroll = new Function('location', 'localStorage', `${snippet}; return { rootScroll, m: arguments[2] };`)({ search }, ls, m);
-    return { root: rootScroll.rootScroll, cleared: stored !== null && !('ls_variant_flags' in m) };
-  };
-  const stC = JSON.stringify({ scriptbox: 1, rootscroll: 1, contain: 1, debug: 0 });
-  const stA = JSON.stringify({ scriptbox: 1, rootscroll: 0, contain: 0, debug: 0 });
+  const decide = (search, stored) => new Function('location', 'localStorage', `${snippet}; return legacy;`)({ search }, { getItem: () => stored });
   const table = [
-    ['', null], ['?rootscroll=1', null], ['?scriptbox=1', null], ['?scriptbox=1&rootscroll=1&contain=1', null],
-    ['', stC], ['', stA], ['?scriptbox=1', stC], ['?scriptbox=1&rootscroll=1', stA], ['?variant=off', stC], ['?checkout=success', stC], ['', 'garbage'],
+    ['', null], ['?variant=off', null], ['?variant=on', null], ['?debug=1', null], ['?scriptbox=1&rootscroll=1', null],
+    ['', JSON.stringify({ off: 1, debug: 0 })], ['', JSON.stringify({ off: 0, debug: 1 })], ['?variant=on', JSON.stringify({ off: 1, debug: 0 })],
+    ['?variant=off', JSON.stringify({ off: 0, debug: 1 })], ['?debug=1', JSON.stringify({ off: 1, debug: 0 })], ['', 'garbage'], ['', JSON.stringify({ scriptbox: 1, rootscroll: 1, contain: 1 })],
   ];
-  for (const [search, stored] of table) {
-    const expected = resolveFlags({ search, stored }).flags.rootscroll;
-    const got = decide(search, stored);
-    assert.equal(got.root, expected, `${search || '(none)'} / ${stored ? stored.slice(0, 30) : stored}`);
-    if (search.includes('variant=off')) assert.equal(got.cleared, true);
+  for (const [search, stored] of table) assert.equal(decide(search, stored), resolveFlags({ search, stored }).flags.off, `${search || '(none)'} / ${stored}`);
+});
+
+test('_document: the document is the DEFAULT page scroller; the legacy model only behind the flag; the splash CSS is still there for the first paint', () => {
+  const doc = read('pages/_document.js');
+  const a = doc.indexOf('if (!legacy) {');
+  const def = doc.slice(a, doc.indexOf('} else {', a));
+  assert.match(def, /document\.documentElement\.style\.overflow = 'visible'/);
+  assert.match(def, /document\.documentElement\.style\.height = 'auto'/);
+  assert.match(def, /document\.body\.style\.height = 'auto'/);
+  assert.match(def, /document\.body\.style\.overflow = 'hidden auto'/);                  // the body's overflow propagates to the viewport: body.style.overflow='hidden' locks keep working
+  const legacyBranch = doc.slice(doc.indexOf('} else {', a), doc.indexOf('}\n              }\n              if (document.readyState'));
+  assert.match(legacyBranch, /document\.body\.style\.overflow = 'auto'/);
+  assert.match(legacyBranch, /document\.documentElement\.style\.overflow = 'auto'/);
+  assert.match(doc, /html, body \{[^}]*height: 100%;[^}]*overflow: hidden;/);            // splash first paint unchanged
+  // every scroll lock restores what it found (it finds 'hidden auto' now), none of them depends on which element scrolls
+  for (const f of ['pages/index.js', 'components/HistoryPanel.jsx', 'components/MovieReelModal.jsx', 'components/CharacterModal.jsx', 'components/ScriptOutput.jsx']) {
+    const src = read(f);
+    assert.match(src, /const prev = document\.body\.style\.overflow;\s*document\.body\.style\.overflow = 'hidden';\s*return \(\) => \{ document\.body\.style\.overflow = prev; \};/, f);
   }
 });
 
-test('consumers read the EFFECTIVE flags (URL or stored), never raw location.search', () => {
-  const out = read('components/ScriptOutput.jsx');
-  assert.match(out, /useState\(\(\) => readEffectiveFlags\(\)\.effectiveSearch\)/);
-  assert.ok(!/useState\(\(\) => \(typeof window !== 'undefined' \? window\.location\.search/.test(out));
+test('consumers read the EFFECTIVE flags, never raw location.search', () => {
+  assert.match(read('components/ScriptOutput.jsx'), /useState\(\(\) => readEffectiveFlags\(\)\.flags\.off\)/);
   const idx = read('pages/index.js');
-  assert.match(idx, /isDebugRequested\(readEffectiveFlags\(\)\.effectiveSearch\)/);
-  assert.match(idx, /search: readEffectiveFlags\(\)\.effectiveSearch/);
-  assert.ok(!/window\.location\.search \}\)\) return/.test(idx));
-});
-
-test('overlay explains the script box: mounted or not, and why it is page flow', () => {
-  assert.match(explainScriptBox({ mounted: false }), /not mounted: no script on screen yet/);
-  assert.match(explainScriptBox({ mounted: true, mode: 'inner', coarse: true }), /INNER window \(touch variant/);
-  assert.match(explainScriptBox({ mounted: true, mode: 'inner', coarse: false }), /desktop default/);
-  const flowOff = explainScriptBox({ mounted: true, mode: 'page', coarse: true, scriptbox: false, source: 'none' });
-  assert.match(flowOff, /PAGE FLOW: touch device and scriptbox flag is OFF \(flags source: none\)/);
-  assert.match(flowOff, /\?scriptbox=1/);
-  assert.match(explainScriptBox({ mounted: true, mode: 'page', coarse: false }), /unexpected/);
-  const dbg = read('components/ScrollDebug.jsx');
-  for (const k of ['location.search', 'stored flags (ls_variant_flags)', 'resolved variant | source', "hover:none=", "pointer:coarse="]) assert.ok(dbg.includes(k), k);
+  assert.match(idx, /readEffectiveFlags\(\)\.flags\.debug/);
+  assert.ok(!/window\.location\.search/.test(idx.slice(idx.indexOf('const [debugScroll'), idx.indexOf('const [debugScroll') + 400)));
 });
