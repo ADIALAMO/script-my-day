@@ -17,6 +17,7 @@ import { HEBREW_RANGE } from '../constants/language.js';
 import PosterRenderer from './PosterRenderer';
 import CinematicLoader from './CinematicLoader';
 import { useTypewriter } from '../hooks/useTypewriter.js';
+import GoToScriptButton from './GoToScriptButton.jsx';
 import { useCinematicAudio } from '../hooks/useCinematicAudio.js';
 import { usePosterGeneration } from '../hooks/usePosterGeneration.js';
 import { useStoryboardGeneration } from '../hooks/useStoryboardGeneration.js';
@@ -227,6 +228,10 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     if (isTyping && !wasTyping.current && !instant) onMilestone?.('typing-start');
     wasTyping.current = isTyping;
   }, [isTyping, instant, onMilestone]);
+  // "Go to script" button: shown from the moment the typewriter starts (never for a script opened from History: nothing is typed there)
+  const [typingStarted, setTypingStarted] = useState(false);
+  useEffect(() => { setTypingStarted(false); }, [cleanScript]);
+  useEffect(() => { if (isTyping && !instant) setTypingStarted(true); }, [isTyping, instant]);
   const sawPosterLoading = useRef(false);
   useEffect(() => {
     if (posterLoading) { sawPosterLoading.current = true; return; }
@@ -654,6 +659,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
       </div>
 
       <NextStepButton show={!isTyping && currentDisplayText.length > 0 && !showPoster && !showStoryboard} step={NEXT_STEPS.script} lang={lang} />
+      <GoToScriptButton typingStarted={typingStarted} busy={!!posterLoading || !!storyboardLoading} lang={lang} resetKey={cleanScript} />
 
       {/* ── Journal ↔ Script toggle — reveals the raw diary behind the screenplay ── */}
       {journalEntry && !isTyping && (
