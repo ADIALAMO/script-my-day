@@ -20,6 +20,8 @@ import { track } from '@vercel/analytics';
 import { SHOWCASE_POSTERS, SHOWCASE_REELS } from '../constants/showcase';
 import { useGuidedTour } from '../hooks/useGuidedTour.js';
 import { isDebugRequested } from '../utils/scroll-debug.js';
+import { skipPageAutoScroll } from '../utils/scroll-mode.js';
+import { readEffectiveFlags } from '../utils/variant-flags.js';
 import { modalDataFor } from '../constants/modalData';
 import ReportButton from '../components/ReportButton';
 import { reportedGalleryRefs } from '../utils/reported-store';
@@ -660,7 +662,7 @@ function HomePage() {
     || scriptLoading || generationBusy;
   // ?debug=1 shows the scroll overlay (components/ScrollDebug.jsx); decided once, after mount
   const [debugScroll, setDebugScroll] = useState(false);
-  useEffect(() => { setDebugScroll(isDebugRequested(window.location.search)); }, []);
+  useEffect(() => { setDebugScroll(isDebugRequested(readEffectiveFlags().effectiveSearch)); }, []);   // URL or stored flags (utils/variant-flags.js)
   const tour = useGuidedTour({ blocked: tourBlocked, hasScript: !!script, historyCount: history.length });
   backStateRef.current = {
     tourRunning: tour.running, tourFinish: tour.finish,
@@ -714,6 +716,10 @@ function HomePage() {
   // landed, regardless of which one commits first.
   useEffect(() => {
     if (script && !scriptLoading) {
+      // not in a touch script-box preview variant (?scriptbox=1): there the page must never be scrolled programmatically (utils/scroll-mode.js)
+      let coarse = false;
+      try { coarse = window.matchMedia('(pointer: coarse)').matches; } catch { /* default: scroll as before */ }
+      if (skipPageAutoScroll({ coarsePointer: coarse, search: readEffectiveFlags().effectiveSearch })) return;
       scriptOutputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [script, scriptLoading]);

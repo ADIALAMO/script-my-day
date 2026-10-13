@@ -23,7 +23,8 @@ import { useCharacter } from '../hooks/useCharacter.js';
 import { shareData } from '../utils/export-image.js';
 import NextStepButton from './NextStepButton';
 import { useCoarsePointer } from '../hooks/useCoarsePointer.js';
-import { scriptWindowMode, scriptWindowClasses } from '../utils/scroll-mode.js';
+import { readEffectiveFlags } from '../utils/variant-flags.js';
+import { scriptWindowMode, scriptWindowClasses, scriptFrameGutter, scriptFrameRadius, parseScriptVariant, variantId, isTouchBoxVariant, TOUCH_BOX_HEIGHT } from '../utils/scroll-mode.js';
 import { NEXT_STEPS } from '../constants/tour.js';
 import { reelBreadcrumb } from '../utils/reel-diagnostics.js'; // TEMP DIAGNOSTIC (reel-crash)
 
@@ -91,7 +92,12 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
   // iOS rule (utils/scroll-mode.js): on touch devices the script flows in the PAGE — no nested scroll container, nothing scrolled programmatically.
   // Desktop keeps the fixed-height screenplay window that follows the typewriter.
   const coarsePointer = useCoarsePointer();
-  const windowMode = scriptWindowMode({ coarsePointer });
+  // Preview variants (?scriptbox=1 [&rootscroll=1] [&contain=1], touch only; utils/scroll-mode.js): read once per mount, the default stays page flow.
+  // (the flags come from the URL OR from localStorage `ls_variant_flags`, so a redirect that drops the query does not lose the variant: utils/variant-flags.js)
+  const [urlSearch] = useState(() => readEffectiveFlags().effectiveSearch);
+  const variant = parseScriptVariant(urlSearch);
+  const touchBox = isTouchBoxVariant({ coarsePointer, search: urlSearch });
+  const windowMode = scriptWindowMode({ coarsePointer, search: urlSearch });
   const innerScroll = windowMode === 'inner';
   const { displayText, isTyping, skip, scrollRef, pauseAutoScroll, handleScrollPosition } = useTypewriter({
     cleanScript,
@@ -680,7 +686,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
 
       {/* ── Script View ──────────────────────────────────────────────────── */}
       <div
-        className={`relative rounded-[3.5rem] overflow-hidden bg-[#030712]/90 mx-2 md:mx-4 transition-all duration-500
+        className={`relative ${scriptFrameRadius(windowMode)} overflow-hidden bg-[#030712]/90 ${scriptFrameGutter({ touch: touchBox, contain: variant.contain })} transition-all duration-500
           ${isEditing
             ? 'border border-[#d4a373]/45 shadow-[0_0_40px_rgba(212,163,115,0.10),inset_0_0_40px_rgba(212,163,115,0.03)]'
             : 'border border-white/5'
@@ -705,13 +711,15 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
           // On touch devices (windowMode 'page') this container has NO height, overflow or scroll handlers: the script is part of the page flow
           // (see the iOS rule in utils/scroll-mode.js — a nested scroller here made iPhone Safari shake).
           data-script-scroller={windowMode}
-          className={scriptWindowClasses(windowMode)}
-          {...(innerScroll ? { onWheel: pauseAutoScroll, onTouchStart: pauseAutoScroll, onPointerDown: pauseAutoScroll, onScroll: handleScrollPosition } : {})}
+          data-script-variant={touchBox ? variantId(variant) : 'default'}
+          className={scriptWindowClasses(windowMode, { touch: touchBox, contain: touchBox && variant.contain })}
+          style={touchBox ? { height: TOUCH_BOX_HEIGHT } : undefined}
+          {...(innerScroll ? { onWheel: pauseAutoScroll, onTouchStart: pauseAutoScroll, onPointerDown: pauseAutoScroll, onTouchEnd: handleScrollPosition, onPointerUp: handleScrollPosition, onScroll: handleScrollPosition } : {})}
         >
           {showJournal ? (
             <div
               dir={isJournalHebrew ? 'rtl' : 'ltr'}
-              className={`text-lg md:text-2xl leading-[2.2] font-light text-gray-300/85 whitespace-pre-wrap pb-40
+              className={`text-lg md:text-2xl leading-[2.2] font-light text-gray-300/85 whitespace-pre-wrap [overflow-wrap:anywhere] ${innerScroll ? 'pb-6' : 'pb-40'}
                 ${isJournalHebrew ? 'text-right' : 'text-left'}`}
             >
               {journalEntry}
@@ -730,16 +738,22 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               style={{ fontFamily: "'Courier Prime', 'Courier New', monospace" }}
             />
           ) : (
+            // dir follows the SCRIPT's language (not the UI's): a Hebrew script under the English UI used to render left-to-right while right-aligned, which
+            // put every sentence-ending period / quote on the wrong side and let trailing spaces hang past the content edge. text-start follows dir.
+            // line-height is set inline (1.8): the leading-[2.5] class never applied (the .script-font rule and md:text-3xl won), which left md+ at 1.2 —
+            // too tight for Hebrew vowel marks. overflow-wrap:anywhere = a long unbreakable word (maqaf chains, URLs) wraps instead of spilling past the padding.
             <div
-              className={`script-font text-xl md:text-3xl leading-[2.5] text-gray-100 whitespace-pre-wrap pb-40
-                ${isHebrew ? 'text-right' : 'text-left'}`}
+              dir={isHebrew ? 'rtl' : 'ltr'}
+              data-script-text
+              style={{ lineHeight: 1.8 }}
+              className={`script-font text-xl md:text-3xl text-gray-100 whitespace-pre-wrap [overflow-wrap:anywhere] text-start ${innerScroll ? 'pb-6' : 'pb-40'}`}
             >
               {currentDisplayText}
               {isTyping && (
                 <motion.span
                   animate={{ opacity: [1, 0, 1] }}
                   transition={{ duration: 0.9, repeat: Infinity }}
-                  className="inline-block w-2.5 h-8 bg-[#d4a373] ml-1 align-middle"
+                  className="inline-block w-2.5 h-8 bg-[#d4a373] ms-1 align-middle"
                 />
               )}
             </div>
@@ -747,13 +761,16 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
         </div>
 
         {/* Status badge */}
+        {/* In the window mode the badge lives in a reserved footer row BELOW the scroll box (it used to float over the scrolling text, hiding words);
+            the row is always there (no height change when typing ends). Page flow keeps the old floating badge. */}
+        <div className={innerScroll ? 'relative h-14' : 'contents'}>
         <AnimatePresence mode="wait">
           {!isTyping && !isEditing && currentDisplayText.length > 0 && viewMode === 'script' && (
             <motion.div
               key={isEdited ? 'edited' : 'complete'}
               initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 4 }} transition={{ duration: 0.25 }}
-              className="absolute bottom-5 left-0 right-0 px-6 flex justify-between items-end z-30"
+              className={innerScroll ? 'absolute inset-0 px-6 flex justify-between items-center z-30' : 'absolute bottom-5 left-0 right-0 px-6 flex justify-between items-end z-30'}
             >
               <div className="flex items-center gap-2">
                 {isEdited ? (
@@ -771,13 +788,14 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               key="save-flash"
               initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 6 }} transition={{ duration: 0.2 }}
-              className="absolute bottom-5 right-6 z-30 flex items-center gap-1.5 text-[#d4a373]/60 text-[10px] font-black uppercase tracking-widest"
+              className={`absolute ${innerScroll ? 'top-1/2 -translate-y-1/2' : 'bottom-5'} right-6 z-30 flex items-center gap-1.5 text-[#d4a373]/60 text-[10px] font-black uppercase tracking-widest`}
             >
               <CheckCheck size={11} />
               {uiHebrew ? 'נשמר' : 'Saved'}
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
       </div>
 
       {/* ── Poster controls — rendered ABOVE the poster, hidden once it exists ── */}
