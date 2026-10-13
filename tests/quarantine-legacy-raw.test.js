@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 process.env.OBJECT_KEY_SECRET = 'unit-test-secret';
 globalThis._redisClient = {};
-const { run, parseArgs, keyOfPointerUrl } = await import('../scripts/quarantine-legacy-raw-selfies.mjs');
+const { run, parseArgs, keyOfPointerUrl, reasonFor } = await import('../scripts/quarantine-legacy-raw-selfies.mjs');
 const { parseLegacyRaw } = await import('../lib/leftover-raw.js');
 const { quarantineObject, quarantineLegacyRaw } = await import('../lib/quarantine.js');
 const { StageError } = await import('../scripts/list-leftover-raw-selfies.mjs');
@@ -34,6 +34,7 @@ function world(over = {}) {
     headPublic: async (k) => { calls.head++; if (over.headThrows) throw new Error('boom key=' + k); return { exists: k in objects, size: objects[k] ?? 0 }; },
     pointer: async (id) => { calls.pointer++; if (id === 'u:erin') throw new Error('redis down'); return pointers[id] ?? null; },
     move: async (k) => { moves.push(k); return over.move ? over.move(k) : { status: 'moved' }; },
+    preflight: async (first) => { calls.preflight = (calls.preflight ?? 0) + 1; calls.preflightFirst = first; return over.preflight ?? null; },
     confirm: async (plan, word) => { calls.confirm.push(word); return over.confirmAnswer ?? true; },
     log: (s) => out.push(s),
   };
@@ -127,9 +128,88 @@ test('only the legacy raw shape is parsed or quarantined: current-format, sheets
   assert.equal(keyOfPointerUrl('nope'), null);
 });
 
-test('the script never writes to Redis and never deletes except through the quarantine helper', () => {
+test('the script never writes to Redis; its only direct R2 write is the preflight marker, every move goes through the quarantine helper', () => {
   const src = readFileSync(new URL('../scripts/quarantine-legacy-raw-selfies.mjs', import.meta.url), 'utf8');
   assert.ok(!/redis\.(set|del|incr|expire|sadd|pipeline|hset)/.test(src), 'Redis is only read');
-  assert.ok(!/DeleteObjectCommand|CopyObjectCommand|PutObjectCommand/.test(src), 'all writes go through lib/quarantine.js');
+  assert.ok(!/CopyObjectCommand/.test(src), 'copies go through lib/quarantine.js');
+  const puts = src.match(/new PutObjectCommand\([^)]*\)/g) ?? []; const dels = src.match(/new DeleteObjectCommand\([^)]*\)/g) ?? [];
+  assert.ok(puts.length === 1 && dels.length === 1 && puts[0].includes('Key: marker') && dels[0].includes('Key: marker'), 'the only direct write/delete is the preflight marker');
+  assert.match(src, /preflight\/legacy-raw-selfie-preflight-/);
   assert.match(src, /quarantineLegacyRaw/);
+});
+
+test('PREFLIGHT runs before the confirmation and before any move; the first failing check is reported with a safe reason; --preflight alone moves nothing', async () => {
+  for (const [bad, expect] of [
+    [{ stage: 'public-read', cls: 'AccessDenied', http: 403 }, /preflight FAILED: stage=public-read class=AccessDenied http=403 — token lacks READ on the public bucket/],
+    [{ stage: 'quarantine-write', cls: 'AccessDenied', http: 403 }, /stage=quarantine-write class=AccessDenied http=403 — token lacks WRITE on the quarantine bucket/],
+    [{ stage: 'quarantine-write', cls: 'NoSuchBucket', http: 404 }, /quarantine bucket not found at this endpoint.*jurisdiction/],
+    [{ stage: 'quarantine-cleanup', cls: 'AccessDenied', http: 403 }, /can write to the quarantine bucket but not delete there/],
+  ]) {
+    const w = world({ preflight: bad });
+    assert.equal((await run({ argv: ['--apply'], deps: w.deps })).code, 1);
+    assert.equal(w.calls.confirm.length, 0, 'no typed confirmation is requested when the preflight fails'); assert.equal(w.moves.length, 0);
+    assert.match(text(w), expect); assert.match(text(w), /nothing was moved/);
+    for (const s of SECRETS) assert.ok(!text(w).includes(s), `output leaks ${s}`);
+  }
+  let w = world();
+  assert.equal((await run({ argv: ['--apply'], deps: w.deps })).code, 0);
+  assert.equal(w.calls.preflight, 1); assert.equal(w.calls.preflightFirst, raw('u:alice', 1700000001), 'the first eligible raw is read-checked');
+  assert.match(text(w), /preflight ok/);
+  w = world();
+  assert.equal((await run({ argv: ['--preflight'], deps: w.deps })).code, 0);
+  assert.equal(w.moves.length, 0); assert.equal(w.calls.confirm.length, 0); assert.equal(w.calls.preflight, 1);
+  w = world(); await run({ argv: [], deps: w.deps }); assert.ok(!w.calls.preflight, 'the dry run needs no write permission and runs no write check');
+});
+
+test('move failures use the split stage names with a safe reason; a timeout is never blamed on permissions', async () => {
+  const cases = [
+    [{ status: 'failed', stage: 'copy-source-read', cls: 'AccessDenied', http: 403 }, /stage=copy-source-read class=AccessDenied http=403 — token lacks READ on the public bucket/],
+    [{ status: 'failed', stage: 'copy-dest-write', cls: 'AccessDenied', http: 403 }, /stage=copy-dest-write class=AccessDenied http=403 — token lacks WRITE on the quarantine bucket/],
+    [{ status: 'failed', stage: 'delete-source', cls: 'AccessDenied', http: 403 }, /stage=delete-source .* — token lacks DELETE on the public bucket.*ORIGINAL IS STILL PUBLIC/],
+    [{ status: 'failed', stage: 'copy-dest-write', cls: 'TimeoutError', http: null }, /stage=copy-dest-write class=TimeoutError$/m],
+    [{ status: 'failed', stage: 'weird stage with bucket-name', cls: 'my-bucket', http: 'https://x' }, /stage=move class=Error$/m],
+  ];
+  for (const [res, expect] of cases) {
+    const w = world({ move: () => res });
+    await run({ argv: ['--apply'], deps: w.deps });
+    assert.match(text(w), expect); assert.ok(!/bucket-name|my-bucket|https:/.test(text(w)));
+  }
+  assert.equal(reasonFor('copy-dest-write', 'TimeoutError', null), null); assert.equal(reasonFor('copy-dest-write', 'Error', 403) !== null, true);
+});
+
+test('cross-bucket CopyObject source header: "<bucket>/<key>", segments URL-encoded, "/" kept, no leading slash; EU/FedRAMP endpoints only when asked', async () => {
+  const { copySource } = await import('../lib/quarantine.js');
+  const { r2Endpoint } = await import('../lib/blob-store.js');
+  assert.equal(copySource('pub', 'characters/u:alice-raw-1700000001.jpg'), 'pub/characters/u%3Aalice-raw-1700000001.jpg');
+  assert.equal(copySource('pub', 'panels/a b/c+d.png'), 'pub/panels/a%20b/c%2Bd.png');
+  assert.ok(!copySource('pub', 'x/y.jpg').startsWith('/'));
+  assert.equal(r2Endpoint('acct', undefined), 'https://acct.r2.cloudflarestorage.com');
+  assert.equal(r2Endpoint('acct', ''), 'https://acct.r2.cloudflarestorage.com');
+  assert.equal(r2Endpoint('acct', 'eu'), 'https://acct.eu.r2.cloudflarestorage.com');
+  assert.equal(r2Endpoint('acct', ' FedRAMP '), 'https://acct.fedramp.r2.cloudflarestorage.com');
+  assert.equal(r2Endpoint('acct', 'evil.example/'), 'https://acct.r2.cloudflarestorage.com', 'anything else is ignored');
+});
+
+test('quarantineLegacyRaw splits a 403 into copy-source-read vs copy-dest-write by probing the source; delete failure = delete-source', async () => {
+  Object.assign(process.env, { CLOUDFLARE_ACCOUNT_ID: 'acct', R2_ACCESS_KEY_ID: 'k', R2_SECRET_ACCESS_KEY: 's', R2_BUCKET_NAME: 'pub-b', R2_QUARANTINE_BUCKET_NAME: 'q-b' });
+  const { S3Client } = await import('@aws-sdk/client-s3');
+  const orig = S3Client.prototype.send; const sent = [];
+  const denied = () => Object.assign(new Error('Access Denied pub-b q-b key'), { name: 'AccessDenied', $metadata: { httpStatusCode: 403 } });
+  try {
+    for (const [headDenied, expectStage] of [[false, 'copy-dest-write'], [true, 'copy-source-read']]) {
+      sent.length = 0;
+      S3Client.prototype.send = async function (cmd) { const n = cmd.constructor.name; sent.push(n); if (n === 'CopyObjectCommand') throw denied(); if (n === 'HeadObjectCommand' && headDenied) throw denied(); return {}; };
+      const r = await quarantineLegacyRaw(raw('u:alice', 1700000001), { attempts: 1 });
+      assert.deepEqual([r.status, r.stage, r.cls, r.http], ['failed', expectStage, 'AccessDenied', 403]);
+      assert.ok(!sent.includes('DeleteObjectCommand'), 'the original is never deleted after a failed copy');
+    }
+    S3Client.prototype.send = async function (cmd) { const n = cmd.constructor.name; if (n === 'DeleteObjectCommand') throw denied(); return {}; };
+    const d = await quarantineLegacyRaw(raw('u:alice', 1700000001), { attempts: 1 });
+    assert.deepEqual([d.status, d.stage], ['failed', 'delete-source']);
+    S3Client.prototype.send = async function (cmd) { if (cmd.constructor.name === 'CopyObjectCommand') throw Object.assign(new Error('x'), { name: 'TimeoutError' }); return {}; };
+    assert.equal((await quarantineLegacyRaw(raw('u:alice', 1700000001), { attempts: 1 })).stage, 'copy', 'only an access-denied answer is probed');
+    // the app-wide helper keeps its original stage names
+    S3Client.prototype.send = async function (cmd) { if (cmd.constructor.name === 'CopyObjectCommand') throw denied(); return {}; };
+    assert.equal((await quarantineObject('panels/a/b.png', { attempts: 1 })).stage, 'copy');
+  } finally { S3Client.prototype.send = orig; }
 });
