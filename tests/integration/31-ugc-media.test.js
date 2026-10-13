@@ -78,29 +78,32 @@ scenario('U3', 'stored images are cached for ONE DAY, never "immutable": charact
     return { actual: 'one-day cache everywhere' };
   });
 
-scenario('U4', 'OWNER-ONLY "remove my character": DELETE /api/character removes every object in the caller\'s own folder plus the pointer; another user\'s objects survive; a failing delete keeps the pointer (retryable 500)',
-  'A\'s sheet + leftover raw gone, pointer gone, GET → null; B untouched; failure → 500 and pointer kept', async () => {
+scenario('U4', 'OWNER-ONLY "remove my character": DELETE /api/character removes every object in the caller\'s own folder plus the pointer; another user\'s objects survive; an object that cannot be deleted gives an honest PARTIAL result (link gone, file marked hidden, a repeat call finishes it)',
+  'A\'s sheet + leftover raw gone, pointer gone, GET -> null; B untouched; failing delete -> partial, retry -> removed', async () => {
     const a = await makeUser('u4a', 'free'); const b = await makeUser('u4b', 'free');
     const ra = await up(a); const rb = await up(b);
     const aSheet = keyOf(ra.body.characterImageUrl); const bSheet = keyOf(rb.body.characterImageUrl);
     const aLeft = `characters/${ownerSegment(a.identifier)}/22222222-2222-2222-2222-222222222222-raw.jpg`;
     providers.s3objects.set(`${PUB}/${aLeft}`, { bytes: 5, metadata: {} });
-    // a failing storage delete: nothing is claimed removed, the pointer stays so the user can retry
-    providers.mode.s3delete = 500;
-    const failed = await invoke(characterRoute, { method: 'DELETE', cookies: a.cookies, ip: ip() });
-    assert.equal(failed.status, 500); assert.equal(failed.body.code, 'SERVER_ERROR'); assert.ok(fake.get(`character:${a.identifier}`), 'pointer kept for a retry');
-    delete providers.mode.s3delete;
+    providers.mode.s3deleteMatch = aLeft;    // ONE object cannot be deleted
+    const part = await invoke(characterRoute, { method: 'DELETE', cookies: a.cookies, ip: ip() });
+    assert.equal(part.status, 200); assert.equal(part.body.success, true);
+    assert.deepEqual([part.body.status, part.body.partial, part.body.matched, part.body.deleted, part.body.failed], ['partial', true, 2, 1, 1]);
+    assert.equal(fake.get(`character:${a.identifier}`), null, 'the saved link is gone at once');
+    assert.equal(inPublic(aSheet), false); assert.equal(inPublic(aLeft), true, 'the stuck file is still there'); assert.ok(fake.get(`report:hidden:${aLeft}`), 'and marked hidden');
+    delete providers.mode.s3deleteMatch;
     const ok = await invoke(characterRoute, { method: 'DELETE', cookies: a.cookies, ip: ip() });
-    assert.equal(ok.status, 200); assert.equal(ok.body.success, true);
-    assert.equal(inPublic(aSheet), false); assert.equal(inPublic(aLeft), false); assert.equal(fake.get(`character:${a.identifier}`), null);
+    assert.deepEqual([ok.body.status, ok.body.partial, ok.body.deleted, ok.body.failed], ['removed', false, 1, 0]);
+    assert.equal(inPublic(aLeft), false);
     assert.equal(inPublic(bSheet), true, 'B\'s character untouched'); assert.ok(fake.get(`character:${b.identifier}`));
     const g = await invoke(characterRoute, { method: 'GET', cookies: a.cookies, ip: ip() });
     assert.equal(g.body.characterImageUrl, null);
     // A cannot touch B's objects even if B's URL were in A's pointer
     fake.set(`character:${a.identifier}`, JSON.stringify({ url: rb.body.characterImageUrl, styledUrl: rb.body.characterImageUrl }));
-    assert.equal((await invoke(characterRoute, { method: 'DELETE', cookies: a.cookies, ip: ip() })).status, 200);
+    const third = await invoke(characterRoute, { method: 'DELETE', cookies: a.cookies, ip: ip() });
+    assert.equal(third.body.status, 'nothing-found'); assert.equal(third.body.partial, true);
     assert.equal(inPublic(bSheet), true, 'a pointer naming someone else\'s object deletes nothing of theirs');
-    return { actual: 'own objects + pointer removed; others untouched; failure keeps the pointer' };
+    return { actual: 'own objects + pointer removed; others untouched; partial result is honest' };
   });
 
 scenario('U5', 'a characters/ object is REPORTABLE: the owner\'s report hides it at once (moved to the private bucket, pointer dropped, restore returns nothing), the Telegram alert fires, and a hidden reference is never used for generation',

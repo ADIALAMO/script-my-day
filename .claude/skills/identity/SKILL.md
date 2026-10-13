@@ -98,8 +98,8 @@ Gate order (memorize — subtle):
   `report:hidden:<key>` for the daily sweep + a Telegram alert). If the sheet fails (provider error → 503 `CHARACTER_SHEET_FAILED`, refused → 422, unsafe/unavailable output check,
   storage failure) the request FAILS: provider error gives back quota AND budget slot; an unsafe/unavailable/unstorable sheet gives back the user's sheet quota and keeps the global
   budget slot (the provider call happened). There is no degraded "raw selfie as reference" path any more.
-- **Owner controls**: `DELETE /api/character` (rate-limited `remove-character`) deletes every object under the caller's own HMAC folder `characters/<owner>/` + what the pointer
-  names (only keys in that folder) and then `character:<id>`; a failed delete keeps the pointer (retry). `characters/<owner>/<uuid>-raw|sheet.<ext>` keys are reportable (kind
+- **Owner controls**: `DELETE /api/character` (rate-limited `remove-character`) deletes every object under the caller's own HMAC folder `characters/<owner>/` and the legacy keys `characters/<id>-(raw|sheet)-<stamp>.jpg`
+  whose embedded id EXACTLY equals the caller's identifier (found by listing; the pointer is not consulted for keys), then ALWAYS `character:<id>`. Result `status`: `removed` | `partial` (failed > 0, stuck objects marked hidden, repeat call finishes) | `nothing-found`; the UI says so (never a silent full success). `characters/<owner>/<uuid>-raw|sheet.<ext>` keys are reportable (kind
   `character`), quarantinable and sweepable ([lib/object-scope.js](lib/object-scope.js) is the one definition; legacy `characters/u:<id>-…` keys are manual-only). A hidden reference is never
   used (`ownsCharacterReference` checks `report:hidden:<key>`; `GET /api/character` returns null and forgets the pointer). `/api/proxy-image` serves `panels/`+`posters/` ONLY.
 - Storage: **Cloudflare R2** via [lib/blob-store.js](lib/blob-store.js), prefix

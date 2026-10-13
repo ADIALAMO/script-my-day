@@ -137,7 +137,8 @@ export function useCharacter(gender = 'neutral') {
       if (r.ok && d.success) {
         setCharacterImageUrl(''); setStatus('idle'); setError('');
         if (typeof window !== 'undefined') localStorage.removeItem(LS_KEY);
-        return { ok: true };
+        // `partial` = the saved link is gone but not every stored file was deleted (or none was found): the caller must not claim a full removal
+        return { ok: true, partial: d.partial === true, status: d.status || 'removed', failed: Number(d.failed) || 0 };
       }
       return { ok: false, code: d.code || (r.status === 429 ? 'RATE_LIMITED' : 'SERVER_ERROR') };
     } catch {

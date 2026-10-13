@@ -57,8 +57,8 @@ async function handleDelete(req, res) {
   try {
     const identifier = await resolveIdentifier(req, res);
     if (!blobConfigured() || !objectKeySecretConfigured()) return res.status(503).json({ success: false, code: CODES.SERVER_ERROR });
-    await removeCharacterObjects(identifier);
-    return res.status(200).json({ success: true });
+    const r = await removeCharacterObjects(identifier);
+    return res.status(200).json({ success: true, status: r.status, partial: r.partial, matched: r.matched, deleted: r.deleted, failed: r.failed });
   } catch (err) {
     console.error('character DELETE failed:', err.message);
     return res.status(500).json({ success: false, code: CODES.SERVER_ERROR });
