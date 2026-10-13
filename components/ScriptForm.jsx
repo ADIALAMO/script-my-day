@@ -9,6 +9,7 @@ import { useRotatingMessages } from '../hooks/useRotatingMessages';
 import { useCinematicAudio } from '../hooks/useCinematicAudio';
 import NextStepButton from './NextStepButton';
 import { NEXT_STEPS } from '../constants/tour.js';
+import { replaceCopy } from '../constants/replace-script-copy.js';
 import { cleanProducerName } from '../utils/producer-name.js';
 
 const LOADING_MESSAGES_HE = ["סורק זכרונות...", "מנתח DNA סיפורי...", "בונה מתח דרמטי...", "מלטש דיאלוגים...", "מעבה דמויות...", "פורש קווי עלילה...", "מדפיס עותקים..."];
@@ -21,7 +22,7 @@ const GENDER_PILLS = [
   { value: 'neutral', he: 'הם',  en: 'They' },
 ];
 
-const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProducerName, gender, setGender, suggestGender, genderTouched, isTypingGlobal, onInputChange, showTips, setShowTips, isMusicMuted = false, holdHowTo = false }) => {
+const ScriptForm = ({ onSubmit, onCancel, loading, locked = false, lang, producerName, setProducerName, gender, setGender, suggestGender, genderTouched, isTypingGlobal, onInputChange, showTips, setShowTips, isMusicMuted = false, holdHowTo = false }) => {
   const [journalEntry, setJournalEntry] = useState('');
   const [activeGenre, setActiveGenre] = useState('drama');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -72,7 +73,7 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (loading || isLocked || !journalEntry.trim() || !activeGenre) return;
+    if (loading || locked || isLocked || !journalEntry.trim() || !activeGenre) return;
 
     // Clapper snap — stop any prior instance before replaying so clicks never stack.
     // Triggered inside the user-gesture handler so autoplay policy is satisfied.
@@ -412,10 +413,13 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
       <motion.button
         type="submit"
         data-tour="generate"
-        disabled={loading || currentWordCount === 0 || !activeGenre}
-        className={`relative w-full group overflow-hidden rounded-[1.5rem] md:rounded-[2rem] transition-all duration-700 shadow-[0_10px_40px_rgba(212,163,115,0.2)] ${loading ? 'bg-[#d4a373] py-6 md:py-8' : 'bg-[#d4a373] py-5 md:py-7 hover:scale-[1.01] active:scale-[0.98]'} ${(!journalEntry.trim() || !activeGenre) && !loading ? 'opacity-30 grayscale cursor-not-allowed' : ''}`}
+        disabled={loading || locked || currentWordCount === 0 || !activeGenre}
+        aria-disabled={loading || locked || currentWordCount === 0 || !activeGenre}
+        aria-busy={loading || locked}
+        data-locked={locked ? 'true' : undefined}
+        className={`relative w-full group overflow-hidden rounded-[1.5rem] md:rounded-[2rem] transition-all duration-700 shadow-[0_10px_40px_rgba(212,163,115,0.2)] bg-[#d4a373] py-6 md:py-8 ${loading ? '' : locked ? 'opacity-60 cursor-not-allowed saturate-50' : 'hover:scale-[1.01] active:scale-[0.98]'} ${(!journalEntry.trim() || !activeGenre) && !loading ? 'opacity-30 grayscale cursor-not-allowed' : ''}`}
       >
-        <div className="relative z-20 flex items-center justify-center w-full h-full px-4 italic text-black font-black">
+        <div className="relative z-20 flex items-center justify-center w-full h-full min-h-[28px] px-4 italic text-black font-black">
           {loading ? (
             <div className={`flex items-center gap-3 ${lang === 'he' ? 'flex-row-reverse' : 'flex-row'}`}>
               <div className="relative w-5 h-5">
@@ -434,7 +438,7 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
           ) : (
             <div className="flex items-center justify-center gap-3">
               <Film size={20} />
-              <span className="text-[15px] md:text-xl uppercase">{lang === 'he' ? 'צור תסריט' : 'GENERATE SCRIPT'}</span>
+              <span className="text-[15px] md:text-xl uppercase">{locked ? replaceCopy('lockedLabel', lang) : (lang === 'he' ? 'צור תסריט' : 'GENERATE SCRIPT')}</span>
             </div>
           )}
         </div>
