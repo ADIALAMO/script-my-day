@@ -35,6 +35,7 @@ function seed() {
     [`usage:script:u:${ID}:2026-10-15`]: '3', [`usage:script-month:u:${ID}:2026-10`]: '3', [`usage:poster:u:${ID}:2026-10-15`]: '1',
     [`usage:comic:u:${ID}:2026-10-15`]: '1', [`usage:comic-month:u:${ID}:2026-10`]: '1', [`usage:comic:lifetime:u:${ID}`]: '2',
     [`usage:identity:u:${ID}:2026-10`]: '4', [`usage:identity:lifetime:u:${ID}`]: '1', [`usage:identity:bonus:u:${ID}`]: '2',
+    [`user:adult:${ID}`]: '{"at":"2026-10-14T10:00:00.000Z","v":1}',   // the 18+ confirmation (lib/adult-confirmation.js)
     [`usage:sheet:u:${ID}:2026-10`]: '1', [`usage:panels:u:${ID}:2026-10-15`]: '9',
     [`character:u:${ID}`]: { url: 'https://pub-test.r2.dev/characters/old/x-raw.jpg', styledUrl: 'https://pub-test.r2.dev/characters/old/x-sheet.jpg' },
     [`referral:codeof:u:${ID}`]: 'abc123', 'referral:code:abc123': ID, [`referral:name:${ID}`]: 'S', [`referral:by:${ID}`]: OTHER, [`referral:count:${ID}`]: '1',
@@ -43,7 +44,7 @@ function seed() {
     [`user:token:${EMAIL}:abcdef`]: { identifier: EMAIL }, [`waitlist:${EMAIL}`]: '1',
     [`deletion-request:${EMAIL}:123`]: '{}',
     // someone else's data that must survive
-    [`user:${OTHER}`]: { id: OTHER, email: 'other@example.com' }, 'user:email:other@example.com': OTHER, [`usage:script:u:${OTHER}:2026-10-15`]: '1',
+    [`user:${OTHER}`]: { id: OTHER, email: 'other@example.com' }, [`user:adult:${OTHER}`]: '{"at":"2026-10-01T00:00:00.000Z","v":1}', 'user:email:other@example.com': OTHER, [`usage:script:u:${OTHER}:2026-10-15`]: '1',
     [`character:u:${OTHER}`]: {}, 'usage:poster:lifetime:203.0.113.5': '1',
   });
   r.sets.set('stats:pro:members', new Set([ID, OTHER])); r.zsets.set('stats:users:all', new Map([[ID, 1], [OTHER, 2]]));
@@ -71,7 +72,7 @@ test('dry run (default) lists keys and objects and changes NOTHING', async () =>
 test('plan covers every per-user key family and object family, and nobody else’s data', async () => {
   const plan = await buildPlan({ redis: seed(), r2: seedR2(), email: EMAIL, env: { OBJECT_KEY_SECRET: 'unit-secret' } });
   const has = (k) => assert.ok(plan.redisKeys.includes(k), `missing ${k}`);
-  [`user:${ID}`, `user:email:${EMAIL}`, `user:tier:${ID}`, `user:tier_source:${ID}`, `user:stripe_customer:${ID}`, `user:last_active:${ID}`, `user:signup_provider:${ID}`, `signup:fresh:${ID}`,
+  [`user:${ID}`, `user:email:${EMAIL}`, `user:tier:${ID}`, `user:tier_source:${ID}`, `user:stripe_customer:${ID}`, `user:last_active:${ID}`, `user:adult:${ID}`, `user:signup_provider:${ID}`, `signup:fresh:${ID}`,
     `usage:script:u:${ID}:2026-10-15`, `usage:script-month:u:${ID}:2026-10`, `usage:poster:u:${ID}:2026-10-15`, `usage:comic:u:${ID}:2026-10-15`, `usage:comic-month:u:${ID}:2026-10`,
     `usage:comic:lifetime:u:${ID}`, `usage:identity:u:${ID}:2026-10`, `usage:identity:lifetime:u:${ID}`, `usage:identity:bonus:u:${ID}`, `usage:sheet:u:${ID}:2026-10`, `usage:panels:u:${ID}:2026-10-15`,
     `character:u:${ID}`, `referral:codeof:u:${ID}`, 'referral:code:abc123', `referral:name:${ID}`, `referral:by:${ID}`, `referral:count:${ID}`,
@@ -91,6 +92,7 @@ test('--execute: confirmation is asked with the plan, then exactly the planned k
   assert.equal(result.errors.length, 0);
   assert.ok(lines.join('\n').includes(`DEL   user:${ID}`) && lines.join('\n').includes('DELETE posters/'));
   assert.ok(![...redis.store.keys()].some((k) => k.includes(ID)), 'no key with the user id remains');
+  assert.ok(redis.store.has(`user:adult:${OTHER}`), 'another account\'s 18+ record survives');
   assert.ok(redis.store.has(`user:${OTHER}`) && redis.store.has(`usage:script:u:${OTHER}:2026-10-15`) && redis.store.has(`deletion-request:${EMAIL}:123`));
   assert.equal(redis.sets.get('stats:pro:members').has(ID), false); assert.equal(redis.sets.get('stats:pro:members').has(OTHER), true);
   assert.equal(redis.zsets.get('stats:users:all').has(ID), false);

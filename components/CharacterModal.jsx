@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, Loader2, Camera, Sparkles, RefreshCw, Crown } from 'lucide-react';
+import { X, Check, Loader2, Camera, Sparkles, RefreshCw, Crown, ShieldCheck } from 'lucide-react';
 import { isCapacitorNative } from '../utils/platform.js';
 import { useNative } from '../hooks/useNative.js';
 import { getMsg, CODES } from '../lib/messages.js';
@@ -40,14 +40,16 @@ function fileToDownscaledDataUri(file, maxDim = 1024, quality = 0.9) {
  *   isOpen, onClose, lang
  *   status            'idle'|'loading'|'ready'|'error' (from useCharacter)
  *   characterImageUrl current styled sheet URL (from useCharacter)
- *   uploadCharacter   (selfieBase64) => Promise<{ok, code?}>
+ *   uploadCharacter   (selfieBase64, consent) => Promise<{ok, code?}>
+ *   adultConfirmed    this ACCOUNT already declared "I am 18 or older" (server-side, asked once); until then only the 18+ step is shown
+ *   confirmAdult      () => Promise<{ok, code?}> — records the declaration for the account
  *   clearCharacter    () => void
  *   removeCharacter   () => Promise<{ok, code?}> — deletes the photo/sheet and the saved pointer on the server (owner only)
  *   onUpgrade         () => void   — called when the API gates a free user (403)
  */
 export default function CharacterModal({
   isOpen, onClose, lang,
-  status, characterImageUrl, uploadCharacter, clearCharacter, removeCharacter, onUpgrade,
+  status, characterImageUrl, uploadCharacter, clearCharacter, removeCharacter, onUpgrade, adultConfirmed, confirmAdult,
   gender, setGender,
 }) {
   const isHebrew = lang === 'he';
@@ -62,7 +64,8 @@ export default function CharacterModal({
   const [gated,     setGated]     = useState(false); // free-tier 403
   const [consented, setConsented] = useState(false); // biometric consent gate (pre-create)
   const [removeStep, setRemoveStep] = useState('idle'); // 'idle' | 'confirm' | 'busy' — owner-only "Remove my character"
-  const [adultOk,   setAdultOk]   = useState(false); // "I am 18 or older" — Star Yourself is 18+ (an attestation, not age verification)
+  const [adultOk,   setAdultOk]   = useState(false); // the checkbox of the one-time 18+ step (a self-declaration, not age verification)
+  const [adultBusy, setAdultBusy] = useState(false);
   const fileInputRef = useRef(null);
 
   // Body scroll lock — same pattern as the Distribution Hub modal.
@@ -75,7 +78,7 @@ export default function CharacterModal({
 
   // Reset transient state whenever the modal opens.
   useEffect(() => {
-    if (isOpen) { setPicked(''); setChanging(false); setFileError(''); setGated(false); setConsented(false); setRemoveStep('idle'); }
+    if (isOpen) { setPicked(''); setChanging(false); setFileError(''); setGated(false); setConsented(false); setRemoveStep('idle'); setAdultOk(false); setAdultBusy(false); }
   }, [isOpen]);
 
   const handleFile = useCallback(async (file) => {
@@ -89,23 +92,24 @@ export default function CharacterModal({
       const dataUri = await fileToDownscaledDataUri(file);
       setPicked(dataUri);
       setChanging(false);
-      setConsented(false); // require fresh consent for each uploaded photo
-      setAdultOk(false);
+      setConsented(false); // require fresh biometric consent for each uploaded photo (the 18+ declaration is asked once per account, not here)
     } catch {
       setFileError(isHebrew ? 'לא ניתן לקרוא את התמונה' : 'Could not read that image');
     }
   }, [isHebrew]);
 
   const handleCreate = useCallback(async () => {
-    if (!consented || !adultOk) return; // biometric consent AND the 18+ confirmation are mandatory
-    const result = await uploadCharacter(picked, consented, adultOk);
+    if (!consented) return; // biometric consent is mandatory (the server also requires the account's 18+ confirmation)
+    const result = await uploadCharacter(picked, consented);
     if (result.ok) {
       setPicked(''); // fall through to the result view (shows the new sheet)
+    } else if (result.code === 'ADULT_CONFIRMATION_REQUIRED') {
+      setPicked(''); // the server says this account has not confirmed 18+: the store flipped adultConfirmed → the 18+ step is shown
     } else if (result.code === 'NEEDS_PRO') {
       setGated(true);
     } else if (result.code === CODES.QUOTA_SHEET || result.code === CODES.IDENTITY_BUDGET_REACHED
             || result.code === CODES.QUOTA_IDENTITY || result.code === CODES.IDENTITY_LIFETIME_USED
-            || result.code === CODES.SAFETY_REJECTED || result.code === CODES.RATE_LIMITED || result.code === CODES.ADULT_REQUIRED || result.code === CODES.MINOR_REJECTED
+            || result.code === CODES.SAFETY_REJECTED || result.code === CODES.RATE_LIMITED || result.code === CODES.MINOR_REJECTED
             || result.code === CODES.IMAGE_UNSUPPORTED || result.code === CODES.CONTENT_REFUSED || result.code === CODES.CONTENT_CHECK_UNAVAILABLE || result.code === CODES.CHARACTER_SHEET_FAILED) {
       // A limit / budget / moderation answer from the server: say exactly what happened.
       // QUOTA_SHEET carries {limit, resetsAt}: say how many uploads are included and when they renew.
@@ -119,7 +123,17 @@ export default function CharacterModal({
     } else {
       setFileError(isHebrew ? 'משהו השתבש. נסה שוב.' : 'Something went wrong. Try again.');
     }
-  }, [picked, uploadCharacter, isHebrew, consented, adultOk]);
+  }, [picked, uploadCharacter, isHebrew, consented]);
+
+  const handleConfirmAdult = useCallback(async () => {
+    if (!adultOk || adultBusy) return;
+    setAdultBusy(true); setFileError('');
+    const r = await confirmAdult?.();
+    setAdultBusy(false);
+    if (r?.ok) return;   // adultConfirmed turns true → the normal pick view appears
+    if (r?.code === CODES.NEEDS_ACCOUNT) { setGated(true); return; }   // not signed in: same answer an anonymous upload gets
+    setFileError(r?.code === CODES.RATE_LIMITED ? getMsg(CODES.RATE_LIMITED, isHebrew ? 'he' : 'en') : (isHebrew ? 'לא הצלחנו לשמור את האישור. נסה שוב.' : "We couldn't save your confirmation. Please try again."));
+  }, [adultOk, adultBusy, confirmAdult, isHebrew]);
 
   const handleRemove = useCallback(async () => {
     setRemoveStep('busy');
@@ -138,9 +152,37 @@ export default function CharacterModal({
 
   // ── View resolution ──────────────────────────────────────────────────────────
   const showLoading = status === 'loading';
-  const showResult  = !showLoading && !gated && characterImageUrl && !picked && !changing;
-  const showPreview = !showLoading && !gated && !!picked;
-  const showPick    = !showLoading && !gated && !picked && (changing || !characterImageUrl);
+  // The 18+ step comes FIRST for an account that has not confirmed (including existing users who already have a character — their character keeps working
+  // in generation; they are asked the next time they open this feature). Nothing else in the modal is reachable until it is confirmed or the modal is closed.
+  const showAdult   = !showLoading && !gated && !adultConfirmed;
+  const showResult  = !showLoading && !gated && !showAdult && characterImageUrl && !picked && !changing;
+  const showPreview = !showLoading && !gated && !showAdult && !!picked;
+  const showPick    = !showLoading && !gated && !showAdult && !picked && (changing || !characterImageUrl);
+
+  // Owner-only removal: deletes the character image and the saved link on the server (not just on this device). Also offered on the 18+ step so a
+  // user who does not confirm can still remove an existing character.
+  const removeBlock = removeCharacter && (
+    removeStep === 'idle' ? (
+      <button onClick={() => setRemoveStep('confirm')} className="min-h-[44px] px-3 text-gray-600 hover:text-red-400 text-[10px] font-bold uppercase tracking-wider transition-colors">
+        {isHebrew ? 'הסר את הדמות שלי' : 'Remove my character'}
+      </button>
+    ) : (
+      <div className="w-full rounded-2xl bg-red-500/[0.06] border border-red-500/25 p-3 flex flex-col gap-2">
+        <p className="text-gray-300 text-[10.5px] leading-relaxed text-center">
+          {isHebrew ? 'למחוק את הדמות שלך ואת התמונה ששמרנו? לא ניתן לשחזר.' : 'Delete your character and the image we stored? This cannot be undone.'}
+        </p>
+        <div className="flex gap-2">
+          <button onClick={() => setRemoveStep('idle')} disabled={removeStep === 'busy'} className="flex-1 min-h-[44px] py-2 rounded-xl bg-white/[0.04] border border-white/10 text-gray-400 text-[10px] font-black uppercase tracking-wider disabled:opacity-40">
+            {isHebrew ? 'ביטול' : 'Cancel'}
+          </button>
+          <button onClick={handleRemove} disabled={removeStep === 'busy'} className="flex-1 min-h-[44px] py-2 rounded-xl bg-red-500/80 text-white text-[10px] font-black uppercase tracking-wider disabled:opacity-60 flex items-center justify-center gap-1.5">
+            {removeStep === 'busy' && <Loader2 size={12} className="animate-spin" />}
+            {isHebrew ? 'מחק' : 'Delete'}
+          </button>
+        </div>
+      </div>
+    )
+  );
 
   if (!isOpen) return null;
 
@@ -219,6 +261,59 @@ export default function CharacterModal({
               </div>
             )}
 
+            {/* ── 18+ step (asked once per account) ── */}
+            {showAdult && (
+              <div className="flex flex-col items-center text-center gap-3 py-0" data-testid="adult-step">
+                <div className="[@media(max-height:900px)]:hidden w-14 h-14 rounded-2xl bg-[#d4a373]/10 border border-[#d4a373]/30 flex items-center justify-center">
+                  <ShieldCheck size={24} className="text-[#d4a373]" />
+                </div>
+                <p className="text-white font-bold text-[14px]">
+                  {isHebrew ? '"לככב בסיפור" מיועד למשתמשים מגיל 18' : '"Star Yourself" is for ages 18 and over'}
+                </p>
+                <p className="text-gray-500 text-[11.5px] leading-relaxed">
+                  {isHebrew
+                    ? 'מאשרים פעם אחת ממשיכים. לא בן/בת 18? אין בעיה — אפשר להמשיך ליצור תסריטים, פוסטרים וקומיקס בלי תמונה.'
+                    : 'Confirm once and you can continue. Not 18 yet? No problem — you can keep creating scripts, posters and comics without a photo.'}
+                </p>
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={adultOk}
+                  onClick={() => setAdultOk(v => !v)}
+                  className="w-full min-h-[44px] flex items-center gap-2.5 text-start p-3 rounded-xl bg-white/[0.03] border border-white/[0.07] hover:border-[#d4a373]/30 transition-colors"
+                >
+                  <span className={`shrink-0 w-5 h-5 rounded-[6px] border flex items-center justify-center transition-all duration-150
+                    ${adultOk ? 'bg-[#d4a373] border-[#d4a373]' : 'bg-transparent border-white/25'}`}>
+                    {adultOk && <Check size={13} className="text-black" />}
+                  </span>
+                  <span className="text-gray-200 text-[12px] font-bold">{isHebrew ? 'אני בן 18 ומעלה' : 'I am 18 or older'}</span>
+                </button>
+                <p className="text-gray-600 text-[10.5px] leading-relaxed">
+                  {isHebrew ? 'בהמשך אתה מסכים ל' : 'By continuing you agree to the '}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="inline-flex items-center min-h-[44px] px-1 underline text-gray-400 hover:text-white">{isHebrew ? 'תנאי השימוש' : 'Terms'}</a>
+                  {isHebrew ? ' ול' : ' and '}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="inline-flex items-center min-h-[44px] px-1 underline text-gray-400 hover:text-white">{isHebrew ? 'מדיניות הפרטיות' : 'Privacy Policy'}</a>.
+                </p>
+                <div className="flex flex-col gap-2 w-full">
+                  <button
+                    onClick={handleConfirmAdult}
+                    disabled={!adultOk || adultBusy}
+                    className="w-full min-h-[44px] py-3 rounded-2xl bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {adultBusy && <Loader2 size={13} className="animate-spin" />}
+                    {isHebrew ? 'אישור והמשך' : 'Confirm and continue'}
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="w-full min-h-[44px] py-3 rounded-2xl bg-white/[0.04] border border-white/10 text-gray-300 hover:text-white text-[11px] font-black uppercase tracking-wider"
+                  >
+                    {isHebrew ? 'להמשיך בלי תמונה' : 'Continue without a photo'}
+                  </button>
+                </div>
+                {characterImageUrl && <div className="w-full flex justify-center">{removeBlock}</div>}
+              </div>
+            )}
+
             {/* ── Pick ── */}
             {showPick && (
               <div className="flex flex-col items-center gap-4">
@@ -256,22 +351,6 @@ export default function CharacterModal({
                     : "We'll craft a stylized character sheet from this (~15s)."}
                 </p>
 
-                {/* 18+ confirmation — "Star Yourself" is for adults only. This is a self-declaration, not age verification. */}
-                <button
-                  type="button"
-                  onClick={() => setAdultOk(v => !v)}
-                  aria-pressed={adultOk}
-                  className="w-full flex items-start gap-2.5 text-right rtl:text-right ltr:text-left p-3 rounded-xl bg-white/[0.03] border border-white/[0.07] hover:border-white/[0.14] transition-colors"
-                >
-                  <span className={`mt-[1px] shrink-0 w-4 h-4 rounded-[5px] border flex items-center justify-center transition-all duration-150
-                    ${adultOk ? 'bg-[#d4a373] border-[#d4a373]' : 'bg-transparent border-white/25'}`}>
-                    {adultOk && <Check size={11} className="text-black" />}
-                  </span>
-                  <span className="text-gray-400 text-[10px] leading-relaxed">
-                    {isHebrew ? 'אני בן/בת 18 ומעלה.' : 'I am 18 or older.'}
-                  </span>
-                </button>
-
                 {/* Biometric consent gate — required before any face upload */}
                 <button
                   type="button"
@@ -299,7 +378,7 @@ export default function CharacterModal({
                   </button>
                   <button
                     onClick={handleCreate}
-                    disabled={!consented || !adultOk}
+                    disabled={!consented}
                     className="flex-[1.5] py-3 rounded-2xl bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Sparkles size={14} /> {isHebrew ? 'צור דמות' : 'Create character'}
@@ -374,27 +453,7 @@ export default function CharacterModal({
                   </button>
                 </div>
 
-                {/* Owner-only removal: deletes the character image and the saved link on the server (not just on this device). */}
-                {removeCharacter && (removeStep === 'idle' ? (
-                  <button onClick={() => setRemoveStep('confirm')} className="text-gray-600 hover:text-red-400 text-[10px] font-bold uppercase tracking-wider transition-colors">
-                    {isHebrew ? 'הסר את הדמות שלי' : 'Remove my character'}
-                  </button>
-                ) : (
-                  <div className="w-full rounded-2xl bg-red-500/[0.06] border border-red-500/25 p-3 flex flex-col gap-2">
-                    <p className="text-gray-300 text-[10.5px] leading-relaxed text-center">
-                      {isHebrew ? 'למחוק את הדמות שלך ואת התמונה ששמרנו? לא ניתן לשחזר.' : 'Delete your character and the image we stored? This cannot be undone.'}
-                    </p>
-                    <div className="flex gap-2">
-                      <button onClick={() => setRemoveStep('idle')} disabled={removeStep === 'busy'} className="flex-1 py-2 rounded-xl bg-white/[0.04] border border-white/10 text-gray-400 text-[10px] font-black uppercase tracking-wider disabled:opacity-40">
-                        {isHebrew ? 'ביטול' : 'Cancel'}
-                      </button>
-                      <button onClick={handleRemove} disabled={removeStep === 'busy'} className="flex-1 py-2 rounded-xl bg-red-500/80 text-white text-[10px] font-black uppercase tracking-wider disabled:opacity-60 flex items-center justify-center gap-1.5">
-                        {removeStep === 'busy' && <Loader2 size={12} className="animate-spin" />}
-                        {isHebrew ? 'מחק' : 'Delete'}
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                {removeBlock}
               </div>
             )}
 

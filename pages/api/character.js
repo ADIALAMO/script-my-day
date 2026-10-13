@@ -17,6 +17,7 @@ import redis from '../../lib/redis.js';
 import { isAdminRequest } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { keyFromPublicUrl, blobConfigured } from '../../lib/blob-store.js';
+import { readAdultConfirmation } from '../../lib/adult-confirmation.js';
 import { removeCharacterObjects } from '../../lib/character-store.js';
 import { objectKeySecretConfigured } from '../../lib/upload-image.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
@@ -32,10 +33,16 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ message: 'Method Not Allowed' });
 
   try {
-    const identifier = await resolveIdentifier(req, res);
+    const ctx = isAdminRequest(req) ? { identifier: 'admin', userId: null, admin: true } : await getSessionAndTier(req, res);
+    const identifier = ctx.identifier;
+    // The account's 18+ confirmation, so the client knows whether to ask (existing users with a character are asked the next time they open the feature).
+    // Unreadable → omitted (the client treats "unknown" like "not confirmed" and the upload route re-checks on the server anyway).
+    let adultConfirmed;
+    if (ctx.admin) adultConfirmed = true;
+    else { try { adultConfirmed = (await readAdultConfirmation(ctx.userId)).confirmed; } catch { /* omitted */ } }
 
     const raw = await redis.get(`character:${identifier}`);
-    if (!raw) return res.status(200).json({ success: true, characterImageUrl: null });
+    if (!raw) return res.status(200).json({ success: true, characterImageUrl: null, adultConfirmed });
 
     const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
     const url = data?.styledUrl || data?.url || null;
@@ -43,9 +50,9 @@ export default async function handler(req, res) {
     const key = keyFromPublicUrl(url);
     if (key && await redis.get(`report:hidden:${key}`)) {
       try { await redis.del(`character:${identifier}`); } catch { /* best effort */ }
-      return res.status(200).json({ success: true, characterImageUrl: null });
+      return res.status(200).json({ success: true, characterImageUrl: null, adultConfirmed });
     }
-    return res.status(200).json({ success: true, characterImageUrl: url });
+    return res.status(200).json({ success: true, characterImageUrl: url, adultConfirmed });
   } catch (err) {
     console.warn(`⚠️ character GET fail-soft: ${err.message}`);
     return res.status(200).json({ success: true, characterImageUrl: null });

@@ -34,7 +34,8 @@ export function useCharacter(gender = 'neutral') {
     return off;
   }, [store]);
 
-  const uploadCharacter = useCallback((selfieBase64, consent = false, adult = false) => store.upload(selfieBase64, consent, adult), [store]);
+  const uploadCharacter = useCallback((selfieBase64, consent = false) => store.upload(selfieBase64, consent), [store]);
+  const confirmAdult = useCallback(() => store.confirmAdult(), [store]);
   const removeCharacter = useCallback(() => store.remove(), [store]);
   const clearCharacter = useCallback(() => store.clear(), [store]);
   const setStarring = useCallback((v) => store.setStarring(v), [store]);
@@ -51,6 +52,8 @@ export function useCharacter(gender = 'neutral') {
     status: snap.status,
     error: snap.error,
     uploadCharacter,
+    adultConfirmed: snap.adultConfirmed === true,
+    confirmAdult,
     clearCharacter,
     removeCharacter,
   };

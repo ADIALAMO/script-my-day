@@ -23,7 +23,7 @@ export function createCharacterStore({ storage = null, fetchFn = null, getFetch 
   const doFetch = (...a) => (fetchFn || getFetch?.() || globalThis.fetch)(...a);
 
   let seq = 0;   // bumped by every local mutation (upload success / remove / clear); a restore that started earlier is discarded
-  let state = { url: '', phase: 'idle', error: '', starring: false };
+  let state = { url: '', phase: 'idle', error: '', starring: false, adultConfirmed: null };   // adultConfirmed: null = not known yet (treated like false), from the SERVER only — never cached on the device
   const listeners = new Set();
   const view = () => ({
     ...state,
@@ -59,6 +59,7 @@ export function createCharacterStore({ storage = null, fetchFn = null, getFetch 
         if (!r.ok) return;
         const d = await r.json();
         if (seq !== mine) return;   // the user uploaded / removed in the meantime: that is newer than this answer
+        if (typeof d?.adultConfirmed === 'boolean' && !(state.adultConfirmed === true && !d.adultConfirmed)) commit({ adultConfirmed: d.adultConfirmed });
         if (d?.characterImageUrl) {
           set(LS_URL, d.characterImageUrl); defaultStarringOnIfUnset();
           commit({ url: d.characterImageUrl, phase: 'idle', error: '', starring: get(LS_STARRING) === '1' });
@@ -66,15 +67,16 @@ export function createCharacterStore({ storage = null, fetchFn = null, getFetch 
       } catch { /* offline — the cached value (if any) stands */ }
     },
 
-    async upload(selfieBase64, consent = false, adult = false) {
+    async upload(selfieBase64, consent = false) {
       commit({ phase: 'loading', error: '' });
       try {
         const r = await doFetch('/api/upload-character', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-device-id': get(LS_DEVICE) || '' },
-          body: JSON.stringify({ selfieBase64, consent, adult }),
+          body: JSON.stringify({ selfieBase64, consent }),
         });
         const d = await r.json();
+        if (d.code === 'ADULT_CONFIRMATION_REQUIRED') { commit({ phase: 'idle', error: '', adultConfirmed: false }); return { ok: false, code: 'ADULT_CONFIRMATION_REQUIRED' }; }   // the server says this account has not confirmed: ask again
         if (r.status === 403) { commit({ phase: 'error', error: 'NEEDS_PRO' }); return { ok: false, code: 'NEEDS_PRO' }; }
         if (d.success && d.characterImageUrl) {
           seq += 1;
@@ -89,6 +91,20 @@ export function createCharacterStore({ storage = null, fetchFn = null, getFetch 
         commit({ phase: 'error', error: 'NETWORK_OFFLINE' });
         return { ok: false, code: 'NETWORK_OFFLINE' };
       }
+    },
+
+    /** One-time "I am 18 or older" for this ACCOUNT (the server stores it with a timestamp). Anonymous visitors get NEEDS_ACCOUNT. */
+    async confirmAdult() {
+      try {
+        const r = await doFetch('/api/adult-confirmation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ adult: true }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.success) { commit({ adultConfirmed: true }); return { ok: true }; }
+        return { ok: false, code: d.code || (r.status === 429 ? 'RATE_LIMITED' : 'SERVER_ERROR') };
+      } catch { return { ok: false, code: 'NETWORK_OFFLINE' }; }
     },
 
     /** "Remove my character": server first (owner only), then forget it here */
