@@ -119,18 +119,21 @@ scenario('F6', 'Pro whose monthly identity credits (30) are used up is refused a
     return { actual: `${r.status} ${r.body.code}; two different monthly counters guard the feature (credits for posters, uploads for sheets)` };
   });
 
-scenario('F7', 'moderation: an unsafe photo → 422 SAFETY_REJECTED with no reservation, no paid call, no R2 write; moderation outage fails CLOSED',
-  '422 both times; global counter 0; sheet counter 0', async () => {
+scenario('F7', 'safety check (full two-opinion checkImage): an unsafe photo → 422 SAFETY_REJECTED; a second-opinion "unsafe" → 422; a checker outage fails CLOSED (503 CONTENT_CHECK_UNAVAILABLE); nothing stored, no identity provider called, every reservation handed back',
+  '422 / 422 / 503; global counter 0; sheet counter 0; 0 R2 writes; 0 sheet-provider calls', async () => {
     const u = await makeUser('f7', 'free');
     providers.moderationVerdict.value = 'unsafe';
     const r = await up(u, '198.51.100.65');
     assert.equal(r.status, 422); assert.equal(r.body.code, 'SAFETY_REJECTED');
-    providers.moderationVerdict.value = 'safe'; providers.mode.moderation = 500;
+    providers.moderationVerdict.value = 'safe'; providers.imgSafety.value = 'unsafe';
+    const r1 = await up(u, '198.51.100.65');
+    assert.equal(r1.status, 422); assert.equal(r1.body.code, 'SAFETY_REJECTED');
+    providers.imgSafety.value = 'safe'; providers.mode.moderation = 500; providers.mode['gemini-check'] = 500;
     const r2 = await up(u, '198.51.100.65');
-    assert.equal(r2.status, 422);
-    assert.equal(providers.paidTotal(), 0); assert.equal(providers.s3puts.length, 0);
+    assert.equal(r2.status, 503); assert.equal(r2.body.code, 'CONTENT_CHECK_UNAVAILABLE');
+    assert.equal(providers.s3puts.length, 0); assert.ok(!providers.counts.grok && !providers.counts['gemini-image'], 'no sheet provider was called');
     assert.equal(fake.num(GLOBAL()), 0); assert.equal(fake.num(`usage:sheet:${u.identifier}:2026-10`), 0);
-    return { actual: 'unsafe + moderation outage both 422; nothing reserved or stored' };
+    return { actual: 'unsafe, second-opinion unsafe and outage → nothing reserved, stored or generated' };
   });
 
 scenario('F8', 'consent is mandatory server-side; invalid payloads cost nothing',
@@ -142,14 +145,17 @@ scenario('F8', 'consent is mandatory server-side; invalid payloads cost nothing'
     return { actual: `${a.status} CONSENT_REQUIRED, ${b.status} bad payload; 0 calls` };
   });
 
-scenario('F9', 'provider failure: the sheet quota AND the global budget slot are given back (user is not charged for a failed paid call); behaviour = silent fallback to the raw selfie (documented)',
-  'success:true sheetGenerated:false, usage:sheet 0, global 0', async () => {
+scenario('F9', 'provider failure: the request FAILS (503 CHARACTER_SHEET_FAILED), the raw selfie is deleted (never the reference), the sheet quota AND the global budget slot are given back, no pointer is saved',
+  '503, usage:sheet 0, global 0, raw deleted, no character pointer', async () => {
     const u = await makeUser('f9', 'free');
     providers.mode['gemini-image'] = 500; providers.mode.grok = 500;
     const r = await up(u, '198.51.100.67');
-    assert.equal(r.status, 200); assert.equal(r.body.sheetGenerated, false);
+    assert.equal(r.status, 503); assert.equal(r.body.code, 'CHARACTER_SHEET_FAILED'); assert.equal(r.body.characterImageUrl, undefined);
     assert.equal(fake.num(`usage:sheet:${u.identifier}:2026-10`), 0); assert.equal(fake.num(GLOBAL()), 0);
-    return { actual: '200 sheetGenerated:false (raw selfie used as reference); counters released', evidence: 'pages/api/upload-character.js provider-failure branch (design: degrade, do not charge)' };
+    const raw = providers.s3puts.find((p) => /-raw\.(png|jpg|webp)$/.test(p.key));
+    assert.ok(raw && providers.s3deletes.some((d) => d.key === raw.key), 'raw selfie deleted');
+    assert.ok(!/characters\/[0-9a-f]{32}\//.test(fake.get(`character:${u.identifier}`) || ''), 'no pointer to a new object');
+    return { actual: '503 CHARACTER_SHEET_FAILED; counters released; raw deleted', evidence: 'pages/api/upload-character.js provider-failure branch (design: fail, delete the photo, do not charge)' };
   });
 
 scenario('F10', 'upload rate limit: 5th request within 5 minutes → RATE_LIMITED (separate from the monthly quota), zero provider calls',

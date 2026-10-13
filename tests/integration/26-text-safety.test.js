@@ -250,6 +250,7 @@ scenario('T13', 'budget independence: exhausting the IMAGE budget (DAILY_CHECK_B
       const img = await posterWithNemotronDown('a');
       assert.equal(img.body.code, 'CONTENT_CHECK_UNAVAILABLE', 'the image fallback has no budget');
       const txt = await callScript(await makeUser('t13a', 'free'), 'romance', '198.51.100.31'); assert.equal(txt.status, 200); assert.equal(TEXT_SPEND(), 1);
+      ctx.advance(120_000);   // the poster's Nemotron failures opened that circuit; let it close so the selfie's own image check (now the full two-opinion check) runs normally
       providers.ageVerdict.value = 'minor';
       const age = await up(await makeUser('t13b', 'free'), '198.51.100.32'); assert.equal(age.status, 422); assert.equal(age.body.code, 'MINOR_REJECTED'); assert.equal(MINOR_SPEND(), 1, 'the screen ran on its own budget');
       assert.equal(SPEND(), 0);
@@ -285,12 +286,12 @@ scenario('T15', 'budget independence: exhausting the MINOR budget (DAILY_MINOR_C
   });
 
 scenario('T16', 'the four counters are separate keys: one call of each kind moves only its own counter',
-  'image 1, text 1, minor 1, image-safety second opinion 1 (each in its own key)', async () => {
+  'image 1, text 1, minor 1, image-safety second opinion 2 (selfie + sheet) (each in its own key)', async () => {
     await posterWithNemotronDown('d');
     ctx.advance(120_000);   // let the Nemotron circuit that the poster's failures opened expire, so the upload's own image check uses Nemotron again
     await callScript(await makeUser('t16a', 'free'), 'drama', '198.51.100.38');
     await up(await makeUser('t16b', 'free'), '198.51.100.39');
-    assert.deepEqual([SPEND(), TEXT_SPEND(), MINOR_SPEND(), IMGSAFETY_SPEND()], [1, 1, 1, 1]);
+    assert.deepEqual([SPEND(), TEXT_SPEND(), MINOR_SPEND(), IMGSAFETY_SPEND()], [1, 1, 1, 2], 'the upload makes TWO second opinions now: the selfie and the generated sheet');
     assert.deepEqual(fake.keys('usage:check:').sort(), ['usage:check:imgsafety:global:2026-10-15', 'usage:check:minor:global:2026-10-15', 'usage:check:paid:global:2026-10-15', 'usage:check:text:global:2026-10-15']);
     return { actual: 'four independent counters' };
   });
@@ -309,6 +310,7 @@ scenario('T17', 'circuit independence: a failing text classifier opens ONLY chec
     // with the image fallback circuit open, text + minor still work
     providers.mode.moderation = 0; delete providers.mode.moderation;
     assert.equal((await callScript(await makeUser('t17c', 'free'), 'romance', '198.51.100.42')).status, 200);
+    ctx.advance(120_000);   // let the check_nemotron circuit opened by the dead poster above expire
     providers.ageVerdict.value = 'minor';
     assert.equal((await up(await makeUser('t17d', 'free'), '198.51.100.43')).status, 422);
     delete providers.mode['gemini-check']; fake.flush(); ctx.advance(120_000); providers.ageVerdict.value = 'adult';

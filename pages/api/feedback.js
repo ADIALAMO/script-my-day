@@ -1,5 +1,6 @@
 import redis from '../../lib/redis.js';
 import { extractIdentifier } from '../../lib/api-utils.js';
+import { checkContent } from '../../lib/content-blocklist.js';
 import { sanitize } from '../../utils/input-processor.js';
 import { escapeMarkdownV1, sendTelegram } from '../../lib/telegram.js';
 
@@ -13,7 +14,8 @@ export default async function handler(req, res) {
 
   const { text, lang, producerName } = req.body;
   const cleanText = sanitize(text, 500);
-  const cleanName = sanitize(producerName || '', 100);
+  // The only server-side consumer of the creator credit: it goes to the owner's Telegram, never to other users. Same blocklist as the client (utils/producer-name.js).
+  const cleanName = checkContent(sanitize(producerName || '', 100)).blocked ? '' : sanitize(producerName || '', 100);
 
   if (!cleanText) {
     return res.status(400).json({ message: 'Feedback text is required' });

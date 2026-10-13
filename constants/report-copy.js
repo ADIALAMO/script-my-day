@@ -6,6 +6,7 @@ export const REPORT_COPY = {
     poster: { en: 'Report this poster', he: 'דיווח על הפוסטר' },
     panel:  { en: 'Report this image',  he: 'דיווח על התמונה' },
     reel:   { en: 'Report this reel',   he: 'דיווח על הריל' },
+    character: { en: 'Report this character image', he: 'דיווח על תמונת הדמות' },
   },
   intro: {
     en: 'Tell us what is wrong. The image will be hidden and our team will be notified.',

@@ -104,8 +104,13 @@ export async function boot({ env = {}, nodeEnv = 'test', startAt = '2026-10-15T1
       providers.s3objects.set(id, { ...o });
       return {};
     }
+    if (name === 'ListObjectsV2Command') {
+      const pre = `${input.Bucket}/${input.Prefix ?? ''}`;
+      return { Contents: [...providers.s3objects.keys()].filter((k) => k.startsWith(pre)).map((k) => ({ Key: k.slice(String(input.Bucket).length + 1) })), IsTruncated: false };
+    }
     if (providers.mode.s3putSheet && String(input.Key).endsWith('-sheet.jpg')) throw new Error('R2 put failed (mock sheet)');
-    providers.s3puts.push({ key: input.Key, bytes: input.Body?.length ?? 0, bucket: input.Bucket, metadata: input.Metadata });
+    if (providers.mode.s3putRaw && /-raw\.(png|jpg|webp)$/.test(String(input.Key))) throw new Error('R2 put failed (mock raw)');
+    providers.s3puts.push({ key: input.Key, bytes: input.Body?.length ?? 0, bucket: input.Bucket, metadata: input.Metadata, cacheControl: input.CacheControl, contentType: input.ContentType });
     providers.s3objects.set(id, { bytes: input.Body?.length ?? 0, metadata: input.Metadata ?? {} });
     await providers.hooks.afterPut?.(input);   // lets a test interleave another request right after an object is stored (race scenarios)
     return {};

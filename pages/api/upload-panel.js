@@ -3,7 +3,7 @@ import redis from '../../lib/redis.js';
 import { isAdminRequest } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
-import { UPLOAD_LIMITS } from '../../config/limits.js';
+import { UPLOAD_LIMITS, IMAGE_CACHE_CONTROL } from '../../config/limits.js';
 import { getImageMark, imageHash, cleanProviderTag } from '../../lib/image-check.js';
 import { CODES } from '../../lib/messages.js';
 import { takedownAfterUpload } from '../../lib/report.js';
@@ -185,8 +185,8 @@ export default async function handler(req, res) {
       ContentType:  mimeType,
       // Which engine produced it (server-written marker, never client input) — for diagnostics and report triage; no personal data.
       ...(cleanProviderTag(mark !== '1' ? mark : null) ? { Metadata: { provider: cleanProviderTag(mark) } } : {}),
-      // Assets are immutable once generated — aggressive CDN caching is safe.
-      CacheControl: 'public, max-age=31536000, immutable',
+      // One day, not immutable: a reported image must stop being served within a day (config/limits.js IMAGE_CACHE_CONTROL).
+      CacheControl: IMAGE_CACHE_CONTROL,
     }));
 
     // hash → key, so a report made while the image was still only in the browser (hash-based) can find the stored object.

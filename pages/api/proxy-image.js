@@ -6,6 +6,8 @@
 // the image server-side and re-serving it with CORS headers makes the response
 // same-origin from the browser's perspective — no taint, no black frames.
 //
+// Scope: ONLY generated panels/ and posters/ objects. Star Yourself photos and sheets (characters/) are never re-served through here (no CORS, no CDN copy):
+// they are shown to their owner straight from their own URL and are not canvas material.
 // Security: only objects under our own R2_PUBLIC_URL origin are proxied (exact origin match, no
 // credentials, no traversal, no private/loopback hosts — lib/proxy-url.js). Redirects are never
 // followed and the body is capped (config/limits.js PROXY_IMAGE). Rate limited per client IP.
@@ -13,7 +15,7 @@
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 import { extractTrustedIp } from '../../lib/api-utils.js';
 import { resolveAllowedUrl, readCapped } from '../../lib/proxy-url.js';
-import { PROXY_IMAGE } from '../../config/limits.js';
+import { PROXY_IMAGE, IMAGE_CACHE_SECONDS } from '../../config/limits.js';
 import redis from '../../lib/redis.js';
 
 export const config = {
@@ -42,6 +44,11 @@ export default async function handler(req, res) {
   if (!target) {
     return res.status(403).end();
   }
+
+  // Only panels/ and posters/ — checked on the decoded key BEFORE anything is read or fetched (an encoded or odd path cannot slip a characters/ key through).
+  let scopeKey = null;
+  try { scopeKey = decodeURIComponent(String(target).split(/[?#]/)[0].slice(allowed.length + 1)); } catch { /* undecodable → out of scope */ }
+  if (!scopeKey || !/^(panels|posters)\//.test(scopeKey) || scopeKey.includes('..')) return res.status(403).end();
 
   // Reported + hidden images (lib/report.js): answer 410, never cached, before touching R2. The object has normally been moved to the
   // private quarantine bucket already; this also covers the window before that finishes and a quarantine bucket that is not configured.
@@ -78,12 +85,13 @@ export default async function handler(req, res) {
     // blocks scripts and gives it an opaque origin.
     res.setHeader('Content-Security-Policy', 'sandbox');
     res.setHeader('Access-Control-Allow-Origin', '*');
-    // Browser cache: served from disk on repeat visits within 1 year.
-    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    // Browser cache: served from disk on repeat visits within a day.
+    // One day (config/limits.js IMAGE_CACHE_SECONDS), not a year/immutable: a quarantined image must disappear from browser and CDN caches soon.
+    res.setHeader('Cache-Control', `public, max-age=${IMAGE_CACHE_SECONDS}`);
     // Vercel edge cache: serves repeated proxy requests from the CDN edge node
     // closest to the user, eliminating the R2→Vercel serverless round-trip.
     // Takes effect on Pro/Enterprise plans; harmless no-op on Hobby.
-    res.setHeader('Vercel-CDN-Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('Vercel-CDN-Cache-Control', `public, max-age=${IMAGE_CACHE_SECONDS}`);
     return res.status(200).send(buffer);
   } catch (err) {
     console.error('proxy-image error:', err.message);

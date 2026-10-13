@@ -243,30 +243,33 @@ scenario('O12b', 'upload-panel: an expired marker (6 h) or a Redis outage → ur
     return { actual: 'expired marker and admin key both end in url:null; nothing stored' };
   });
 
-scenario('O13', 'Character Sheet: an UNSAFE generated sheet is not stored — the moderated raw selfie stays the reference (sheetGenerated false) and the charge stays',
-  'selfie passes, sheet unsafe → no -sheet.jpg put, raw kept, sheet quota 1', async () => {
+scenario('O13', 'Character Sheet: an UNSAFE generated sheet is not stored — the request FAILS (422 CONTENT_REFUSED), the raw selfie is deleted (never the reference), the user\'s sheet quota is handed back',
+  'selfie passes, sheet unsafe → no -sheet.jpg put, raw deleted, sheet quota 0, global identity slot stays 1', async () => {
     const u = await makeUser('o13', 'free');
     providers.moderationVerdict.queue.push('User Safety: safe', 'User Safety: unsafe\nSafety Categories: Sexual');
     const r = await invoke(uploadCharacter, { body: { selfieBase64: PNG_DATA_URI, consent: true, adult: true }, cookies: u.cookies, ip: '198.51.100.253' });
-    assert.equal(r.status, 200); assert.equal(r.body.sheetGenerated, false);
+    assert.equal(r.status, 422); assert.equal(r.body.code, 'CONTENT_REFUSED'); assert.equal(r.body.characterImageUrl, undefined);
     const selfieCheck = providers.bodies.find((b) => b.provider === 'moderation').body;   // the FIRST moderation call is the selfie
     assert.equal(selfieCheck.messages[0].content[0].type, 'image_url'); assert.equal(selfieCheck.messages[0].content[1].text, 'Image to check.');
     assert.equal(selfieCheck.max_tokens, 512); assert.deepEqual(selfieCheck.reasoning, { effort: 'none' });
     assert.ok(!providers.s3puts.some((p) => String(p.key).endsWith('-sheet.jpg')), 'sheet never stored');
-    assert.ok(providers.s3puts.some((p) => String(p.key).endsWith('-raw.jpg')) && providers.s3deletes.length === 0, 'raw selfie kept as the reference');
-    assert.equal(fake.num(`usage:sheet:${u.identifier}:2026-10`), 1, 'the paid call was made → the charge stays');
+    const rawPut = providers.s3puts.find((p) => /-raw\.(png|jpg)$/.test(String(p.key)));
+    assert.ok(rawPut && providers.s3deletes.some((d) => d.key === rawPut.key), 'the raw selfie is deleted, not kept as a reference');
+    assert.ok(!/characters\/[0-9a-f]{32}\//.test(fake.get(`character:${u.identifier}`) || ''), 'no pointer to a new object');
+    assert.equal(fake.num(`usage:sheet:${u.identifier}:2026-10`), 0, 'the user is not charged for a sheet they cannot use');
     assert.equal(fake.num('usage:identity:global:2026-10-15'), 1);
-    return { actual: 'unsafe sheet dropped; raw selfie is the reference' };
+    return { actual: 'unsafe sheet dropped; raw deleted; user quota back' };
   });
 
-scenario('O14', 'Character Sheet: when no checker can answer, the sheet is not stored either; the sheet quota is handed back, the global budget slot stays counted (money was spent)',
-  'sheet quota 0, global identity 1, raw kept', async () => {
+scenario('O14', 'Character Sheet: when no checker can answer, the sheet is not stored either (503 CONTENT_CHECK_UNAVAILABLE); the raw selfie is deleted, the sheet quota is handed back, the global budget slot stays counted (money was spent)',
+  'sheet quota 0, global identity 1, raw deleted', async () => {
     const u = await makeUser('o14', 'free');
     providers.moderationVerdict.queue.push('User Safety: safe', 500, 500);   // selfie ok; sheet check: attempt + retry fail
     providers.mode['gemini-check'] = 500;
     const r = await invoke(uploadCharacter, { body: { selfieBase64: PNG_DATA_URI, consent: true, adult: true }, cookies: u.cookies, ip: '198.51.100.255' });
-    assert.equal(r.status, 200); assert.equal(r.body.sheetGenerated, false);
+    assert.equal(r.status, 503); assert.equal(r.body.code, 'CONTENT_CHECK_UNAVAILABLE');
     assert.ok(!providers.s3puts.some((p) => String(p.key).endsWith('-sheet.jpg')));
+    assert.ok(providers.s3deletes.some((d) => /-raw\.(png|jpg)$/.test(d.key)), 'raw selfie deleted');
     assert.equal(fake.num(`usage:sheet:${u.identifier}:2026-10`), 0);
     assert.equal(fake.num('usage:identity:global:2026-10-15'), 1);
     return { actual: 'sheet not stored; quota back; budget counted' };

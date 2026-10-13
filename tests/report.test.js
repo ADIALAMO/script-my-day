@@ -11,18 +11,19 @@ const { isReported, markReported } = await import('../utils/reported-store.js');
 
 const SEG = 'a'.repeat(32); const UUID = '11111111-1111-1111-1111-111111111111';
 
-test('isReportableKey: generated panels/posters only — never characters/, traversal, other extensions or oversized keys', () => {
-  for (const ok of [`panels/${SEG}/${UUID}.png`, `posters/${SEG}/${UUID}.jpg`, `panels/${SEG}/${UUID}.webp`, 'panels/1699999999999_abc123_00.png']) assert.equal(isReportableKey(ok), true, ok);
-  for (const bad of [`characters/${SEG}/${UUID}-sheet.jpg`, `panels/../characters/x.png`, `panels/${SEG}/${UUID}.svg`, `panels/${SEG}/${UUID}.png/extra`, 'panels/', '', null, undefined, 42, `panels/${'x'.repeat(300)}.png`, `quarantine/${SEG}/${UUID}.png`]) assert.equal(isReportableKey(bad), false, String(bad));
+test('isReportableKey: generated panels/posters and CURRENT-format characters/ keys only — never legacy character keys, traversal, other extensions or oversized keys', () => {
+  for (const ok of [`panels/${SEG}/${UUID}.png`, `posters/${SEG}/${UUID}.jpg`, `panels/${SEG}/${UUID}.webp`, 'panels/1699999999999_abc123_00.png', `characters/${SEG}/${UUID}-sheet.jpg`, `characters/${SEG}/${UUID}-raw.png`, `characters/${SEG}/${UUID}-raw.webp`]) assert.equal(isReportableKey(ok), true, ok);
+  for (const bad of [`characters/u:123-sheet-1700.jpg`, 'characters/user_old-raw-1700000000000.jpg', `characters/${SEG}/${UUID}-sheet.svg`, `characters/${SEG}/${UUID}-other.jpg`, `characters/short/${UUID}-sheet.jpg`, `characters/../panels/${SEG}/${UUID}.png`, `panels/../characters/x.png`, `panels/${SEG}/${UUID}.svg`, `panels/${SEG}/${UUID}.png/extra`, 'panels/', '', null, undefined, 42, `panels/${'x'.repeat(300)}.png`, `quarantine/${SEG}/${UUID}.png`]) assert.equal(isReportableKey(bad), false, String(bad));
 });
 
 test('parseRef: only our own R2 origin; strips query strings; rejects foreign hosts, traversal, encoded traversal, credentials', () => {
   const B = 'https://pub-test.r2.dev';
   assert.deepEqual(parseRef({ url: `${B}/panels/${SEG}/${UUID}.png?cache=1` }), { kind: 'key', key: `panels/${SEG}/${UUID}.png` });
-  for (const bad of [`https://evil.example/panels/${SEG}/${UUID}.png`, `${B}.evil.example/panels/${SEG}/${UUID}.png`, `${B}/panels/%2e%2e/x.png`, `${B}/panels/../x.png`, `https://user:pw@pub-test.r2.dev/panels/${SEG}/${UUID}.png`, `${B}/characters/${SEG}/${UUID}-sheet.jpg`, 'javascript:alert(1)', 'data:image/png;base64,AAAA']) {
+  for (const bad of [`https://evil.example/panels/${SEG}/${UUID}.png`, `${B}.evil.example/panels/${SEG}/${UUID}.png`, `${B}/panels/%2e%2e/x.png`, `${B}/panels/../x.png`, `https://user:pw@pub-test.r2.dev/panels/${SEG}/${UUID}.png`, `${B}/characters/u:12-sheet-1700.jpg`, 'javascript:alert(1)', 'data:image/png;base64,AAAA']) {
     assert.equal(parseRef({ url: bad }), null, bad);
   }
   assert.deepEqual(parseRef({ hash: 'ab'.repeat(32) }), { kind: 'hash', hash: 'ab'.repeat(32) });
+  assert.deepEqual(parseRef({ url: `${B}/characters/${SEG}/${UUID}-sheet.jpg` }), { kind: 'key', key: `characters/${SEG}/${UUID}-sheet.jpg` });
   for (const bad of [{ hash: 'AB'.repeat(32) }, { hash: 'ab'.repeat(31) }, { hash: 123 }, {}, null, 'x', { url: 5 }]) assert.equal(parseRef(bad), null);
 });
 
@@ -42,7 +43,7 @@ test('reporterSegment: one-way HMAC, deterministic, 32 hex, never contains the i
 });
 
 test('limits and enums', () => {
-  assert.deepEqual(REPORT_KINDS, ['poster', 'panel', 'reel']); assert.deepEqual(REPORT_REASONS, ['sexual', 'violent', 'other']); assert.equal(MAX_REFS, 8);
+  assert.deepEqual(REPORT_KINDS, ['poster', 'panel', 'reel', 'character']); assert.deepEqual(REPORT_REASONS, ['sexual', 'violent', 'other']); assert.equal(MAX_REFS, 8);
   assert.equal(isValidHash('0'.repeat(64)), true); assert.equal(isValidHash('0'.repeat(63)), false);
 });
 

@@ -42,11 +42,12 @@ function fileToDownscaledDataUri(file, maxDim = 1024, quality = 0.9) {
  *   characterImageUrl current styled sheet URL (from useCharacter)
  *   uploadCharacter   (selfieBase64) => Promise<{ok, code?}>
  *   clearCharacter    () => void
+ *   removeCharacter   () => Promise<{ok, code?}> — deletes the photo/sheet and the saved pointer on the server (owner only)
  *   onUpgrade         () => void   — called when the API gates a free user (403)
  */
 export default function CharacterModal({
   isOpen, onClose, lang,
-  status, characterImageUrl, uploadCharacter, clearCharacter, onUpgrade,
+  status, characterImageUrl, uploadCharacter, clearCharacter, removeCharacter, onUpgrade,
   gender, setGender,
 }) {
   const isHebrew = lang === 'he';
@@ -60,6 +61,7 @@ export default function CharacterModal({
   const [fileError, setFileError] = useState('');
   const [gated,     setGated]     = useState(false); // free-tier 403
   const [consented, setConsented] = useState(false); // biometric consent gate (pre-create)
+  const [removeStep, setRemoveStep] = useState('idle'); // 'idle' | 'confirm' | 'busy' — owner-only "Remove my character"
   const [adultOk,   setAdultOk]   = useState(false); // "I am 18 or older" — Star Yourself is 18+ (an attestation, not age verification)
   const fileInputRef = useRef(null);
 
@@ -73,7 +75,7 @@ export default function CharacterModal({
 
   // Reset transient state whenever the modal opens.
   useEffect(() => {
-    if (isOpen) { setPicked(''); setChanging(false); setFileError(''); setGated(false); setConsented(false); }
+    if (isOpen) { setPicked(''); setChanging(false); setFileError(''); setGated(false); setConsented(false); setRemoveStep('idle'); }
   }, [isOpen]);
 
   const handleFile = useCallback(async (file) => {
@@ -103,7 +105,8 @@ export default function CharacterModal({
       setGated(true);
     } else if (result.code === CODES.QUOTA_SHEET || result.code === CODES.IDENTITY_BUDGET_REACHED
             || result.code === CODES.QUOTA_IDENTITY || result.code === CODES.IDENTITY_LIFETIME_USED
-            || result.code === CODES.SAFETY_REJECTED || result.code === CODES.RATE_LIMITED || result.code === CODES.ADULT_REQUIRED || result.code === CODES.MINOR_REJECTED) {
+            || result.code === CODES.SAFETY_REJECTED || result.code === CODES.RATE_LIMITED || result.code === CODES.ADULT_REQUIRED || result.code === CODES.MINOR_REJECTED
+            || result.code === CODES.IMAGE_UNSUPPORTED || result.code === CODES.CONTENT_REFUSED || result.code === CODES.CONTENT_CHECK_UNAVAILABLE || result.code === CODES.CHARACTER_SHEET_FAILED) {
       // A limit / budget / moderation answer from the server: say exactly what happened.
       // QUOTA_SHEET carries {limit, resetsAt}: say how many uploads are included and when they renew.
       const lang = isHebrew ? 'he' : 'en';
@@ -117,6 +120,14 @@ export default function CharacterModal({
       setFileError(isHebrew ? 'משהו השתבש. נסה שוב.' : 'Something went wrong. Try again.');
     }
   }, [picked, uploadCharacter, isHebrew, consented, adultOk]);
+
+  const handleRemove = useCallback(async () => {
+    setRemoveStep('busy');
+    const r = await removeCharacter?.();
+    if (r?.ok) { setRemoveStep('idle'); setFileError(''); return; }   // the modal falls back to the "pick" view
+    setRemoveStep('idle');
+    setFileError(isHebrew ? 'לא הצלחנו למחוק כרגע. נסה שוב.' : "We couldn't delete it right now. Please try again.");
+  }, [removeCharacter, isHebrew]);
 
   // ── View resolution ──────────────────────────────────────────────────────────
   const showLoading = status === 'loading';
@@ -355,6 +366,28 @@ export default function CharacterModal({
                     {isHebrew ? 'השתמש בסיפור' : 'Use in my story'}
                   </button>
                 </div>
+
+                {/* Owner-only removal: deletes the character image and the saved link on the server (not just on this device). */}
+                {removeCharacter && (removeStep === 'idle' ? (
+                  <button onClick={() => setRemoveStep('confirm')} className="text-gray-600 hover:text-red-400 text-[10px] font-bold uppercase tracking-wider transition-colors">
+                    {isHebrew ? 'הסר את הדמות שלי' : 'Remove my character'}
+                  </button>
+                ) : (
+                  <div className="w-full rounded-2xl bg-red-500/[0.06] border border-red-500/25 p-3 flex flex-col gap-2">
+                    <p className="text-gray-300 text-[10.5px] leading-relaxed text-center">
+                      {isHebrew ? 'למחוק את הדמות שלך ואת התמונה ששמרנו? לא ניתן לשחזר.' : 'Delete your character and the image we stored? This cannot be undone.'}
+                    </p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setRemoveStep('idle')} disabled={removeStep === 'busy'} className="flex-1 py-2 rounded-xl bg-white/[0.04] border border-white/10 text-gray-400 text-[10px] font-black uppercase tracking-wider disabled:opacity-40">
+                        {isHebrew ? 'ביטול' : 'Cancel'}
+                      </button>
+                      <button onClick={handleRemove} disabled={removeStep === 'busy'} className="flex-1 py-2 rounded-xl bg-red-500/80 text-white text-[10px] font-black uppercase tracking-wider disabled:opacity-60 flex items-center justify-center gap-1.5">
+                        {removeStep === 'busy' && <Loader2 size={12} className="animate-spin" />}
+                        {isHebrew ? 'מחק' : 'Delete'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
