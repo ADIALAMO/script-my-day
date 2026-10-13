@@ -115,3 +115,22 @@ test('list-leftover-raw-selfies failures: stage + allowlisted reason only, never
   assert.match(describeFailure(new Error('whatever my-secret')), /reason=unexpected error class=Error$/);
   await assert.rejects(run({ r2: { list: async () => { throw hostile; } }, log() {} }), (e) => e instanceof StageError && e.stage === 'list' && !e.message.includes('my-secret-bucket'));
 });
+
+test('hidden-prompt reader: prints the label first, echoes only when not hidden, handles backspace / paste / Ctrl+C, restores the terminal', async () => {
+  const { readValue, StageError } = await import('../scripts/list-leftover-raw-selfies.mjs');
+  const { EventEmitter } = await import('node:events');
+  const mk = () => { const i = new EventEmitter(); i.raw = null; i.setRawMode = (v) => { i.raw = v; }; i.resume = () => {}; i.pause = () => {}; i.setEncoding = () => {}; i.off = i.removeListener; return i; };
+  const run = async (label, hidden, feed) => {
+    const input = mk(); const written = []; const output = { write: (s) => written.push(s) };
+    const p = readValue({ input, output, label, hidden });
+    assert.equal(written[0], `${label}: `, 'label is written before waiting'); assert.equal(input.raw, true);
+    for (const f of feed) input.emit('data', f);
+    return { p, written, input };
+  };
+  let r = await run('Bucket name', false, ['my-b', 'x', '\u007f', 'ucket\r']);
+  assert.equal(await r.p, 'my-bucket'); assert.ok(r.written.join('').includes('my-b')); assert.equal(r.input.raw, false);
+  r = await run('Secret Access Key (hidden)', true, ['s3cr\u001b[Aet\n']);
+  assert.equal(await r.p, 's3cret'); assert.ok(!r.written.join('').includes('s3cr'), 'a hidden value is never echoed');
+  r = await run('Access Key ID (hidden)', true, ['abc', '\u0003']);
+  await assert.rejects(r.p, (e) => e instanceof StageError && e.stage === 'config' && e.reason === 'cancelled'); assert.equal(r.input.raw, false);
+});

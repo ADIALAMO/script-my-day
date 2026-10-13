@@ -6,14 +6,13 @@
  *   node scripts/list-leftover-raw-selfies.mjs
  *
  * Environment (names only): CLOUDFLARE_ACCOUNT_ID, R2_BUCKET_NAME, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY. This script does NOT read .env files. Any of the four that is
- * not already in the shell is asked for at a prompt (the two key values with the typing hidden); with no terminal it stops at stage=config.
+ * not already in the shell is asked for at a prompt (label printed first; Account ID and bucket echo, the two key values are NOT shown as you type);
+ * with no terminal it stops at stage=config instead of waiting. Example: CLOUDFLARE_ACCOUNT_ID=... R2_BUCKET_NAME=... node scripts/list-leftover-raw-selfies.mjs
  * An "Object Read only" R2 token scoped to the one bucket is enough (ListObjectsV2 is the only call).
  * A failure prints ONLY: stage (config | list) + an allowlisted reason (+ class / http status) — never a message, key, bucket, account id or URL. Deciding what to clean up is a separate, manual step
  * (docs-private/legacy-raw-selfie-cleanup-plan.md); this script deletes nothing.
  */
 import { pathToFileURL } from 'node:url';
-import readline from 'node:readline/promises';
-import { Writable } from 'node:stream';
 import { summariseLeftoverRaws, formatLeftoverReport } from '../lib/leftover-raw.js';
 import { safeErrInfo, formatSafeErr } from '../lib/safe-error.js';
 
@@ -47,14 +46,33 @@ export function describeFailure(e) {
   return `stage=list reason=${REASONS[info.cls] ?? 'unexpected error'} ${formatSafeErr(info)}`;
 }
 
-/** asks for one value; secrets are not echoed. Resolves '' when there is no terminal. */
-async function ask(name) {
-  if (!process.stdin.isTTY) return '';
-  const hidden = HIDDEN.has(name);
-  const out = hidden ? new Writable({ write(_c, _e, cb) { cb(); } }) : process.stderr;
-  const rl = readline.createInterface({ input: process.stdin, output: out, terminal: true });
-  process.stderr.write(`${name}${hidden ? ' (hidden)' : ''}: `);
-  try { return (await rl.question('')).trim(); } finally { rl.close(); if (hidden) process.stderr.write('\n'); }
+export const LABELS = {
+  CLOUDFLARE_ACCOUNT_ID: 'Cloudflare Account ID',
+  R2_BUCKET_NAME: 'Bucket name',
+  R2_ACCESS_KEY_ID: 'Access Key ID (hidden)',
+  R2_SECRET_ACCESS_KEY: 'Secret Access Key (hidden)',
+};
+
+/**
+ * Reads one line from a TTY in raw mode. The label is written FIRST (readline in terminal mode repaints the line and erased it). Echoes typed characters
+ * unless `hidden`; handles backspace, paste, Enter, Ctrl+C / Ctrl+D (cancel). Rejects with StageError('config', 'cancelled') on cancel.
+ */
+export function readValue({ input, output, label, hidden }) {
+  return new Promise((resolve, reject) => {
+    let buf = '';
+    const done = (fn, arg) => { input.off('data', onData); input.setRawMode(false); input.pause(); output.write('\n'); fn(arg); };
+    const onData = (chunk) => {
+      const text = String(chunk).replace(/\u001b\[[0-9;]*[A-Za-z~]/g, '');   // arrow / delete keys etc. are ignored
+      for (const ch of text) {
+        if (ch === '\u0003' || (ch === '\u0004' && !buf)) return done(reject, new StageError('config', 'cancelled'));
+        if (ch === '\r' || ch === '\n') return done(resolve, buf.trim());
+        if (ch === '\u007f' || ch === '\b') { if (buf) { buf = buf.slice(0, -1); if (!hidden) output.write('\b \b'); } continue; }
+        if (ch >= ' ') { buf += ch; if (!hidden) output.write(ch); }
+      }
+    };
+    output.write(`${label}: `);
+    input.setEncoding('utf8'); input.setRawMode(true); input.resume(); input.on('data', onData);
+  });
 }
 
 /** @param {{ list: (prefix: string) => Promise<{key:string,size?:number,lastModified?:Date}[]> }} r2 */
@@ -67,9 +85,19 @@ export async function run({ r2, log = console.log, now = Date.now }) {
 }
 
 async function main() {
-  for (const name of missingEnv(process.env)) { const v = await ask(name); if (v) process.env[name] = v; }
+  const need = missingEnv(process.env);
+  if (need.length && !process.stdin.isTTY) {
+    throw new StageError('config', `missing env ${need.join(', ')} (not a terminal, so it cannot ask: set them in the shell)`);
+  }
+  if (need.length) {
+    process.stderr.write('Press Ctrl+C to cancel. Nothing is changed: this only lists objects.\n');
+    for (const name of need) {
+      const v = await readValue({ input: process.stdin, output: process.stderr, label: LABELS[name], hidden: HIDDEN.has(name) });
+      if (v) process.env[name] = v;
+    }
+  }
   const missing = missingEnv(process.env);
-  if (missing.length) throw new StageError('config', `missing env ${missing.join(', ')} (set them in the shell, or run in a terminal to be prompted)`);
+  if (missing.length) throw new StageError('config', `missing env ${missing.join(', ')} (nothing was entered)`);
   const { S3Client, ListObjectsV2Command } = await import('@aws-sdk/client-s3');
   const s3 = new S3Client({ region: 'auto', endpoint: `https://${process.env.CLOUDFLARE_ACCOUNT_ID.trim()}.r2.cloudflarestorage.com`, credentials: { accessKeyId: process.env.R2_ACCESS_KEY_ID.trim(), secretAccessKey: process.env.R2_SECRET_ACCESS_KEY.trim() } });
   const r2 = {
