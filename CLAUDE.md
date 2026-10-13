@@ -147,6 +147,8 @@ enforces tier + quota **before** any paid call. Faces stored in R2 (`characters/
 - READ-ONLY inventory of leftover raw selfies (counts/ages only, no keys): `node scripts/list-leftover-raw-selfies.mjs` (docs-private/legacy-raw-selfie-cleanup-plan.md for the cleanup decision).
 - Legacy raw selfies (`characters/<id>-raw-<stamp>.jpg`) are cleaned up with `scripts/quarantine-legacy-raw-selfies.mjs`: dry run by default, `--apply` = typed confirmation, MOVE to the private quarantine bucket only
   (never delete), each one only if its sheet exists and no Redis pointer names it (re-checked right before the move). Counts-only output, `stage=… class=… http=…` failures.
+  Legacy pointers (`character:<id>` = `{url: RAW, styledUrl: SHEET}`, written until 2026-10-09) are first rewritten with `scripts/migrate-legacy-character-pointers.mjs` (`url := styledUrl`; dry run by default,
+  typed `MIGRATE <n>`, backup in Redis 30 days, Lua compare-and-set keeping the TTL, read-back + sheet HEAD, idempotent, `--rollback <runId>`); needs a READ-WRITE Upstash token.
 
 ### 4. Tiers & quota → skill `quota`
 Single source of truth: `TIER_LIMITS` in [config/limits.js](config/limits.js) (re-exported by [lib/quota.js](lib/quota.js)). Always use
