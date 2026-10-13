@@ -287,6 +287,17 @@ Spotlight sync (iOS-proven rules, see utils/tour-logic.js `createStability` / `l
 requestAnimationFrame loop tracks it every frame (body is the page scroller, scroll events are unreliable on iOS); positions use the visual-viewport offset; focus moves to Next once the bubble is visible. Guide menu availability is by STAGE reached
 (`chapter.stage`: script / poster / comic, tracked from ScriptOutput milestones incl. `*-shown` for History reopen), not by whether an anchor is on screen; every row is tappable and a not-yet row shows `chapter.note`.
 
+### 8. iOS scroll rule (`fix/ios-script-scroll`)
+iPhone Safari shook while scrolling over the script window. Rules that came out of it (details: [utils/scroll-mode.js](utils/scroll-mode.js), [components/ScrollDebug.jsx](components/ScrollDebug.jsx)):
+- **No nested vertical scroll container on touch devices.** The script used to sit in a fixed-height `overflow-y:auto` box (a "screenplay window" that follows the typewriter; commits `efe8907`, `2ce5775`). On touch (`pointer: coarse`) it now flows in the PAGE
+  like the poster and the comic: no height, no overflow, no scroll handlers, nothing scrolled programmatically (`useTypewriter({ followTyping })`). Desktop keeps the window. Never put `overscroll-behavior: contain` on such a box to "fix" it: on iOS 16+ it traps the gesture inside.
+- **Nothing that changes layout may be toggled by scroll position** (IntersectionObserver, scroll handlers) without reserving its space: iOS Safari has no scroll anchoring, so a mount/unmount above the viewport shifts the content under the finger.
+  `NextStepButton` keeps a fixed 44 px box and only toggles what is inside it (a 14 px scroll step used to move the script box by 74 px).
+- **The page scroller is the `body`, not the document** (known, deliberately unchanged): `pages/_document.js` sets `html, body {height:100%; overflow:hidden}` for the splash and the loader script later sets `overflow:auto` on both without restoring the height, so
+  `window.scrollY` stays 0 and the body scrolls inside the viewport (so a script box is a THIRD nested scroller: viewport > body > box). Use `scrollIntoView` / element scroll APIs, never `window.scrollTo`, for page positions. `?rootscroll=1` is an EXPERIMENT switch that lets the
+  document scroll instead (html overflow visible, auto heights; the `body.style.overflow='hidden'` modal locks still work because the body's overflow then propagates to the viewport) — nothing changes without the flag.
+- **`?debug=1`** shows an overlay with which element scrolls (body vs document), scroll events/s, the script box's scrollTop/scrollHeight/clientHeight, window.scrollY vs body.scrollTop, visualViewport height/offset and page-height changes/s.
+
 ## Conventions & gotchas
 - Provider errors are thrown as `"<Name> <httpStatus>: <body slice>"` so
   `extractStatusCode` can parse them for the circuit breaker. Preserve this shape.

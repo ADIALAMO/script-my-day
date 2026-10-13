@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { ArrowDown } from 'lucide-react';
 import { tourText } from '../constants/tour.js';
 
+const PILL_BOX_PX = 44;
 const find = (anchor) => document.querySelector(`[data-tour="${anchor}"]`);
 const reduced = () => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } };
 
 /**
- * Primary "next step" pill. Renders only while `show` is true AND the target is not already on screen
- * (IntersectionObserver; without it the pill simply stays visible). Click scrolls the target below the sticky navbar.
+ * Primary "next step" pill. Shown only while `show` is true AND the target is not already on screen (IntersectionObserver; without it the pill simply
+ * stays visible); its fixed-height box stays in the layout either way. Click scrolls the target below the sticky navbar.
  */
 export default function NextStepButton({ show, step, lang, className = '' }) {
   const [targetSeen, setTargetSeen] = useState(false);
@@ -27,7 +28,7 @@ export default function NextStepButton({ show, step, lang, className = '' }) {
     return () => { cancelAnimationFrame(raf); io?.disconnect(); };
   }, [show, step.target]);
 
-  if (!show || targetSeen) return null;
+  if (!show) return null;
 
   const go = () => {
     const el = find(step.target);
@@ -40,9 +41,11 @@ export default function NextStepButton({ show, step, lang, className = '' }) {
     setTimeout(() => { el.style.scrollMarginTop = prev; }, 1500);
   };
 
+  // The box keeps its height whether or not the pill is showing: this pill sits ABOVE the content, so mounting / unmounting it while the user scrolls
+  // (the target crossing the viewport edge) shifted everything under the finger by ~60 px — iOS Safari has no scroll anchoring, so the page jumped.
   return (
-    <div className={`flex justify-center px-4 ${className}`}>
-      <button
+    <div className={`flex justify-center items-center px-4 ${className}`} style={{ height: PILL_BOX_PX }} aria-hidden={targetSeen || undefined}>
+      {!targetSeen && <button
         type="button"
         onClick={go}
         dir={lang === 'he' ? 'rtl' : 'ltr'}
@@ -50,7 +53,7 @@ export default function NextStepButton({ show, step, lang, className = '' }) {
       >
         <span>{tourText(step, lang)}</span>
         <ArrowDown size={14} />
-      </button>
+      </button>}
     </div>
   );
 }

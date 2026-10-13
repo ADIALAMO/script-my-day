@@ -19,6 +19,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { track } from '@vercel/analytics';
 import { SHOWCASE_POSTERS, SHOWCASE_REELS } from '../constants/showcase';
 import { useGuidedTour } from '../hooks/useGuidedTour.js';
+import { isDebugRequested } from '../utils/scroll-debug.js';
 import { modalDataFor } from '../constants/modalData';
 import ReportButton from '../components/ReportButton';
 import { reportedGalleryRefs } from '../utils/reported-store';
@@ -37,6 +38,7 @@ import { useGender } from '../hooks/useGender';
 const AuthModal    = dynamic(() => import('../components/AuthModal'),    { ssr: false });
 const UpgradeModal = dynamic(() => import('../components/UpgradeModal'), { ssr: false });
 const GuidedTour = dynamic(() => import('../components/GuidedTour'), { ssr: false });
+const ScrollDebug = dynamic(() => import('../components/ScrollDebug'), { ssr: false });   // ?debug=1 only
 const HistoryPanel = dynamic(() => import('../components/HistoryPanel'), { ssr: false });
 
 // ── Genre metadata for filmstrip grouping ────────────────────────────────────
@@ -656,6 +658,9 @@ function HomePage() {
   const tourBlocked = !!modalContent || !!selectedPoster || !!selectedReel || showAuthModal || showUpgradeModal || showWaitlistModal
     || showHistory || showFeedback || showTips || characterModalOpenMirror || dropdownOpenMirror
     || scriptLoading || generationBusy;
+  // ?debug=1 shows the scroll overlay (components/ScrollDebug.jsx); decided once, after mount
+  const [debugScroll, setDebugScroll] = useState(false);
+  useEffect(() => { setDebugScroll(isDebugRequested(window.location.search)); }, []);
   const tour = useGuidedTour({ blocked: tourBlocked, hasScript: !!script, historyCount: history.length });
   backStateRef.current = {
     tourRunning: tour.running, tourFinish: tour.finish,
@@ -899,6 +904,7 @@ function HomePage() {
         tourDisabled={tourBlocked}
         tourStages={{ ...tour.reached, script: tour.reached.script || !!script }}
       />
+      {debugScroll && <ScrollDebug />}
       {tour.running && <GuidedTour key={tour.chapter} chapter={tour.chapter} manual={tour.manual} lang={lang} onFinish={tour.finish} onAbort={tour.abort} />}
 
       <main className="container mx-auto pt-4 md:pt-8 pb-12 px-6 max-w-5xl flex-grow relative">
