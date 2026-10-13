@@ -85,6 +85,7 @@ export async function boot({ env = {}, nodeEnv = 'test', startAt = '2026-10-15T1
     if (name === 'DeleteObjectCommand') {
       providers.s3deletes.push({ key: input.Key, bucket: input.Bucket });
       if (providers.mode.s3delete) throw new Error(`R2 delete failed (mock ${providers.mode.s3delete})`);
+      if (providers.mode.s3deleteMatch && String(input.Key).includes(providers.mode.s3deleteMatch)) throw new Error('R2 delete failed (mock, matching key)');
       if (providers.mode.s3deleteFailures > 0) { providers.mode.s3deleteFailures -= 1; throw new Error('R2 delete failed (mock, transient)'); }
       providers.s3objects.delete(id);
       return {};

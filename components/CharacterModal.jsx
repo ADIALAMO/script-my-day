@@ -124,7 +124,14 @@ export default function CharacterModal({
   const handleRemove = useCallback(async () => {
     setRemoveStep('busy');
     const r = await removeCharacter?.();
-    if (r?.ok) { setRemoveStep('idle'); setFileError(''); return; }   // the modal falls back to the "pick" view
+    if (r?.ok) {   // the modal falls back to the "pick" view; a partial result is said out loud instead of claiming a full removal
+      setRemoveStep('idle');
+      if (!r.partial) { setFileError(''); return; }
+      setFileError(r.status === 'nothing-found'
+        ? (isHebrew ? 'הקישור לדמות נמחק, אך לא נמצאו קבצים שמורים למחיקה.' : 'Your saved character link was cleared, but no stored files were found to delete.')
+        : (isHebrew ? `הדמות הוסרה מהאפליקציה, אך ${r.failed} קבצים שמורים לא נמחקו. נסה שוב בעוד רגע — או פנה אלינו.` : `Your character was removed from the app, but ${r.failed} stored file(s) could not be deleted. Try again in a moment, or contact us.`));
+      return;
+    }
     setRemoveStep('idle');
     setFileError(isHebrew ? 'לא הצלחנו למחוק כרגע. נסה שוב.' : "We couldn't delete it right now. Please try again.");
   }, [removeCharacter, isHebrew]);
