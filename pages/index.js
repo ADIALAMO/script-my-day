@@ -21,6 +21,7 @@ import { track } from '@vercel/analytics';
 import { SHOWCASE_POSTERS, SHOWCASE_REELS } from '../constants/showcase';
 import { useGuidedTour } from '../hooks/useGuidedTour.js';
 import { skipPageAutoScroll } from '../utils/scroll-mode.js';
+import { scrollToScriptWindow } from '../utils/scroll-to-anchor.js';
 import { readEffectiveFlags } from '../utils/variant-flags.js';
 import { modalDataFor } from '../constants/modalData';
 import ReportButton from '../components/ReportButton';
@@ -400,7 +401,6 @@ function HomePage() {
   const abortControllerRef = useRef(null);
   const lastJournalEntryRef = useRef({ entry: '', genre: '' });
   const currentEntryIdRef = useRef(null);
-  const scriptOutputRef = useRef(null);
 
   const { history, addEntry, updateEntry, deleteEntry, saveFailed } = useScriptHistory();
 
@@ -720,8 +720,11 @@ function HomePage() {
       let coarse = false;
       try { coarse = window.matchMedia('(pointer: coarse)').matches; } catch { /* default: scroll as before */ }
       if (skipPageAutoScroll({ coarsePointer: coarse, off: readEffectiveFlags().flags.off })) return;
-      scriptOutputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Waits for the layout to settle (the loading panels are still collapsing when the script appears — a scroll aimed at that moment ended ~230 px too far,
+      // with the window's top under the navbar) and lands the window below the sticky navbar. Same helper as the "Go to script" button.
+      return scrollToScriptWindow({ settle: true });
     }
+    return undefined;
   }, [script, scriptLoading]);
 
   const toggleLanguage = () => setLang(prev => prev === 'he' ? 'en' : 'he');
@@ -1482,7 +1485,6 @@ function HomePage() {
         <AnimatePresence mode="wait">
           {script && !scriptLoading && (
             <motion.div
-              ref={scriptOutputRef}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

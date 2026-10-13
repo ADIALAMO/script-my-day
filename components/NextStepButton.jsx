@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowDown } from 'lucide-react';
 import { tourText } from '../constants/tour.js';
+import { scrollToAnchor } from '../utils/scroll-to-anchor.js';
 
 const PILL_BOX_PX = 44;
 const find = (anchor) => document.querySelector(`[data-tour="${anchor}"]`);
-const reduced = () => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } };
 
 /**
  * Primary "next step" pill. Shown only while `show` is true AND the target is not already on screen (IntersectionObserver; without it the pill simply
@@ -30,16 +30,7 @@ export default function NextStepButton({ show, step, lang, className = '' }) {
 
   if (!show) return null;
 
-  const go = () => {
-    const el = find(step.target);
-    if (!el) return;
-    const nav = document.querySelector('nav');
-    // scrollIntoView works whichever element scrolls (the page's body has its own overflow); the margin clears the sticky navbar
-    const prev = el.style.scrollMarginTop;
-    el.style.scrollMarginTop = `${(nav?.offsetHeight || 0) + 16}px`;
-    el.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' });
-    setTimeout(() => { el.style.scrollMarginTop = prev; }, 1500);
-  };
+  const go = () => scrollToAnchor(find(step.target));   // below the sticky navbar, smooth unless reduced motion (utils/scroll-to-anchor.js)
 
   // The box keeps its height whether or not the pill is showing: this pill sits ABOVE the content, so mounting / unmounting it while the user scrolls
   // (the target crossing the viewport edge) shifted everything under the finger by ~60 px — iOS Safari has no scroll anchoring, so the page jumped.
