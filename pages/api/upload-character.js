@@ -14,6 +14,7 @@
  *      (Grok / Gemini), run the output check on it, store it → styledUrl.
  *      If this stage fails for ANY reason the request fails with an error: there is NO fallback to the raw selfie as a reference.
  *   7. Persist a Redis pointer (URLs only) with a 90-day TTL (GDPR-friendly)
+ *   8. Replace flow: ONLY after the new sheet is stored and the new pointer written, delete the objects the previous pointer named (own scope only; best effort)
  *
  * Returns { success, characterImageUrl, sheetGenerated: true } where characterImageUrl is the styled
  * sheet — the reference the client passes to /api/generate-poster for each panel.
@@ -33,7 +34,7 @@ import { enforceRateLimit } from '../../lib/rate-limit.js';
 import { checkImage } from '../../lib/image-check.js';
 import { screenApparentMinor } from '../../lib/minor-screen.js';
 import { ContentRefusalError } from '../../lib/content-safety.js';
-import { deleteRawSelfie } from '../../lib/character-store.js';
+import { deleteRawSelfie, deletePreviousCharacter } from '../../lib/character-store.js';
 
 export const maxDuration = 60;
 // Selfies are large base64 blobs; raise the default 1mb body limit.
@@ -239,7 +240,10 @@ export default async function handler(req, res) {
     }
 
     // (7) Persist pointer (URLs only) with RETENTION.characterPointerDays TTL (default 90) — set once, never refreshed on use.
+    let previousPointer = null;   // read BEFORE the overwrite; a Redis failure just means there is nothing to clean up
+    try { previousPointer = await redis.get(`character:${identifier}`); } catch { /* best effort */ }
     const ninetyDays = Math.floor(Date.now() / 1000) + RETENTION.characterPointerDays * 86400;
+    let pointerWritten = false;
     try {
       const pipe = redis.pipeline();
       pipe.set(`character:${identifier}`, JSON.stringify({
@@ -248,8 +252,14 @@ export default async function handler(req, res) {
       }));
       pipe.expireat(`character:${identifier}`, ninetyDays);
       await pipe.exec();
+      pointerWritten = true;
     } catch (e) {
       console.warn(`⚠️ Character pointer persist skipped (Redis down): ${e.message}`);
+    }
+
+    // (8) The new character is stored and pointed to: only now is the previous one disposable. Never fails the upload.
+    if (pointerWritten && previousPointer) {
+      try { await deletePreviousCharacter(identifier, previousPointer, [keys.sheet, keys.raw]); } catch { /* deletePreviousCharacter never throws; belt and braces */ }
     }
 
     console.log(`🎭 Character ready for ${identifier}`);
