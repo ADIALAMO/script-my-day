@@ -246,6 +246,7 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
         <div className="relative mb-6 px-2 flex items-center gap-3 flex-wrap">
           <motion.button
             type="button"
+            data-tour="spark"
             disabled={isLocked}
             onClick={() => !isLocked && setIsModalOpen(!isModalOpen)}
             whileHover={!isLocked ? { scale: 1.02 } : {}}
@@ -381,7 +382,7 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
         </div>
       </div>
 
-      <div className="mb-6 relative group max-w-[320px]">
+      <div data-tour="creator" className="mb-6 relative group max-w-[320px]">
         <label className="block text-[#d4a373] text-[10px] uppercase tracking-[0.4em] mb-2 font-black italic">{lang === 'he' ? 'קרדיט ליוצר/ת:' : 'CREATOR CREDIT:'}</label>
         <input
           type="text" value={producerName}

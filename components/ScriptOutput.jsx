@@ -63,7 +63,7 @@ const getCinematicTitle = (text) => {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, gender, setGender, onPosterGenerated, onScriptEdited, onAuthRequired, onPanelsGenerated, initialPanels, initialPosterUrl, journalEntry, onCharacterModalToggle, closeCharacterModalRef, onBusyChange, instant = false }) {
+function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, gender, setGender, onPosterGenerated, onScriptEdited, onAuthRequired, onPanelsGenerated, initialPanels, initialPosterUrl, journalEntry, onCharacterModalToggle, closeCharacterModalRef, onBusyChange, onMilestone, instant = false }) {
   const finalProducerName = producerName || (lang === 'he' ? 'אורח' : 'GUEST');
 
   // ── Language: UI chrome vs generated content ────────────────────────────────
@@ -204,6 +204,35 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     onBusyChange?.(!!posterLoading || !!storyboardLoading);
     return () => onBusyChange?.(false);
   }, [posterLoading, storyboardLoading, onBusyChange]);
+
+  // Screen milestones for the guided tour chapters (UI only): the typewriter starting, a poster / comic that was generated here finishing.
+  // Restored (history) items never fire: they never go through a loading phase on this screen.
+  const wasTyping = useRef(false);
+  useEffect(() => {
+    if (isTyping && !wasTyping.current && !instant) onMilestone?.('typing-start');
+    wasTyping.current = isTyping;
+  }, [isTyping, instant, onMilestone]);
+  const sawPosterLoading = useRef(false);
+  useEffect(() => {
+    if (posterLoading) { sawPosterLoading.current = true; return; }
+    if (sawPosterLoading.current && posterUrl && !posterError) { sawPosterLoading.current = false; onMilestone?.('poster-done'); }
+  }, [posterLoading, posterUrl, posterError, onMilestone]);
+  const sawComicLoading = useRef(false);
+  const comicSettled = (() => {
+    if (!showStoryboard || storyboardLoading || !storyboardPanels.length) return false;
+    const n = Math.min(unlockedPanels || 0, storyboardPanels.length);
+    let anyImage = false;
+    for (let i = 0; i < n; i++) {
+      const st = panelImages?.[i];
+      if (!st || st.loading) return false;
+      if (st.url) anyImage = true;
+    }
+    return n > 0 && anyImage;
+  })();
+  useEffect(() => {
+    if (showStoryboard && (storyboardLoading || Object.values(panelImages || {}).some((p) => p?.loading))) sawComicLoading.current = true;
+    if (comicSettled && sawComicLoading.current) { sawComicLoading.current = false; onMilestone?.('comic-done'); }
+  }, [showStoryboard, storyboardLoading, panelImages, comicSettled, onMilestone]);
 
   const [isEditing,  setIsEditing]  = useState(false);
   const [editedText, setEditedText] = useState('');
@@ -443,6 +472,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
           {/* Typewriter skip */}
           {isTyping && (
             <button
+              data-tour="skip-typing"
               onClick={skip}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-[#d4a373]/20 border border-[#d4a373]/40 rounded-full text-[10px] text-[#d4a373] font-bold"
             >
@@ -481,6 +511,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
                   key="edit-trigger"
                   initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.92 }} transition={{ duration: 0.15 }}
+                  data-tour="edit"
                   onClick={() => { setEditedText(currentDisplayText); setIsEditing(true); }}
                   title={uiHebrew ? 'ערוך תסריט' : 'Edit script'}
                   className="flex items-center gap-1.5 px-3 py-1.5 border border-[#d4a373]/40 bg-[#d4a373]/10 text-[#d4a373] rounded-xl text-[9px] font-black uppercase tracking-wider hover:bg-[#d4a373]/20 hover:border-[#d4a373]/60 transition-all duration-200"
@@ -750,6 +781,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               </p>
               <div className="flex items-center gap-2.5">
                 <button
+                  data-tour="edit-review"
                   onClick={() => { setEditedText(currentDisplayText); setIsEditing(true); }}
                   className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[#d4a373]/35 bg-[#d4a373]/[0.07] text-[#d4a373] text-[10px] font-black uppercase tracking-wider hover:bg-[#d4a373]/15 hover:border-[#d4a373]/60 transition-all duration-200"
                 >
@@ -764,7 +796,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
           )}
 
           {/* ── CHARACTER CHIP — governs both poster & comic (Identity Track) ── */}
-          <div className="flex items-center justify-center pb-1">
+          <div data-tour="star" className="flex items-center justify-center pb-1">
             {characterStatus === 'ready' && characterImageUrl ? (
               <div className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#d4a373]/[0.06] border border-[#d4a373]/25">
                 <button onClick={() => setShowCharacterModal(true)} className="relative shrink-0" title={uiHebrew ? 'החלף דמות' : 'Change character'}>
@@ -912,7 +944,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
 
           {/* Style selector grouped directly above its generate button */}
           {!storyboardLoading && (
-            <div className="flex items-center justify-center gap-2 flex-wrap">
+            <div data-tour="comic-style" className="flex items-center justify-center gap-2 flex-wrap">
               {comicStyleOptions.map(opt => (
                 <button
                   key={opt.value}
@@ -989,7 +1021,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
       {/* ── Storyboard view ───────────────────────────────────────────── */}
       <AnimatePresence>
         {showStoryboard && storyboardPanels.length > 0 && (
-          <div key="storyboard-view" ref={storyboardSectionRef}>
+          <div key="storyboard-view" ref={storyboardSectionRef} data-tour="comic-result">
             <StoryboardView
               panels={storyboardPanels}
               lang={lang}
@@ -1021,6 +1053,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
             className="mx-2 md:mx-4"
           >
             <button
+              data-tour="reel-cta"
               onClick={() => {
                 reelBreadcrumb('tap', { panelCount: storyboardPanels.length }); // TEMP DIAGNOSTIC (reel-crash)
                 setShowReelModal(true);

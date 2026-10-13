@@ -4,6 +4,7 @@ import { Film, Languages, Clapperboard, LogOut, Crown, ChevronDown, User, Credit
 import { useSession, signOut } from 'next-auth/react';
 import LaunchTicket from './LaunchTicket';
 import ReferralModal from './ReferralModal';
+import GuideMenu from './GuideMenu';
 import { BILLING_ENABLED } from '../constants/billing';
 import { useNative } from '../hooks/useNative.js';
 
@@ -243,6 +244,8 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [referralOpen, setReferralOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const guideBtnRef = useRef(null);
   const [mounted, setMounted] = useState(false);
   const avatarBtnRef = useRef(null);
 
@@ -260,12 +263,12 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
   // as ScriptOutput's CharacterModal bridge, since this dropdown's open state
   // lives here, not in the parent's backStateRef.
   useEffect(() => {
-    onDropdownToggle?.(dropdownOpen);
-  }, [dropdownOpen, onDropdownToggle]);
+    onDropdownToggle?.(dropdownOpen || guideOpen);
+  }, [dropdownOpen, guideOpen, onDropdownToggle]);
 
   useEffect(() => {
     if (!closeDropdownRef) return;
-    closeDropdownRef.current = () => setDropdownOpen(false);
+    closeDropdownRef.current = () => { setDropdownOpen(false); setGuideOpen(false); };
     return () => { closeDropdownRef.current = null; };
   }, [closeDropdownRef]);
 
@@ -331,11 +334,14 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
         {onStartTour && (
           <button
             type="button"
+            ref={guideBtnRef}
             data-tour="guide"
-            onClick={onStartTour}
-            disabled={tourDisabled}
+            aria-haspopup="menu"
+            aria-expanded={guideOpen}
+            onClick={() => { setDropdownOpen(false); setGuideOpen((o) => !o); }}
+            disabled={tourDisabled && !guideOpen}
             aria-label={isHe ? 'הדרכה' : 'Guide'}
-            className={`group relative flex items-center justify-center gap-1.5 h-8 md:h-9 w-8 md:w-auto md:px-3 border border-white/15 rounded-xl [@media(hover:hover)]:hover:border-[#d4a373]/40 [@media(hover:hover)]:hover:bg-[#d4a373]/8 transition-all duration-300 shrink-0 ${tourDisabled ? 'opacity-30' : ''}`}
+            className={`group relative flex items-center justify-center gap-1.5 h-8 md:h-9 w-8 md:w-auto md:px-3 border border-white/15 rounded-xl [@media(hover:hover)]:hover:border-[#d4a373]/40 [@media(hover:hover)]:hover:bg-[#d4a373]/8 transition-all duration-300 shrink-0 ${tourDisabled && !guideOpen ? 'opacity-30' : ''}`}
           >
             <CircleHelp size={14} className="text-[#d4a373]/70 md:w-[15px] md:h-[15px]" />
             <span className={`hidden md:inline text-[10px] font-black uppercase tracking-widest text-[#d4a373]/70 ${isHe ? 'font-heebo' : ''}`}>{isHe ? 'הדרכה' : 'Guide'}</span>
@@ -345,6 +351,7 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
 
         {/* History */}
         <button
+          data-tour="history"
           onClick={onHistoryOpen}
           aria-label={isHe ? 'ארכיון הפקות' : 'Production archive'}
           className="group relative flex items-center justify-center w-8 h-8 md:w-9 md:h-9 border border-white/15 rounded-xl hover:border-[#d4a373]/40 hover:bg-[#d4a373]/8 transition-all duration-300 shrink-0"
@@ -463,6 +470,14 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
       </div>
 
       <ReferralModal isOpen={referralOpen} onClose={() => setReferralOpen(false)} lang={lang} />
+    {guideOpen && (
+      <GuideMenu
+        anchor={guideBtnRef.current}
+        lang={lang}
+        onClose={() => setGuideOpen(false)}
+        onPick={(id) => { setGuideOpen(false); setTimeout(() => onStartTour?.(id), 80); /* after the menu's open-state has been mirrored, so it no longer counts as blocking */ }}
+      />
+    )}
     </nav>
   );
 }

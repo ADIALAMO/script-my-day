@@ -1,28 +1,36 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { isTourDone, markTourDone } from '../utils/tour-state.js';
-import { autoStartDecision, hasPriorActivity, cookieBannerPending, resolveSteps } from '../utils/tour-logic.js';
-import { TOUR_STEPS } from '../constants/tour.js';
+import { isTourDone, markTourDone, readChapters, markChapterDone, setAutoOff } from '../utils/tour-state.js';
+import { autoStartDecision, hasPriorActivity, cookieBannerPending, chapterAutoEligible } from '../utils/tour-logic.js';
+import { CHAPTERS, MILESTONE_CHAPTER, chapterById } from '../constants/tour.js';
 
 const START_DELAY_MS = 1200;
 const POLL_MS = 400;
 const MAX_WAIT_FOR_ANCHOR_MS = 8000;
+const MAX_QUEUE_WAIT_MS = 30000;
 
 const storage = () => { try { return window.localStorage; } catch { return null; } };
-const firstAnchorVisible = () => resolveSteps(TOUR_STEPS.slice(0, 1), (a) => {
-  const el = document.querySelector(`[data-tour="${a}"]`);
-  return el ? el.getBoundingClientRect() : null;
-}).length > 0;
+const anchorVisible = (name) => {
+  const el = document.querySelector(`[data-tour="${name}"]`);
+  const r = el?.getBoundingClientRect();
+  return !!r && r.width > 0 && r.height > 0;
+};
 
 /**
- * phase: 'idle' | 'pending' (first-run, waiting for a quiet moment — the "How it works" card stays hidden) | 'running'.
- * blocked = a dialog / lightbox / generation is active. Auto-start only on a device with no history and no script on screen.
+ * phase: 'idle' | 'pending' (first-run chapter 1 waiting for a quiet moment — the "How it works" card stays hidden) | 'running'.
+ * blocked = a dialog / lightbox / generation is active. Chapter 1 auto-starts only on a device with no history and no script on screen.
+ * Chapters 2-4 start from a milestone (notify): typewriter start, poster finished, comic finished — only for a user who FINISHED chapter 1
+ * (never after a skip), once each, and only when nothing is blocking.
  */
 export function useGuidedTour({ blocked, hasScript, historyCount }) {
   const [phase, setPhase] = useState('idle');
+  const [chapter, setChapter] = useState(1);
+  const [queued, setQueued] = useState(null);
   const live = useRef({ blocked, hasScript, historyCount });
   live.current = { blocked, hasScript, historyCount };
+  const chapterRef = useRef(1);
+  chapterRef.current = chapter;
 
-  // decide eligibility once, right after mount
+  // decide chapter-1 eligibility once, right after mount
   useEffect(() => {
     const st = storage();
     if (isTourDone(st) || hasPriorActivity(st, live.current.historyCount)) return;
@@ -32,34 +40,71 @@ export function useGuidedTour({ blocked, hasScript, historyCount }) {
   useEffect(() => {
     if (phase !== 'pending') return undefined;
     const t0 = Date.now();
-    let anchorSince = 0;
     const id = setInterval(() => {
       const st = storage();
       const l = live.current;
-      const anchor = firstAnchorVisible();
-      if (anchor && !anchorSince) anchorSince = Date.now();
+      const anchor = anchorVisible(CHAPTERS[0].requires[0]);
       const d = autoStartDecision({
         done: isTourDone(st), priorActivity: hasPriorActivity(st, l.historyCount), hasScript: l.hasScript,
         blocked: l.blocked, cookiePending: cookieBannerPending(st),
         ready: Date.now() - t0 >= START_DELAY_MS && anchor,
       });
-      if (d === 'start') setPhase('running');
+      if (d === 'start') { setChapter(1); setPhase('running'); }
       else if (d === 'abandon') setPhase('idle');
       else if (!anchor && Date.now() - t0 > MAX_WAIT_FOR_ANCHOR_MS && !l.blocked) setPhase('idle');
     }, POLL_MS);
     return () => clearInterval(id);
   }, [phase]);
 
-  // a dialog / generation appearing mid-tour closes it without marking it done
+  // a milestone queued a chapter: start it at the first quiet moment (give up after a while)
+  useEffect(() => {
+    if (queued == null || phase !== 'idle') return undefined;
+    const t0 = Date.now();
+    const id = setInterval(() => {
+      if (!chapterAutoEligible(readChapters(storage()), queued) || Date.now() - t0 > MAX_QUEUE_WAIT_MS) { setQueued(null); return; }
+      if (!live.current.blocked) { setChapter(queued); setQueued(null); setPhase('running'); }
+    }, 300);
+    return () => clearInterval(id);
+  }, [queued, phase]);
+
+  // a dialog / generation appearing mid-chapter closes it without recording it
   useEffect(() => { if (phase === 'running' && blocked) setPhase('idle'); }, [phase, blocked]);
 
   const returnFocus = () => setTimeout(() => {
     try { document.querySelector('[data-tour="guide"]')?.focus({ preventScroll: true }); } catch { /* ignore */ }
   }, 0);
 
-  const start = useCallback(() => { if (!live.current.blocked) setPhase('running'); }, []);
-  const finish = useCallback(() => { markTourDone(storage()); setPhase('idle'); returnFocus(); }, []);
+  /** a screen milestone ('typing-start' | 'poster-done' | 'comic-done') — starts the matching chapter if this user is eligible */
+  const notify = useCallback((name) => {
+    const id = MILESTONE_CHAPTER[name];
+    if (id && chapterAutoEligible(readChapters(storage()), id)) setQueued(id);
+  }, []);
+
+  const start = useCallback((id = 1) => {
+    if (live.current.blocked || !chapterById(id)) return;
+    setQueued(null);
+    setChapter(id);
+    setPhase('running');
+  }, []);
+
+  /** kind 'done' = finished the chapter; anything else (Skip, Esc, Android Back) = skip: permanent, no chapter auto-starts any more */
+  const finish = useCallback((kind) => {
+    const st = storage();
+    if (kind === 'done') {
+      markChapterDone(chapterRef.current, st);
+      if (chapterRef.current === 1) markTourDone(st);
+    } else {
+      markTourDone(st);
+      setAutoOff(st);
+    }
+    setPhase('idle');
+    returnFocus();
+  }, []);
   const abort = useCallback(() => { setPhase('idle'); returnFocus(); }, []);
 
-  return { phase, running: phase === 'running', holdHowTo: phase !== 'idle', start, finish, abort };
+  return {
+    phase, chapter, running: phase === 'running',
+    holdHowTo: phase === 'pending' || (phase === 'running' && chapter === 1),
+    start, finish, abort, notify,
+  };
 }

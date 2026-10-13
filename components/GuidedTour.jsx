@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { TOUR_STEPS, TOUR_UI, tourText } from '../constants/tour.js';
-import { resolveSteps, computePlacement, stepAfter } from '../utils/tour-logic.js';
+import { TOUR_UI, tourText, chapterById } from '../constants/tour.js';
+import { findUsableAnchor, stepOutcome, chapterTotal, computePlacement } from '../utils/tour-logic.js';
 
 const TOUR_Z = 2400; // above the navbar (100) and page content; the tour never runs over a dialog or lightbox (they block it)
 const PAD = 6;
@@ -12,27 +12,33 @@ const anchorRect = (anchor) => { const el = anchorEl(anchor); return el ? el.get
 const reducedMotion = () => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } };
 
 /**
- * Spotlight + bubble tour over real UI. No body scroll lock (index.js owns that): the dim layer is touch-action:none instead.
- * onFinish('done' | 'skip') marks the tour done; onAbort() closes without marking it (an anchor vanished, a dialog opened).
+ * Spotlight + bubble tour of ONE chapter over real UI. No body scroll lock (index.js owns that): the dim layer is touch-action:none instead.
+ * A step shows once its anchor exists (it may still be on its way: `wait`), and is dropped silently if the anchor never comes or vanishes
+ * while shown (e.g. the typewriter's Skip). An `interactive` step leaves its spotlighted control clickable.
+ * onFinish('done' | 'skip') records the chapter; onAbort() closes without recording (nothing could be shown, a dialog opened).
  */
-export default function GuidedTour({ lang, onFinish, onAbort }) {
+export default function GuidedTour({ chapter: chapterId, lang, onFinish, onAbort }) {
   const isHe = lang === 'he';
   const t = (e) => tourText(e, lang);
-  const steps = useMemo(() => resolveSteps(TOUR_STEPS, anchorRect), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const chapter = chapterById(chapterId);
+  const steps = chapter.steps;
   const [idx, setIdx] = useState(0);
+  const [trail, setTrail] = useState([]);       // indexes of the steps shown so far, in order (Back walks it)
+  const [dropped, setDropped] = useState([]);   // indexes dropped silently
+  const [anchor, setAnchor] = useState(null);   // resolved anchor name while the current step is shown
   const [place, setPlace] = useState(null);
   const [spot, setSpot] = useState(null);
   const bubbleRef = useRef(null);
   const nextRef = useRef(null);
   const probeRef = useRef(null);
   const frame = useRef(0);
+  const live = useRef({});
+  live.current = { trail, dropped, anchor };
   const step = steps[idx];
 
-  useEffect(() => { if (!steps.length) onAbort?.(); }, [steps.length, onAbort]);
-
   const measure = useCallback(() => {
-    if (!step) return;
-    const el = anchorEl(step.anchor);
+    if (!step || !anchor) return;
+    const el = anchorEl(anchor);
     const r = el?.getBoundingClientRect();
     if (!r || !(r.width > 0 && r.height > 0)) { setSpot(null); return; }
     const vv = window.visualViewport;
@@ -50,32 +56,61 @@ export default function GuidedTour({ lang, onFinish, onAbort }) {
     const bubble = { w: b?.offsetWidth || 300, h: b?.offsetHeight || 150 };
     const p = computePlacement({ rect: { ...rect, top: rect.top - PAD, bottom: rect.bottom + PAD, left: rect.left - PAD, right: rect.right + PAD, width: rect.width + PAD * 2 }, bubble, vp, insets, rtl: isHe });
     setPlace({ ...p, left: p.left + off.x, top: p.top + off.y });
-  }, [step, isHe]);
+  }, [step, anchor, isHe]);
 
   const schedule = useCallback(() => {
     cancelAnimationFrame(frame.current);
     frame.current = requestAnimationFrame(measure);
   }, [measure]);
 
-  // bring the anchor into view (never for pinned navbar elements), then follow it until the scroll settles
+  // Poll the current step: show it when its anchor appears, drop it silently when it never comes or vanishes while shown.
   useEffect(() => {
-    if (!step) return undefined;
-    const el = anchorEl(step.anchor);
-    if (!el) {
-      // the anchor vanished (e.g. a stage re-rendered): move on, or end quietly when nothing is left
-      const n = stepAfter(idx, 1, steps.length);
-      if (n === -1) onAbort?.(); else setIdx(n);
-      return undefined;
-    }
-    if (!step.fixed) {
-      const r = el.getBoundingClientRect();
-      const vh = window.visualViewport?.height || window.innerHeight;
-      if (r.top < 90 || r.bottom > vh - 20) el.scrollIntoView({ block: 'center', behavior: reducedMotion() ? 'auto' : 'smooth' });
-    }
+    if (!step) { if (live.current.trail.length) onFinish?.('done'); else onAbort?.(); return undefined; }
+    setAnchor(null); setSpot(null); setPlace(null);
+    let over = false;
+    const advance = () => {
+      if (over) return;
+      over = true;
+      setDropped((d) => (d.includes(idx) ? d : [...d, idx]));
+      setTrail((tr) => tr.filter((i) => i !== idx));
+      setIdx(idx + 1);
+    };
+    if (live.current.dropped.includes(idx)) { advance(); return undefined; } // dropped before: never wait for it again
+    const t0 = Date.now();
+    let shown = false;
+    let misses = 0;
+    const tick = () => {
+      if (over) return;
+      const name = findUsableAnchor(step, anchorRect);
+      if (name) misses = 0; else if (shown) misses += 1;
+      const o = stepOutcome({ found: !!name, shown, elapsedMs: Date.now() - t0, waitMs: step.wait || 0, misses });
+      if (o === 'show') {
+        shown = true;
+        setAnchor(name);
+        setTrail((tr) => (tr.includes(idx) ? tr : [...tr, idx]));
+        // bring it into view (never for pinned navbar elements), then follow it until the scroll settles
+        const el = anchorEl(name);
+        if (el && !step.fixed) {
+          const r = el.getBoundingClientRect();
+          const vh = window.visualViewport?.height || window.innerHeight;
+          if (r.top < 90 || r.bottom > vh - 20) el.scrollIntoView({ block: 'center', behavior: reducedMotion() ? 'auto' : 'smooth' });
+        }
+      } else if (o === 'keep') {
+        if (name !== live.current.anchor) setAnchor(name);
+      } else if (o === 'drop') advance();
+    };
+    const id = setInterval(tick, 200);
+    tick();
+    return () => { over = true; clearInterval(id); };
+  }, [idx]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // follow the anchor for a moment after it is shown (smooth scroll in progress)
+  useEffect(() => {
+    if (!anchor) return undefined;
     let n = 0;
     let id = requestAnimationFrame(function tick() { measure(); if (n++ < 40) id = requestAnimationFrame(tick); });
     return () => cancelAnimationFrame(id);
-  }, [step, idx, steps.length, measure, onAbort]);
+  }, [anchor, measure]);
 
   useLayoutEffect(() => { measure(); }, [measure]);
 
@@ -87,7 +122,7 @@ export default function GuidedTour({ lang, onFinish, onAbort }) {
     vv?.addEventListener('resize', schedule);
     vv?.addEventListener('scroll', schedule);
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(schedule) : null;
-    const el = step && anchorEl(step.anchor);
+    const el = anchor && anchorEl(anchor);
     if (ro && el) ro.observe(el);
     if (ro && bubbleRef.current) ro.observe(bubbleRef.current);
     return () => {
@@ -99,15 +134,15 @@ export default function GuidedTour({ lang, onFinish, onAbort }) {
       ro?.disconnect();
       cancelAnimationFrame(frame.current);
     };
-  }, [schedule, step]);
+  }, [schedule, anchor]);
 
   useEffect(() => { nextRef.current?.focus({ preventScroll: true }); }, [idx]);
 
   const go = useCallback((dir) => {
-    const n = stepAfter(idx, dir, steps.length);
-    if (n === -1) { if (dir > 0) onFinish?.('done'); return; }
-    setIdx(n);
-  }, [idx, steps.length, onFinish]);
+    if (dir > 0) { setIdx(idx + 1); return; }                      // past the last step the loop finishes the chapter
+    const pos = trail.indexOf(idx);
+    if (pos > 0) setIdx(trail[pos - 1]);
+  }, [idx, trail]);
 
   // Esc = skip (permanent); Tab cycles inside the bubble
   useEffect(() => {
@@ -126,25 +161,36 @@ export default function GuidedTour({ lang, onFinish, onAbort }) {
     return () => document.removeEventListener('keydown', onKey, true);
   }, [onFinish]);
 
-  if (!step || typeof document === 'undefined') return null;
+  if (!step || !anchor || typeof document === 'undefined') return null; // waiting for the anchor: nothing is dimmed, the page stays usable
   const last = idx === steps.length - 1;
+  const total = chapterTotal(steps.length, dropped.length);
+  const k = Math.max(1, trail.indexOf(idx) + 1);
   const motionOk = !reducedMotion();
   const Chev = isHe ? ChevronLeft : ChevronRight;
   const ChevBack = isHe ? ChevronRight : ChevronLeft;
   const bubbleW = 'min(320px, calc(100vw - 32px))';
 
   return createPortal(
-    <div style={{ position: 'fixed', inset: 0, zIndex: TOUR_Z }} data-tour-layer>
+    <div style={{ position: 'fixed', inset: 0, zIndex: TOUR_Z, pointerEvents: 'none' }} data-tour-layer>
       <div ref={probeRef} aria-hidden style={{ position: 'fixed', visibility: 'hidden', pointerEvents: 'none', padding: 'env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)' }} />
       {/* dim layer: swallows taps so the page underneath can't be used or scrolled mid-tour */}
-      <div style={{ position: 'absolute', inset: 0, touchAction: 'none' }} onClick={(e) => e.stopPropagation()} />
+      {step.interactive && spot ? (
+        // the spotlighted control stays clickable: four blockers around the hole instead of one full-screen layer
+        [
+          { left: 0, top: 0, width: '100vw', height: Math.max(0, spot.top) },
+          { left: 0, top: spot.top + spot.height, width: '100vw', height: '100vh' },
+          { left: 0, top: spot.top, width: Math.max(0, spot.left), height: spot.height },
+          { left: spot.left + spot.width, top: spot.top, width: '100vw', height: spot.height },
+        ].map((r, i) => <div key={i} style={{ position: 'absolute', ...r, touchAction: 'none', pointerEvents: 'auto' }} onClick={(e) => e.stopPropagation()} />)
+      ) : (
+        <div style={{ position: 'absolute', inset: 0, touchAction: 'none', pointerEvents: 'auto' }} onClick={(e) => e.stopPropagation()} />
+      )}
       {spot && (
         <div
           aria-hidden
           style={{
             position: 'fixed', left: spot.left, top: spot.top, width: spot.width, height: spot.height, borderRadius: 16, pointerEvents: 'none',
             boxShadow: '0 0 0 2px rgba(212,163,115,0.75), 0 0 24px 2px rgba(212,163,115,0.25), 0 0 0 9999px rgba(3,7,18,0.78)',
-            transition: motionOk ? 'left .25s ease, top .25s ease, width .25s ease, height .25s ease' : 'none',
           }}
         />
       )}
@@ -156,8 +202,8 @@ export default function GuidedTour({ lang, onFinish, onAbort }) {
         dir={isHe ? 'rtl' : 'ltr'}
         className={`rounded-2xl border border-[#d4a373]/35 bg-[#0a0a12] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.85)] ${isHe ? 'font-heebo' : ''}`}
         style={{
-          position: 'fixed', width: bubbleW, left: place?.left ?? 16, top: place?.top ?? 16, opacity: place ? 1 : 0,
-          transition: motionOk ? 'left .25s ease, top .25s ease, opacity .2s ease' : 'none',
+          position: 'fixed', pointerEvents: 'auto', width: bubbleW, left: place?.left ?? 16, top: place?.top ?? 16, opacity: place ? 1 : 0,
+          transition: motionOk ? 'opacity .2s ease' : 'none', // no position transitions: the layer must stay glued to its target while the page scrolls
           textAlign: isHe ? 'right' : 'left',
         }}
       >
@@ -173,10 +219,10 @@ export default function GuidedTour({ lang, onFinish, onAbort }) {
             }}
           />
         )}
-        <p className="text-[10px] font-black tracking-[0.3em] uppercase text-[#d4a373]/70 mb-1.5">{t({ he: TOUR_UI.stepOf.he(idx + 1, steps.length), en: TOUR_UI.stepOf.en(idx + 1, steps.length) })}</p>
+        <p className="text-[10px] font-black tracking-[0.3em] uppercase text-[#d4a373]/70 mb-1.5">{t({ he: TOUR_UI.chapterLabel.he(chapter.id, k, total), en: TOUR_UI.chapterLabel.en(chapter.id, k, total) })}</p>
         <p aria-live="polite" className="text-[14px] leading-snug text-white/90 mb-4">{t(step.copy)}</p>
         <div className="flex items-center justify-between gap-2">
-          <button type="button" onClick={() => onFinish?.('skip')} className="px-3 py-2 rounded-xl border border-white/20 text-white/80 hover:text-white hover:border-white/40 text-xs font-black uppercase tracking-widest transition-colors">
+          <button type="button" onClick={() => onFinish?.('skip')} className="px-3 py-2 rounded-xl border border-white/20 text-white/80 hover:text-white hover:border-white/40 text-[11px] font-black uppercase tracking-wider transition-colors">
             {t(TOUR_UI.skip)}
           </button>
           <div className="flex items-center gap-2">

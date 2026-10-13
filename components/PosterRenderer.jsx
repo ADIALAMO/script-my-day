@@ -286,6 +286,7 @@ function PosterRenderer({
                 }
               }}
             aria-disabled={showPreparing}
+            data-tour="poster-share"
             style={showPreparing ? { pointerEvents: 'none' } : undefined}
             className="relative flex-1 flex items-center justify-center gap-2.5 h-12 bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black rounded-xl font-black transition-all duration-300 overflow-hidden shadow-[0_8px_28px_rgba(212,163,115,0.3)]"
           >
