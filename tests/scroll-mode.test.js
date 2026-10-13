@@ -124,7 +124,7 @@ test('the page never scrolls itself in a touch variant: the index auto-scroll to
   assert.equal(skipPageAutoScroll({ coarsePointer: true, search: '?scriptbox=1&rootscroll=1' }), true);
   assert.equal(skipPageAutoScroll({ coarsePointer: true, search: '' }), false);
   assert.equal(skipPageAutoScroll({ coarsePointer: false, search: '?scriptbox=1' }), false);
-  assert.match(read('pages/index.js'), /if \(skipPageAutoScroll\(\{ coarsePointer: coarse, search: window\.location\.search \}\)\) return;/);
+  assert.match(read('pages/index.js'), /if \(skipPageAutoScroll\(\{ coarsePointer: coarse, search: readEffectiveFlags\(\)\.effectiveSearch \}\)\) return;/);
   const out = read('components/ScriptOutput.jsx');
   const box = out.slice(out.indexOf('data-script-scroller'), out.indexOf('data-script-scroller') + 900);
   assert.ok(!/window\.scrollTo|scrollIntoView/.test(box));
@@ -144,7 +144,7 @@ test('the debug overlay shows the active variant and the box css', () => {
   const src = read('components/ScrollDebug.jsx');
   assert.match(src, /data-script-variant/);
   assert.match(src, /overscrollBehaviorY/);
-  assert.match(src, /url flags/);
+  assert.match(src, /location\.search/);
   assert.match(verdict({ scroller: 'document', innerMode: 'inner', variant: 'B' }), /^variant B \|/);
 });
 
@@ -170,7 +170,7 @@ test('debug overlay: passive listeners only, no network, no page writes', () => 
   assert.ok(!/\bfetch\(|XMLHttpRequest|sendBeacon|gtag|scrollTo\(|scrollBy\(|scrollTop\s*=|\.style\.\w+\s*=/.test(src));
   const idx = read('pages/index.js');
   assert.match(idx, /const ScrollDebug = dynamic\(\(\) => import\('\.\.\/components\/ScrollDebug'\), \{ ssr: false \}\)/);
-  assert.match(idx, /setDebugScroll\(isDebugRequested\(window\.location\.search\)\)/);
+  assert.match(idx, /setDebugScroll\(isDebugRequested\(readEffectiveFlags\(\)\.effectiveSearch\)\)/);
 });
 
 test('Tailwind scans utils/: class lists built in pure helpers (scriptWindowClasses) must exist in the CSS (the md:h-[650px] desktop window and overscroll-y-contain were silently missing without it)', () => {

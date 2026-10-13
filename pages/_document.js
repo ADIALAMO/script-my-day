@@ -187,7 +187,15 @@ export default function Document() {
                 // scroll container (window.scrollY stays 0). EXPERIMENT for iOS scroll debugging: open the site with ?rootscroll=1 to let the
                 // DOCUMENT scroll instead (html overflow visible + auto heights, the body's overflow propagates to the viewport, so the existing
                 // body.style.overflow='hidden' modal locks keep working). Nothing changes without the flag.
-                if (/[?&]rootscroll=1(&|$)/.test(location.search)) {
+                // The flag comes from the URL OR from localStorage key ls_variant_flags (the app stores the flags it sees: utils/variant-flags.js); ?variant=off clears them.
+                var rootScroll = false;
+                try {
+                  var q = location.search;
+                  if (/[?&]variant=off(&|$)/.test(q)) { localStorage.removeItem('ls_variant_flags'); }
+                  else if (/[?&](scriptbox|rootscroll|contain|debug)=/.test(q)) { rootScroll = /[?&]rootscroll=1(&|$)/.test(q); }
+                  else { var st = JSON.parse(localStorage.getItem('ls_variant_flags') || 'null'); rootScroll = !!st && (st.rootscroll === 1 || st.rootscroll === true); }
+                } catch (e) {}
+                if (rootScroll) {
                   document.documentElement.style.overflow = 'visible';
                   document.documentElement.style.height = 'auto';
                   document.body.style.height = 'auto';

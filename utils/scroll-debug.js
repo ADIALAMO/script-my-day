@@ -28,6 +28,18 @@ export function pageScroller(snap) {
   return 'none';
 }
 
+/**
+ * Is the script box mounted, and if it renders as page flow (or is not there), WHY — for the overlay.
+ * st = { mounted, mode ('inner'|'page'), coarse, scriptbox (resolved flag), source ('url'|'stored'|'cleared'|'none') }
+ */
+export function explainScriptBox(st) {
+  if (!st.mounted) return 'not mounted: no script on screen yet (generate one, or open one from History)';
+  if (st.mode === 'inner') return st.coarse ? 'mounted: INNER window (touch variant, scriptbox flag on)' : 'mounted: INNER window (precise pointer = desktop default)';
+  if (!st.coarse) return 'mounted as PAGE FLOW although the pointer is not coarse (unexpected)';
+  if (!st.scriptbox) return `mounted as PAGE FLOW: touch device and scriptbox flag is OFF (flags source: ${st.source}) — open ?scriptbox=1`;
+  return 'mounted as PAGE FLOW although scriptbox is ON (unexpected)';
+}
+
 /** one-line verdict for the overlay */
 export function verdict({ scroller, innerMode, variant = null }) {
   const parts = [];

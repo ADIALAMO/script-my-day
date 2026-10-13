@@ -59,10 +59,14 @@ export const skipPageAutoScroll = isTouchBoxVariant;
  */
 export function scriptWindowClasses(mode, { touch = false, contain = false } = {}) {
   if (mode !== 'inner') return 'p-10 md:p-20 relative';
-  const base = 'overflow-y-auto p-10 md:p-20 custom-scrollbar relative';
+  // scrollbar-gutter:stable keeps the text column the same width whether or not the scrollbar is showing (typing makes it appear: no reflow, no 4-15 px jump)
+  const base = 'overflow-y-auto [scrollbar-gutter:stable] p-10 md:p-20 custom-scrollbar relative';
   if (touch) return `h-[500px] ${base} ${contain ? 'overscroll-y-contain' : 'overscroll-y-auto'}`;
   return `h-[500px] md:h-[650px] ${base} overscroll-y-auto`;
 }
+
+/** the frame's corner radius: the window's text can scroll past the rounded corners, so with a window the radius must not exceed the padding (32px < 40px on phones, 56px = 80px on md+) */
+export const scriptFrameRadius = (mode) => (mode === 'inner' ? 'rounded-[2rem] md:rounded-[3.5rem]' : 'rounded-[3.5rem]');
 
 /** margin classes of the frame around the box: with `contain` there must always be a page gutter to swipe the page in (sides, above, below) */
 export const scriptFrameGutter = ({ touch = false, contain = false } = {}) => (touch && contain ? 'mx-5 my-6' : 'mx-2 md:mx-4');

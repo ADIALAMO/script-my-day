@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { createRateCounter, pageScroller, verdict } from '../utils/scroll-debug.js';
+import { createRateCounter, pageScroller, verdict, explainScriptBox } from '../utils/scroll-debug.js';
+import { readEffectiveFlags, FLAGS_KEY } from '../utils/variant-flags.js';
+import { parseScriptVariant, variantId } from '../utils/scroll-mode.js';
 
 /**
  * ?debug=1 overlay: read on the phone WHICH element scrolls and how busy scrolling is, to tell the iOS "shake" causes apart.
@@ -43,6 +45,20 @@ export default function ScrollDebug() {
         vv: vv ? `${Math.round(vv.height)} (+${Math.round(vv.offsetTop)}) x${vv.scale.toFixed(2)}` : 'n/a',
         inner: window.innerHeight, doc: `${body.scrollHeight}/${body.clientHeight}`,
         rootscroll: /[?&]rootscroll=1/.test(window.location.search),
+        ...(() => {
+          const f = readEffectiveFlags();
+          let stored = null;
+          try { stored = window.localStorage.getItem(FLAGS_KEY); } catch { stored = '(storage unavailable)'; }
+          const mq = (q) => { try { return window.matchMedia(q).matches; } catch { return 'n/a'; } };
+          const coarse = mq('(pointer: coarse)');
+          const resolved = parseScriptVariant(f.effectiveSearch);
+          return {
+            rawSearch: window.location.search || '(empty)', storedFlags: stored || '(none)', source: f.source,
+            resolved: `${variantId(resolved)} [${f.effectiveSearch || 'no flags'}]`,
+            media: `pointer:coarse=${coarse} hover:none=${mq('(hover: none)')}`,
+            why: explainScriptBox({ mounted: !!inner, mode, coarse: coarse === true, scriptbox: resolved.scriptbox, source: f.source }),
+          };
+        })(),
       });
     };
     tick();
@@ -66,7 +82,11 @@ export default function ScrollDebug() {
       {row('scroll events/s (any | script box)', `${s.evAny} | ${s.evBox}`)}
       {row('script box top/height/client', s.box)}
       {row('script box css', s.boxStyle)}
-      {row('url flags', s.flags)}
+      {row('location.search', s.rawSearch)}
+      {row('stored flags (ls_variant_flags)', s.storedFlags)}
+      {row('resolved variant | source', `${s.resolved} | ${s.source}`)}
+      {row('media', s.media)}
+      <div style={{ color: '#ffd479', marginTop: 2 }}>{s.why}</div>
       {row('visualViewport h (+top) scale | inner', `${s.vv} | ${s.inner}`)}
       {row('page height scrollH/clientH | changes/s', `${s.doc} | ${s.layoutChanges}`)}
     </div>
