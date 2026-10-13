@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { CHAPTERS, TOUR_UI, NEXT_STEPS, MILESTONE_CHAPTER, chapterById } = await import('../constants/tour.js');
 const { isTourDone, markTourDone, readChapters, markChapterDone, setAutoOff, _resetTourMemory, TOUR_KEY, CHAPTERS_KEY } = await import('../utils/tour-state.js');
-const { hasPriorActivity, cookieBannerPending, autoStartDecision, resolveSteps, findUsableAnchor, stepOutcome, chapterTotal, chapterAvailable, chapterAutoEligible, computePlacement, stepAfter } = await import('../utils/tour-logic.js');
+const { hasPriorActivity, cookieBannerPending, autoStartDecision, resolveSteps, findUsableAnchor, stepOutcome, chapterTotal, chapterAvailable, chapterAutoEligible, computePlacement, stepAfter, rectsClose, createStability, needsScroll, layoutFor } = await import('../utils/tour-logic.js');
 
 const FORBIDDEN = /Stripe|\$\s?9\b|9\$|upgrade|שדרג|שדרוג|subscription|מנוי|\bPro\b|פרו\b|waitlist|billing|חיוב|checkout|per month|לחודש\b|\boffers?\b|\bplans?\b|\bprice|הצעה|הצעות|תוכנית|מחיר/i; // same intent as tests/native-copy.test.js
 const fakeStorage = (init = {}) => { const m = { ...init }; return { getItem: (k) => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, _m: m }; };
@@ -20,8 +20,9 @@ test('chapters: ids 1-4, 2 to 6 steps each, unique step ids, he + en copy, one s
   assert.equal(new Set(allSteps.map((s) => s.id)).size, allSteps.length);
   for (const c of CHAPTERS) {
     assert.ok(c.steps.length >= 2 && c.steps.length <= 6, `chapter ${c.id} has ${c.steps.length} steps`);
-    assert.ok(c.name.he && c.name.en && c.requires.length);
-    if (c.id > 1) assert.ok(c.unavailable.he && c.unavailable.en);
+    assert.ok(c.name.he && c.name.en);
+    assert.equal(c.stage, [null, 'script', 'poster', 'comic'][c.id - 1]);
+    if (c.id > 1) assert.ok(c.unavailable.he && c.unavailable.en && c.note.he && c.note.en);
     for (const s of c.steps) {
       assert.ok(s.anchors.length >= 1 && s.anchors.every((a) => /^[a-z-]+$/.test(a)));
       for (const l of ['he', 'en']) {
@@ -68,7 +69,7 @@ test('UI + next-step copy exist in both languages and contain no pricing / plan 
   for (const n of Object.values(NEXT_STEPS)) assert.ok(n.he && n.en && n.target);
   const all = [
     ...allSteps.flatMap((s) => Object.values(s.copy)),
-    ...CHAPTERS.flatMap((c) => [c.name.he, c.name.en, c.unavailable.he, c.unavailable.en]),
+    ...CHAPTERS.flatMap((c) => [c.name.he, c.name.en, c.unavailable.he, c.unavailable.en, c.note.he, c.note.en]),
     ...Object.values(NEXT_STEPS).flatMap((n) => [n.he, n.en]),
     ...Object.values(TOUR_UI).flatMap((u) => [u.he, u.en].filter((x) => typeof x === 'string')),
   ];
@@ -122,12 +123,19 @@ test('auto chapters 2-4: only after chapter 1 was FINISHED, never after a skip, 
   assert.equal(chapterAutoEligible(ok, 1), false);                          // chapter 1 has its own first-run rule
 });
 
-test('Guide menu availability: a chapter is offered only when its screen is there', () => {
-  const on = new Set(['journal']);
-  assert.equal(chapterAvailable(chapterById(1), (a) => on.has(a)), true);
-  assert.equal(chapterAvailable(chapterById(2), (a) => on.has(a)), false);
-  on.add('poster-cta'); on.add('poster-share'); on.add('reel-cta');
-  for (const id of [2, 3, 4]) assert.equal(chapterAvailable(chapterById(id), (a) => on.has(a)), true);
+test('Guide menu availability follows the STAGE reached, not whether an anchor is on screen (the Edit button disappears after a poster)', () => {
+  const none = { script: false, poster: false, comic: false };
+  assert.equal(chapterAvailable(chapterById(1), none), true);
+  assert.equal(chapterAvailable(chapterById(1), undefined), true);
+  for (const id of [2, 3, 4]) assert.equal(chapterAvailable(chapterById(id), none), false);
+  assert.equal(chapterAvailable(chapterById(2), { ...none, script: true }), true);
+  assert.equal(chapterAvailable(chapterById(3), { ...none, script: true }), false);
+  assert.equal(chapterAvailable(chapterById(2), { script: true, poster: true, comic: false }), true); // chapter 2 stays available after a poster exists
+  assert.equal(chapterAvailable(chapterById(3), { script: true, poster: true, comic: false }), true);
+  assert.equal(chapterAvailable(chapterById(4), { script: true, poster: true, comic: false }), false);
+  assert.match(chapterById(2).note.en, /after you create your first script/);
+  assert.match(chapterById(3).note.en, /first poster/);
+  assert.match(chapterById(4).note.en, /first comic/);
 });
 
 test('step lifecycle: show / wait / drop before it is shown; keep / wait / drop after (typewriter Skip vanishing is silent)', () => {
@@ -228,7 +236,7 @@ const read = (f) => readFileSync(path.join(ROOT, f), 'utf8');
 const SRC = ['pages/index.js', 'components/ScriptForm.jsx', 'components/ScriptOutput.jsx', 'components/Navbar.jsx', 'components/PosterRenderer.jsx', 'components/StoryboardView.jsx'].map(read).join('\n');
 
 test('every data-tour anchor named by a step or a next-step button exists in the UI source', () => {
-  const names = new Set([...allSteps.flatMap((s) => s.anchors), ...Object.values(NEXT_STEPS).map((n) => n.target), ...CHAPTERS.flatMap((c) => c.requires)]);
+  const names = new Set([...allSteps.flatMap((s) => s.anchors), ...Object.values(NEXT_STEPS).map((n) => n.target), ]);
   for (const n of names) assert.ok(new RegExp(`data-tour=(?:"${n}"|\\{[^}]*'${n}')`).test(SRC), `data-tour="${n}" missing`);
 });
 
@@ -265,4 +273,65 @@ test('milestones are emitted by ScriptOutput only for screens generated in this 
   assert.match(out, /isTyping && !wasTyping\.current && !instant/);       // history reopen (instant) never starts chapter 2
   assert.ok(!/data-tour|onMilestone/.test(read('components/ReportButton.jsx')));
   assert.match(read('components/StoryboardView.jsx'), /idx < unlockedPanels && regensLeft > 0/); // only a panel Replace can really act on is highlighted
+});
+
+test('stability: the spotlight shows only after the rect held still for N frames; movement or a missing anchor restarts the count', () => {
+  const r = (top) => ({ left: 10, top, width: 100, height: 40 });
+  const t = createStability({ frames: 3 });
+  assert.equal(t.push(r(500)), false);        // first sight
+  assert.equal(t.push(r(380)), false);        // still scrolling
+  assert.equal(t.push(r(380)), false);        // 1 still frame
+  assert.equal(t.push(r(380.3)), false);      // 2 (sub-pixel noise tolerated)
+  assert.equal(t.push(r(380)), true);         // 3 -> stable
+  assert.equal(t.push(r(380)), true);
+  assert.equal(t.push(r(402)), false);        // a late layout shift un-settles it
+  assert.equal(t.push(null), false);          // anchor vanished
+  assert.equal(t.push({ left: 0, top: 0, width: 0, height: 0 }), false);
+  assert.equal(rectsClose(r(1), r(1.4)), true);
+  assert.equal(rectsClose(r(1), r(2)), false);
+  assert.equal(rectsClose(null, r(1)), false);
+});
+
+test('needsScroll: only when the anchor hides under the navbar or leaves no room for the bubble', () => {
+  const base = { navH: 100, vh: 800 };
+  assert.equal(needsScroll({ ...base, rect: { top: 300, bottom: 340, height: 40 } }), false);   // comfortably visible
+  assert.equal(needsScroll({ ...base, rect: { top: 60, bottom: 100, height: 40 } }), true);     // under the sticky navbar
+  assert.equal(needsScroll({ ...base, rect: { top: 700, bottom: 740, height: 40 } }), true);    // no room left for the bubble below
+  assert.equal(needsScroll({ ...base, rect: { top: 300, bottom: 1100, height: 800 } }), true);  // tall panel not at the top
+  assert.equal(needsScroll({ ...base, rect: { top: 120, bottom: 920, height: 800 } }), false);  // tall, already at the top
+});
+
+test('layoutFor: spot is in layout coordinates; the visual-viewport offset (iOS toolbar / zoom) is applied once, not lost or doubled', () => {
+  const rect = { left: 40, right: 240, top: 300, bottom: 340, width: 200, height: 40 };
+  const vp = { w: 390, h: 700 };
+  const bubble = { w: 300, h: 130 };
+  const a = layoutFor({ rect, off: { x: 0, y: 0 }, vp, bubble });
+  assert.deepEqual(a.spot, { left: 34, top: 294, width: 212, height: 52 });  // rect +/- 6 pad
+  const b = layoutFor({ rect, off: { x: 0, y: 80 }, vp, bubble });          // visible area scrolled 80px down inside the layout viewport
+  assert.deepEqual(b.spot, a.spot);                                          // the spotlight still sits on the element
+  assert.equal(b.place.top, a.place.top);                                    // and the bubble keeps its distance from it
+  // an anchor above the visible area is clipped to it, never positioned off-screen
+  const c = layoutFor({ rect: { left: 40, right: 240, top: 20, bottom: 60, width: 200, height: 40 }, off: { x: 0, y: 80 }, vp, bubble });
+  assert.ok(c.spot.top >= 80 - 6);
+  // bubble stays inside the visible area (in layout coordinates)
+  const d = layoutFor({ rect: { left: 40, right: 240, top: 660, bottom: 700, width: 200, height: 40 }, off: { x: 0, y: 80 }, vp, bubble });
+  assert.ok(d.place.top >= 80 && d.place.top + bubble.h <= 80 + vp.h);
+  // tall anchor is clipped to the visible part
+  const e = layoutFor({ rect: { left: 0, right: 390, top: 100, bottom: 1500, width: 390, height: 1400 }, off: { x: 0, y: 0 }, vp, bubble });
+  assert.ok(e.spot.top + e.spot.height <= vp.h + 6);
+});
+
+test('tour runner: instant scroll, settle-then-show, per-frame tracking, focus on Next when the bubble is visible, rows always tappable', () => {
+  const src = read('components/GuidedTour.jsx');
+  assert.match(src, /behavior: 'instant'/);
+  assert.ok(!/behavior: reducedMotion\(\) \? 'auto' : 'smooth'/.test(src) && !/behavior: 'smooth'/.test(src));
+  assert.match(src, /createStability/);
+  assert.match(src, /requestAnimationFrame\(frameFn\)/);
+  assert.match(src, /addEventListener\('scroll', kick, true\)/);               // capture: any scrollable ancestor, body included
+  assert.match(src, /vv\?\.addEventListener\('scroll', kick\)/);
+  assert.match(src, /if \(ready\) nextRef\.current\?\.focus/);
+  const menu = read('components/GuideMenu.jsx');
+  assert.ok(!/[^-]disabled=\{!available\}/.test(menu));                              // no dead rows
+  assert.match(menu, /aria-disabled=\{!available\}/);
+  assert.match(menu, /chapter\.note/);
 });

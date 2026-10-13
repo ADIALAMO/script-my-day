@@ -895,8 +895,9 @@ function HomePage() {
         isMuteLocked={scriptLoading}
         onStartTour={tour.start}
         tourDisabled={tourBlocked}
+        tourStages={{ ...tour.reached, script: tour.reached.script || !!script }}
       />
-      {tour.running && <GuidedTour key={tour.chapter} chapter={tour.chapter} lang={lang} onFinish={tour.finish} onAbort={tour.abort} />}
+      {tour.running && <GuidedTour key={tour.chapter} chapter={tour.chapter} manual={tour.manual} lang={lang} onFinish={tour.finish} onAbort={tour.abort} />}
 
       <main className="container mx-auto pt-4 md:pt-8 pb-12 px-6 max-w-5xl flex-grow relative">
 
