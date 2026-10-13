@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Film, Languages, Clapperboard, LogOut, Crown, ChevronDown, User, CreditCard, Loader2, Gift, Volume2, VolumeX, Trash2 } from 'lucide-react';
+import { Film, Languages, Clapperboard, LogOut, Crown, ChevronDown, User, CreditCard, Loader2, Gift, Volume2, VolumeX, Trash2, CircleHelp } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import LaunchTicket from './LaunchTicket';
 import ReferralModal from './ReferralModal';
@@ -233,7 +233,7 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, 
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHistoryOpen, onOpenAuthModal, tierRefreshToken = 0, onDropdownToggle, closeDropdownRef, isMusicMuted, onToggleMute, isMuteLocked = false }) {
+export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHistoryOpen, onOpenAuthModal, tierRefreshToken = 0, onDropdownToggle, closeDropdownRef, isMusicMuted, onToggleMute, isMuteLocked = false, onStartTour, tourDisabled = false }) {
   const native = useNative();
   const { data: session, status } = useSession();
   const isAuthenticated = status === 'authenticated';
@@ -324,6 +324,22 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
               ? <VolumeX size={14} className="text-[#d4a373]/55 md:w-[15px] md:h-[15px] transition-colors duration-300" />
               : <Volume2 size={14} className="text-[#d4a373] md:w-[15px] md:h-[15px] transition-colors duration-300" />}
             <IconTooltip label={isHe ? (isMusicMuted ? 'בטל השתקה' : 'השתק מוזיקה') : (isMusicMuted ? 'Unmute music' : 'Mute music')} />
+          </button>
+        )}
+
+        {/* Guide — restarts the guided tour any time (icon-only on phones, icon + label from md up) */}
+        {onStartTour && (
+          <button
+            type="button"
+            data-tour="guide"
+            onClick={onStartTour}
+            disabled={tourDisabled}
+            aria-label={isHe ? 'הדרכה' : 'Guide'}
+            className={`group relative flex items-center justify-center gap-1.5 h-8 md:h-9 w-8 md:w-auto md:px-3 border border-white/15 rounded-xl [@media(hover:hover)]:hover:border-[#d4a373]/40 [@media(hover:hover)]:hover:bg-[#d4a373]/8 transition-all duration-300 shrink-0 ${tourDisabled ? 'opacity-30' : ''}`}
+          >
+            <CircleHelp size={14} className="text-[#d4a373]/70 md:w-[15px] md:h-[15px]" />
+            <span className={`hidden md:inline text-[10px] font-black uppercase tracking-widest text-[#d4a373]/70 ${isHe ? 'font-heebo' : ''}`}>{isHe ? 'הדרכה' : 'Guide'}</span>
+            <IconTooltip label={isHe ? 'הדרכה' : 'Guide'} />
           </button>
         )}
 

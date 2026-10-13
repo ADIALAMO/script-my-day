@@ -7,6 +7,8 @@ import { detectGender } from '../lib/gender-detect';
 import { useBackgroundAudio } from '../hooks/useBackgroundAudio';
 import { useRotatingMessages } from '../hooks/useRotatingMessages';
 import { useCinematicAudio } from '../hooks/useCinematicAudio';
+import NextStepButton from './NextStepButton';
+import { NEXT_STEPS } from '../constants/tour.js';
 
 const LOADING_MESSAGES_HE = ["סורק זכרונות...", "מנתח DNA סיפורי...", "בונה מתח דרמטי...", "מלטש דיאלוגים...", "מעבה דמויות...", "פורש קווי עלילה...", "מדפיס עותקים..."];
 const LOADING_MESSAGES_EN = ["Scanning memories...", "Analyzing story DNA...", "Building tension...", "Polishing dialogue...", "Developing characters...", "Plotting twists...", "Printing scripts..."];
@@ -18,7 +20,7 @@ const GENDER_PILLS = [
   { value: 'neutral', he: 'הם',  en: 'They' },
 ];
 
-const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProducerName, gender, setGender, suggestGender, genderTouched, isTypingGlobal, onInputChange, showTips, setShowTips, isMusicMuted = false }) => {
+const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProducerName, gender, setGender, suggestGender, genderTouched, isTypingGlobal, onInputChange, showTips, setShowTips, isMusicMuted = false, holdHowTo = false }) => {
   const [journalEntry, setJournalEntry] = useState('');
   const [activeGenre, setActiveGenre] = useState('drama');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -97,7 +99,7 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
       {/* ── First-run "How it works" — bridges viral visitors into the real first
             action (write your day) so they don't land confused on an empty box ── */}
       <AnimatePresence>
-        {showHowTo && (
+        {showHowTo && !holdHowTo && (
           <motion.div
             key="howitworks"
             initial={{ opacity: 0, y: -10 }}
@@ -283,7 +285,7 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
           />
         </div>
 
-        <div className="relative">
+        <div className="relative" data-tour="journal">
           <textarea
             value={journalEntry}
             onChange={(e) => {
@@ -323,13 +325,15 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
         </div>
       </div>
 
-      <div>
+      <div data-tour="genre">
         <div className="flex justify-between items-center mb-6 px-2">
           <label className="text-[#d4a373] text-[10px] md:text-xs font-black uppercase tracking-[0.3em] italic">{lang === 'he' ? 'בחר סגנון קולנועי' : 'Select Cinematic Style'}</label>
         </div>
 
         <GenreSelector activeGenre={activeGenre} onGenreChange={setActiveGenre} isLocked={isLocked} lang={lang} />
       </div>
+
+      <NextStepButton show={currentWordCount > 0 && !loading} step={NEXT_STEPS.journal} lang={lang} />
 
       {/* Cast the Hero/ine — the single gender source of truth for script + poster +
           comic. Auto-highlighted from Hebrew morphology + the creator name; the user
@@ -398,6 +402,7 @@ const ScriptForm = ({ onSubmit, onCancel, loading, lang, producerName, setProduc
 
       <motion.button
         type="submit"
+        data-tour="generate"
         disabled={loading || currentWordCount === 0 || !activeGenre}
         className={`relative w-full group overflow-hidden rounded-[1.5rem] md:rounded-[2rem] transition-all duration-700 shadow-[0_10px_40px_rgba(212,163,115,0.2)] ${loading ? 'bg-[#d4a373] py-6 md:py-8' : 'bg-[#d4a373] py-5 md:py-7 hover:scale-[1.01] active:scale-[0.98]'} ${(!journalEntry.trim() || !activeGenre) && !loading ? 'opacity-30 grayscale cursor-not-allowed' : ''}`}
       >
