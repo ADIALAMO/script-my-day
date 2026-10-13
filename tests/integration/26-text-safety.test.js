@@ -317,3 +317,36 @@ scenario('T17', 'circuit independence: a failing text classifier opens ONLY chec
     assert.deepEqual(open(), ['check_minor']);
     return { actual: 'three circuits, three keys' };
   });
+
+scenario('T18', '"unsure" (e.g. a landscape with no person) is treated EXACTLY like "adult": the upload succeeds, the same objects are stored and cleaned up, the same quota and budget are spent, nothing is downgraded — and the screen result never reaches the response',
+  'adult / unsure / refusal / unreadable → identical outcome', async () => {
+    const outcome = async (label, set) => {
+      providers.s3puts.length = 0; providers.s3deletes.length = 0; providers.ageVerdict.value = 'adult'; providers.ageVerdict.raw = undefined; providers.ageVerdict.block = false;
+      set();
+      const u = await makeUser(`t18-${label}`, 'free');
+      const before = { global: fake.num('usage:identity:global:2026-10-15') };
+      const r = await up(u, `198.51.100.${70 + (++seq % 100)}`);
+      ctx.advance(11 * 60 * 1000);
+      return {
+        status: r.status,
+        keys: Object.keys(r.body).sort().join(','),
+        sheetGenerated: r.body.sheetGenerated, success: r.body.success,
+        hasReference: typeof r.body.characterImageUrl === 'string' && r.body.characterImageUrl.endsWith('-sheet.jpg'),
+        stored: providers.s3puts.map((p) => p.key.replace(/^characters\/[0-9a-f]{32}\/[0-9a-f-]{36}/, 'characters/<owner>/<id>')).sort().join('|'),
+        deletedRaw: providers.s3deletes.length,
+        sheetQuota: fake.num(`usage:sheet:${u.identifier}:2026-10`),
+        identityBudgetDelta: fake.num('usage:identity:global:2026-10-15') - before.global,
+        pointer: JSON.parse(fake.get(`character:${u.identifier}`)).status,
+      };
+    };
+    const adult = await outcome('adult', () => { providers.ageVerdict.value = 'adult'; });
+    const unsure = await outcome('unsure', () => { providers.ageVerdict.value = 'unsure'; });
+    const refusal = await outcome('refusal', () => { providers.ageVerdict.block = true; });
+    const unreadable = await outcome('unreadable', () => { providers.ageVerdict.raw = 'a landscape, no people'; });
+    assert.equal(adult.status, 200); assert.equal(adult.sheetGenerated, true); assert.equal(adult.hasReference, true);
+    assert.deepEqual(unsure, adult, '"unsure" changes nothing compared with "adult"');
+    assert.deepEqual(refusal, adult); assert.deepEqual(unreadable, adult);
+    assert.ok(!/apparent|minor|unsure|adult/i.test(adult.keys), 'the screen result is never part of the response');
+    assert.equal(unsure.sheetQuota, 1); assert.equal(unsure.identityBudgetDelta, 1);
+    return { actual: 'unsure = adult in every observable respect' };
+  });

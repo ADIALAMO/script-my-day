@@ -172,3 +172,229 @@ test('the script never touches Redis in scan mode: even with Redis variables set
     assert.ok(!/ECONNREFUSED|upstash|redis/i.test(out));
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+// ── --recheck-from: a second opinion on ONLY the entries a previous run marked unsafe ───────────────────────────────────────────
+const FIRST = {
+  version: 1, local: false, route: 'free',
+  entries: {
+    'panels/a/1.png': { v: 'safe', via: 'nemotron' }, 'panels/a/2.png': { v: 'unsafe', via: 'nemotron' }, 'panels/a/3.png': { v: 'unsafe', via: 'nemotron' },
+    'posters/b/4.png': { v: 'unsafe', via: 'nemotron' }, 'panels/a/5.png': { v: 'unreadable', via: 'nemotron' }, 'panels/a/6.png': { v: 'skipped' },
+  },
+};
+function recheckSetup(first = FIRST, { classify } = {}) {
+  const f = setup([...Object.keys(first.entries).map((key) => ({ key }))], { classify });
+  f.files.set('first.json', JSON.stringify(first));
+  const calls = []; let listed = 0;
+  const origList = f.deps.r2.list; f.deps.r2.list = async (p) => { listed += 1; return origList(p); };
+  f.deps.classify = classify ?? (async (_u, ctx) => { calls.push(ctx.route); return { verdict: 'unsafe', via: 'fallback' }; });
+  return { ...f, calls, listed: () => listed };
+}
+
+test('--recheck-from sends ONLY the unsafe entries to the checker (no listing, no other downloads) and defaults to the PAID route', async () => {
+  const f = recheckSetup();
+  const routes = []; const seenKeys = [];
+  const origGet = f.deps.r2.get; f.deps.r2.get = async (k) => { seenKeys.push(k); return origGet(k); };
+  f.deps.classify = async (_u, ctx) => { routes.push(ctx.route); return { verdict: 'unsafe', via: 'fallback' }; };
+  const r = await run({ argv: ['--recheck-from', 'first.json', '--out', 'second.json', '--concurrency', '1'], deps: f.deps });
+  assert.equal(r.code, 0);
+  assert.deepEqual(seenKeys.sort(), ['panels/a/2.png', 'panels/a/3.png', 'posters/b/4.png']);
+  assert.equal(f.listed(), 0, 'no listing: only the flagged keys are fetched');
+  assert.deepEqual([...new Set(routes)], ['paid'], 'the default route of a second opinion is paid');
+  const out = JSON.parse(f.files.get('second.json'));
+  assert.deepEqual(Object.keys(out.entries).sort(), ['panels/a/2.png', 'panels/a/3.png', 'posters/b/4.png']);
+  assert.equal(out.recheckOf, 'first.json');
+});
+
+test('--route free can still be chosen explicitly for the recheck', async () => {
+  const f = recheckSetup(); const routes = [];
+  f.deps.classify = async (_u, ctx) => { routes.push(ctx.route); return { verdict: 'unsafe', via: 'nemotron' }; };
+  await run({ argv: ['--recheck-from', 'first.json', '--out', 's.json', '--route', 'free'], deps: f.deps });
+  assert.deepEqual([...new Set(routes)], ['free']);
+});
+
+test('the same file as --out (any spelling), a missing --out, and a pre-existing foreign --out are all REFUSED before anything is read', async () => {
+  for (const argv of [
+    ['--recheck-from', 'first.json', '--out', 'first.json'],
+    ['--recheck-from', './first.json', '--out', 'first.json'],
+    ['--recheck-from', 'first.json'],
+    ['--recheck-from', 'first.json', '--out'],
+  ]) {
+    const f = recheckSetup(); let called = 0; f.deps.classify = async () => { called += 1; return { verdict: 'unsafe' }; };
+    f.files.set('./first.json', JSON.stringify(FIRST));   // the fake file system has no path normalisation; the real one resolves './first.json' to the same file
+    const r = await run({ argv, deps: f.deps });
+    assert.equal(r.code, 2, argv.join(' ')); assert.equal(called, 0); assert.equal(f.gets.length, 0);
+    assert.match(f.log.join('\n'), /--out is required for --recheck-from and must be a DIFFERENT file/);
+    assert.equal(f.files.get('first.json'), JSON.stringify(FIRST), 'the first results are untouched');
+  }
+  // an existing --out that is some other results file is never merged into or overwritten
+  const f = recheckSetup(); f.files.set('other.json', JSON.stringify({ entries: { 'panels/x/y.png': { v: 'safe' } } }));
+  let called = 0; f.deps.classify = async () => { called += 1; return { verdict: 'unsafe' }; };
+  assert.equal((await run({ argv: ['--recheck-from', 'first.json', '--out', 'other.json'], deps: f.deps })).code, 2);
+  assert.equal(called, 0); assert.equal(f.files.get('other.json'), JSON.stringify({ entries: { 'panels/x/y.png': { v: 'safe' } } }));
+});
+
+test('the FIRST results file is byte-for-byte unchanged after a recheck, and the second file records firstOpinion + the new verdict', async () => {
+  const verdicts = { 'panels/a/2.png': 'safe', 'panels/a/3.png': 'unsafe', 'posters/b/4.png': 'unreadable' };
+  const f = recheckSetup();
+  let i = 0; const order = Object.keys(verdicts);
+  f.deps.classify = async () => ({ verdict: verdicts[order[i++]], via: 'fallback' });
+  const before = f.files.get('first.json');
+  await run({ argv: ['--recheck-from', 'first.json', '--out', 'second.json', '--concurrency', '1'], deps: f.deps });
+  assert.equal(f.files.get('first.json'), before);
+  const second = JSON.parse(f.files.get('second.json')).entries;
+  assert.deepEqual(second['panels/a/2.png'], { v: 'safe', via: 'fallback', firstOpinion: 'unsafe', at: 1_700_000_000_000 });
+  assert.equal(second['panels/a/3.png'].firstOpinion, 'unsafe'); assert.equal(second['panels/a/3.png'].v, 'unsafe');
+  assert.equal(second['posters/b/4.png'].v, 'unreadable');
+  assert.ok(!f.files.get('second.json').includes('payload-bytes') && !f.files.get('second.json').includes('base64'));
+});
+
+test('summary: confirmed / cleared / undecided counts, the cleared keys are listed (keys only), and it says the first file was not modified', async () => {
+  const verdicts = ['unsafe', 'safe', 'unavailable'];
+  const f = recheckSetup(); let i = 0;
+  f.deps.classify = async () => ({ verdict: verdicts[i++], via: 'fallback' });
+  const r = await run({ argv: ['--recheck-from', 'first.json', '--out', 's.json', '--concurrency', '1'], deps: f.deps });
+  assert.deepEqual(r.summary.second, { checked: 3, confirmed: 1, cleared: 1, undecided: 1 });
+  const text = f.log.join('\n');
+  assert.match(text, /SECOND OPINION \(route paid\) on 3 image\(s\) the first pass called unsafe: confirmed unsafe 1 · cleared \(second says safe\) 1 · undecided 1/);
+  assert.match(text, /the second opinion says SAFE \(first said unsafe\) — keys only:\n  panels\/a\/3\.png/);
+  assert.match(text, /the first results file was not modified/);
+  assert.ok(!text.includes('base64') && !text.includes('payload-bytes'));
+});
+
+test('--include-unreadable adds the unreadable entries (skipped and safe ones are never re-checked)', async () => {
+  const f = recheckSetup(); const keys = [];
+  const origGet = f.deps.r2.get; f.deps.r2.get = async (k) => { keys.push(k); return origGet(k); };
+  f.deps.classify = async () => ({ verdict: 'unsafe', via: 'fallback' });
+  const r = await run({ argv: ['--recheck-from', 'first.json', '--out', 's.json', '--include-unreadable'], deps: f.deps });
+  assert.equal(r.summary.second.checked, 4); assert.ok(keys.includes('panels/a/5.png')); assert.ok(!keys.includes('panels/a/1.png') && !keys.includes('panels/a/6.png'));
+  assert.equal(JSON.parse(f.files.get('s.json')).entries['panels/a/5.png'].firstOpinion, 'unreadable');
+});
+
+test('a key outside panels/ or posters/ in the first file refuses the WHOLE recheck: nothing is read, nothing is sent, the offending key is not echoed', async () => {
+  for (const bad of ['characters/x/y-sheet.jpg', 'panels/../characters/x.jpg', 'avatars/u.png', '/etc/passwd']) {
+    const first = { local: false, entries: { 'panels/a/ok.png': { v: 'unsafe' }, [bad]: { v: 'unsafe' } } };
+    const f = recheckSetup(first); let called = 0; f.deps.classify = async () => { called += 1; return { verdict: 'unsafe' }; };
+    const r = await run({ argv: ['--recheck-from', 'first.json', '--out', 's.json'], deps: f.deps });
+    assert.equal(r.code, 2, bad); assert.equal(called, 0); assert.equal(f.gets.length, 0); assert.equal(f.files.has('s.json'), false);
+    assert.match(f.log.join('\n'), /refused: 1 key\(s\)/); assert.ok(!f.log.join('\n').includes(bad));
+  }
+});
+
+test('the paid cap (--max-paid-usd) stops the spending during a recheck; the rest is recorded "unavailable" and a re-run with the same --out resumes only those', async () => {
+  const first = { local: false, entries: Object.fromEntries(Array.from({ length: 10 }, (_, i) => [`panels/a/${i}.png`, { v: 'unsafe' }])) };
+  const f = recheckSetup(first); let paidCalls = 0;
+  const gate = async (_u, { paid }) => { if (paid.allow()) { paid.used(); paidCalls += 1; return { verdict: 'unsafe', via: 'fallback' }; } return { verdict: 'unavailable', via: 'paid-cap' }; };
+  f.deps.classify = gate;
+  const r1 = await run({ argv: ['--recheck-from', 'first.json', '--out', 's.json', '--max-paid-usd', '0.00045', '--concurrency', '1'], deps: f.deps });
+  assert.equal(paidCalls, 3); assert.deepEqual({ c: r1.summary.second.confirmed, u: r1.summary.second.undecided }, { c: 3, u: 7 });
+  const r2 = await run({ argv: ['--recheck-from', 'first.json', '--out', 's.json', '--max-paid-usd', '1', '--concurrency', '1'], deps: f.deps });
+  assert.equal(paidCalls, 3 + 7, 'only the 7 undecided were retried');
+  assert.equal(r2.summary.second.confirmed, 10); assert.match(f.log.join('\n'), /resuming from s\.json: 10 key\(s\)/);
+  const zero = recheckSetup(first); let z = 0; zero.deps.classify = async (_u, { paid }) => { if (paid.allow()) { z += 1; paid.used(); } return { verdict: 'unavailable' }; };
+  await run({ argv: ['--recheck-from', 'first.json', '--out', 'z.json', '--max-paid-usd', '0'], deps: zero.deps });
+  assert.equal(z, 0, 'a cap of 0 never opens the gate');
+});
+
+test('local (--dir) results: the same --dir is required, an R2 results file with --dir is refused, traversal keys are refused, files are read from --dir', async () => {
+  const PNGB = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from('payload-bytes')]);
+  const mk = (entries, local = true) => { const f = setup([], { local: { 'gallery/a.png': PNGB, 'gallery/sub/b.png': PNGB } }); f.files.set('first.json', JSON.stringify({ local, entries })); return f; };
+  const entries = { 'a.png': { v: 'unsafe' }, 'sub/b.png': { v: 'safe' } };
+  const noDir = mk(entries); assert.equal((await run({ argv: ['--recheck-from', 'first.json', '--out', 's.json'], deps: { ...noDir.deps, classify: async () => ({ verdict: 'safe' }) } })).code, 2);
+  assert.match(noDir.log.join('\n'), /pass the same --dir/);
+  const wrongKind = mk({ 'panels/a/1.png': { v: 'unsafe' } }, false);
+  assert.equal((await run({ argv: ['--recheck-from', 'first.json', '--out', 's.json', '--dir', 'gallery'], deps: { ...wrongKind.deps, classify: async () => ({ verdict: 'safe' }) } })).code, 2);
+  for (const bad of ['../secret.png', '/etc/hosts.png', 'a/../../x.png']) {
+    const f = mk({ [bad]: { v: 'unsafe' } }); let called = 0;
+    assert.equal((await run({ argv: ['--recheck-from', 'first.json', '--out', 's.json', '--dir', 'gallery'], deps: { ...f.deps, classify: async () => { called += 1; return { verdict: 'safe' }; } } })).code, 2, bad); assert.equal(called, 0);
+  }
+  const ok = mk(entries); const sent = [];
+  const r = await run({ argv: ['--recheck-from', 'first.json', '--out', 's.json', '--dir', 'gallery'], deps: { ...ok.deps, classify: async (u) => { sent.push(u.slice(0, 15)); return { verdict: 'safe', via: 'fallback' }; } } });
+  assert.equal(r.code, 0); assert.equal(sent.length, 1, 'only the one unsafe local file'); assert.equal(r.summary.second.cleared, 1);
+  assert.equal(JSON.parse(ok.files.get('s.json')).local, true);
+});
+
+test('recheck cannot be combined with --count-only or --quarantine-from', async () => {
+  for (const extra of [['--count-only'], ['--quarantine-from', 'first.json']]) {
+    const f = recheckSetup(); const r = await run({ argv: ['--recheck-from', 'first.json', '--out', 's.json', ...extra], deps: { ...f.deps, confirm: async () => true } });
+    assert.equal(r.code, 2); assert.equal(f.gets.length, 0);
+  }
+});
+
+test('workflow: quarantining from the SECOND file moves only the keys the paid model confirmed — not the ones it cleared or could not decide', async () => {
+  const verdicts = { 'panels/a/2.png': 'unsafe', 'panels/a/3.png': 'safe', 'posters/b/4.png': 'unavailable' };
+  const f = recheckSetup(); const order = Object.keys(verdicts); let i = 0;
+  f.deps.classify = async () => ({ verdict: verdicts[order[i++]], via: 'fallback' });
+  await run({ argv: ['--recheck-from', 'first.json', '--out', 'second.json', '--concurrency', '1'], deps: f.deps });
+  const moved = []; let asked;
+  const q = await run({ argv: ['--quarantine-from', 'second.json'], deps: { ...f.deps, headPublic: async () => true, quarantine: async (k) => { moved.push(k); return { status: 'moved' }; }, redis: { set: async () => {} }, confirm: async (_p, word) => { asked = word; return true; } } });
+  assert.deepEqual(moved, ['panels/a/2.png']); assert.equal(asked, 'QUARANTINE 1 OBJECTS'); assert.equal(q.summary.moved, 1);
+});
+
+test('failure reasons: stage + error class + HTTP status only — never the message, key or bucket', async () => {
+  const results = { entries: { 'panels/SECRETKEY/1.png': { v: 'unsafe' }, 'panels/SECRETKEY/2.png': { v: 'unsafe' }, 'panels/SECRETKEY/3.png': { v: 'unsafe' } } };
+  const f = setup([]); f.files.set('res.json', JSON.stringify(results));
+  const boom = (name, status, msg) => Object.assign(new Error(msg), { name, $metadata: { httpStatusCode: status } });
+  const deps = {
+    ...f.deps, confirm: async () => true, redis: { set: async () => {} },
+    headPublic: async (k) => { if (k.endsWith('1.png')) throw boom('AccessDenied', 403, 'denied for my-secret-bucket/panels/SECRETKEY/1.png'); return true; },
+    quarantine: async (k) => (k.endsWith('2.png') ? { status: 'failed', error: 'copy: leak my-secret-bucket', stage: 'copy', cls: 'NoSuchBucket', http: 404 } : { status: 'moved' }),
+  };
+  const r = await run({ argv: ['--quarantine-from', 'res.json'], deps });
+  const out = f.log.join('\n');
+  assert.equal(r.code, 1); assert.deepEqual(r.summary, { moved: 1, missing: 0, failed: 2 });
+  assert.match(out, /failed ×1: stage=head class=AccessDenied http=403/);
+  assert.match(out, /failed ×1: stage=copy class=NoSuchBucket http=404/);
+  assert.doesNotMatch(out, /SECRETKEY|my-secret-bucket|denied for|leak/);
+});
+
+test('failure reasons: a Redis-mark failure is reported as redis-mark with its own note; a missing env var is labelled ConfigMissing, not echoed', async () => {
+  const f = setup([]); f.files.set('res.json', JSON.stringify({ entries: { 'panels/a/1.png': { v: 'unsafe' }, 'panels/a/2.png': { v: 'unsafe' } } }));
+  const deps = { ...f.deps, confirm: async () => true, headPublic: async (k) => { if (k.endsWith('2.png')) throw new Error('R2_ACCESS_KEY_ID not configured.'); return true; },
+    quarantine: async () => ({ status: 'moved' }), redis: { set: async () => { throw Object.assign(new Error('https://secret.upstash.io refused'), { name: 'FetchError' }); } } };
+  const r = await run({ argv: ['--quarantine-from', 'res.json'], deps });
+  const out = f.log.join('\n');
+  assert.equal(r.code, 1);
+  assert.match(out, /stage=redis-mark class=FetchError/); assert.match(out, /already MOVED/);
+  assert.match(out, /stage=head class=ConfigMissing/);
+  assert.doesNotMatch(out, /upstash|R2_ACCESS_KEY_ID|panels\//);
+});
+
+test('quarantineObject failures carry stage + class + status, and the original is never deleted after a failed copy', async () => {
+  const { safeErrInfo } = await import('../lib/safe-error.js');
+  assert.deepEqual(safeErrInfo(Object.assign(new Error('x bucket/key'), { name: 'AccessDenied', $metadata: { httpStatusCode: 403 } })), { cls: 'AccessDenied', http: 403 });
+  assert.deepEqual(safeErrInfo(new Error('weird')), { cls: 'Error', http: null });
+  assert.deepEqual(safeErrInfo(Object.assign(new Error('a'), { name: 'bad name with spaces/and-slash' })), { cls: 'Error', http: null });
+  const { quarantineObject } = await import('../lib/quarantine.js');
+  const g = await quarantineObject('characters/x/y.jpg');
+  assert.deepEqual([g.status, g.stage, g.cls], ['failed', 'key-guard', 'OutOfScope']);
+});
+
+test('safe failure reason: error names are an ALLOWLIST (a name taken from a response can never smuggle a key, bucket or URL), status is a number only', async () => {
+  const { safeErrInfo, safeClass, formatSafeErr, printableError } = await import('../lib/safe-error.js');
+  for (const hostile of ['panels4a3fd2ed618879c285c84e566c100739', 'my-secret-bucket.r2.cloudflarestorage.com', 'https://x.example/panels/a.jpg', 'Some Custom Code', 'AccessDenied: key=panels/a.jpg', '', null, undefined, 42, {}]) {
+    assert.equal(safeClass(hostile), 'Error', JSON.stringify(hostile));
+    assert.deepEqual(safeErrInfo({ name: hostile, message: 'bucket/key', $metadata: { httpStatusCode: 'panels/a.jpg' } }), { cls: 'Error', http: null });
+  }
+  assert.equal(safeClass('AccessDenied'), 'AccessDenied'); assert.equal(safeClass('NoSuchBucket'), 'NoSuchBucket');
+  assert.equal(formatSafeErr({ cls: 'AccessDenied', http: 403 }), 'class=AccessDenied http=403');
+  assert.equal(formatSafeErr({ cls: 'Error', http: null }), 'class=Error');
+  assert.deepEqual(safeErrInfo({ name: 'x', $metadata: { httpStatusCode: 99999 } }).http, null);
+  // a crash message is printed only when it is one of our own fixed env-var lines
+  assert.equal(printableError(new Error('R2_BUCKET_NAME is not set')), 'R2_BUCKET_NAME is not set');
+  assert.equal(printableError(new Error('CLOUDFLARE_ACCOUNT_ID not configured.')), 'CLOUDFLARE_ACCOUNT_ID not configured.');
+  for (const msg of ['Unexpected token p in JSON at position 3 "panels/a"', 'GET https://x.r2.cloudflarestorage.com/bucket/panels/a.jpg 403', 'Access Denied for my-bucket', 'R2_BUCKET_NAME is not set; key=panels/a.jpg', 'secret R2_BUCKET_NAME is not set']) {
+    const out = printableError(Object.assign(new Error(msg), { name: 'AccessDenied', $metadata: { httpStatusCode: 403 } }));
+    assert.equal(out, 'failed (class=AccessDenied http=403)', msg); assert.doesNotMatch(out, /panels|bucket|https|secret|R2_/i);
+  }
+});
+
+test('quarantine step: a hostile reason returned by the quarantine layer (wrong stage, odd class, url as status) is normalised before printing', async () => {
+  const results = { entries: { 'panels/a/1.png': { v: 'unsafe' } } };
+  const f = setup([]); f.files.set('res.json', JSON.stringify(results));
+  const deps = { ...f.deps, confirm: async () => true, headPublic: async () => true, redis: { set: async () => {} },
+    quarantine: async () => ({ status: 'failed', error: 'copy: boom https://leak', stage: 'panels/a/1.png', cls: 'my-secret-bucket', http: 'https://leak' }) };
+  const r = await run({ argv: ['--quarantine-from', 'res.json'], deps });
+  const out = f.log.join('\n');
+  assert.equal(r.code, 1); assert.match(out, /failed ×1: stage=move class=Error/);
+  assert.doesNotMatch(out, /panels|my-secret-bucket|leak|https/);
+});
