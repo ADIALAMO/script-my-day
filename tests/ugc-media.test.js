@@ -102,3 +102,16 @@ test('list-leftover-raw-selfies is read-only: it lists the characters/ prefix on
   assert.ok(!/DeleteObject|PutObject|CopyObject|GetObject|HeadObject/.test(src), 'the script only imports ListObjectsV2Command');
   assert.ok(!/redis/i.test(src.replace(/never touches Redis/, '')), 'no Redis access');
 });
+
+test('list-leftover-raw-selfies failures: stage + allowlisted reason only, never the error message, key, bucket or account id', async () => {
+  const { missingEnv, describeFailure, StageError, ENV_NAMES, run } = await import('../scripts/list-leftover-raw-selfies.mjs');
+  assert.deepEqual(missingEnv({}), ENV_NAMES); assert.deepEqual(missingEnv({ CLOUDFLARE_ACCOUNT_ID: 'a', R2_BUCKET_NAME: ' ', R2_ACCESS_KEY_ID: 'k', R2_SECRET_ACCESS_KEY: 's' }), ['R2_BUCKET_NAME']);
+  assert.equal(describeFailure(new StageError('config', 'missing env R2_BUCKET_NAME')), 'stage=config reason=missing env R2_BUCKET_NAME');
+  const hostile = Object.assign(new Error('The specified bucket my-secret-bucket does not exist; key characters/abc; https://acct123.r2.cloudflarestorage.com'), { name: 'NoSuchBucket', $metadata: { httpStatusCode: 404 } });
+  const line = describeFailure(hostile);
+  assert.match(line, /^stage=list reason=bucket not found/); assert.match(line, /class=NoSuchBucket http=404/);
+  for (const leak of ['my-secret-bucket', 'characters/abc', 'acct123', 'https://']) assert.ok(!line.includes(leak), leak);
+  assert.match(describeFailure(Object.assign(new Error('x'), { name: 'AccessDenied', $metadata: { httpStatusCode: 403 } })), /access denied.*Object Read only/);
+  assert.match(describeFailure(new Error('whatever my-secret')), /reason=unexpected error class=Error$/);
+  await assert.rejects(run({ r2: { list: async () => { throw hostile; } }, log() {} }), (e) => e instanceof StageError && e.stage === 'list' && !e.message.includes('my-secret-bucket'));
+});
