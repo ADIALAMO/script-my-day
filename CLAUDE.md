@@ -198,7 +198,7 @@ Legacy object keys (no owner segment) count as owner-equivalent in `lib/report.j
 `/api/cron/sweep-hidden` (vercel.json, 04:00 UTC, auth = `Authorization: Bearer $CRON_SECRET`, fail-closed 401) moves hidden objects that are still
 public into the private bucket (`lib/report-sweep.js`; MOVE only, never deletes; digest to Telegram only when there is something to say);
 `scripts/takedown-object.mjs sweep [--apply]` is the manual twin. `scripts/scan-existing-images.mjs` is the MANUAL one-time scan of old
-objects (dry run by default; `--quarantine-from` is a separate typed-confirmation step; never automated). `--recheck-from <first.json> --out <second.json>` gives the flagged ones a second opinion (paid route by default, separate file, first file never modified).
+objects (dry run by default; `--quarantine-from` is a separate typed-confirmation step; never automated). `--recheck-from <first.json> --out <second.json>` gives the flagged ones a second opinion (paid route by default, separate file, first file never modified). A failed `--quarantine-from` move prints only `stage=… class=… [http=…]` (class from an allowlist in [lib/safe-error.js](lib/safe-error.js), never a key, bucket, URL or body).
 
 ### 4b. Android app (Capacitor) — Google Play payments policy
 Inside the native shell **nothing may show a price, a subscription, Stripe or an "upgrade" prompt**. `hooks/useNative.js`
