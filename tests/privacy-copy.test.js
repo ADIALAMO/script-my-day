@@ -28,7 +28,7 @@ test('the provider-policy review note stays next to the privacy text, and no own
 import { execFileSync } from 'node:child_process';
 import { RETENTION, GUEST_RETENTION, COMIC } from '../config/limits.js';
 
-const enforced = () => new Set([RETENTION.characterPointerDays, RETENTION.deletionLogDays, RETENTION.referralCookieDays, GUEST_RETENTION.ipDays, Math.round(COMIC.sessionTtlSec / 3600)]);
+const enforced = () => new Set([RETENTION.characterPointerDays, RETENTION.characterObjectDays, RETENTION.posterObjectDays, RETENTION.panelObjectDays, RETENTION.deletionLogDays, RETENTION.referralCookieDays, GUEST_RETENTION.ipDays, Math.round(COMIC.sessionTtlSec / 3600)]);
 const UNIT = /(\d+)\s*(?:days?|hours?|ימים|יום|שעות)/gi;
 
 test('every "N days/hours" in the privacy and terms text is a retention value that exists in config/limits.js', () => {
@@ -38,15 +38,16 @@ test('every "N days/hours" in the privacy and terms text is a retention value th
   for (const n of found) assert.ok(enforced().has(n), `privacy/terms state a retention of ${n} that config/limits.js does not enforce (allowed: ${[...enforced()].join(', ')})`);
 });
 
-test('the face-photo sections state the pointer retention from config, say the original is deleted, and give R2 NO invented period', () => {
+test('the face-photo sections state the pointer retention and the character-file retention from config and say the original is deleted (posters/panels are described in §1)', () => {
   for (const lang of ['he', 'en']) {
     const s2 = MODAL_DATA.privacy[lang].sections.find((s) => /^2\./.test(s.h)).p;
     const t5 = MODAL_DATA.terms[lang].sections.find((s) => /^5\./.test(s.h)).p;
     for (const s of [s2, t5]) {
       assert.ok(s.includes(String(RETENTION.characterPointerDays)), `${lang}: pointer days`);
-      assert.deepEqual([...s.matchAll(UNIT)].map((m) => Number(m[1])), [RETENTION.characterPointerDays], `${lang}: the only period named is the Redis pointer`);
+      assert.ok(s.includes(String(RETENTION.characterObjectDays)), `${lang}: character file days`);
+      assert.deepEqual([...s.matchAll(UNIT)].map((m) => Number(m[1])).sort((a, b) => a - b), [RETENTION.characterPointerDays, RETENTION.characterObjectDays], `${lang}: the only periods named are the Redis pointer and the character file (R2 lifecycle rule + margin)`);
       assert.match(s, lang === 'he' ? /המקורית נמחקת/ : /original (face )?photo is deleted/);
-      assert.match(s, lang === 'he' ? /אין(?: כרגע)? מחיקה אוטומטית|ללא מחיקה אוטומטית/ : /no automatic deletion/);
+      assert.match(s, lang === 'he' ? /נמחק אוטומטית/ : /deleted automatically/);
       assert.match(s, lang === 'he' ? /ידנית/ : /manually/);
     }
   }
@@ -74,9 +75,10 @@ test('§1 describes posters/panels as a random, unlisted address that anyone hol
   // older files: be honest that they may sit at a less random address, and offer deletion
   assert.match(sec('privacy', 'en', 1), /Files created before October 2026 may be stored at a less random address, and you can ask us to delete them \(section 9\)\./);
   assert.match(sec('privacy', 'he', 1), /קבצים שנוצרו לפני אוקטובר 2026 עשויים להישמר בכתובת פחות אקראית, וניתן לבקש את מחיקתם \(סעיף 9\)\./);
-  // the no-automatic-deletion sentence stays
-  assert.match(sec('privacy', 'en', 1), /We do not currently promise automatic deletion of them/);
-  assert.match(sec('privacy', 'he', 1), /אנחנו לא מתחייבים כרגע על מחיקה אוטומטית שלהם/);
+  // posters / panels ARE deleted automatically (R2 lifecycle rules 60 / 30 days — numbers from config), and the text no longer says otherwise
+  assert.match(sec('privacy', 'en', 1), /Posters are deleted automatically from storage about 60 days after they are created and comic panels about 30 days after/);
+  assert.match(sec('privacy', 'he', 1), /פוסטרים נמחקים אוטומטית מהאחסון כ-60 ימים לאחר יצירתם ופאנלי קומיקס כ-30 ימים לאחר יצירתם/);
+  assert.doesNotMatch(sec('privacy', 'en', 1), /do not currently promise automatic deletion/); assert.doesNotMatch(sec('privacy', 'he', 1), /לא מתחייבים כרגע על מחיקה אוטומטית/);
 });
 
 test('§8 points to every section where data goes to providers or the team: 3, 4 (Telegram), 5 and 7 — and §4 really mentions the Telegram forwarding', () => {
@@ -143,4 +145,27 @@ test('18+ wording (DRAFT, needs owner/legal review): Terms §5 and Privacy §2 s
   // the original is deleted after EVERY attempt now — the old "kept if the sheet fails" sentence must be gone
   assert.doesNotMatch(p2('en'), /original is kept/); assert.doesNotMatch(p2('he'), /המקור נשמר/);
   assert.match(p2('en'), /Remove my character/); assert.match(p2('he'), /הסר את הדמות שלי/);
+});
+
+test('R2 lifecycle numbers (dashboard: characters 90, posters 60, panels 30 days): the promises come from config, characters get "about 100" for lag, and nothing says posters/panels are kept forever', () => {
+  assert.deepEqual([RETENTION.characterObjectDays, RETENTION.posterObjectDays, RETENTION.panelObjectDays], [100, 60, 30], 'defaults = real rules (90→"within about 100" for lag, 60, 30); change them together with the dashboard');
+  assert.ok(RETENTION.characterObjectDays >= RETENTION.characterPointerDays, 'the file promise is never shorter than the pointer');
+  for (const lang of ['he', 'en']) for (const [doc, n] of [['privacy', 2], ['terms', 5]]) {
+    const t = sec(doc, lang, n);
+    assert.match(t, lang === 'he' ? /קובץ גיליון הדמות[^.;]*נמחק אוטומטית תוך כ-100 ימים מרגע ההעלאה/ : /Character Sheet file[^.;]*deleted automatically within about 100 days of the upload/, `${doc}/${lang}`);
+    assert.match(t, lang === 'he' ? /הסר את הדמות שלי/ : /Remove my character/, `${doc}/${lang}`);
+  }
+  for (const doc of ['privacy', 'terms']) for (const lang of ['he', 'en']) {
+    const all = MODAL_DATA[doc][lang].sections.map((s) => s.p).join('\n');
+    assert.doesNotMatch(all, /no automatic deletion|do not currently promise automatic deletion|ללא מחיקה אוטומטית|אין כרגע מחיקה אוטומטית|לא מתחייבים כרגע על מחיקה אוטומטית/i, `${doc}/${lang}: stale "kept forever" wording`);
+  }
+});
+
+test('changing the object retention in config changes the wording: CHARACTER_OBJECT_DAYS=120, POSTER_OBJECT_DAYS=45, PANEL_OBJECT_DAYS=14', () => {
+  const out = execFileSync(process.execPath, ['--input-type=module', '-e',
+    "const m=await import('./constants/modalData.js');const d=m.MODAL_DATA;console.log(JSON.stringify([d.privacy.en.sections[1].p,d.terms.he.sections[4].p,d.privacy.en.sections[0].p,d.privacy.he.sections[0].p]))"],
+  { cwd: new URL('..', import.meta.url).pathname, env: { ...process.env, CHARACTER_OBJECT_DAYS: '120', POSTER_OBJECT_DAYS: '45', PANEL_OBJECT_DAYS: '14' }, encoding: 'utf8' });
+  const [en, he, en1, he1] = JSON.parse(out);
+  assert.match(en, /within about 120 days/); assert.doesNotMatch(en, /about 100 days/); assert.match(he, /כ-120 ימים/);
+  assert.match(en1, /about 45 days after they are created and comic panels about 14 days/); assert.match(he1, /כ-45 ימים[^.]*כ-14 ימים/);
 });
