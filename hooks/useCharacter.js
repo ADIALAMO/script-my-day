@@ -38,6 +38,7 @@ export function useCharacter(gender = 'neutral') {
   const confirmAdult = useCallback(() => store.confirmAdult(), [store]);
   const removeCharacter = useCallback(() => store.remove(), [store]);
   const clearCharacter = useCallback(() => store.clear(), [store]);
+  const dismissCharacterExpired = useCallback(() => store.dismissExpired(), [store]);
   const setStarring = useCallback((v) => store.setStarring(v), [store]);
 
   const heroDescriptor = snap.activeCharacterUrl ? GENDER_DESCRIPTOR[gender] : null;
@@ -52,6 +53,8 @@ export function useCharacter(gender = 'neutral') {
     status: snap.status,
     error: snap.error,
     uploadCharacter,
+    characterExpired: snap.expired,
+    dismissCharacterExpired,
     adultConfirmed: snap.adultConfirmed === true,
     confirmAdult,
     clearCharacter,

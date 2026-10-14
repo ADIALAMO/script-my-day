@@ -188,3 +188,65 @@ test('adult confirmation: the server refusing an upload (403 ADULT_CONFIRMATION_
   const s = st.getState();
   assert.equal(s.adultConfirmed, false); assert.equal(s.status, 'ready'); assert.equal(s.hasCharacter, true); assert.equal(s.error, '');
 });
+
+// ── a character the server no longer has (pointer expired after 90 days / removed elsewhere) ─────────────────────────────────
+const CACHED = 'https://cdn.test/characters/o/old-sheet.jpg';
+const withCached = () => { const st = memStorage(); st.setItem(LS_URL, CACHED); st.setItem(LS_STARRING, '1'); return st; };
+
+test('restore: a positive "no character" answer clears the stored character, the chip state and the starring preference, and raises the expired notice', async () => {
+  const storage = withCached();
+  const st = createCharacterStore({ storage, fetchFn: async () => json(200, { success: true, characterImageUrl: null, adultConfirmed: true }) });
+  await st.restore();
+  const s = st.getState();
+  assert.deepEqual([s.hasCharacter, s.activeCharacterUrl, s.starring, s.expired], [false, null, false, true]);
+  assert.equal(storage.getItem(LS_URL), null); assert.equal(storage.getItem(LS_STARRING), null);
+  st.dismissExpired(); assert.equal(st.getState().expired, false);
+  // a new upload afterwards starts clean
+  const again = createCharacterStore({ storage, fetchFn: async () => json(200, { success: true, characterImageUrl: 'https://cdn.test/n-sheet.jpg', sheetGenerated: true }) });
+  assert.equal((await again.upload('x', true)).ok, true); assert.equal(again.getState().expired, false);
+});
+
+test('restore: NOTHING is cleared when the server is unreachable or answers an error — a network failure never wipes a valid character', async () => {
+  for (const [name, fetchFn] of [
+    ['network error', async () => { throw new Error('offline'); }],
+    ['HTTP 500', async () => json(500, { success: false })],
+    ['HTTP 429', async () => json(429, { message: 'slow down' })],
+    ['invalid JSON', async () => ({ ok: true, status: 200, json: async () => { throw new Error('bad json'); } })],
+    // GET /api/character is fail-soft: with Redis unreadable it answers 200 {characterImageUrl:null} WITHOUT a boolean adultConfirmed — not a real "no character"
+    ['fail-soft null from a server whose Redis failed', async () => json(200, { success: true, characterImageUrl: null })],
+  ]) {
+    const storage = withCached(); const st = createCharacterStore({ storage, fetchFn });
+    await st.restore();
+    const s = st.getState();
+    assert.deepEqual([s.hasCharacter, s.starring, s.expired], [true, true, false], name);
+    assert.equal(storage.getItem(LS_URL), CACHED, name);
+  }
+});
+
+test('restore: a character that was never known on this device raises no notice', async () => {
+  const st = createCharacterStore({ storage: memStorage(), fetchFn: async () => json(200, { success: true, characterImageUrl: null, adultConfirmed: true }) });
+  await st.restore(); assert.equal(st.getState().expired, false);
+});
+
+test('race: a "null" answer that arrives while an upload is running, or after one finished, never removes the new character', async () => {
+  // (a) answer arrives DURING the upload
+  let releaseUpload; const hold = new Promise((r) => { releaseUpload = r; });
+  const fetchA = async (url) => {
+    if (url === '/api/upload-character') { await hold; return json(200, { success: true, characterImageUrl: 'https://cdn.test/new-sheet.jpg', sheetGenerated: true }); }
+    return json(200, { success: true, characterImageUrl: null, adultConfirmed: true });
+  };
+  const a = createCharacterStore({ storage: withCached(), fetchFn: fetchA });
+  const up = a.upload('x', true);           // phase: loading
+  await a.restore();                        // null answer while the upload runs
+  releaseUpload(); await up;
+  assert.equal(a.getState().url, 'https://cdn.test/new-sheet.jpg'); assert.equal(a.getState().expired, false);
+  // (b) restore started BEFORE the upload, answered AFTER it finished (stale)
+  let releaseGet; const holdGet = new Promise((r) => { releaseGet = r; });
+  const fetchB = async (url) => (url === '/api/upload-character'
+    ? json(200, { success: true, characterImageUrl: 'https://cdn.test/new2-sheet.jpg', sheetGenerated: true })
+    : (await holdGet, json(200, { success: true, characterImageUrl: null, adultConfirmed: true })));
+  const b = createCharacterStore({ storage: withCached(), fetchFn: fetchB });
+  const pending = b.restore();
+  await b.upload('x', true); releaseGet(); await pending;
+  assert.equal(b.getState().url, 'https://cdn.test/new2-sheet.jpg'); assert.equal(b.getState().expired, false);
+});
