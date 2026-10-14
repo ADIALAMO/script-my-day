@@ -7,6 +7,8 @@ import { isCapacitorNative } from '../utils/platform.js';
 import ReportButton from './ReportButton.jsx';
 import { isReported } from '../utils/reported-store.js';
 import { REPORT_COPY, reportText } from '../constants/report-copy.js';
+import { isImageExpired, isStoredObjectUrl } from '../utils/expired-image.js';
+import { expiredText } from '../constants/expired-copy.js';
 
 function PosterRenderer({
   posterUrl,
@@ -48,6 +50,24 @@ function PosterRenderer({
   React.useEffect(() => { setPosterReported(false); }, [posterUrl]);
   const posterHidden = posterReported || isReported(posterUrl);
 
+  // A stored poster the lifecycle rules already deleted: after an <img> error the proxy is asked ONCE; only a 404 shows the neutral "deleted automatically"
+  // tile (utils/expired-image.js). 'checking' is an empty dark tile — the message never flashes while a normal image is still loading or when the failure is
+  // anything else (offline, 5xx …), which keeps today's behaviour.
+  const [expiry, setExpiry] = React.useState('idle');   // 'idle' | 'checking' | 'expired' | 'other'
+  const askedUrlRef = React.useRef(null);
+  const currentUrlRef = React.useRef(posterUrl);
+  currentUrlRef.current = posterUrl;
+  React.useEffect(() => { setExpiry('idle'); askedUrlRef.current = null; }, [posterUrl]);
+  const checkExpiry = React.useCallback(() => {
+    const url = posterUrl;
+    if (!isStoredObjectUrl(url) || askedUrlRef.current === url) return;
+    askedUrlRef.current = url;
+    setExpiry('checking');
+    isImageExpired(url).then((gone) => { if (currentUrlRef.current === url) setExpiry(gone ? 'expired' : 'other'); });
+  }, [posterUrl]);
+  const posterExpired = expiry === 'expired';
+  const posterChecking = expiry === 'checking';
+
   const [identityNoticeDismissed, setIdentityNoticeDismissed] = React.useState(false);
   React.useEffect(() => { setIdentityNoticeDismissed(false); }, [identityNotice]);
 
@@ -63,7 +83,12 @@ function PosterRenderer({
             <span className="text-white/40 text-xs font-bold tracking-wide">{reportText(REPORT_COPY.hiddenTile, isHebrew ? 'he' : 'en')}</span>
           </div>
         )}
-        {posterUrl && !posterHidden && (
+        {posterUrl && !posterHidden && (posterExpired || posterChecking) && (
+          <div dir={isHebrew ? 'rtl' : 'ltr'} className="absolute inset-0 flex items-center justify-center bg-[#06040a] px-8 text-center z-[30]" {...(posterExpired ? { role: 'status' } : { 'aria-hidden': true })}>
+            {posterExpired && <span className="text-white/55 text-xs font-bold leading-relaxed tracking-wide">{expiredText(isHebrew ? 'he' : 'en')}</span>}
+          </div>
+        )}
+        {posterUrl && !posterHidden && !posterExpired && !posterChecking && (
           <img
             src={posterUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(posterUrl)}` : posterUrl}
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${posterLoading ? 'opacity-0' : 'opacity-100'}`}
@@ -108,7 +133,7 @@ function PosterRenderer({
                 });
               }, 50);
             }}
-            onError={() => setPosterLoading(false)}
+            onError={() => { setPosterLoading(false); checkExpiry(); }}
             alt="Movie Poster"
           />
         )}
@@ -182,7 +207,7 @@ function PosterRenderer({
         )}
 
         {/* 4. שכבת הטיפוגרפיה (Overlay) - רק כשיש תמונה */}
-        {!posterLoading && posterUrl && !posterError && (
+        {!posterLoading && posterUrl && !posterError && !posterExpired && !posterChecking && (
           <>
             {/* כותרת עליונה — unchanged, still floats over the artwork with a
                 readability scrim. Credits moved OUT of this padded overlay into
@@ -253,7 +278,7 @@ function PosterRenderer({
       )}
 
       {/* פעולת הייצוא — דסקטופ: הורדה ראשית + שיתוף משני · מובייל: שיתוף נייטיב בלבד */}
-      {!posterLoading && posterUrl && !posterHidden && (
+      {!posterLoading && posterUrl && !posterHidden && !posterExpired && (
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
