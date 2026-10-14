@@ -7,6 +7,8 @@ import { reelBreadcrumb } from '../utils/reel-diagnostics.js'; // TEMP DIAGNOSTI
 import ReportButton from './ReportButton.jsx';
 import { isReported } from '../utils/reported-store.js';
 import { REPORT_COPY, reportText } from '../constants/report-copy.js';
+import { isImageExpired } from '../utils/expired-image.js';
+import { expiredText } from '../constants/expired-copy.js';
 
 // ── Canvas dimensions ────────────────────────────────────────────────────────
 const CANVAS_W      = 720;
@@ -969,7 +971,13 @@ export default function MovieReelModal({
     } catch (err) {
       console.error('Reel generation failed:', err);
       if (!cancelledRef.current) {
-        setErrorMsg(isHebrew ? `שגיאה: ${err.message}` : `Failed: ${err.message}`);
+        // Every panel failed to load: if the storage lifecycle deleted them (a confirmed 404 from the proxy) say so, instead of the raw decode error.
+        let expiredMsg = null;
+        if (/All panel images failed to decode/.test(String(err?.message))) {
+          const firstUrl = (usablePanelData && usablePanelData[0]?.url) || (panelImages && Object.values(panelImages).find((p) => p?.url)?.url);
+          if (await isImageExpired(firstUrl)) expiredMsg = expiredText(isHebrew ? 'he' : 'en');
+        }
+        setErrorMsg(expiredMsg || (isHebrew ? `שגיאה: ${err.message}` : `Failed: ${err.message}`));
         setPhase('error');
         reelBreadcrumb('reel-error', { message: err?.message || '?', tier: tier.key }); // TEMP DIAGNOSTIC (reel-crash)
       }

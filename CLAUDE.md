@@ -254,6 +254,8 @@ Other Play-compliance rules: `/api/og` takes a referral **code** only (names com
 is 18+ (`adult:true` required like `consent:true`; self-declaration, never "age verification"); deletion requests record the session
 user id and are verified before anything is deleted (still processed manually).
 
+**Expired stored images** (`utils/expired-image.js`, `constants/expired-copy.js`): posters / panels are deleted by the R2 lifecycle rules, so a reopened History entry can point at a deleted file. ONLY after an `<img>` error the same-origin `/api/proxy-image` is asked once; **only a 404 = expired** (offline / timeout / 5xx / 429 / 403 / 410 / 200 never say "expired"). Expired poster = neutral tile + message, no share/download; expired panel = neutral tile + message + "new comic" (`onNewComic`); the reel is disabled (`reelUnavailable` in ScriptOutput) and the raw reel decode error is replaced by the message; while the check is pending the tile is blank (no flash). History list thumbnails keep their own genre-icon fallback. The message has no numbers.
+
 ### 5. Bilingual + RTL → skill `bilingual`
 Every user-facing string must exist in **both** `he` and `en`. Components branch on a
 `lang` prop (`lang === 'he' ? … : …`); data files use paired keys (`label: {he, en}`,

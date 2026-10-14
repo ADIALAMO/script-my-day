@@ -15,6 +15,7 @@ import { shareBlob } from '../utils/export-image.js';
 import { Toast } from '@capacitor/toast';
 import { HEBREW_RANGE } from '../constants/language.js';
 import PosterRenderer from './PosterRenderer';
+import { expiredText } from '../constants/expired-copy.js';
 import CinematicLoader from './CinematicLoader';
 import { useTypewriter } from '../hooks/useTypewriter.js';
 import GoToScriptButton from './GoToScriptButton.jsx';
@@ -337,6 +338,11 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showReelModal,  setShowReelModal]  = useState(false);
+  // Panels the storage lifecycle already deleted (StoryboardView reports them after a confirmed 404): the reel is not offered for such a comic.
+  const [expiredPanels, setExpiredPanels] = useState(() => new Set());
+  useEffect(() => { setExpiredPanels(new Set()); }, [storyboardPanels]);
+  const onPanelExpired = useCallback((idx) => setExpiredPanels((p) => (p.has(idx) ? p : new Set(p).add(idx))), []);
+  const reelUnavailable = expiredPanels.size > 0;
   const [isCopied,       setIsCopied]       = useState(false);
   const [isDownloaded,   setIsDownloaded]   = useState(false);
 
@@ -1081,6 +1087,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               onRetryFrame={retryFrame}
               onGenerateMissing={generateMissingFrames}
               onNewComic={startNewComic}
+              onPanelExpired={onPanelExpired}
               missingCount={missingCount}
               sessionExpired={sessionExpired}
               onRetryRateLimited={retryRateLimitedPanel}
@@ -1105,9 +1112,12 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
             <button
               data-tour="reel-cta"
               onClick={() => {
+                if (reelUnavailable) return;   // an expired panel: the reel would fail — the message below says why
                 reelBreadcrumb('tap', { panelCount: storyboardPanels.length }); // TEMP DIAGNOSTIC (reel-crash)
                 setShowReelModal(true);
               }}
+              aria-disabled={reelUnavailable || undefined}
+              style={reelUnavailable ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
               className="group w-full relative overflow-hidden flex items-center justify-center gap-3 py-4 px-6 rounded-[1.75rem] border border-[#d4a373]/30 bg-[#030712]/80 hover:border-[#d4a373]/70 hover:bg-[#d4a373]/8 transition-all duration-500"
             >
               {/* Sweep shimmer */}
@@ -1136,6 +1146,9 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
                 ))}
               </div>
             </button>
+            {reelUnavailable && (
+              <p role="status" dir={uiHebrew ? 'rtl' : 'ltr'} className="mt-2 px-4 text-center text-white/55 text-[11px] font-bold leading-relaxed">{expiredText(uiHebrew ? 'he' : 'en')}</p>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

@@ -8,8 +8,10 @@ import ReportButton from './ReportButton.jsx';
 import { COMIC_COPY, comicText } from '../constants/comic-copy.js';
 import { isReported } from '../utils/reported-store.js';
 import { REPORT_COPY, reportText } from '../constants/report-copy.js';
+import { isImageExpired, isStoredObjectUrl } from '../utils/expired-image.js';
+import { expiredText } from '../constants/expired-copy.js';
 
-export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade, onRegenerate, onRetryRateLimited, onRetryFrame, onGenerateMissing, onNewComic, missingCount = 0, sessionExpired = false, regensLeft = 0, notice = '' }) {
+export default function StoryboardView({ panels, lang, panelImages, onClose, unlockedPanels = Infinity, onUpgrade, onRegenerate, onRetryRateLimited, onRetryFrame, onGenerateMissing, onNewComic, onPanelExpired, missingCount = 0, sessionExpired = false, regensLeft = 0, notice = '' }) {
   const isHebrew = lang === 'he';
   const native = useNative();   // Android app: locked panels say "Locked", never "Pro only" / "Upgrade"
   const [copiedIndex, setCopiedIndex] = useState(null);
@@ -19,6 +21,20 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
   // Panels the user reported in this session (ReportButton). isReported() also covers reports from earlier sessions (stored URLs).
   const [reportedIdx, setReportedIdx] = useState(() => new Set());
   const [brokenIdx, setBrokenIdx] = useState(() => new Set());
+  // A panel image that failed to load is checked ONCE against the proxy (utils/expired-image.js): only a 404 = deleted by the storage lifecycle ('expired',
+  // neutral tile + message). While the answer is pending the tile is EMPTY (no "Frame Lost" flash); any other answer falls back to today's 'error' tile.
+  const [expiryByIdx, setExpiryByIdx] = useState(() => ({}));   // idx → 'checking' | 'expired' | 'other'
+  const askedExpiryRef = useRef(new Set());                     // `${idx}|${url}` already asked
+  const checkPanelExpiry = (idx, url) => {
+    const key = `${idx}|${url}`;
+    if (!isStoredObjectUrl(url) || askedExpiryRef.current.has(key)) return;
+    askedExpiryRef.current.add(key);
+    setExpiryByIdx((p) => ({ ...p, [idx]: 'checking' }));
+    isImageExpired(url).then((gone) => {
+      setExpiryByIdx((p) => ({ ...p, [idx]: gone ? 'expired' : 'other' }));
+      if (gone) onPanelExpired?.(idx);
+    });
+  };
   const isPanelHidden = (idx) => reportedIdx.has(idx) || isReported(panelImages?.[idx]?.url);
   // Guards a single panel's exportFrame against an overlapping second tap — a ref,
   // not `disabled` (see PosterRenderer.jsx's note on why `disabled` can only safely
@@ -142,7 +158,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
   const shareableIdxs = panels.reduce((acc, p, idx) => {
     const locked = p.isLocked === true || idx >= unlockedPanels;
     const st = panelImages?.[idx];
-    if (!locked && st && !st.loading && st.url && !isPanelHidden(idx)) acc.push(idx);
+    if (!locked && st && !st.loading && st.url && !isPanelHidden(idx) && expiryByIdx[idx] !== 'expired' && expiryByIdx[idx] !== 'checking') acc.push(idx);
     return acc;
   }, []);
 
@@ -173,6 +189,8 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
     const s = panelImages?.[idx];
     if (!s) return 'pending';
     if (isPanelHidden(idx)) return 'reported';
+    if (expiryByIdx[idx] === 'expired') return 'expired';
+    if (expiryByIdx[idx] === 'checking') return 'checking';
     if (brokenIdx.has(idx)) return 'error';
     if (s.loading) return 'loading';
     if (s.url) return 'loaded';
@@ -390,10 +408,32 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                       >
                         <img
                           src={imgUrl}
-                          onError={() => setBrokenIdx((prev) => (prev.has(idx) ? prev : new Set(prev).add(idx)))}   // e.g. the object was quarantined after a report → the "Frame lost" tile, never a broken-image icon
+                          onError={() => { setBrokenIdx((prev) => (prev.has(idx) ? prev : new Set(prev).add(idx))); checkPanelExpiry(idx, imgUrl); }}   // e.g. the object was quarantined after a report → the "Frame lost" tile, never a broken-image icon
                           alt={`Panel ${panel.panel}`}
                           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                         />
+                      </motion.div>
+                    )}
+
+                    {imgState === 'checking' && (
+                      <div key="expiry-checking" className="absolute inset-0 bg-[#06040a]" aria-hidden="true" />
+                    )}
+
+                    {imgState === 'expired' && (
+                      <motion.div
+                        key="expired-state"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        dir={isHebrew ? 'rtl' : 'ltr'}
+                        className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#06040a] px-5 text-center"
+                        role="status"
+                      >
+                        <span className="text-white/55 text-[11px] font-bold leading-relaxed tracking-wide">{expiredText(isHebrew ? 'he' : 'en')}</span>
+                        {onNewComic && (
+                          <button type="button" onClick={onNewComic} className="min-h-[44px] px-4 py-2 rounded-xl bg-[#d4a373]/15 border border-[#d4a373]/50 text-[#d4a373] text-[10px] font-black uppercase tracking-wider">
+                            {comicText(COMIC_COPY.newComic, lang)}
+                          </button>
+                        )}
                       </motion.div>
                     )}
 
