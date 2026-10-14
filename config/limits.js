@@ -188,14 +188,16 @@ export const GUEST_RETENTION = {
 // ─── Retention periods that the CODE enforces (the privacy text is built from these) ───
 //   characterPointerDays: Redis `character:<id>` (links to the character sheet) — set at upload, NOT refreshed on use.
 //   deletionLogDays:      Redis `deletion-request:*` audit record of a data-deletion request.
-//   characterObjectDays:  the number the PRIVACY TEXT promises for the character sheet FILE in R2 (`characters/` only): "within about N days of upload".
-//                         NOT enforced by code: it is a Cloudflare R2 lifecycle rule on the `characters/` prefix, set by the owner in the dashboard to
-//                         100 days (= pointer 90 + 10) — so 110 = rule + 10 days of margin for the rule's asynchronous execution. Keep it >= rule + margin and
-//                         > characterPointerDays (the pointer never refreshes, so a live pointer's object is never deleted first). Posters / panels have no
-//                         automatic deletion; the raw selfie is deleted by code right after every upload attempt.
+//   characterObjectDays / posterObjectDays / panelObjectDays: the numbers the PRIVACY TEXT promises for the FILES in R2. NOT enforced by code: they mirror the
+//                         Cloudflare R2 lifecycle rules the owner set in the dashboard — `characters/` 90 days, `posters/` 60 days, `panels/` 30 days (rules
+//                         count from object creation and run asynchronously). Characters are promised "within about 100 days" to cover that lag (and the
+//                         seconds between the sheet being stored and its pointer being written); posters / panels "about 60 / 30 days". If a dashboard
+//                         rule changes, change the matching number here — the text and its test follow. The raw selfie is deleted by code right after every upload attempt.
 export const RETENTION = {
   characterPointerDays: envInt('CHARACTER_POINTER_DAYS', 90),
-  characterObjectDays:  envInt('CHARACTER_OBJECT_DAYS', 110),
+  characterObjectDays:  envInt('CHARACTER_OBJECT_DAYS', 100),   // R2 rule 90 + lag margin
+  posterObjectDays:     envInt('POSTER_OBJECT_DAYS', 60),       // R2 rule `posters/` 60 days
+  panelObjectDays:      envInt('PANEL_OBJECT_DAYS', 30),        // R2 rule `panels/` 30 days
   deletionLogDays:      envInt('DELETION_LOG_DAYS', 30),
   referralCookieDays:   envInt('REFERRAL_COOKIE_DAYS', 30),   // ls_ref cookie set by /i/<code>
 };
