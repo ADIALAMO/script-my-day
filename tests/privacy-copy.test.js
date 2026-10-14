@@ -28,7 +28,7 @@ test('the provider-policy review note stays next to the privacy text, and no own
 import { execFileSync } from 'node:child_process';
 import { RETENTION, GUEST_RETENTION, COMIC } from '../config/limits.js';
 
-const enforced = () => new Set([RETENTION.characterPointerDays, RETENTION.deletionLogDays, RETENTION.referralCookieDays, GUEST_RETENTION.ipDays, Math.round(COMIC.sessionTtlSec / 3600)]);
+const enforced = () => new Set([RETENTION.characterPointerDays, RETENTION.characterObjectDays, RETENTION.deletionLogDays, RETENTION.referralCookieDays, GUEST_RETENTION.ipDays, Math.round(COMIC.sessionTtlSec / 3600)]);
 const UNIT = /(\d+)\s*(?:days?|hours?|ימים|יום|שעות)/gi;
 
 test('every "N days/hours" in the privacy and terms text is a retention value that exists in config/limits.js', () => {
@@ -38,13 +38,14 @@ test('every "N days/hours" in the privacy and terms text is a retention value th
   for (const n of found) assert.ok(enforced().has(n), `privacy/terms state a retention of ${n} that config/limits.js does not enforce (allowed: ${[...enforced()].join(', ')})`);
 });
 
-test('the face-photo sections state the pointer retention from config, say the original is deleted, and give R2 NO invented period', () => {
+test('the face-photo sections state the pointer retention and the character-file retention from config, say the original is deleted, and promise NO deletion period for posters/panels', () => {
   for (const lang of ['he', 'en']) {
     const s2 = MODAL_DATA.privacy[lang].sections.find((s) => /^2\./.test(s.h)).p;
     const t5 = MODAL_DATA.terms[lang].sections.find((s) => /^5\./.test(s.h)).p;
     for (const s of [s2, t5]) {
       assert.ok(s.includes(String(RETENTION.characterPointerDays)), `${lang}: pointer days`);
-      assert.deepEqual([...s.matchAll(UNIT)].map((m) => Number(m[1])), [RETENTION.characterPointerDays], `${lang}: the only period named is the Redis pointer`);
+      assert.ok(s.includes(String(RETENTION.characterObjectDays)), `${lang}: character file days`);
+      assert.deepEqual([...s.matchAll(UNIT)].map((m) => Number(m[1])).sort((a, b) => a - b), [RETENTION.characterPointerDays, RETENTION.characterObjectDays], `${lang}: the only periods named are the Redis pointer and the character file (R2 lifecycle rule + margin)`);
       assert.match(s, lang === 'he' ? /המקורית נמחקת/ : /original (face )?photo is deleted/);
       assert.match(s, lang === 'he' ? /אין(?: כרגע)? מחיקה אוטומטית|ללא מחיקה אוטומטית/ : /no automatic deletion/);
       assert.match(s, lang === 'he' ? /ידנית/ : /manually/);
@@ -143,4 +144,25 @@ test('18+ wording (DRAFT, needs owner/legal review): Terms §5 and Privacy §2 s
   // the original is deleted after EVERY attempt now — the old "kept if the sheet fails" sentence must be gone
   assert.doesNotMatch(p2('en'), /original is kept/); assert.doesNotMatch(p2('he'), /המקור נשמר/);
   assert.match(p2('en'), /Remove my character/); assert.match(p2('he'), /הסר את הדמות שלי/);
+});
+
+test('character file retention (R2 lifecycle rule 100 days + margin): promise is longer than the pointer, comes from config, and is limited to the character sheet', () => {
+  assert.ok(RETENTION.characterObjectDays > RETENTION.characterPointerDays, 'a live pointer must never outlive the promise window');
+  assert.equal(RETENTION.characterObjectDays, 110, 'default = rule (100) + 10 days margin; change it together with the dashboard rule');
+  for (const lang of ['he', 'en']) for (const [doc, n] of [['privacy', 2], ['terms', 5]]) {
+    const t = sec(doc, lang, n);
+    assert.match(t, lang === 'he' ? /קובץ גיליון הדמות[^.;]*נמחק אוטומטית תוך כ-110 ימים מרגע ההעלאה/ : /Character Sheet file[^.;]*deleted automatically within about 110 days of the upload/, `${doc}/${lang}`);
+    assert.match(t, lang === 'he' ? /לפוסטרים ולפאנלים אין כרגע מחיקה אוטומטית/ : /no automatic deletion of posters and panels/, `${doc}/${lang}: posters/panels unchanged`);
+    assert.match(t, lang === 'he' ? /הסר את הדמות שלי/ : /Remove my character/, `${doc}/${lang}`);
+  }
+  // §1 still says posters / panels have no promised automatic deletion
+  assert.match(sec('privacy', 'en', 1), /We do not currently promise automatic deletion of them/);
+});
+
+test('changing CHARACTER_OBJECT_DAYS changes the wording (nothing hard-coded): 120', () => {
+  const out = execFileSync(process.execPath, ['--input-type=module', '-e',
+    "const m=await import('./constants/modalData.js');const d=m.MODAL_DATA;console.log(JSON.stringify([d.privacy.en.sections[1].p,d.terms.he.sections[4].p]))"],
+  { cwd: new URL('..', import.meta.url).pathname, env: { ...process.env, CHARACTER_OBJECT_DAYS: '120' }, encoding: 'utf8' });
+  const [en, he] = JSON.parse(out);
+  assert.match(en, /within about 120 days/); assert.doesNotMatch(en, /110 days/); assert.match(he, /כ-120 ימים/);
 });

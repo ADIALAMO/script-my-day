@@ -188,10 +188,14 @@ export const GUEST_RETENTION = {
 // ─── Retention periods that the CODE enforces (the privacy text is built from these) ───
 //   characterPointerDays: Redis `character:<id>` (links to the character sheet) — set at upload, NOT refreshed on use.
 //   deletionLogDays:      Redis `deletion-request:*` audit record of a data-deletion request.
-// R2 objects have NO enforced retention in code (only the raw selfie is deleted, right after the sheet is created);
-// any bucket lifecycle rule is configured in Cloudflare, outside the code — see docs-private/data-handling-report.md.
+//   characterObjectDays:  the number the PRIVACY TEXT promises for the character sheet FILE in R2 (`characters/` only): "within about N days of upload".
+//                         NOT enforced by code: it is a Cloudflare R2 lifecycle rule on the `characters/` prefix, set by the owner in the dashboard to
+//                         100 days (= pointer 90 + 10) — so 110 = rule + 10 days of margin for the rule's asynchronous execution. Keep it >= rule + margin and
+//                         > characterPointerDays (the pointer never refreshes, so a live pointer's object is never deleted first). Posters / panels have no
+//                         automatic deletion; the raw selfie is deleted by code right after every upload attempt.
 export const RETENTION = {
   characterPointerDays: envInt('CHARACTER_POINTER_DAYS', 90),
+  characterObjectDays:  envInt('CHARACTER_OBJECT_DAYS', 110),
   deletionLogDays:      envInt('DELETION_LOG_DAYS', 30),
   referralCookieDays:   envInt('REFERRAL_COOKIE_DAYS', 30),   // ls_ref cookie set by /i/<code>
 };
