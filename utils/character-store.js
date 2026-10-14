@@ -23,7 +23,7 @@ export function createCharacterStore({ storage = null, fetchFn = null, getFetch 
   const doFetch = (...a) => (fetchFn || getFetch?.() || globalThis.fetch)(...a);
 
   let seq = 0;   // bumped by every local mutation (upload success / remove / clear); a restore that started earlier is discarded
-  let state = { url: '', phase: 'idle', error: '', starring: false, adultConfirmed: null };   // adultConfirmed: null = not known yet (treated like false), from the SERVER only — never cached on the device
+  let state = { url: '', phase: 'idle', error: '', starring: false, adultConfirmed: null, expired: false };   // adultConfirmed: null = not known yet (treated like false), from the SERVER only — never cached on the device
   const listeners = new Set();
   const view = () => ({
     ...state,
@@ -62,7 +62,15 @@ export function createCharacterStore({ storage = null, fetchFn = null, getFetch 
         if (typeof d?.adultConfirmed === 'boolean' && !(state.adultConfirmed === true && !d.adultConfirmed)) commit({ adultConfirmed: d.adultConfirmed });
         if (d?.characterImageUrl) {
           set(LS_URL, d.characterImageUrl); defaultStarringOnIfUnset();
-          commit({ url: d.characterImageUrl, phase: 'idle', error: '', starring: get(LS_STARRING) === '1' });
+          commit({ url: d.characterImageUrl, phase: 'idle', error: '', starring: get(LS_STARRING) === '1', expired: false });
+        } else if (d?.success === true && d?.characterImageUrl === null && typeof d.adultConfirmed === 'boolean' && state.url && state.phase !== 'loading') {
+          // The server says "no character": the pointer expired (90 days after upload, never refreshed) or was removed elsewhere. Forget it HERE so the
+          // chip / Star toggle disappear and the user is told. Only on a POSITIVE answer: GET /api/character is fail-soft and also answers
+          // {characterImageUrl:null} when Redis is unreadable — in that case it carries no boolean `adultConfirmed` (the same request could not read Redis), so a
+          // valid character is never wiped by an outage. Never while an upload is running; a restore that started before an upload/remove was discarded above (seq).
+          seq += 1;
+          del(LS_URL); del(LS_STARRING);
+          commit({ url: '', phase: 'idle', error: '', starring: false, expired: true });
         }
       } catch { /* offline — the cached value (if any) stands */ }
     },
@@ -82,7 +90,7 @@ export function createCharacterStore({ storage = null, fetchFn = null, getFetch 
           seq += 1;
           set(LS_URL, d.characterImageUrl);
           persistStarring(true);   // a new character is an explicit opt-in: the button is ON right away, whatever an earlier choice was
-          commit({ url: d.characterImageUrl, phase: 'idle', error: '', starring: true });
+          commit({ url: d.characterImageUrl, phase: 'idle', error: '', starring: true, expired: false });
           return { ok: true, characterImageUrl: d.characterImageUrl };
         }
         commit({ phase: 'error', error: d.code || 'SERVER_ERROR' });
@@ -120,11 +128,14 @@ export function createCharacterStore({ storage = null, fetchFn = null, getFetch 
       } catch { return { ok: false, code: 'NETWORK_OFFLINE' }; }
     },
 
+    /** the user has read the "character expired" notice */
+    dismissExpired() { commit({ expired: false }); },
+
     /** forget the character on this client only (the server is not touched); the starring preference is forgotten with it */
     clear() {
       seq += 1;
       del(LS_URL); del(LS_STARRING);
-      commit({ url: '', phase: 'idle', error: '', starring: false });
+      commit({ url: '', phase: 'idle', error: '', starring: false, expired: false });
     },
   };
 }

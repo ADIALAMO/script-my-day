@@ -130,7 +130,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
   // ── Identity Track (character consistency) ──────────────────────────────────
   const {
     characterImageUrl, hasCharacter, activeCharacterUrl, heroDescriptor, starring, setStarring,
-    status: characterStatus, uploadCharacter, clearCharacter, removeCharacter, adultConfirmed, confirmAdult,
+    status: characterStatus, uploadCharacter, clearCharacter, removeCharacter, adultConfirmed, confirmAdult, characterExpired, dismissCharacterExpired,
   } = useCharacter(gender);
   const [showCharacterModal, setShowCharacterModal] = useState(false);
 
@@ -832,6 +832,13 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
             </div>
           )}
 
+          {/* The server no longer has this user's saved character (expired / removed elsewhere): said once, with the way forward. */}
+          {characterExpired && !hasCharacter && (
+            <div role="status" className="mx-auto mb-2 max-w-md flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/[0.04] border border-white/10 text-gray-300 text-[11px] leading-relaxed">
+              <span className="flex-1">{uiHebrew ? 'הדמות השמורה שלך אינה זמינה יותר. אפשר להעלות תמונה וליצור אותה מחדש.' : 'Your saved character is no longer available. You can upload a photo to create it again.'}</span>
+              <button onClick={dismissCharacterExpired} aria-label={uiHebrew ? 'סגור הודעה' : 'Dismiss'} className="shrink-0 w-11 h-11 flex items-center justify-center text-gray-500 hover:text-white"><X size={14} /></button>
+            </div>
+          )}
           {/* ── CHARACTER CHIP — governs both poster & comic (Identity Track) ── */}
           <div data-tour="star" className="flex items-center justify-center pb-1">
             {hasCharacter ? (
