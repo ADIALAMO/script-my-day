@@ -4,7 +4,7 @@
  * One-time character setup for the identity feature. Two-stage "Character Sheet"
  * pipeline that locks both identity AND style for downstream comic/poster panels:
  *
- *   1. Auth + tier gate (paid-only — no point storing biometrics we won't serve)
+ *   1. Auth + tier gate (paid-only — no point storing biometrics we won't serve), then the account's stored 18+ confirmation (403 ADULT_CONFIRMATION_REQUIRED)
  *   2. Validate the selfie: a real JPEG / PNG / WebP by its own BYTES (SVG, GIF, anything else is refused)
  *   3. Reserve the paid generation (per-user sheet quota + global identity budget)
  *   4. 🛡️ FULL image-safety check (lib/image-check.js checkImage: Nemotron + Gemini second opinion) on the exact bytes that will be stored — fail-closed
@@ -32,6 +32,7 @@ import { buildCharacterKeys, objectKeySecretConfigured, sniffImage, decodeDataUr
 import { RETENTION, SELFIE_MAX_BYTES } from '../../config/limits.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 import { checkImage } from '../../lib/image-check.js';
+import { readAdultConfirmation } from '../../lib/adult-confirmation.js';
 import { screenApparentMinor } from '../../lib/minor-screen.js';
 import { ContentRefusalError } from '../../lib/content-safety.js';
 import { deleteRawSelfie, deletePreviousCharacter } from '../../lib/character-store.js';
@@ -59,19 +60,13 @@ export default async function handler(req, res) {
   let refundOnCrash = false;             // true from the reservation until the paid sheet call has returned: an unexpected crash gives the quota back
   try {
     const isAdmin = isAdminRequest(req);
-    const { selfieBase64, consent, adult } = req.body || {};
+    const { selfieBase64, consent } = req.body || {};
 
     // (0) Biometric consent — mandatory before any face is processed/stored.
     // The client gates this in CharacterModal; enforce it server-side too so a
     // face is never persisted without a recorded affirmative consent.
     if (consent !== true) {
       return res.status(400).json({ success: false, code: CODES.CONSENT_REQUIRED });
-    }
-
-    // (0b) "Star Yourself" is 18+ (Terms §5/§7): the explicit adult confirmation is required exactly like the consent. This is an attestation,
-    // NOT age verification — nothing here can check a person's age.
-    if (adult !== true) {
-      return res.status(400).json({ success: false, code: CODES.ADULT_REQUIRED });
     }
 
     // (1) Tier gate — identity requires at least the free lifetime allowance (anonymous = 0).
@@ -83,6 +78,16 @@ export default async function handler(req, res) {
       tier = ctx.tier;
       if (limitFor(ctx.tier, 'identity') === 0) {
         return res.status(403).json({ success: false, code: CODES.NEEDS_PRO });
+      }
+
+      // (1b) "Star Yourself" is 18+: the ACCOUNT must have confirmed it (user:adult:<userId>, lib/adult-confirmation.js) — the client state alone
+      // is not trusted. Checked before any quota, storage or paid call. Redis cannot answer → fail CLOSED (a face feature, like the identity quota).
+      // A self-declaration, NOT age verification; the apparent-minor screen below is a separate layer and unchanged.
+      let adult;
+      try { adult = await readAdultConfirmation(ctx.userId); }
+      catch (e) { console.error('❌ upload-character: adult confirmation unreadable —', e.message); return res.status(503).json({ success: false, code: CODES.SERVER_ERROR }); }
+      if (!adult.confirmed) {
+        return res.status(403).json({ success: false, code: CODES.ADULT_CONFIRMATION_REQUIRED });
       }
 
       // Cost guard: don't burn a (paid) Character Sheet generation if the user has no

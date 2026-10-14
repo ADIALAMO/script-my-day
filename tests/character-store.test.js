@@ -137,3 +137,54 @@ test('removal that fails on the server keeps the character (nothing is forgotten
   const r = await st2.remove();
   assert.equal(r.ok, false); assert.equal(st2.getState().hasCharacter, true); assert.equal(storage.getItem(LS_STARRING), '1');
 });
+
+// ── 18+ confirmation (asked once per ACCOUNT; the server is the authority) ───────────────────────────────────────────────────
+test('adult confirmation: unknown until the server says; restore reads it; confirmAdult flips it; it is never cached on the device', async () => {
+  const storage = memStorage(); let confirmed = false; const calls = [];
+  const fetchFn = async (url, opts = {}) => {
+    calls.push(`${opts.method || 'GET'} ${url}`);
+    if (url === '/api/adult-confirmation') { confirmed = true; return json(200, { success: true, adultConfirmed: true }); }
+    return json(200, { success: true, characterImageUrl: 'https://cdn.test/characters/o/1-sheet.jpg', adultConfirmed: confirmed });
+  };
+  const st = createCharacterStore({ storage, fetchFn });
+  assert.equal(st.getState().adultConfirmed, null);
+  await st.restore();
+  assert.equal(st.getState().adultConfirmed, false, 'an existing user with a character but no record is asked');
+  assert.equal(st.getState().hasCharacter, true, '…and keeps the character');
+  assert.deepEqual(await st.confirmAdult(), { ok: true });
+  assert.equal(st.getState().adultConfirmed, true);
+  assert.ok(![...storage._m.keys()].some((k) => /adult/i.test(k)), 'nothing about it in localStorage');
+  const again = createCharacterStore({ storage, fetchFn });   // a new page load: asked of the server again, not remembered locally
+  assert.equal(again.getState().adultConfirmed, null);
+  await again.restore(); assert.equal(again.getState().adultConfirmed, true);
+  assert.equal(calls.filter((c) => c.includes('adult-confirmation')).length, 1, 'the declaration is sent once');
+});
+
+test('adult confirmation: a stale restore answer never downgrades a confirmation made in the meantime; failures are reported, not hidden', async () => {
+  let release; const hold = new Promise((r) => { release = r; });
+  const fetchFn = async (url) => {
+    if (url === '/api/adult-confirmation') return json(200, { success: true });
+    await hold; return json(200, { success: true, characterImageUrl: null, adultConfirmed: false });   // answer computed BEFORE the confirmation
+  };
+  const st = createCharacterStore({ storage: memStorage(), fetchFn });
+  const pending = st.restore();
+  await st.confirmAdult(); release(); await pending;
+  assert.equal(st.getState().adultConfirmed, true);
+  const anon = createCharacterStore({ storage: memStorage(), fetchFn: async () => json(401, { success: false, code: 'NEEDS_ACCOUNT' }) });
+  assert.deepEqual(await anon.confirmAdult(), { ok: false, code: 'NEEDS_ACCOUNT' });
+  assert.equal(anon.getState().adultConfirmed, null);
+  const off = createCharacterStore({ storage: memStorage(), fetchFn: async () => { throw new Error('offline'); } });
+  assert.deepEqual(await off.confirmAdult(), { ok: false, code: 'NETWORK_OFFLINE' });
+});
+
+test('adult confirmation: the server refusing an upload (403 ADULT_CONFIRMATION_REQUIRED) flips the state back to "ask", is not mistaken for NEEDS_PRO, and keeps the existing character', async () => {
+  const fetchFn = async (url) => (url === '/api/upload-character'
+    ? json(403, { success: false, code: 'ADULT_CONFIRMATION_REQUIRED' })
+    : json(200, { success: true, characterImageUrl: 'https://cdn.test/characters/o/1-sheet.jpg', adultConfirmed: true }));
+  const st = createCharacterStore({ storage: memStorage(), fetchFn });
+  await st.restore(); assert.equal(st.getState().adultConfirmed, true);
+  const r = await st.upload('data:image/png;base64,AAAA', true);
+  assert.deepEqual(r, { ok: false, code: 'ADULT_CONFIRMATION_REQUIRED' });
+  const s = st.getState();
+  assert.equal(s.adultConfirmed, false); assert.equal(s.status, 'ready'); assert.equal(s.hasCharacter, true); assert.equal(s.error, '');
+});

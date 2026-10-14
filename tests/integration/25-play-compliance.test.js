@@ -77,16 +77,17 @@ scenario('P3', 'deletion request records the session user id; a session whose e-
     return { actual: 'verified / mismatch / guest all recorded distinctly' };
   });
 
-scenario('P4', 'Star Yourself is 18+: an upload without the adult confirmation is refused (400 ADULT_REQUIRED) with zero provider calls and nothing stored or charged; with it, the upload works',
-  '400 ADULT_REQUIRED; moderation=0; sheet quota 0; then 200', async () => {
-    const u = await makeUser('p4', 'free');
+scenario('P4', 'Star Yourself is 18+: an upload from an account that has not confirmed is refused (403 ADULT_CONFIRMATION_REQUIRED) with zero provider calls and nothing stored or charged; a client-sent adult:true does not count; after the stored confirmation it works',
+  '403 ADULT_CONFIRMATION_REQUIRED; moderation=0; sheet quota 0; then 200', async () => {
+    const u = await makeUser('p4', 'free', { adult: false });
     const none = await invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true }, cookies: u.cookies, ip: '198.51.100.110' });
-    const falsy = await invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true, adult: 'true' }, cookies: u.cookies, ip: '198.51.100.110' });   // a string is not the boolean
-    for (const r of [none, falsy]) { assert.equal(r.status, 400); assert.equal(r.body.code, 'ADULT_REQUIRED'); }
+    const forged = await invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true, adult: true }, cookies: u.cookies, ip: '198.51.100.110' });   // client state alone is not enough
+    for (const r of [none, forged]) { assert.equal(r.status, 403); assert.equal(r.body.code, 'ADULT_CONFIRMATION_REQUIRED'); }
     assert.deepEqual(providers.counts, {}); assert.equal(providers.s3puts.length, 0);
     assert.equal(fake.num(`usage:sheet:${u.identifier}:2026-10`), 0);
-    assert.match(getMsg('ADULT_REQUIRED', 'en'), /18 and over/); assert.match(getMsg('ADULT_REQUIRED', 'he'), /18/);
-    const ok = await invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true, adult: true }, cookies: u.cookies, ip: '198.51.100.110' });
+    assert.match(getMsg('ADULT_CONFIRMATION_REQUIRED', 'en'), /18 and over/); assert.match(getMsg('ADULT_CONFIRMATION_REQUIRED', 'he'), /18/);
+    fake.set(`user:adult:${u.id}`, JSON.stringify({ at: new Date().toISOString(), v: 1 }));
+    const ok = await invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true }, cookies: u.cookies, ip: '198.51.100.110' });
     assert.equal(ok.status, 200);
-    return { actual: 'refused without adult:true, accepted with it' };
+    return { actual: 'refused until the account has a stored confirmation, then accepted' };
   });

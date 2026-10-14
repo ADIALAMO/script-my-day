@@ -130,7 +130,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
   // ── Identity Track (character consistency) ──────────────────────────────────
   const {
     characterImageUrl, hasCharacter, activeCharacterUrl, heroDescriptor, starring, setStarring,
-    status: characterStatus, uploadCharacter, clearCharacter, removeCharacter,
+    status: characterStatus, uploadCharacter, clearCharacter, removeCharacter, adultConfirmed, confirmAdult,
   } = useCharacter(gender);
   const [showCharacterModal, setShowCharacterModal] = useState(false);
 
@@ -859,6 +859,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               >
                 <Star size={14} className="fill-[#d4a373] text-[#d4a373] transition-transform duration-200 group-hover:scale-110 group-hover:rotate-12" />
                 {uiHebrew ? 'ביים את עצמך בסיפור' : 'Cast yourself in the story'}
+                <span className="px-1.5 py-0.5 rounded-md bg-[#d4a373]/15 border border-[#d4a373]/40 text-[9px] font-black tracking-wider leading-none normal-case">{uiHebrew ? 'מגיל 18' : '18+'}</span>
               </button>
             )}
           </div>
@@ -1156,6 +1157,8 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
         uploadCharacter={uploadCharacter}
         clearCharacter={clearCharacter}
         removeCharacter={removeCharacter}
+        adultConfirmed={adultConfirmed}
+        confirmAdult={confirmAdult}
         gender={gender}
         setGender={setGender}
         onUpgrade={() => onAuthRequired?.('upgrade')}

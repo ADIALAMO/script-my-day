@@ -205,13 +205,14 @@ export async function boot({ env = {}, nodeEnv = 'test', startAt = '2026-10-15T1
    *  admin         → tier admin (stored)
    *  vip           → free in Redis, Pro through PRO_ALLOWLIST (email)
    */
-  async function makeUser(label, kind = 'free') {
+  async function makeUser(label, kind = 'free', { adult = true } = {}) {   // adult: has the account confirmed "I am 18 or older" (Star Yourself)? default yes; pass { adult: false } for a new account
     const id = `${label}-${kind}`;
     const email = kind === 'vip' ? 'vip@test.example' : `${label}@test.example`;
     if (kind === 'paid') await plan.grantPaidPro(id, `cus_${id}`);
     if (kind === 'adminGranted') await plan.setTierByAdmin(id, 'pro', 'boss@test.example');
     if (kind === 'admin') await plan.setTierByAdmin(id, 'admin', 'boss@test.example');
     const s = await sessionFor({ id, email, name: label });
+    if (adult) fake.set(`user:adult:${id}`, JSON.stringify({ at: new Date().toISOString(), v: 1 }));
     seedCharacter(`u:${id}`);   // every test user already "has" the shared test face (generate-poster only accepts the caller's own stored reference)
     return { id, identifier: `u:${id}`, email, kind, ...s };
   }
