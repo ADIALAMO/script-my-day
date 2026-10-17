@@ -1705,6 +1705,9 @@ function HomePage() {
               <p className="text-gray-600 text-[9px] tracking-widest uppercase">
                 &copy; {new Date().getFullYear()} {lang === 'he' ? 'כל הזכויות שמורות' : 'All Rights Reserved'}
               </p>
+              <p className="text-gray-600 text-[9px] mt-1.5">
+                {lang === 'he' ? 'LifeScript מיועדת לבני 18 ומעלה.' : 'LifeScript is intended for adults aged 18 and over.'}
+              </p>
             </div>
 
             {/* כפתורי הניווט שמשתמשים ב-MODAL_DATA החדש */}

@@ -546,6 +546,15 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                           </button>
                         </form>
 
+                        {/* 18+ self-declaration + Terms/Privacy (covers Google AND the email link; nothing is recorded — it is a notice, not age verification) */}
+                        <p className="text-center text-white/35 text-[10px] leading-relaxed mt-3">
+                          {isHe ? (
+                            <>בהמשך אתה מאשר שאתה בן/בת 18 ומעלה ומסכים ל<a href="/terms" target="_blank" rel="noopener noreferrer" className="underline text-white/50 hover:text-white">תנאי השימוש</a> ול<a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline text-white/50 hover:text-white">מדיניות הפרטיות</a></>
+                          ) : (
+                            <>By continuing you confirm you are 18 or older and agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline text-white/50 hover:text-white">Terms</a> and <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline text-white/50 hover:text-white">Privacy Policy</a></>
+                          )}
+                        </p>
+
                         {/* Skip */}
                         <button
                           onClick={onClose}

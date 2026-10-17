@@ -250,6 +250,10 @@ Inside the native shell **nothing may show a price, a subscription, Stripe or an
 drops the billing/payments/upgrade sections and strips pricing sentences; `getMsg()` swaps three messages for neutral ones
 (detected via the Capacitor global, no import). Pro entitlements still work (tier comes from the server). `tests/native-copy.test.js`
 scans all of it. No server-side userAgent check yet (would need an app update: `android.appendUserAgent`).
+**Minimum age is 18 for the WHOLE service** (`chore/minimum-age-18`). Reason, in neutral wording: the AI services we use require adult users, and generated stories may include mature themes (action, horror, romance).
+It is a SELF-DECLARATION, never "age verification": Terms §7 + the Star Yourself Terms section say so, [components/AuthModal.jsx](components/AuthModal.jsx) shows "By continuing you confirm you are 18 or older and agree to the Terms and
+Privacy Policy" (he + en, with links, covers Google and the e-mail link, records nothing), and the home footer carries "LifeScript is intended for adults aged 18 and over." for guests. "Star Yourself" keeps its own one-time per-account
+18+ confirmation + upload checkboxes (above). Never write 13+ / "13 or older" / teens / "all ages" / "family" in user-facing text or the store listing (tests/native-copy.test.js scans for it); never market to minors; never call any of this age verification.
 Other Play-compliance rules: `/api/og` takes a referral **code** only (names come from Redis and pass the blocklist); "Star Yourself"
 is 18+ (`adult:true` required like `consent:true`; self-declaration, never "age verification"); deletion requests record the session
 user id and are verified before anything is deleted (still processed manually).

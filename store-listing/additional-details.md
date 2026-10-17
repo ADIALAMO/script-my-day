@@ -11,13 +11,10 @@ Reasoning: the app's core output — and what a screenshot-browsing user will ju
 - **Privacy Policy URL:** `https://my-life-script.vercel.app/privacy`
 
 ## Target audience & age
-**Recommended: 18+ primary, or at minimum 16+.**
+**Declare 18+ (adults only).** LifeScript's minimum age is 18, in the Terms (§7), in the sign-in notice and in the site footer. Do not select any child or younger-audience target group, and do not enable "appeals to children".
 
-> ⚠️ **Mismatch to resolve:** the Terms of Use (§7) allow users aged **13+** (and "Star Yourself" is **18+ only**). A declared target audience of 16+/18+ is narrower than the Terms. Pick one: declare 13+ (and meet the teen obligations of the AI-content / UGC policies), or raise the Terms minimum age. See `content-rating.md` → "Mismatches to resolve".
-
-Reasoning, not just a guess:
-- The app requires an email/Google sign-in to unlock most functionality, and has a paid subscription — Play's own guidance steers apps with account creation + payments away from a "designed for children" or broad all-ages declaration, since that triggers Google's stricter Families Policy (additional restrictions on ads, data collection, and design that this app hasn't been built against).
-- The core interaction — writing reflective journal entries about your day — isn't inherently child-directed content, and the tone/branding (cinematic, "director," Hollywood aesthetic) reads as general-audience/adult, not kid-focused.
-- There's no content specifically inappropriate for teens, so an "18+" declaration is a *safe ceiling* rather than a strict requirement — if you'd prefer a broader reach, 13+ or 16+ (with the "not designed for children" declaration, sometimes called "Teacher Approved"/general audience track) is defensible too, since nothing in the app is age-restricted content per the Content Rating answers above (no violence, no sexual content, no gambling). The one thing that pushes toward keeping the floor at 16+ rather than lower is the in-app purchase (Pro subscription) combined with account creation — Google applies extra scrutiny to payment flows reachable by younger declared audiences.
-
-**My recommendation if you want one number:** declare **16+** as the primary target age group. It clears the "no children's app" review bar cleanly, doesn't require Families Policy compliance work you haven't done, and doesn't artificially shrink your addressable audience the way an 18+-only declaration would for what is, in practice, a general-audience creative tool.
+Reasoning:
+- The AI services the app uses require adult users, and generated stories can include mature themes (action, horror, romance).
+- This is a self-declaration at sign-in ("By continuing you confirm you are 18 or older…") — it is **not** age verification and must never be described as such.
+- "Star Yourself" keeps its own one-time 18+ confirmation and the upload checkboxes on top of that.
+- The app requires an email/Google sign-in for most features; an adults-only audience also keeps it clear of Google's Families Policy.

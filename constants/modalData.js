@@ -37,7 +37,7 @@ export const MODAL_DATA = {
         },
         {
           h: '7. הגבלת גיל, AI ושירותי צד שלישי',
-          p: 'השירות מיועד למשתמשים מגיל 13 ומעלה; הפיצ\'ר "לככב בסיפור" (העלאת תמונת פנים) מיועד למשתמשים בני 18 ומעלה בלבד; רכישת מנוי בתשלום מחייבת גיל 18 ומעלה או אישור אפוטרופוס. LIFESCRIPT משתמשת בשירותי AI חיצוניים (Google AI, OpenRouter ואחרים). אנחנו לא אחראים לשינויים במדיניות ספקים אלו. התוכן שנוצר מבוסס על בינה מלאכותית ועשוי להכיל אי-דיוקים; האחריות על השימוש בו חלה על המשתמש בלבד.',
+          p: 'LifeScript מיועדת לבני 18 ומעלה. שירותי ה-AI שבהם אנחנו משתמשים דורשים משתמשים בוגרים, והסיפורים שנוצרים עשויים לכלול נושאים בוגרים. בהמשך שימוש אתה מצהיר שאתה בן/בת 18 ומעלה. הפיצ\'ר "לככב בסיפור" (העלאת תמונת פנים) דורש בנוסף אישור נפרד, חד-פעמי, שאתה בן/בת 18 ומעלה. LIFESCRIPT משתמשת בשירותי AI חיצוניים (Google AI, OpenRouter ואחרים). אנחנו לא אחראים לשינויים במדיניות ספקים אלו. התוכן שנוצר מבוסס על בינה מלאכותית ועשוי להכיל אי-דיוקים; האחריות על השימוש בו חלה על המשתמש בלבד.',
         },
         {
           h: '8. אחריות, אחריות על תוכן המשתמש ושיפוי',
@@ -79,7 +79,7 @@ export const MODAL_DATA = {
         },
         {
           h: '7. Age Restriction, AI & Third-Party Services',
-          p: 'This service is intended for users aged 13 and above; the "Star Yourself" feature (uploading a face photo) is for users aged 18 and over only; purchasing a paid subscription requires you to be 18 or older, or to have guardian approval. LIFESCRIPT uses third-party AI services (Google AI, OpenRouter, and others). We are not responsible for changes in their policies. AI-generated content may contain inaccuracies; the user bears sole responsibility for how it is used.',
+          p: 'LifeScript is intended for adults aged 18 and over. The AI services we use require adult users, and generated stories may include mature themes. By continuing to use the service you confirm that you are 18 or older. The "Star Yourself" feature (uploading a face photo) additionally asks you to confirm once, separately, that you are 18 or older. LIFESCRIPT uses third-party AI services (Google AI, OpenRouter, and others). We are not responsible for changes in their policies. AI-generated content may contain inaccuracies; the user bears sole responsibility for how it is used.',
         },
         {
           h: '8. Warranty, Responsibility for Your Content & Indemnification',
@@ -387,7 +387,7 @@ export const MODAL_DATA = {
 // ─── Android-app (Capacitor) variant ─────────────────────────────────────────────────────────────────────────────────
 // Google Play payments policy: inside the native app nothing may mention a price, a subscription, Stripe or "upgrading". The web
 // MODAL_DATA above is unchanged; the app renders modalDataFor(true), which drops the billing / payments / "how to upgrade"
-// sections, neutralises the plan descriptions, strips the subscription clause from the age section, and renumbers the headings.
+// sections, neutralises the plan descriptions, and renumbers the headings.
 // (tests/native-copy.test.js scans the result for any leftover price / subscription / upgrade wording.)
 const NATIVE_DROP = /^\s*(?:\d+\.\s*)?(?:חיוב, חידוש|Billing, Renewal|תשלומים$|Payments$)|משדרגים ל-Pro|לשדרג ל-Pro|upgrade to Pro|חינמי, Pro|Free, Pro/i;
 const NATIVE_PLANS = {
@@ -402,7 +402,6 @@ const NATIVE_ABOUT_STAR = {
   he: 'הפיצ\'ר החתום שלנו: העלה תמונת פנים, וה-AI יהפוך אותך לדמות הראשית בפוסטר ובקומיקס שלך. אנחנו בונים "גיליון דמות" עקבי כדי שתיראה כמוך לאורך כל הסצנות. כל משתמש רשום מקבל פוסטר "לככב בסיפור" אחד חינם להתנסות.',
   en: 'Our signature feature: upload a face photo, and the AI turns you into the lead character of your own poster and comic. We build a consistent "Character Sheet" so you look like yourself across every scene. Every registered user gets one free "Star Yourself" poster to try it.',
 };
-const SUBSCRIPTION_CLAUSE = /;?\s*(?:רכישת מנוי בתשלום מחייבת גיל 18 ומעלה או אישור אפוטרופוס|purchasing a paid subscription requires you to be 18 or older, or to have guardian approval)/;
 
 // Disclosures about web-payment data and the Pro waitlist: removed from the app's copy (the full wording stays on the web pages).
 const NATIVE_TEXT_REPLACEMENTS = [
@@ -423,7 +422,7 @@ const applyNativeReplacements = (p) => NATIVE_TEXT_REPLACEMENTS.reduce((t, [from
 
 function nativeParagraph(h, p) {
   if (/^\d+\.\s*(?:מסלולים, מכסות|Plans, Quotas)/.test(h)) return /[א-ת]/.test(h) ? NATIVE_PLANS.he : NATIVE_PLANS.en;
-  if (/^\d+\.\s*(?:הגבלת גיל|Age Restriction)/.test(h)) return applyNativeReplacements(p.replace(SUBSCRIPTION_CLAUSE, ''));
+  if (/^\d+\.\s*(?:הגבלת גיל|Age Restriction)/.test(h)) return applyNativeReplacements(p);
   if (/מלככבים" בפוסטר|"star" in the poster/.test(h)) return /[א-ת]/.test(h) ? NATIVE_STAR.he : NATIVE_STAR.en;
   if (/לככב בסיפור שלך|Star in Your Own Story/.test(h)) return /[א-ת]/.test(h) ? NATIVE_ABOUT_STAR.he : NATIVE_ABOUT_STAR.en;
   return applyNativeReplacements(p);
