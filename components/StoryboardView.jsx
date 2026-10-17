@@ -293,8 +293,8 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onUpgrade(); }
                   } : undefined}
                   aria-label={onUpgrade ? (isHebrew
-                    ? `פאנל ${panel.panel} נעול — שדרג ל-Pro כדי לפתוח`
-                    : `Panel ${panel.panel} locked — upgrade to Pro to unlock`) : undefined}
+                    ? `פאנל ${panel.panel} נעול — Pro בקרוב, אפשר להצטרף לרשימת ההמתנה`
+                    : `Panel ${panel.panel} locked — Pro is coming soon, join the waitlist`) : undefined}
                   className="group bg-[#050710] border border-amber-500/10 rounded-[1.75rem] overflow-hidden hover:border-amber-500/30 hover:shadow-[0_8px_40px_rgba(245,158,11,0.09)] transition-all duration-400 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
                 >
                   {/* Image zone */}
@@ -329,7 +329,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                         <Lock size={19} className="text-amber-400/65 group-hover:text-amber-400 transition-colors duration-250" />
                       </div>
                       <p className="text-amber-400/55 font-black text-[8.5px] tracking-[0.32em] uppercase group-hover:text-amber-400/90 transition-colors duration-250">
-                        {native ? (isHebrew ? 'נעול' : 'Locked') : (isHebrew ? 'פרו בלבד' : 'Pro Only')}
+                        {native ? (isHebrew ? 'נעול' : 'Locked') : (isHebrew ? 'Pro · בקרוב' : 'Pro · Soon')}
                       </p>
                     </div>
                   </div>
@@ -347,7 +347,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                     <div className="flex items-center gap-1.5 text-amber-500/32 group-hover:text-amber-500/65 transition-colors duration-250">
                       <Lock size={8} />
                       <span className="text-[7.5px] font-black uppercase tracking-widest">
-                        {native ? (isHebrew ? 'לא זמין' : 'Not available') : (isHebrew ? 'שדרג לצפייה' : 'Upgrade to view')}
+                        {native ? (isHebrew ? 'לא זמין' : 'Not available') : (isHebrew ? 'יגיע עם Pro' : 'Coming with Pro')}
                       </span>
                     </div>
                   </div>
@@ -690,8 +690,8 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                 </p>
                 <p className="text-white/35 text-[11.5px] leading-snug">
                   {isHebrew
-                    ? 'שדרג ל-Pro וקבל את קשת הסיפור המלאה — 7 פאנלים, פרומפטים ועוד'
-                    : 'Upgrade to Pro for the full story arc — 7 panels, visual prompts and more'}
+                    ? 'מסלול Pro (בקרוב) יפתח את קשת הסיפור המלאה — 7 פאנלים, פרומפטים ועוד'
+                    : 'Pro (coming soon) will unlock the full story arc — 7 panels, visual prompts and more'}
                 </p>
               </div>
 
@@ -701,7 +701,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                 className="shrink-0 flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 active:scale-[0.97] text-black font-black text-[12px] px-5 py-2.5 rounded-xl transition-all duration-150 shadow-[0_4px_14px_rgba(245,158,11,0.26)] whitespace-nowrap select-none"
               >
                 <Crown size={12} />
-                {isHebrew ? 'שדרג עכשיו' : 'Upgrade Now'}
+                {isHebrew ? 'הצטרף לרשימת ההמתנה' : 'Join the waitlist'}
               </button>
             </div>
           </motion.div>
