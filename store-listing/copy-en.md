@@ -39,7 +39,7 @@ Share your personal invite link. Every friend who joins and creates their first 
 LifeScript automatically detects the language you write in and produces your script, poster, and comic in that same language — full right-to-left support for Hebrew, built in from day one, not bolted on after.
 
 🔒 YOUR STORY STAYS YOURS
-Your journal entries and production history live only on your own device — we don't store them on our servers. Face photos uploaded for "Star Yourself" are encrypted and automatically expire. We never sell your data or use your words for advertising. Full details in our Privacy Policy.
+Your journal entries and production history live only on your own device — we don't store them on our servers. The face photo you upload for "Star Yourself" is deleted right after your Character Sheet is created, and the sheet itself is deleted automatically after a while. We never sell your data or use your words for advertising. Full details in our Privacy Policy.
 
 💎 FREE TO START
 Create scripts and posters every day, and comics every month, free. Invite a friend and earn a free "Star Yourself" poster.
