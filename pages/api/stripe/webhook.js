@@ -66,6 +66,16 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Webhook signature verification failed.' });
   }
 
+  // ── Billing gate ──────────────────────────────────────────────────────────
+  // While NEXT_PUBLIC_BILLING_ENABLED is not exactly "true" no payment provider is live, so a (validly signed) event
+  // must NOT grant or revoke Pro. It is acknowledged with 200 (Stripe stops retrying) and only its type and id are
+  // logged — never the payload — so a skipped event can still be found in the Stripe dashboard and replayed later.
+  // The signature is verified FIRST: a forged request still gets 400, whatever the flag says.
+  if (process.env.NEXT_PUBLIC_BILLING_ENABLED !== 'true') {
+    console.warn(`ℹ️ Stripe webhook ignored (billing not enabled): type=${event.type} id=${event.id}`);
+    return res.status(200).json({ received: true, ignored: true });
+  }
+
   // ── Event routing ─────────────────────────────────────────────────────────
   // Return 200 immediately after processing — Stripe retries any event that
   // doesn't receive a 2xx within 30s. Return 500 only for genuine processing

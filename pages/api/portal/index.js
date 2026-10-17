@@ -9,6 +9,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ success: false, error: 'Method not allowed.' });
   }
 
+  // ── Server-side billing guard (same rule as /api/checkout) ─────────────────
+  // The UI hides the button, but direct API calls bypass it: inert while billing is off, before any auth, Redis or Stripe call.
+  if (process.env.NEXT_PUBLIC_BILLING_ENABLED !== 'true') {
+    return res.status(503).json({ success: false, error: 'Billing is not available yet.' });
+  }
+
   // ── Auth gate ──────────────────────────────────────────────────────────────
   const { userId, email } = await getSessionAndTier(req, res);
 

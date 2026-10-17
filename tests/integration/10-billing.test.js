@@ -12,6 +12,11 @@ const me = await ctx.route('me');
 const { default: Stripe } = await import('stripe');
 const signer = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+// K3–K8 test what the webhook does once billing IS enabled (the flag is "true" only for the duration of one scenario);
+// K1/K2 and K9–K12 run with the flag unset, i.e. the production default while no payment provider is live.
+const billingOn = (fn) => async (...a) => { process.env.NEXT_PUBLIC_BILLING_ENABLED = 'true'; try { return await fn(...a); } finally { delete process.env.NEXT_PUBLIC_BILLING_ENABLED; } };
+const scenarioBilling = (id, title, expected, fn) => scenario(id, title, expected, billingOn(fn));
+
 let n = 0;
 const ev = (type, object) => ({ id: `evt_${++n}`, object: 'event', type, data: { object } });
 const paid = (userId, customer = `cus_${userId}`) => ev('checkout.session.completed', { id: `cs_${++n}`, payment_status: 'paid', customer, metadata: { userId } });
@@ -58,7 +63,7 @@ scenario('K2', 'unsigned / badly signed / tampered / stale / malformed webhooks 
     return { actual: JSON.stringify(out), evidence: 'pages/api/stripe/webhook.js:56-76 (constructEvent, 300 s tolerance)' };
   });
 
-scenario('K3', 'a correctly signed checkout.session.completed activates Pro for a normal user (source = payment) and /api/me reflects it; the customer id is stored',
+scenarioBilling('K3', 'a correctly signed checkout.session.completed activates Pro for a normal user (source = payment) and /api/me reflects it; the customer id is stored',
   'tier pro, source stripe, /api/me tier=pro grantedBy=payment', async () => {
     const u = await makeUser('k3', 'free');
     assert.equal((await meOf(u)).tier, 'free');
@@ -74,7 +79,7 @@ scenario('K3', 'a correctly signed checkout.session.completed activates Pro for 
     return { actual: '/api/me → pro / payment; 6th script allowed (Free would be refused)' };
   });
 
-scenario('K4', 'a payment must NOT overwrite admin: (a) stored admin stays admin, (b) admin-granted Pro keeps source=admin; the payment customer id is still recorded',
+scenarioBilling('K4', 'a payment must NOT overwrite admin: (a) stored admin stays admin, (b) admin-granted Pro keeps source=admin; the payment customer id is still recorded',
   'tier admin / pro unchanged, source admin unchanged, grantedBy admin', async () => {
     const adm = await makeUser('k4a', 'admin'); const granted = await makeUser('k4b', 'adminGranted');
     assert.equal((await send(paid(adm.id))).status, 200); assert.equal((await send(paid(granted.id))).status, 200);
@@ -85,7 +90,7 @@ scenario('K4', 'a payment must NOT overwrite admin: (a) stored admin stays admin
     return { actual: 'admin stays admin; admin-granted Pro keeps source=admin' };
   });
 
-scenario('K5', 'customer.subscription.deleted revokes a PAID Pro but NOT admin, NOT admin-granted Pro, and NOT a legacy Pro of unknown origin without a payment customer; the VIP allow-list is untouched',
+scenarioBilling('K5', 'customer.subscription.deleted revokes a PAID Pro but NOT admin, NOT admin-granted Pro, and NOT a legacy Pro of unknown origin without a payment customer; the VIP allow-list is untouched',
   'paid → free; admin / admin-granted / legacy / VIP unchanged', async () => {
     const paidU = await makeUser('k5p', 'paid'); const adm = await makeUser('k5a', 'admin'); const granted = await makeUser('k5g', 'adminGranted'); const vip = await makeUser('k5v', 'vip');
     fake.set('user:tier:legacy-k5', 'pro'); fake.exec(['SADD', 'stats:pro:members', 'legacy-k5']);
@@ -97,7 +102,7 @@ scenario('K5', 'customer.subscription.deleted revokes a PAID Pro but NOT admin, 
     return { actual: 'only the paid Pro was revoked' };
   });
 
-scenario('K6', 'invoice.payment_failed is logged (ids only, no e-mail), answers 200, changes no access, and survives malformed payloads',
+scenarioBilling('K6', 'invoice.payment_failed is logged (ids only, no e-mail), answers 200, changes no access, and survives malformed payloads',
   '200 ×5; tier unchanged; log lines carry invoice/subscription ids but not the e-mail', async () => {
     const u = await makeUser('k6', 'paid');
     const lines = []; const ow = console.warn; console.warn = (...a) => lines.push(a.join(' '));
@@ -114,7 +119,7 @@ scenario('K6', 'invoice.payment_failed is logged (ids only, no e-mail), answers 
     return { actual: `5×200, access unchanged, ${logged.length} log lines, no PII`, evidence: logged[0] };
   });
 
-scenario('K7', 'duplicate delivery of the same event is idempotent (checkout ×3, delete ×3, failed ×3): final state identical, member set has one entry',
+scenarioBilling('K7', 'duplicate delivery of the same event is idempotent (checkout ×3, delete ×3, failed ×3): final state identical, member set has one entry',
   'same state after 1 and after 3 deliveries', async () => {
     const u = await makeUser('k7', 'free');
     const e = paid(u.id);
@@ -128,7 +133,7 @@ scenario('K7', 'duplicate delivery of the same event is idempotent (checkout ×3
     return { actual: 'state after N deliveries == state after 1 (idempotent by construction)', evidence: 'NOTE: there is no event-id de-duplication (webhook.js); idempotency comes from SET/DEL/SADD/SREM semantics' };
   });
 
-scenario('K8', 'edge cases: unpaid session, missing userId, unknown event types → 200 and no change; processing error → 500 so Stripe retries',
+scenarioBilling('K8', 'edge cases: unpaid session, missing userId, unknown event types → 200 and no change; processing error → 500 so Stripe retries',
   'no Pro granted for unpaid/no-user; unknown type ignored; Redis failure → 500', async () => {
     const u = await makeUser('k8', 'free');
     const oe = console.error; console.error = () => {};
@@ -144,4 +149,70 @@ scenario('K8', 'edge cases: unpaid session, missing userId, unknown event types 
     } finally { console.error = oe; }
     assert.equal(tierOf(u.id), null);
     return { actual: 'unpaid/no-user/unknown → 200 no change; Redis error → 500 (Stripe will retry)' };
+  });
+
+const portal = await ctx.route('portal/index');
+const logged = async (fn) => { const lines = []; const ow = console.warn, oe = console.error; console.warn = (...a) => lines.push(a.join(' ')); console.error = () => {}; try { return { r: await fn(), lines }; } finally { console.warn = ow; console.error = oe; } };
+
+scenario('K9', 'billing flag unset: a VALIDLY SIGNED checkout.session.completed → 200 {ignored}, Pro is NOT granted, no tier / source / customer / member written',
+  '200 + ignored:true; no tier / source / customer / member keys', async () => {
+    const u = await makeUser('k9', 'free');
+    const { r } = await logged(() => send(paid(u.id)));
+    assert.equal(r.status, 200); assert.deepEqual(r.body, { received: true, ignored: true });
+    assert.equal(tierOf(u.id), null); assert.equal(sourceOf(u.id), null);
+    assert.equal(fake.get(`user:stripe_customer:${u.id}`), null);
+    assert.deepEqual(members(), []);
+    return { actual: '200 ignored; user stays Free; no Pro key written' };
+  });
+
+scenario('K10', 'billing flag unset (or any value but "true"): signed customer.subscription.deleted does NOT revoke an existing Pro, any other event type is ignored too',
+  '200 ignored; a paid Pro stays Pro; flag "false"/"1"/"TRUE" behaves like unset', async () => {
+    const u = await makeUser('k10', 'paid');
+    assert.equal(tierOf(u.id), 'pro');
+    for (const flag of [undefined, 'false', '1', 'TRUE', '']) {
+      if (flag === undefined) delete process.env.NEXT_PUBLIC_BILLING_ENABLED; else process.env.NEXT_PUBLIC_BILLING_ENABLED = flag;
+      try {
+        for (const e of [deleted(u.id), failed(), ev('customer.created', { id: 'cus_x' })]) {
+          const { r } = await logged(() => send(e));
+          assert.equal(r.status, 200, `flag=${flag} ${e.type}`); assert.equal(r.body.ignored, true);
+        }
+      } finally { delete process.env.NEXT_PUBLIC_BILLING_ENABLED; }
+    }
+    assert.equal(tierOf(u.id), 'pro'); assert.equal(sourceOf(u.id), 'stripe');
+    return { actual: 'Pro unchanged after 15 ignored events (5 flag values × 3 types)' };
+  });
+
+scenario('K11', 'billing flag unset: the ignored event logs ONLY its type and id — no payload, no e-mail, no user id, no customer id',
+  'one log line "type=… id=…"; nothing from the payload', async () => {
+    const u = await makeUser('k11', 'free');
+    const e = ev('invoice.payment_failed', { id: 'in_k11', subscription: 'sub_k11', customer: 'cus_SECRETCUSTOMER', customer_email: 'private@person.test', metadata: { userId: u.id } });
+    const { r, lines } = await logged(() => send(e));
+    assert.equal(r.status, 200);
+    const text = lines.join('\n');
+    assert.match(text, new RegExp(`type=invoice\\.payment_failed id=${e.id}`));
+    for (const secret of ['private@person.test', 'cus_SECRETCUSTOMER', u.id, 'sub_k11', 'in_k11']) assert.ok(!text.includes(secret), `log leaks ${secret}`);
+    return { actual: `logged: ${lines.join(' | ')}` };
+  });
+
+scenario('K12', 'signature is verified BEFORE the flag: with the flag unset a forged / unsigned / stale request is still 400 (never "ignored"); the portal answers 503 before auth, Redis or Stripe',
+  '400 for bad signatures; portal 503 for anonymous, free and paid callers; zero outbound calls', async () => {
+    const u = await makeUser('k12', 'paid');
+    const good = paid(u.id);
+    const out = {};
+    for (const [name, opts] of Object.entries({ 'no header': { headerOverride: null }, 'garbage': { headerOverride: 't=1,v1=dead' }, 'other secret': { secret: 'whsec_other' }, 'stale': { timestamp: Math.floor(Date.now() / 1000) - 3600 } })) {
+      const { r } = await logged(() => send(good, opts)); out[name] = r.status; assert.equal(r.status, 400, name);
+    }
+    for (const cookies of [{}, (await makeUser('k12f', 'free')).cookies, u.cookies]) {
+      const r = await invoke(portal, { cookies, ip: '203.0.113.62' });
+      assert.equal(r.status, 503); assert.match(r.body.error, /not available/i);
+    }
+    assert.deepEqual(providers.unexpected, []); assert.deepEqual(ctx.violations, []);
+    return { actual: `bad signatures ${JSON.stringify(out)}; portal 503 ×3; no Stripe request` };
+  });
+
+scenario('K13', 'flag on: the portal is no longer blocked by the guard (anonymous → 401 from the auth gate, not 503)',
+  '401 when billing is enabled', async () => {
+    process.env.NEXT_PUBLIC_BILLING_ENABLED = 'true';
+    try { const r = await invoke(portal, { cookies: {}, ip: '203.0.113.63' }); assert.equal(r.status, 401); } finally { delete process.env.NEXT_PUBLIC_BILLING_ENABLED; }
+    return { actual: '401 Authentication required' };
   });
