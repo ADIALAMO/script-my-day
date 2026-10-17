@@ -41,8 +41,8 @@ LifeScript automatically detects the language you write in and produces your scr
 🔒 YOUR STORY STAYS YOURS
 Your journal entries and production history live only on your own device — we don't store them on our servers. Face photos uploaded for "Star Yourself" are encrypted and automatically expire. We never sell your data or use your words for advertising. Full details in our Privacy Policy.
 
-💎 FREE TO START, UPGRADE WHEN YOU'RE HOOKED
-Create scripts and posters every day, and comics every month, free. Go Pro for up to 20 scripts a day, more posters and comics, a generous monthly "Star Yourself" allowance, and priority processing.
+💎 FREE TO START
+Create scripts and posters every day, and comics every month, free. Invite a friend and earn a free "Star Yourself" poster.
 
 Ready to see today as a movie? Open LifeScript, write one sentence, and watch it become a screenplay, a poster, and a comic — starring you.
 

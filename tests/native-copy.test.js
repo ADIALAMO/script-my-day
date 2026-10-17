@@ -11,10 +11,45 @@ const { getMsg, CODES, isNativeShell } = await import('../lib/messages.js');
 // Anything that sells, prices or points to a purchase. (Free-tier wording like "unpaid" / "ללא תשלום" about an AI provider is not a purchase.)
 const FORBIDDEN = /Stripe|\$\s?9\b|\b9\s?\$|9\$|upgrade|שדרג|שדרוג|subscription|מנוי|\bPro\b|\bGo Pro\b|פרו\b|waitlist|רשימת המתנה|רשימת ההמתנה|billing|חיוב|checkout|per month|לחודש\b/i;
 
-test('the web copy is untouched: modalDataFor(false) IS MODAL_DATA, and it still describes the subscription', () => {
+test('the web copy is untouched by the native variant: modalDataFor(false) IS MODAL_DATA', () => {
   assert.equal(modalDataFor(false), MODAL_DATA);
-  assert.match(JSON.stringify(MODAL_DATA), /Stripe/);
-  assert.match(JSON.stringify(MODAL_DATA), /\$9\/month/);
+});
+
+// ── Pro is "coming soon": no price, no "cancel anytime", no processor name, nothing that is not implemented ─────────────────
+const NOT_YET = /Stripe|\$\s?9\b|\b9\s?\$|9\$|cancel anytime|ביטול בכל עת|priority (?:queue|processing)|תור (?:עיבוד )?מועדף|reels? generation|יצירת רילז/i;
+
+test('web Terms / Privacy / FAQ: Pro is "coming soon" — no price, no "Cancel anytime", no Stripe, no priority queue, no reels-as-Pro (he + en)', () => {
+  const walk = (o, p = '') => (typeof o === 'string' ? [[p, o]] : o && typeof o === 'object' ? Object.entries(o).flatMap(([k, v]) => walk(v, `${p}.${k}`)) : []);
+  const hits = walk(MODAL_DATA).filter(([, s]) => NOT_YET.test(s)).map(([p, s]) => `${p}: …${s.slice(Math.max(0, s.search(NOT_YET) - 30), s.search(NOT_YET) + 40)}…`);
+  assert.deepEqual(hits, []);
+  const json = JSON.stringify(MODAL_DATA);
+  assert.match(json, /Pro is not yet available and no payments are collected today/);
+  assert.match(json, /מסלול Pro עדיין אינו זמין וכיום לא נגבים תשלומים/);
+  assert.match(json, /Billing, Renewal & Cancellation \(when Pro launches\)/);
+  assert.match(json, /חיוב, חידוש וביטול מנוי \(עם השקת Pro\)/);
+  assert.match(json, /through a payment provider/);
+});
+
+test('web Terms §2 (plans): the planned Pro limits are labelled "coming soon / planned" and the not-yet-available sentence is there', () => {
+  for (const lang of ['en', 'he']) {
+    const plans = MODAL_DATA.terms[lang].sections.find((s) => /Plans, Quotas|מסלולים, מכסות/.test(s.h)).p;
+    assert.doesNotMatch(plans, NOT_YET);
+    assert.match(plans, lang === 'en' ? /Pro plan \(coming soon; planned limits\)/ : /מסלול Pro \(בקרוב; מגבלות מתוכננות\)/);
+    assert.match(plans, lang === 'en' ? /Pro is not yet available: any planned price or limit may change before launch, and no payments are collected today\./ : /עדיין אינו זמין: כל מחיר או מגבלה מתוכננים עשויים להשתנות לפני ההשקה, וכיום לא נגבים תשלומים\./);
+  }
+});
+
+test('web quota / upsell messages never sell Pro as available now (no "upgrade", no "go Pro")', () => {
+  for (const code of [CODES.NEEDS_PRO, CODES.QUOTA_COMIC_MONTH, CODES.IDENTITY_LIFETIME_USED]) for (const lang of ['en', 'he']) {
+    const t = getMsg(code, lang, undefined, { native: false });
+    assert.doesNotMatch(t, /upgrade|go Pro|שדרג|עבור ל-Pro/i, `${code}/${lang}: ${t}`);
+    assert.match(t, lang === 'en' ? /coming soon/ : /בקרוב|שיגיע/, `${code}/${lang} says coming soon`);
+  }
+});
+
+test('native app: the Terms / Privacy / FAQ do not even say "coming soon" (nothing about Pro at all)', () => {
+  const native = JSON.stringify(modalDataFor(true));
+  assert.doesNotMatch(native, /coming soon|not yet available|payment provider|ספק התשלומים|ספק תשלומים|בקרוב|עדיין אינו זמין/i);
 });
 
 test('native app: no price, subscription, Stripe, waitlist or "upgrade" wording anywhere in the FAQ / Terms / Privacy / About / Support copy (he + en)', () => {
@@ -86,9 +121,15 @@ test('every component that carries pricing / upgrade text uses useNative(); the 
   assert.match(index, /modalDataFor\(native\)/);
   assert.match(readFileSync(path.join(ROOT, 'components/LegalPage.jsx'), 'utf8'), /modalDataFor\(native\)/);
   // specific hides: Manage Subscription, the Pro card of the launch ticket, the AuthModal upgrade context
-  assert.match(readFileSync(path.join(ROOT, 'components/Navbar.jsx'), 'utf8'), /\{isPro && !native && \(/);
+  assert.match(readFileSync(path.join(ROOT, 'components/Navbar.jsx'), 'utf8'), /\{isPro && hasBillingCustomer && !native && \(/);   // and only with a payment-provider customer on record (api/me.hasBillingCustomer)
   assert.match(readFileSync(path.join(ROOT, 'components/LaunchTicket.jsx'), 'utf8'), /native && d\.icon === "👑"/);
   assert.match(readFileSync(path.join(ROOT, 'components/AuthModal.jsx'), 'utf8'), /native && context === 'upgrade'/);
+  // the launch ticket: on native the button/badge/title/description only refer to the invite bonus, and the web Pro card has no price
+  const ticket = readFileSync(path.join(ROOT, 'components/LaunchTicket.jsx'), 'utf8');
+  assert.match(ticket, /badge: native \?/); assert.match(ticket, /title: native \?/); assert.match(ticket, /desc: native/);
+  assert.match(ticket, /Pro plan — coming soon/); assert.doesNotMatch(ticket, NOT_YET);
+  assert.match(readFileSync(path.join(ROOT, 'components/WaitlistModal.jsx'), 'utf8').replace(/\s+/g, ' '), /COMING SOON/);
+  assert.doesNotMatch(readFileSync(path.join(ROOT, 'components/WaitlistModal.jsx'), 'utf8'), /priority queue|תור מועדף|reels/i);
   // and the web-only modals are still the ONLY other places with such literals
   const walk = (dir) => readdirSync(path.join(ROOT, dir)).flatMap((f) => { const rel = `${dir}/${f}`; return statSync(path.join(ROOT, rel)).isDirectory() ? walk(rel) : [rel]; });
   const others = walk('components').filter((f) => /\.jsx?$/.test(f) && !GUARDED.includes(f) && !WEB_ONLY.has(f));

@@ -34,9 +34,17 @@ export default async function handler(req, res) {
     } catch { /* best-effort — a missed stamp just means a stale "last active" */ }
   }
 
+  // "Manage Subscription" only makes sense for a Pro user with a payment-provider customer on record (not for allowlist / admin-granted Pro).
+  // One extra read, Pro users only; unreadable → false (the button simply stays hidden).
+  let hasBillingCustomer = false;
+  if (userId && tier === 'pro') {
+    try { hasBillingCustomer = !!(await redis.get(`user:stripe_customer:${userId}`)); } catch { /* hidden on error */ }
+  }
+
   return res.status(200).json({
     authenticated: !!userId,
     tier,
+    hasBillingCustomer,
     // Why this plan applies (payment | admin | allowlist | unknown) — from lib/plan.js, the one resolver.
     plan: plan?.plan ?? 'free',
     grantedBy: plan?.grantedBy ?? null,

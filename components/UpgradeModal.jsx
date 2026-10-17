@@ -11,8 +11,6 @@ const FEATURES = [
   { labelEn: 'Movie posters per day', labelHe: 'פוסטרים ביום',      free: TIER_LIMITS.free.poster,    pro: TIER_LIMITS.pro.poster    },
   { labelEn: 'Comic books',           labelHe: 'קומיקס',            free: { en: `${TIER_LIMITS.free.comic} / month`, he: `${TIER_LIMITS.free.comic} בחודש` }, pro: { en: `${TIER_LIMITS.pro.comic} / day (${COMIC.proPerMonth} / month)`, he: `${TIER_LIMITS.pro.comic} ביום (${COMIC.proPerMonth} בחודש)` } },
   { labelEn: 'Unlocked comic panels', labelHe: 'פאנלים פתוחים',     free: { en: `${COMIC.freeFirstComicPanels} (1st comic), then ${COMIC.freeLaterComicPanels}`, he: `${COMIC.freeFirstComicPanels} (קומיקס ראשון), אחר כך ${COMIC.freeLaterComicPanels}` }, pro: TIER_LIMITS.pro.unlockedPanels },
-  { labelEn: 'Reels generation',      labelHe: 'יצירת רילז',        free: false,                      pro: true                      },
-  { labelEn: 'Priority queue',        labelHe: 'תור עיבוד מועדף',   free: false,                      pro: true                      },
 ];
 
 function FeatureValue({ value, isHe }) {
@@ -261,7 +259,7 @@ export default function UpgradeModal({ isOpen, onClose, lang = 'en' }) {
                       )}
 
                       {checkoutState === 'idle'       && (isHe ? 'שדרג עכשיו — $9/חודש'  : 'Upgrade Now — $9/month')}
-                      {checkoutState === 'loading'    && (isHe ? 'מתחבר לStripe...'        : 'Connecting to Stripe...')}
+                      {checkoutState === 'loading'    && (isHe ? 'מתחבר לתשלום...'        : 'Connecting to checkout...')}
                       {checkoutState === 'redirecting'&& (isHe ? 'מועבר לדף התשלום...'    : 'Redirecting to checkout...')}
                       {checkoutState === 'error'      && (isHe ? 'נסה שוב'                 : 'Try Again')}
                     </button>
@@ -270,8 +268,8 @@ export default function UpgradeModal({ isOpen, onClose, lang = 'en' }) {
                   {/* Trust line */}
                   <p className="text-center text-white/20 text-[10px] leading-relaxed">
                     {isHe
-                      ? 'מאובטח על ידי Stripe · ביטול בלחיצה אחת'
-                      : 'Secured by Stripe · Cancel in one click'}
+                      ? 'תשלום מאובטח · ביטול בלחיצה אחת'
+                      : 'Secure checkout · Cancel in one click'}
                   </p>
                 </div>
 

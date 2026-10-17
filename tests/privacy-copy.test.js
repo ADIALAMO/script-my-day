@@ -106,6 +106,16 @@ test('§4 covers rate-limit records, the deletion log with e-mail/note/IP, Teleg
   assert.match(sec('privacy', 'he', 4), /יומני שרת סטנדרטיים/);
 });
 
+test('§5 Payments: Pro is not yet available, no payments today, "a payment provider" (no Stripe) — and the data lists say a provider customer ID only if a subscription was ever started', () => {
+  assert.match(sec('privacy', 'en', 5), /Pro is not yet available and no payments are collected today\. When Pro launches, subscription payments will be processed entirely by a payment provider/);
+  assert.match(sec('privacy', 'he', 5), /עדיין אינו זמין וכיום לא נגבים תשלומים/);
+  assert.match(sec('privacy', 'he', 5), /ספק תשלומים/);
+  for (const lang of ['he', 'en']) {
+    assert.doesNotMatch(JSON.stringify(MODAL_DATA.privacy[lang]), /Stripe/);
+    assert.match(sec('privacy', lang, 4), lang === 'en' ? /payment-provider customer ID \(only if you ever started a paid subscription\)/ : /מזהה לקוח אצל ספק התשלומים \(אם אי פעם התחלת מנוי בתשלום\)/);
+  }
+});
+
 test('§6 names Vercel Web Analytics (no cookies to identify visitors, aggregate) and Google Analytics only after consent; no Speed Insights, no user-typed-text caveat', () => {
   for (const lang of ['he', 'en']) {
     const t = sec('privacy', lang, 6);

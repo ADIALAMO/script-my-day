@@ -38,6 +38,15 @@ test('the Pro plan copy states the daily AND monthly script/comic limits, in he 
   assert.ok(json.includes(JSON.stringify(termsPlansHe()).slice(1, 80)) && json.includes(JSON.stringify(faqPlansEn()).slice(1, 80)), 'modalData uses the generated copy');
 });
 
+test('no price / "Cancel anytime" / priority queue / reels-as-Pro in the generated Pro copy; Terms plans say Pro is not yet available', () => {
+  const NOT_YET = /\$\s?9\b|\b9\s?\$|9\$|cancel anytime|ביטול בכל עת|priority|תור (?:עיבוד )?מועדף|reels?\b|רילז/i;
+  for (const [name, text] of Object.entries({ termsHe: termsPlansHe(), termsEn: termsPlansEn(), faqHe: faqPlansHe(), faqEn: faqPlansEn(), blurbHe: proBlurbHe(), blurbEn: proBlurbEn(), checkout: checkoutDescription() })) {
+    assert.doesNotMatch(text, NOT_YET, name);
+  }
+  assert.match(termsPlansEn(), /Pro is not yet available/); assert.match(termsPlansHe(), /עדיין אינו זמין/);
+  assert.match(proBlurbEn(), /coming soon/); assert.match(proBlurbHe(), /בקרוב/);
+});
+
 // ── scan for hard-coded numbers ─────────────────────────────────────────────────────────
 const allowed = {
   'scripts/day':   new Set([TIER_LIMITS.anonymous.script, TIER_LIMITS.free.script, TIER_LIMITS.pro.script]),

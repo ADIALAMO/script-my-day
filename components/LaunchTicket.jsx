@@ -16,11 +16,12 @@ export default function LaunchTicket({ lang = 'he' }) {
   }, []);
 
   const content = {
-    badge: isHe ? "מבצעים פעילים" : "Active Offers",
-    title: isHe ? "מבצעי הפקה פעילים" : "Active Production Deals",
-    desc: isHe
-      ? "שני בונוסים פתוחים על הסט עכשיו — נצל אותם לפני שהמצלמות מפסיקות לצלם."
-      : "Two bonuses are live on set right now — grab them before the cameras stop rolling.",
+    // In the Android app the only offer is the invite bonus, so the button and the card say exactly that.
+    badge: native ? (isHe ? "בונוס הזמנה" : "Invite Bonus") : (isHe ? "מבצעים פעילים" : "Active Offers"),
+    title: native ? (isHe ? "בונוס הזמנת חברים" : "Friend Invite Bonus") : (isHe ? "מבצעי הפקה פעילים" : "Active Production Deals"),
+    desc: native
+      ? (isHe ? "בונוס פתוח על הסט עכשיו — נצל אותו לפני שהמצלמות מפסיקות לצלם." : "A bonus is live on set right now — grab it before the cameras stop rolling.")
+      : (isHe ? "בונוס אחד פתוח על הסט עכשיו, ומסלול Pro בדרך." : "One bonus is live on set right now, and Pro is on its way."),
     deals: [
       {
         icon: "🎁",
@@ -31,7 +32,7 @@ export default function LaunchTicket({ lang = 'he' }) {
       },
       {
         icon: "👑",
-        title: isHe ? "מסלול Pro — 9$ לחודש" : "Pro plan — $9/month",
+        title: isHe ? "מסלול Pro — בקרוב" : "Pro plan — coming soon",
         body: isHe
           ? proBlurbHe()
           : proBlurbEn(),

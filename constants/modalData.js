@@ -20,8 +20,8 @@ export const MODAL_DATA = {
           p: termsPlansHe(),
         },
         {
-          h: '3. חיוב, חידוש וביטול מנוי',
-          p: 'מנוי Pro מחויב 9$ לחודש דרך Stripe ומתחדש אוטומטית מדי חודש עד לביטול. ניתן לבטל בכל עת דרך "נהל מנוי" בתפריט החשבון; הביטול נכנס לתוקף בתום תקופת החיוב הנוכחית, ולא יתבצע חיוב נוסף לאחריו. התשלום עבור תקופת חיוב שכבר החלה אינו מוחזר, ואינך מחויב בגין תקופות עתידיות לאחר הביטול — הכול בכפוף לזכות ביטול סטטוטורית לפי הדין החל עליך (לרבות זכות ביטול עסקה לפי חוק הגנת הצרכן). אנחנו לא רואים ולא שומרים את פרטי כרטיס האשראי שלך — כל נתוני התשלום מנוהלים ומאובטחים על ידי Stripe. בכל שאלה בנושא חיוב או החזר ניתן לפנות אלינו במייל adialamo@gmail.com.',
+          h: '3. חיוב, חידוש וביטול מנוי (עם השקת Pro)',
+          p: 'מסלול Pro עדיין אינו זמין וכיום לא נגבים תשלומים. הסעיף הזה יחול רק עם השקת Pro: מנוי Pro יחויב באמצעות ספק תשלומים, במחיר שיוצג לך לפני התשלום, ויתחדש אוטומטית מדי חודש עד לביטול. את הביטול תוכל לבצע דרך תפריט החשבון; הביטול ייכנס לתוקף בתום תקופת החיוב הנוכחית, ולא יתבצע חיוב נוסף לאחריו. התשלום עבור תקופת חיוב שכבר החלה לא יוחזר, ולא תחויב בגין תקופות עתידיות לאחר הביטול — הכול בכפוף לזכות ביטול סטטוטורית לפי הדין החל עליך (לרבות זכות ביטול עסקה לפי חוק הגנת הצרכן). לא נראה ולא נשמור את פרטי כרטיס האשראי שלך — נתוני התשלום ינוהלו ויאובטחו על ידי ספק התשלומים. בכל שאלה בנושא חיוב או החזר ניתן לפנות אלינו במייל adialamo@gmail.com.',
         },
         {
           h: '4. הגנת תוכן וניקוי קלטים אוטומטי',
@@ -62,8 +62,8 @@ export const MODAL_DATA = {
           p: termsPlansEn(),
         },
         {
-          h: '3. Billing, Renewal & Cancellation',
-          p: 'The Pro subscription is billed at $9/month via Stripe and renews automatically each month until cancelled. You can cancel anytime via "Manage Subscription" in the account menu; cancellation takes effect at the end of the current billing period, with no further charges afterward. Payment for a billing period already begun is non-refundable, and you are not charged for future periods after cancellation — all subject to any statutory cancellation right under the law applicable to you (including consumer-protection withdrawal rights). We never see or store your card details — all payment data is handled and secured by Stripe. For any billing or refund question, contact us at adialamo@gmail.com.',
+          h: '3. Billing, Renewal & Cancellation (when Pro launches)',
+          p: 'Pro is not yet available and no payments are collected today. This section will apply only when Pro launches: the Pro subscription will be billed through a payment provider at the price shown to you before you pay, and will renew automatically each month until cancelled. You will be able to cancel via the account menu; cancellation will take effect at the end of the current billing period, with no further charges afterward. Payment for a billing period already begun will be non-refundable, and you will not be charged for future periods after cancellation — all subject to any statutory cancellation right under the law applicable to you (including consumer-protection withdrawal rights). We will not see or store your card details — payment data will be handled and secured by the payment provider. For any billing or refund question, contact us at adialamo@gmail.com.',
         },
         {
           h: '4. Content Protection & Automatic Input Sanitization',
@@ -120,7 +120,7 @@ export const MODAL_DATA = {
         },
         {
           h: '5. תשלומים',
-          p: 'תשלומי מנוי ה-Pro מעובדים במלואם על ידי Stripe. אנחנו לעולם לא רואים, מקבלים או שומרים את פרטי כרטיס האשראי שלך — אנחנו שומרים רק מזהה לקוח של Stripe המקושר לחשבונך, לצורך ניהול המנוי.',
+          p: 'מסלול Pro עדיין אינו זמין וכיום לא נגבים תשלומים. עם השקת Pro, תשלומי המנוי יעובדו במלואם על ידי ספק תשלומים. אנחנו לעולם לא נראה, נקבל או נשמור את פרטי כרטיס האשראי שלך — אנחנו מצפים לשמור רק מזהה לקוח אצל אותו ספק, המקושר לחשבונך, לצורך ניהול המנוי.',
         },
         {
           h: '6. עוגיות ואנליטיקה',
@@ -162,7 +162,7 @@ export const MODAL_DATA = {
         },
         {
           h: '5. Payments',
-          p: 'Pro subscription payments are processed entirely by Stripe. We never see, receive, or store your card details — we store only a Stripe customer ID linked to your account, for the purpose of managing the subscription.',
+          p: 'Pro is not yet available and no payments are collected today. When Pro launches, subscription payments will be processed entirely by a payment provider. We will never see, receive, or store your card details — we expect to store only a customer ID from that provider, linked to your account, for the purpose of managing the subscription.',
         },
         {
           h: '6. Cookies & Analytics',
@@ -271,8 +271,8 @@ export const MODAL_DATA = {
           p: 'בתפריט החשבון (אחרי התחברות) לחץ על "הזמן חברים" כדי לקבל קישור אישי. על כל חבר שנרשם דרך הקישור ויוצר פוסטר ראשון — אתה מקבל פוסטר "לככב בסיפור" חינם נוסף. אפשר לעקוב אחרי כמה חברים הצטרפו וכמה פוסטרים צברת ישירות בחלון.',
         },
         {
-          h: 'איך משדרגים ל-Pro, ואיך מבטלים?',
-          p: 'לחץ על "שדרג לפרו" בנאבבר או בתפריט החשבון — התשלום מאובטח דרך Stripe (9$ לחודש). לביטול, פתח את "נהל מנוי" בתפריט החשבון; הביטול נכנס לתוקף בתום החודש הנוכחי ולא תחויב שוב.',
+          h: 'מתי אפשר לשדרג ל-Pro?',
+          p: 'מסלול Pro עדיין אינו זמין — הוא בקרוב, וכיום לא נגבים תשלומים. בתפריט החשבון בחר "Pro — רשימת המתנה" והשאר אימייל, ונשלח לך הודעה אחת כשזה נפתח. מחירים ומגבלות מתוכננים עשויים להשתנות לפני ההשקה.',
         },
       ],
     },
@@ -311,8 +311,8 @@ export const MODAL_DATA = {
           p: 'In the account menu (after signing in), tap "Invite friends" to get a personal link. For every friend who signs up through it and makes their first poster, you earn a free "Star Yourself" poster. You can track how many friends joined and how many posters you\'ve earned right inside the window.',
         },
         {
-          h: 'How do I upgrade to Pro, and how do I cancel?',
-          p: 'Click "Go Pro" in the navbar or account menu — payment is secured by Stripe ($9/month). To cancel, open "Manage Subscription" in the account menu; cancellation takes effect at the end of the current month and you won\'t be charged again.',
+          h: 'When can I upgrade to Pro?',
+          p: 'Pro is not yet available — it is coming soon, and no payments are collected today. In the account menu choose "Pro — Join waitlist" and leave your email, and we\'ll send you one note when it opens. Planned prices and limits may change before launch.',
         },
       ],
     },
@@ -389,7 +389,7 @@ export const MODAL_DATA = {
 // MODAL_DATA above is unchanged; the app renders modalDataFor(true), which drops the billing / payments / "how to upgrade"
 // sections, neutralises the plan descriptions, strips the subscription clause from the age section, and renumbers the headings.
 // (tests/native-copy.test.js scans the result for any leftover price / subscription / upgrade wording.)
-const NATIVE_DROP = /^\s*(?:\d+\.\s*)?(?:חיוב, חידוש|Billing, Renewal|תשלומים$|Payments$)|משדרגים ל-Pro|upgrade to Pro|חינמי, Pro|Free, Pro/i;
+const NATIVE_DROP = /^\s*(?:\d+\.\s*)?(?:חיוב, חידוש|Billing, Renewal|תשלומים$|Payments$)|משדרגים ל-Pro|לשדרג ל-Pro|upgrade to Pro|חינמי, Pro|Free, Pro/i;
 const NATIVE_PLANS = {
   he: 'השימוש בשירות כפוף למכסות שימוש הוגן יומיות וחודשיות, שעשויות להשתנות ומתחדשות לפי החלון המוצג באפליקציה. כל משתמש רשום מקבל מכסה של תסריטים, פוסטרים וקומיקסים, וכן פוסטר "לככב בסיפור" אחד חינם (חד-פעמי).',
   en: 'Use of the service is subject to daily and monthly fair-use quotas, which may change and renew on the schedule shown in the app. Every registered user receives an allowance of scripts, posters and comics, plus one free "Star Yourself" poster (one-time).',
@@ -406,19 +406,18 @@ const SUBSCRIPTION_CLAUSE = /;?\s*(?:רכישת מנוי בתשלום מחייב
 
 // Disclosures about web-payment data and the Pro waitlist: removed from the app's copy (the full wording stays on the web pages).
 const NATIVE_TEXT_REPLACEMENTS = [
-  ['מצב המנוי, מזהה לקוח של Stripe, ', ''],
-  ['the subscription state, a Stripe customer ID, ', ''],
+  ['מצב המנוי, מזהה לקוח אצל ספק התשלומים (אם אי פעם התחלת מנוי בתשלום), ', ''],
+  ['the subscription state, a payment-provider customer ID (only if you ever started a paid subscription), ', ''],
   ['החשבון, המכסה והמנוי', 'החשבון והמכסה'],
   ['account, quota and subscription', 'account and quota'],
   [', הרשמות לרשימת ההמתנה ובקשות', ' ובקשות'],
   ['Feedback, waitlist sign-ups and deletion requests', 'Feedback and deletion requests'],
   [' אימיילים ברשימת ההמתנה נשמרים עד שתבקש למחוק אותם.', ''],
   [' Waitlist email addresses are kept until you ask us to delete them.', ''],
-  [' ומזהה לקוח של Stripe)', ')'],
+  [' ומזהה לקוח אצל ספק התשלומים, אם אי פעם התחלת מנוי בתשלום)', ')'],
   ['waitlist and deletion-request messages', 'deletion-request messages'],
   ['בהרשמה לרשימת ההמתנה ובבקשת מחיקה', 'בבקשת מחיקה'],
-  [' and a Stripe customer ID)', ')'],
-  [' and Stripe customer ID)', ')'],
+  [' and, if you ever started a paid subscription, a payment-provider customer ID)', ')'],
 ];
 const applyNativeReplacements = (p) => NATIVE_TEXT_REPLACEMENTS.reduce((t, [from, to]) => t.split(from).join(to), p);
 

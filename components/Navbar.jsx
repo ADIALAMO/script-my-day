@@ -8,16 +8,18 @@ import GuideMenu from './GuideMenu';
 import { BILLING_ENABLED } from '../constants/billing';
 import { useNative } from '../hooks/useNative.js';
 
-// Fetches the current user's tier from the server.
+// Fetches the current user's tier (and whether a payment-provider customer is on record) from the server.
 // refreshToken is an external counter; incrementing it triggers a re-fetch.
 function useTier(authenticated, refreshToken) {
   const [tier, setTier] = useState('free');
+  const [hasBillingCustomer, setHasBillingCustomer] = useState(false);
   useEffect(() => {
-    if (!authenticated) { setTier('anonymous'); return; }
+    if (!authenticated) { setTier('anonymous'); setHasBillingCustomer(false); return; }
     fetch('/api/me', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => {
         setTier(d.tier || 'free');
+        setHasBillingCustomer(d.hasBillingCustomer === true);
         // GA4 sign_up — fires once per new account (server-flagged), in the browser so the
         // _ga client_id attributes it correctly. `referred` = arrived via an invite link.
         if (d.justSignedUp && typeof window !== 'undefined' && window.gtag) {
@@ -25,9 +27,9 @@ function useTier(authenticated, refreshToken) {
           window.gtag('event', 'sign_up', { method: d.signupMethod || 'unknown', referred });
         }
       })
-      .catch(() => setTier('free'));
+      .catch(() => { setTier('free'); setHasBillingCustomer(false); });
   }, [authenticated, refreshToken]);
-  return tier;
+  return { tier, hasBillingCustomer };
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -57,7 +59,7 @@ const IconTooltip = ({ label }) => (
 );
 
 // Dropdown menu rendered via portal so it escapes the navbar's overflow:hidden.
-function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, onInviteClick }) {
+function AvatarDropdown({ session, tier, hasBillingCustomer, isHe, anchor, onClose, onUpgradeClick, onInviteClick }) {
   const native = useNative();   // Android app: no purchase / subscription UI at all (Google Play payments policy)
   const ref = useRef(null);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -169,7 +171,7 @@ function AvatarDropdown({ session, tier, isHe, anchor, onClose, onUpgradeClick, 
         )}
 
         {/* Manage Subscription — only for paying Pro subscribers, not admin */}
-        {isPro && !native && (
+        {isPro && hasBillingCustomer && !native && (
           <>
             <button
               onClick={handleManageSubscription}
@@ -238,7 +240,7 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
   const native = useNative();
   const { data: session, status } = useSession();
   const isAuthenticated = status === 'authenticated';
-  const tier = useTier(isAuthenticated, tierRefreshToken);
+  const { tier, hasBillingCustomer } = useTier(isAuthenticated, tierRefreshToken);
   const isHe = lang === 'he';
   const isPro = tier === 'pro' || tier === 'admin';
 
@@ -458,6 +460,7 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
               <AvatarDropdown
                 session={session}
                 tier={tier}
+                hasBillingCustomer={hasBillingCustomer}
                 isHe={isHe}
                 anchor={avatarBtnRef.current}
                 onClose={() => setDropdownOpen(false)}

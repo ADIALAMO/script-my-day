@@ -97,3 +97,23 @@ scenario('L4', 'the allow-list (VIP) is evaluated only inside resolvePlan: not s
     assert.equal((await plan.resolvePlan({ userId: 'x', email: 'evilvip@test.example' })).tier, 'free');
     return { actual: 'allow-list exact-match only, case-insensitive, never stored' };
   });
+
+scenario('L5', '/api/me.hasBillingCustomer is true only for a Pro user with a payment-provider customer on record (drives "Manage Subscription")',
+  'paid + customer id → true; paid without id, admin-granted, VIP, free, admin, anonymous → false; Redis value is never exposed', async () => {
+    const paid = await makeUser('l5-paid', 'paid');
+    const call = async (u, ip) => (await invoke(me, { method: 'GET', cookies: u.cookies, ip })).body;
+    ctx.fake.set(`user:stripe_customer:${paid.id}`, 'cus_l5');
+    const withId = await call(paid, '203.0.113.80');
+    assert.equal(withId.hasBillingCustomer, true);
+    assert.doesNotMatch(JSON.stringify(withId), /cus_l5/);
+    ctx.fake.del(`user:stripe_customer:${paid.id}`);
+    const out = { 'paid, no customer id': (await call(paid, '203.0.113.81')).hasBillingCustomer };
+    for (const kind of ['adminGranted', 'vip', 'free', 'admin']) {
+      const u = await makeUser(`l5-${kind}`, kind);
+      if (kind === 'free' || kind === 'admin') ctx.fake.set(`user:stripe_customer:${u.id}`, `cus_${kind}`);   // a stray id must not matter for non-"pro" tiers
+      out[kind] = (await call(u, '203.0.113.82')).hasBillingCustomer;
+    }
+    out.anonymous = (await invoke(me, { method: 'GET', ip: '203.0.113.83' })).body.hasBillingCustomer;
+    assert.deepEqual(out, { 'paid, no customer id': false, adminGranted: false, vip: false, free: false, admin: false, anonymous: false });
+    return { actual: `paid+id true; others ${JSON.stringify(out)}` };
+  });

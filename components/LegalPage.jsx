@@ -21,11 +21,11 @@ const PAGE_META = {
     slug: 'terms',
     he: {
       title: 'תנאי שימוש — LIFESCRIPT',
-      desc:  'תנאי השימוש המלאים של LIFESCRIPT Studio — בעלות על יצירות, מסלולים, חיוב וביטול.',
+      desc:  'תנאי השימוש המלאים של LIFESCRIPT Studio — בעלות על יצירות, מסלולים ומכסות, ואיך יפעל החיוב כשמסלול Pro ייפתח.',
     },
     en: {
       title: 'Terms of Service — LIFESCRIPT',
-      desc:  'Full Terms of Service for LIFESCRIPT Studio — content ownership, plans, billing, and cancellation.',
+      desc:  'Full Terms of Service for LIFESCRIPT Studio — content ownership, plans and quotas, and how billing will work when Pro launches.',
     },
   },
 };
