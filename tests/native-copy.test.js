@@ -180,3 +180,16 @@ test('sign-in shows the 18+ self-declaration with Terms and Privacy links (he + 
   assert.match(index, /LifeScript is intended for adults aged 18 and over\./); assert.match(index, /LifeScript מיועדת לבני 18 ומעלה\./);
   for (const rel of ['components/AuthModal.jsx', 'pages/index.js', 'constants/modalData.js', 'constants/limits-copy.js']) assert.doesNotMatch(readFileSync(path.join(ROOT, rel), 'utf8').replace(/never "age verification"|not age verification/gi, ''), /age[- ]verif|אימות גיל/i, rel);
 });
+
+test('no visible "Stripe" or "Together AI" in any component (comments excepted): the sign-in modal names no payment provider or AI vendor, the data-deletion page is processor-neutral', () => {
+  const offenders = [];
+  for (const f of readdirSync(path.join(ROOT, 'components')).filter((x) => /\.jsx?$/.test(x))) {
+    readFileSync(path.join(ROOT, 'components', f), 'utf8').split('\n').forEach((line, i) => {
+      if (/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(line)) return;
+      if (/Stripe|Together AI/i.test(line.replace(/\/\/.*$/, '').replace(/\{\/\*.*\*\/\}/, ''))) offenders.push(`components/${f}:${i + 1}: ${line.trim().slice(0, 80)}`);
+    });
+  }
+  assert.deepEqual(offenders, []);
+  const del = readFileSync(path.join(ROOT, 'components/DataDeletionPage.jsx'), 'utf8');
+  assert.match(del, /payment-provider customer ID \(if any\)/); assert.match(del, /!\(native && \/ספק התשלומים\|payment-provider\/\.test\(line\)\)/);
+});
