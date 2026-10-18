@@ -217,3 +217,40 @@ test('waitlist modal: the Hebrew strings are gender-neutral (no masculine impera
   assert.doesNotMatch(modal, /היה הראשון|אתה ברשימה|השאר אימייל|נודיע לך|המשך להפיק|הצטרף לרשימת|שולח\.\.\./);
   for (const s of ['נרשמתם לרשימה!', 'נעדכן אתכם ברגע ש-Pro ייפתח', 'אפשר להמשיך להפיק', 'היו הראשונים לקבל Pro', 'השאירו אימייל ונעדכן אתכם', 'הצטרפות לרשימת ההמתנה']) assert.ok(modal.includes(s), s);
 });
+
+// ── 18+ notice at sign-in: readable, above the Google button in the form panel, repeated in the "sent" panel ───────────────────────────────
+test('AuthModal 18+ notice: one shared component, >= 12px and >= white/70 (≈ 4.5:1+ on the dark card), underlined links; rendered BEFORE the Google button in the form panel and again in the sent panel; EN/HE text unchanged', () => {
+  const src = readFileSync(path.join(ROOT, 'components/AuthModal.jsx'), 'utf8');
+  const def = src.slice(src.indexOf('function AgeNotice('), src.indexOf('export default function AuthModal'));
+  assert.match(def, /By continuing you confirm you are 18 or older and agree to the <a href="\/terms"/);
+  assert.match(def, /בהמשך אתה מאשר שאתה בן\/בת 18 ומעלה ומסכים ל<a href="\/terms"/);
+  assert.match(def, /href="\/privacy"/);
+  // contrast / size floor — every text-white/NN and text-[NNpx] in the component's own classes
+  const alphas = [...def.matchAll(/text-white\/(\d+)/g)].map((m) => Number(m[1]));
+  assert.ok(alphas.length >= 2 && alphas.every((n) => n >= 70), `text-white opacity below the floor: ${alphas}`);
+  const sizes = [...def.matchAll(/text-\[(\d+)px\]/g)].map((m) => Number(m[1]));
+  assert.ok(sizes.length >= 1 && sizes.every((n) => n >= 12), `text size below 12px: ${sizes}`);
+  assert.match(def, /const link = 'underline /);
+  assert.doesNotMatch(def, /text-white\/(?:[0-5]\d|6[0-9]|[0-9])\b|text-\[(?:9|10|11)px\]/, 'faint / tiny classes are banned for the notice');
+  // placement
+  const uses = [...src.matchAll(/<AgeNotice /g)].map((m) => m.index);
+  assert.equal(uses.length, 2, 'form panel + sent panel');
+  const google = src.indexOf('onClick={handleGoogleSignIn}');
+  const heading = src.indexOf('Save Your Stories &');
+  const formUse = uses.find((i) => i > heading);
+  assert.ok(formUse > heading && formUse < google, 'in the form panel the notice sits after the heading and before the Google button');
+  const sentUse = uses.find((i) => i < heading);
+  assert.ok(sentUse < heading && src.indexOf("key=\"sent\"") < sentUse, 'second use is inside the sent panel');
+  // the old faint copy under the form is gone
+  assert.doesNotMatch(src, /text-white\/35 text-\[10px\][^>]*>\s*\{isHe \? \(\s*<>בהמשך/);
+});
+
+test('AuthModal is scrollable on short viewports: the overlay scrolls (overflow-y-auto), the card is centred with m-auto (not items-center, which clips the top), and a click on the empty overlay closes', () => {
+  const src = readFileSync(path.join(ROOT, 'components/AuthModal.jsx'), 'utf8');
+  const overlay = src.slice(src.indexOf('className="fixed inset-0 z-[8001]'), src.indexOf('key="auth-modal"'));
+  assert.match(overlay, /\boverflow-y-auto\b/); assert.match(overlay, /\bflex\b/);
+  assert.doesNotMatch(overlay, /items-center|justify-center|pointer-events-none/);
+  assert.match(overlay, /e\.target === e\.currentTarget\) onClose\(\)/);
+  assert.match(src, /className="relative w-full max-w-sm m-auto"/);
+  assert.doesNotMatch(src, /overscroll-behavior|overscroll-contain|overscroll-none/);   // CLAUDE.md §8: never "fix" a scroller with overscroll-behavior
+});
