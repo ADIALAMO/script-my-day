@@ -361,10 +361,9 @@ is the ONLY inner scroll container.** Rules ([utils/scroll-mode.js](utils/scroll
   `EMAIL_SERVER_PASSWORD` in Vercel (Production and Preview), then redeploy. Changing the
   Google account password revokes App Passwords. Failed sends alert Telegram
   ([lib/auth-alerts.js](lib/auth-alerts.js), max one per error code per 30 min).
-- **Temporary diagnostics:** `/api/reel-diagnostic` is rate-limited (30/h per IP, 100/h global; see
-  `lib/rate-limit.js`, `lib/alert-throttle.js`) but is still unauthenticated and must be removed
-  after the Google Play production access request (~Oct 20-21). Find everything with
-  `grep "TEMP DIAGNOSTIC (reel-crash)"`.
+- **Reel crash diagnostics: removed** (`chore/remove-reel-diagnostics`). The temporary `/api/reel-diagnostic` route, `utils/reel-diagnostics.js` and every breadcrumb are gone; `pages/_app.js`
+  clears the leftover `lifescript_reel_trail_temp` key once. What it found STAYS: the low-end reel tier in `components/MovieReelModal.jsx` (`resolveReelTier`, `LOW_TIER`: 576x1024 capture,
+  24 fps, VP8 first, one panel bitmap at a time) is the production fix for old/low-memory Android devices, not a diagnostic.
 
 ## Project stage & growth
 LIFESCRIPT is **deployed and live**; the current bottleneck is **distribution +

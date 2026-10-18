@@ -29,7 +29,6 @@ import { useCoarsePointer } from '../hooks/useCoarsePointer.js';
 import { readEffectiveFlags } from '../utils/variant-flags.js';
 import { scriptWindowMode, scriptWindowClasses, scriptFrameRadius, isTouchBox, TOUCH_BOX_HEIGHT } from '../utils/scroll-mode.js';
 import { NEXT_STEPS } from '../constants/tour.js';
-import { reelBreadcrumb } from '../utils/reel-diagnostics.js'; // TEMP DIAGNOSTIC (reel-crash)
 
 // ── Interaction-gated views — code-split out of the initial bundle ─────────
 // Each only renders after an explicit user action (generating a comic, opening
@@ -168,7 +167,6 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     generateStoryboard, closeStoryboard, cancelStoryboard,
     regeneratePanel, retryRateLimitedPanel, regensLeft, comicNotice,
     retryFrame, generateMissingFrames, startNewComic, missingCount, sessionExpired,
-    comicSource, comicCompletedAtRef, // TEMP DIAGNOSTIC (reel-crash)
   } = useStoryboardGeneration({
     lang, genre, cleanScript, script, onAuthRequired, onPanelsGenerated, initialPanels, initialComicMeta,
     characterImageUrl: activeCharacterUrl,
@@ -1113,7 +1111,6 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               data-tour="reel-cta"
               onClick={() => {
                 if (reelUnavailable) return;   // an expired panel: the reel would fail — the message below says why
-                reelBreadcrumb('tap', { panelCount: storyboardPanels.length }); // TEMP DIAGNOSTIC (reel-crash)
                 setShowReelModal(true);
               }}
               aria-disabled={reelUnavailable || undefined}
@@ -1162,9 +1159,6 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
         lang={lang}
         genre={genre}
         producerName={finalProducerName}
-        posterUrl={posterUrl}                       /* TEMP DIAGNOSTIC (reel-crash) */
-        comicSource={comicSource}                   /* TEMP DIAGNOSTIC (reel-crash) */
-        comicCompletedAtRef={comicCompletedAtRef}    /* TEMP DIAGNOSTIC (reel-crash) */
       />
 
       {/* ── Character modal (Identity Track) ──────────────────────────── */}

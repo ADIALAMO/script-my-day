@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Share2, Download, Loader2, AlertCircle, Video, VolumeX, Volume2 } from 'lucide-react';
 import { track } from '@vercel/analytics';
 import { shareReadyFile, makeShareFile, exportCapabilities } from '../utils/export-image.js';
-import { reelBreadcrumb } from '../utils/reel-diagnostics.js'; // TEMP DIAGNOSTIC (reel-crash)
 import ReportButton from './ReportButton.jsx';
 import { isReported } from '../utils/reported-store.js';
 import { REPORT_COPY, reportText } from '../constants/report-copy.js';
@@ -27,7 +26,7 @@ const PREVIEW_W = 180;
 const PREVIEW_H = Math.round(PREVIEW_W * CANVAS_H / CANVAS_W); // 320
 
 // ── Low-end device tier ─────────────────────────────────────────────────────
-// TEMP DIAGNOSTIC (reel-crash) investigation surfaced the root cause: a Galaxy
+// The Oct 2026 reel-crash investigation surfaced the root cause: a Galaxy
 // Note 8 (Android 9, deviceMemory 4GB) recorded a recovered-after-kill trail
 // ending cleanly at recorder-start (mimeType=video/mp4) with a tiny JS heap
 // (12/1136MB) — the process dies natively, in the hardware H.264 encoder/GPU
@@ -104,8 +103,8 @@ function resolveReelTier() {
 
 // comedy/horror point at trimmed (≤30s, loop=true anyway makes the longer
 // originals pointless to decode in full), loudness-matched copies in
-// /audio/reel/ — see utils/reel-diagnostics.js's audio-decoded breadcrumb
-// for the measured effect (decodeAudioData's full-file PCM decode was ~30MB
+// /audio/reel/ — measured during the Oct 2026 reel-crash investigation
+// (decodeAudioData's full-file PCM decode was ~30MB
 // for comedy and ~133MB for horror's uncompensated 6ch source; both land at
 // the same ~11MB now). drama/action were already short, already stereo, and
 // gain nothing from a copy — they keep using the shared /audio/*_bg.m4a
@@ -151,7 +150,7 @@ function loadImg(src) {
   });
 }
 
-// TEMP DIAGNOSTIC (reel-crash) — low-tier-only panel decode. Downscales AT DECODE
+// Low-tier-only panel decode. Downscales AT DECODE
 // TIME via createImageBitmap so the full-resolution source pixels are never held in
 // memory — paired with the progressive one-panel-at-a-time loop in generate(), only
 // ONE panel's bitmap is ever alive at once on this tier, instead of all 7 for the
@@ -421,7 +420,6 @@ export default function MovieReelModal({
   isOpen, onClose,
   panels, panelImages,
   lang, genre, producerName,
-  posterUrl, comicSource, comicCompletedAtRef, // TEMP DIAGNOSTIC (reel-crash)
 }) {
   const isHebrew = lang === 'he';
   const [isDesktop, setIsDesktop] = useState(false);
@@ -490,11 +488,6 @@ export default function MovieReelModal({
   // blob could have leaked), but a real hazard for any later reel in a session.
   useEffect(() => {
     if (!isOpen) {
-      // TEMP DIAGNOSTIC (reel-crash) — closing mid-render is a normal user cancel,
-      // not a crash; mark it explicitly so an orphaned trail on next launch means
-      // an actual hard kill, not every ordinary "closed the modal while it was
-      // still generating" case.
-      if (phase === 'generating') reelBreadcrumb('reel-cancelled', {});
       cancelledRef.current = true;
       try { recorderRef.current?.stop(); } catch {}
       setPhase('idle');
@@ -532,34 +525,6 @@ export default function MovieReelModal({
   const readyCount = usablePanelData.length;
   const totalCount = panels.length;
 
-  // TEMP DIAGNOSTIC (reel-crash) — snapshot of what's actually held in memory
-  // the moment the modal opens: a data: URI census (poster + any panel still
-  // mid-swap from its own data URI to a CDN url) and any stale blob left over
-  // from a previous reel in this session (should be ~0 after the leak fix).
-  useEffect(() => {
-    if (!isOpen) return;
-    let dataUriCount = 0;
-    let dataUriTotalBytes = 0;
-    if (typeof posterUrl === 'string' && posterUrl.startsWith('data:')) {
-      dataUriCount++; dataUriTotalBytes += posterUrl.length;
-    }
-    Object.values(panelImages || {}).forEach((p) => {
-      if (p?.url && typeof p.url === 'string' && p.url.startsWith('data:')) {
-        dataUriCount++; dataUriTotalBytes += p.url.length;
-      }
-    });
-    reelBreadcrumb('mount', {
-      genre,
-      panelCount: totalCount,
-      readyCount,
-      comicSource: comicSource || 'unknown',
-      msSinceComicFinished: comicCompletedAtRef?.current ? (Date.now() - comicCompletedAtRef.current) : null,
-      dataUriCount,
-      dataUriTotalBytes,
-      staleBlobSize: videoBlobRef.current?.size || 0,
-    });
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // ── Main generation pipeline ────────────────────────────────────────────
   const generate = useCallback(async () => {
     if (readyCount === 0) {
@@ -568,7 +533,7 @@ export default function MovieReelModal({
       return;
     }
 
-    const tier = resolveReelTier(); // TEMP DIAGNOSTIC (reel-crash) — low-end-device investigation
+    const tier = resolveReelTier();   // 'low' on low-memory / old Android devices (see LOW_TIER)
     const isLow = tier.key === 'low';
     // Derived TOGETHER from tier.fps so wall-clock duration (and therefore audio
     // sync, since audio plays on its own independent real-time clock regardless
@@ -584,7 +549,6 @@ export default function MovieReelModal({
     setProgress(0);
     cancelledRef.current = false;
     chunksRef.current    = [];
-    reelBreadcrumb('generate-start', { readyCount, tier: tier.key }); // TEMP DIAGNOSTIC (reel-crash)
 
     // Create AudioContext synchronously while still in the user-gesture call stack.
     // Browsers require this for autoplay policy compliance — creating it after any
@@ -620,7 +584,6 @@ export default function MovieReelModal({
 
     let frameCount = 0;
     const totalFrames = usablePanelData.length * panelFrames + endFrames;
-    let heartbeatInterval = null; // TEMP DIAGNOSTIC (reel-crash) — cleared in the finally below
     let lowTierPrefetch = null; // low tier only — { idx, promise } for the next panel's bitmap; closed in the finally below if never consumed
 
     const advance = async () => {
@@ -637,10 +600,6 @@ export default function MovieReelModal({
       }
       frameCount++;
       setProgress(Math.min(99, Math.round((frameCount / totalFrames) * 100)));
-      // TEMP DIAGNOSTIC (reel-crash) — the heartbeat below replaces this on the low
-      // tier (same information, on a wall-clock timer that keeps reporting even if
-      // the render loop itself stalls, which a frame-count-gated crumb cannot).
-      if (!isLow && frameCount % 60 === 0) reelBreadcrumb('frame', { frameCount, totalFrames });
       await sleep(msPerFrame);
     };
 
@@ -652,7 +611,6 @@ export default function MovieReelModal({
       // below (step 4) so only ever one panel's bitmap is held in memory at once,
       // instead of all 7 simultaneously for the whole ~25s recording.
       setLabel(isHebrew ? 'טוען תמונות...' : 'Loading images...');
-      const decodeStart = Date.now(); // TEMP DIAGNOSTIC (reel-crash)
 
       let validItems = [];
       let validImgs  = [];
@@ -668,23 +626,14 @@ export default function MovieReelModal({
 
         validItems = usablePanelData.filter((_, i) => panelImgs[i] !== null);
         validImgs  = panelImgs.filter(Boolean);
-        reelBreadcrumb('panels-decoded', { // TEMP DIAGNOSTIC (reel-crash)
-          attempted: usablePanelData.length,
-          decoded: validImgs.length,
-          ms: Date.now() - decodeStart,
-        });
         if (validItems.length === 0) throw new Error('All panel images failed to decode.');
       } else {
         logoImg = await loadImg('/icon.png').catch(() => null);
         if (cancelledRef.current) return;
-        // Decoded count/ms are only known once the panel loop (step 4) finishes on
-        // this tier — the panels-decoded crumb fires there instead, same shape.
       }
 
       // 2. Audio (fail-open) ───────────────────────────────────────────────
       let audioDest = null; let audioSrc = null;
-      const audioStart = Date.now(); // TEMP DIAGNOSTIC (reel-crash)
-      let decodedBuf = null; // TEMP DIAGNOSTIC (reel-crash) — decodeAudioData's AudioBuffer, for sizing below
       try {
         if (audioCtx) {
           audioDest = audioCtx.createMediaStreamDestination();
@@ -695,7 +644,6 @@ export default function MovieReelModal({
           const resp = await fetch(audioFile);
           if (resp.ok) {
             const buf  = await audioCtx.decodeAudioData(await resp.arrayBuffer());
-            decodedBuf = buf; // TEMP DIAGNOSTIC (reel-crash)
             const gain = audioCtx.createGain();
             gain.gain.value = 0.45;
             audioSrc = audioCtx.createBufferSource();
@@ -709,24 +657,6 @@ export default function MovieReelModal({
       } catch {
         audioCtx = null; audioDest = null;
       }
-      // TEMP DIAGNOSTIC (reel-crash) — decodeAudioData decodes the WHOLE file to raw
-      // Float32 PCM regardless of how much of it the ~25s reel actually plays, and
-      // regardless of the source file's own channel count (a 5.1/6ch source stays
-      // 6ch decoded, not downmixed). bytes = length(frames) * channels * 4 — this is
-      // genre-dependent: comedy_bg.m4a (85.8s, 2ch) decodes to ~30MB; horror_bg.m4a
-      // (115s, 6ch/48kHz) decodes to ~133MB, over 4x comedy despite a SMALLER file on
-      // disk (1.87MB vs 2.84MB) — channel count and duration matter far more than
-      // on-disk size. See also the separate (not yet actioned) item on caching/
-      // re-encoding these files.
-      reelBreadcrumb('audio-decoded', {
-        ok: !!audioCtx,
-        ms: Date.now() - audioStart,
-        genre,
-        duration: decodedBuf?.duration ?? null,
-        numberOfChannels: decodedBuf?.numberOfChannels ?? null,
-        length: decodedBuf?.length ?? null,
-        decodedBytes: decodedBuf ? decodedBuf.length * decodedBuf.numberOfChannels * 4 : null,
-      }); // TEMP DIAGNOSTIC (reel-crash)
 
       if (cancelledRef.current) { try { audioCtx?.close(); } catch {} return; }
 
@@ -749,29 +679,6 @@ export default function MovieReelModal({
       recorderRef.current = recorder;
       recorder.ondataavailable = e => { if (e.data?.size > 0) chunksRef.current.push(e.data); };
       recorder.start();
-      const recordingStartTs = Date.now(); // TEMP DIAGNOSTIC (reel-crash)
-      reelBreadcrumb('recorder-start', { // TEMP DIAGNOSTIC (reel-crash)
-        mimeType,
-        tier: tier.key,
-        canvasW: tier.canvasW,
-        canvasH: tier.canvasH,
-        fps,
-        videoBitsPerSecond: tier.videoBitsPerSecond ?? null,
-        deviceMemory: (typeof navigator !== 'undefined' ? navigator.deviceMemory : undefined) ?? null,
-      });
-
-      // TEMP DIAGNOSTIC (reel-crash) — wall-clock heartbeat, independent of the render
-      // loop's own progress: a stalled/hung loop would stop advancing frameCount but
-      // this keeps firing regardless, showing exactly how far recording got before a
-      // hard kill instead of just "died somewhere after recorder-start". Throttled to
-      // one write per 2s by the interval itself; reelBreadcrumb already wraps every
-      // write in try/catch, so a diagnostic failure here can't affect real recording.
-      heartbeatInterval = setInterval(() => {
-        reelBreadcrumb('rec-heartbeat', {
-          t: Date.now() - recordingStartTs,
-          frameCount, totalFrames,
-        });
-      }, 2000);
 
       // 4. Render panel frames ─────────────────────────────────────────────
       if (!isLow) {
@@ -854,12 +761,10 @@ export default function MovieReelModal({
 
         let renderedIdx = 0;
         let decodedCount = 0;
-        let decodeMsAccum = 0; // sum of only the decode calls themselves, not the frame-render time between them
         for (let pi = 0; pi < usablePanelData.length; pi++) {
           if (cancelledRef.current) break;
           const { panel, url } = usablePanelData[pi];
 
-          const panelDecodeStart = Date.now();
           let img;
           if (lowTierPrefetch && lowTierPrefetch.idx === pi) {
             img = await lowTierPrefetch.promise;
@@ -870,7 +775,6 @@ export default function MovieReelModal({
             // to cancellation right as this panel came up.
             img = await loadPanelImageLowTier(url).catch(() => null);
           }
-          decodeMsAccum += Date.now() - panelDecodeStart;
           startPrefetch(pi + 1); // overlaps with this panel's frame loop below
           if (!img) { continue; } // skip cleanly — no frames for this panel
           decodedCount++;
@@ -908,11 +812,6 @@ export default function MovieReelModal({
           renderedIdx++;
         }
 
-        reelBreadcrumb('panels-decoded', { // TEMP DIAGNOSTIC (reel-crash) — same shape as the high tier's, just computed progressively
-          attempted: usablePanelData.length,
-          decoded: decodedCount,
-          ms: decodeMsAccum, // sum of decode-only time, matching what the high tier's `ms` measures — NOT the whole loop (which also includes ~21s of frame rendering/pacing)
-        });
         if (decodedCount === 0) throw new Error('All panel images failed to decode.');
         validItems = { length: decodedCount }; // only .length is read below (panel_count analytics)
       }
@@ -959,7 +858,6 @@ export default function MovieReelModal({
       setVideoUrl(url);
       setProgress(100);
       setPhase('done');
-      reelBreadcrumb('reel-finished', { blobSize: blob.size, tier: tier.key }); // TEMP DIAGNOSTIC (reel-crash)
 
       track('Reel Generated', {
         genre, language: lang,
@@ -979,10 +877,8 @@ export default function MovieReelModal({
         }
         setErrorMsg(expiredMsg || (isHebrew ? `שגיאה: ${err.message}` : `Failed: ${err.message}`));
         setPhase('error');
-        reelBreadcrumb('reel-error', { message: err?.message || '?', tier: tier.key }); // TEMP DIAGNOSTIC (reel-crash)
       }
     } finally {
-      if (heartbeatInterval) clearInterval(heartbeatInterval); // TEMP DIAGNOSTIC (reel-crash) — every exit path, success/error/cancel alike
       // Low tier only: a prefetch left non-null here means generate() is
       // exiting (break/throw/cancel) before the render loop ever reached that
       // panel's index to consume it — close whatever bitmap it produces once

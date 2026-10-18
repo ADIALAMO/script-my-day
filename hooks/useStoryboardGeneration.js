@@ -127,14 +127,6 @@ export function useStoryboardGeneration({
   // Honest, non-blocking note when a spend budget degraded or stopped part of this comic.
   const [comicNotice,         setComicNotice]          = useState('');
 
-  // TEMP DIAGNOSTIC (reel-crash) — 'fresh' | 'restored' | null, plus the
-  // timestamp the comic's images all reached a terminal state (success or
-  // error, not waiting on the background R2 upload). Read by MovieReelModal
-  // at mount time to tell a just-generated comic apart from a history
-  // restore, and to compute how long ago it finished.
-  const [comicSource, setComicSource] = useState(null);
-  const comicCompletedAtRef = useRef(null);
-
   // Tracks whether the current generation session is still active.
   // Set to false on reset / close so in-flight callbacks self-abort.
   const storyboardActiveRef = useRef(false);
@@ -220,10 +212,7 @@ export function useStoryboardGeneration({
       setUnlockedPanels(ownedPanels.length);
       setShowStoryboard(true);
       dispatchPanelImages({ type: 'INIT_FROM_HISTORY', panels: ownedPanels, canResume });
-      setComicSource('restored'); // TEMP DIAGNOSTIC (reel-crash)
-      comicCompletedAtRef.current = Date.now(); // TEMP DIAGNOSTIC (reel-crash) — already "finished"
     } else {
-      setComicSource(null); comicCompletedAtRef.current = null; // TEMP DIAGNOSTIC (reel-crash)
       setShowStoryboard(false);
       setStoryboardPanels([]);
       setUnlockedPanels(0);
@@ -387,17 +376,6 @@ export function useStoryboardGeneration({
     // teasers and never touch panelImages, so there is no need to track their state.
     dispatchPanelImages({ type: 'INIT_ALL', count: unlocked });
 
-    // TEMP DIAGNOSTIC (reel-crash) — marks comicCompletedAtRef once every unlocked
-    // panel has reached a terminal state (image shown, errored, or rate-limited —
-    // all three mean the panel is no longer stuck loading). Deliberately NOT
-    // waiting on the background R2 upload (Phase 3-5 above) — that's already
-    // excluded from "finished" everywhere else in this file (see getImageState).
-    let completedCount = 0;
-    const markPanelComplete = () => {
-      completedCount++;
-      if (completedCount >= unlocked) comicCompletedAtRef.current = Date.now();
-    };
-
     // Fire requests only for unlocked panels.
     // panel.isLocked guards against edge-cases where the index check alone might
     // not be sufficient (e.g. history restore with a mixed panel array).
@@ -406,7 +384,7 @@ export function useStoryboardGeneration({
       if (!storyboardActiveRef.current) break;
 
       // Each panel is fire-and-forget so they render progressively.
-      generatePanelImage(idx, panel, sessionId, panels, markPanelComplete);
+      generatePanelImage(idx, panel, sessionId, panels);
     }
   }, [generatePanelImage]);
 
@@ -600,7 +578,6 @@ export function useStoryboardGeneration({
         // Persist panel text to history immediately (imageUrl: null per panel), TOGETHER with the comic's session (seed, id, unlocked count):
         // even if the tab is suspended or closed before the images finish, reopening the entry can resume the missing frames.
         onPanelsGeneratedRef.current?.(data.panels.map(p => ({ ...p, imageUrl: null })), { comicSeed: comicSeedRef.current, sessionId, unlocked });
-        setComicSource('fresh'); comicCompletedAtRef.current = null; // TEMP DIAGNOSTIC (reel-crash)
         generateStoryboardImages(data.panels, unlocked, sessionId);
 
       } else {
@@ -679,7 +656,5 @@ export function useStoryboardGeneration({
     closeStoryboard,
     cancelStoryboard,
     isQuotaError,
-    comicSource,          // TEMP DIAGNOSTIC (reel-crash)
-    comicCompletedAtRef,  // TEMP DIAGNOSTIC (reel-crash)
   };
 }
