@@ -363,7 +363,12 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
           />
 
           {/* ── Modal panel ── */}
-          <div className="fixed inset-0 z-[8001] flex items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none">
+          {/* The overlay itself scrolls when the card is taller than the viewport (short phones): `m-auto` on the card centres it WITHOUT clipping the top
+              the way items-center would. A click on the empty overlay area closes, like the backdrop. No overscroll tweaks (iOS rule in CLAUDE.md §8), no second scroller. */}
+          <div
+            className="fixed inset-0 z-[8001] flex overflow-y-auto p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]"
+            onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+          >
             <motion.div
               key="auth-modal"
               initial={{ opacity: 0, scale: 0.93, y: 24 }}
@@ -375,7 +380,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
               aria-label={isHe ? 'כניסה לחשבון' : 'Sign in'}
               dir={isHe ? 'rtl' : 'ltr'}
               onClick={e => e.stopPropagation()}
-              className="relative w-full max-w-sm pointer-events-auto"
+              className="relative w-full max-w-sm m-auto"
             >
               {/* Outer glow */}
               <div className="absolute -inset-px rounded-[2.5rem] bg-gradient-to-b from-[#d4a373]/20 to-transparent blur-sm pointer-events-none" />

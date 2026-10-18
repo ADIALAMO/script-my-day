@@ -244,3 +244,13 @@ test('AuthModal 18+ notice: one shared component, >= 12px and >= white/70 (≈ 4
   // the old faint copy under the form is gone
   assert.doesNotMatch(src, /text-white\/35 text-\[10px\][^>]*>\s*\{isHe \? \(\s*<>בהמשך/);
 });
+
+test('AuthModal is scrollable on short viewports: the overlay scrolls (overflow-y-auto), the card is centred with m-auto (not items-center, which clips the top), and a click on the empty overlay closes', () => {
+  const src = readFileSync(path.join(ROOT, 'components/AuthModal.jsx'), 'utf8');
+  const overlay = src.slice(src.indexOf('className="fixed inset-0 z-[8001]'), src.indexOf('key="auth-modal"'));
+  assert.match(overlay, /\boverflow-y-auto\b/); assert.match(overlay, /\bflex\b/);
+  assert.doesNotMatch(overlay, /items-center|justify-center|pointer-events-none/);
+  assert.match(overlay, /e\.target === e\.currentTarget\) onClose\(\)/);
+  assert.match(src, /className="relative w-full max-w-sm m-auto"/);
+  assert.doesNotMatch(src, /overscroll-behavior|overscroll-contain|overscroll-none/);   // CLAUDE.md §8: never "fix" a scroller with overscroll-behavior
+});
