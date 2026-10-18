@@ -193,3 +193,27 @@ test('no visible "Stripe" or "Together AI" in any component (comments excepted):
   const del = readFileSync(path.join(ROOT, 'components/DataDeletionPage.jsx'), 'utf8');
   assert.match(del, /payment-provider customer ID \(if any\)/); assert.match(del, /!\(native && \/ספק התשלומים\|payment-provider\/\.test\(line\)\)/);
 });
+
+// ── Pro waitlist (web only): purpose + removal sentence in the form, gender-neutral Hebrew, nothing of it in the app ─────────────────────────
+test('waitlist form copy: purpose + removal sentence with a /data-deletion link (he + en), neutral Hebrew, no price / processor / "priority queue"; none of it reaches the Android Privacy text', async () => {
+  const { WAITLIST_COPY, DATA_DELETION_WAITLIST_LINE } = await import('../constants/waitlist-copy.js');
+  const flat = (o) => (typeof o === 'string' ? [o] : Object.values(o).flatMap(flat));
+  const all = flat([WAITLIST_COPY, DATA_DELETION_WAITLIST_LINE]).join('\n');
+  assert.doesNotMatch(all, NOT_YET);
+  assert.match(WAITLIST_COPY.purpose.en.before + WAITLIST_COPY.purpose.en.link, /We use your email only to tell you when Pro is available\. You can ask us to remove it at any time — see Data deletion/);
+  assert.match(WAITLIST_COPY.purpose.he.before + WAITLIST_COPY.purpose.he.link, /נשתמש באימייל שלך רק כדי לעדכן אותך כש-Pro יהיה זמין\. אפשר לבקש להסיר אותו בכל עת — ראו מחיקת נתונים/);
+  assert.match(WAITLIST_COPY.errors.unavailable.he, /נסו שוב בעוד רגע/); assert.match(WAITLIST_COPY.errors.rateLimited.he, /נסו שוב מאוחר יותר/);
+  assert.doesNotMatch(flat(WAITLIST_COPY.errors).concat(flat(WAITLIST_COPY.purpose.he)).join('\n'), /נסה |תוכל|אתה |הצטרף /, 'Hebrew stays gender-neutral');
+  const modal = readFileSync(path.join(ROOT, 'components/WaitlistModal.jsx'), 'utf8');
+  assert.match(modal, /href="\/data-deletion"/); assert.match(modal, /WAITLIST_COPY\.purpose/); assert.doesNotMatch(modal, /No spam|בלי ספאם/);
+  assert.match(modal, /res\.status === 503 \? WAITLIST_COPY\.errors\.unavailable/);                       // a failed save never reaches the success screen
+  assert.doesNotMatch(JSON.stringify(modalDataFor(true)), /waitlist|רשימת ההמתנה|the version of the notice|גרסת ההודעה/i);
+  // the data-deletion line is hidden inside the app
+  assert.match(readFileSync(path.join(ROOT, 'components/DataDeletionPage.jsx'), 'utf8'), /\{!native && <> \{DATA_DELETION_WAITLIST_LINE\[/);
+});
+
+test('waitlist modal: the Hebrew strings are gender-neutral (no masculine imperatives / "you" forms left)', () => {
+  const modal = readFileSync(path.join(ROOT, 'components/WaitlistModal.jsx'), 'utf8');
+  assert.doesNotMatch(modal, /היה הראשון|אתה ברשימה|השאר אימייל|נודיע לך|המשך להפיק|הצטרף לרשימת|שולח\.\.\./);
+  for (const s of ['נרשמתם לרשימה!', 'נעדכן אתכם ברגע ש-Pro ייפתח', 'אפשר להמשיך להפיק', 'היו הראשונים לקבל Pro', 'השאירו אימייל ונעדכן אתכם', 'הצטרפות לרשימת ההמתנה']) assert.ok(modal.includes(s), s);
+});

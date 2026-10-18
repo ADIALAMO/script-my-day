@@ -347,6 +347,10 @@ is the ONLY inner scroll container.** Rules ([utils/scroll-mode.js](utils/scroll
   increments are best-effort and happen **after** success.
 - Never trust client-supplied tier/userId — resolve via `getSessionAndTier`.
 - Stored images are cached ONE DAY (`IMAGE_CACHE_CONTROL`, not immutable — a quarantined image must leave caches soon); Redis stores only pointers.
+- **Pro waitlist** ([pages/api/waitlist.js](pages/api/waitlist.js), [lib/waitlist.js](lib/waitlist.js), [constants/waitlist-copy.js](constants/waitlist-copy.js)): `waitlist:<normalized email>` = JSON `{v:1,email,createdAt ISO,locale,source,userId,consentVersion}`
+  (legacy value = a bare unix-ms number; readers accept both). Written with `SET NX` (first record wins; a duplicate answers exactly like a new signup — no "already on the list"), honeypot field `HONEYPOT_FIELD`
+  (an unusual name on purpose: never "website"/"url"/… which browsers autofill), per-IP rate limit (fail-open), Redis failure = retryable 503 (never a fake success). The full address is never logged; Telegram shows the masked form.
+  Bump `WAITLIST_CONSENT_VERSION` when the purpose sentence changes. Migration of old values: `scripts/migrate-waitlist-records.mjs` (dry run by default, JSON backup 0600 first, `--rollback FILE`). Admin list/CSV = a later PR.
 - `.env.example` documents every required env var.
 - If magic links fail with 535 BadCredentials, create a new Gmail App Password and update
   `EMAIL_SERVER_PASSWORD` in Vercel (Production and Preview), then redeploy. Changing the

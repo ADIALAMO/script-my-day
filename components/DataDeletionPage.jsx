@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Check, Loader2, AlertCircle } from 'lucide-react';
 import { SITE_URL } from '../lib/site';
 import { useNative } from '../hooks/useNative.js';
+import { DATA_DELETION_WAITLIST_LINE } from '../constants/waitlist-copy.js';
 
 const COPY = {
   he: {
@@ -177,7 +178,10 @@ export default function DataDeletionPage() {
 
           <section className="py-8">
             <h2 className="text-[#d4a373] font-bold text-[14px] mb-1 leading-snug">{t.formH}</h2>
-            <p className="text-white/40 text-[12px] leading-relaxed mb-5">{t.formSub}</p>
+            <p className="text-white/40 text-[12px] leading-relaxed mb-5">
+              {t.formSub}
+              {!native && <> {DATA_DELETION_WAITLIST_LINE[isHe ? 'he' : 'en']}</>}
+            </p>
 
             {state === 'success' ? (
               <div className="flex items-start gap-3 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
