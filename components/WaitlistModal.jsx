@@ -119,11 +119,11 @@ export default function WaitlistModal({ isOpen, onClose, lang = 'en', defaultEma
                         </div>
                       </div>
                       <h2 className="text-center text-white font-black text-[19px] leading-tight mb-2">
-                        {isHe ? 'אתה ברשימה! 🎬' : "You're on the list! 🎬"}
+                        {isHe ? 'נרשמתם לרשימה! 🎬' : "You're on the list! 🎬"}
                       </h2>
                       <p className="text-center text-white/40 text-[12px] leading-relaxed mb-6">
                         {isHe
-                          ? 'נודיע לך ברגע ש-Pro ייפתח. עד אז — המשך להפיק במסלול החינמי.'
+                          ? 'נעדכן אתכם ברגע ש-Pro ייפתח. עד אז אפשר להמשיך להפיק במסלול החינמי.'
                           : "We'll let you know the moment Pro opens. Until then — keep creating on the Free plan."}
                       </p>
                       <button
@@ -136,11 +136,11 @@ export default function WaitlistModal({ isOpen, onClose, lang = 'en', defaultEma
                   ) : (
                     <>
                       <h2 className="text-center text-white font-black text-[19px] leading-tight mb-2">
-                        {isHe ? 'היה הראשון לקבל Pro' : 'Be first to get Pro'}
+                        {isHe ? 'היו הראשונים לקבל Pro' : 'Be first to get Pro'}
                       </h2>
                       <p className="text-center text-white/40 text-[12px] leading-relaxed mb-6">
                         {isHe
-                          ? 'יותר תסריטים, פוסטרים וקומיקסים ביום. השאר אימייל ונעדכן אותך ברגע שזה עולה לאוויר.'
+                          ? 'יותר תסריטים, פוסטרים וקומיקסים ביום. השאירו אימייל ונעדכן אתכם ברגע שזה עולה לאוויר.'
                           : 'More scripts, posters & comics a day. Drop your email and we’ll tell you the moment it goes live.'}
                       </p>
 
@@ -175,8 +175,8 @@ export default function WaitlistModal({ isOpen, onClose, lang = 'en', defaultEma
                         className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 disabled:bg-amber-500/40 disabled:cursor-not-allowed active:scale-[0.98] text-black font-black text-[14px] px-5 py-3.5 rounded-2xl transition-all duration-150 shadow-[0_4px_20px_rgba(245,158,11,0.3)] select-none"
                       >
                         {state === 'sending'
-                          ? <><Loader2 size={15} className="animate-spin shrink-0" />{isHe ? 'שולח...' : 'Joining…'}</>
-                          : (isHe ? 'הצטרף לרשימת ההמתנה' : 'Join the waitlist')}
+                          ? <><Loader2 size={15} className="animate-spin shrink-0" />{isHe ? 'מצטרפים...' : 'Joining…'}</>
+                          : (isHe ? 'הצטרפות לרשימת ההמתנה' : 'Join the waitlist')}
                       </button>
 
                       <p className="text-center text-white/35 text-[10px] leading-relaxed mt-3">

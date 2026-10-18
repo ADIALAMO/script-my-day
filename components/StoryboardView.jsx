@@ -701,7 +701,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                 className="shrink-0 flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 active:scale-[0.97] text-black font-black text-[12px] px-5 py-2.5 rounded-xl transition-all duration-150 shadow-[0_4px_14px_rgba(245,158,11,0.26)] whitespace-nowrap select-none"
               >
                 <Crown size={12} />
-                {isHebrew ? 'הצטרף לרשימת ההמתנה' : 'Join the waitlist'}
+                {isHebrew ? 'הצטרפות לרשימת ההמתנה' : 'Join the waitlist'}
               </button>
             </div>
           </motion.div>

@@ -211,3 +211,9 @@ test('waitlist form copy: purpose + removal sentence with a /data-deletion link 
   // the data-deletion line is hidden inside the app
   assert.match(readFileSync(path.join(ROOT, 'components/DataDeletionPage.jsx'), 'utf8'), /\{!native && <> \{DATA_DELETION_WAITLIST_LINE\[/);
 });
+
+test('waitlist modal: the Hebrew strings are gender-neutral (no masculine imperatives / "you" forms left)', () => {
+  const modal = readFileSync(path.join(ROOT, 'components/WaitlistModal.jsx'), 'utf8');
+  assert.doesNotMatch(modal, /היה הראשון|אתה ברשימה|השאר אימייל|נודיע לך|המשך להפיק|הצטרף לרשימת|שולח\.\.\./);
+  for (const s of ['נרשמתם לרשימה!', 'נעדכן אתכם ברגע ש-Pro ייפתח', 'אפשר להמשיך להפיק', 'היו הראשונים לקבל Pro', 'השאירו אימייל ונעדכן אתכם', 'הצטרפות לרשימת ההמתנה']) assert.ok(modal.includes(s), s);
+});
