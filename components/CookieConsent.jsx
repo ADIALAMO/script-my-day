@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Cookie } from 'lucide-react';
+import { isCapacitorNative } from '../utils/platform.js';
+import { loadGoogleAnalytics, CONSENT_KEY } from '../utils/ga.js';
 
 /**
  * GA4 Consent Mode v2 banner.
@@ -23,7 +25,7 @@ import { Cookie } from 'lucide-react';
  * (onPolicyClick has been removed — link now points to /privacy directly)
  */
 
-const STORAGE_KEY = 'lifescript_cookie_v2';
+const STORAGE_KEY = CONSENT_KEY;   // 'lifescript_cookie_v2' — also read by pages/_document.js and utils/ga.js
 
 export default function CookieConsent({ lang = 'he' }) {
   const isHe = lang === 'he';
@@ -31,6 +33,7 @@ export default function CookieConsent({ lang = 'he' }) {
 
   useEffect(() => {
     try {
+      if (isCapacitorNative()) return;   // the Android app never loads Google Analytics, so there is nothing to consent to
       if (localStorage.getItem(STORAGE_KEY) === null) setVisible(true);
     } catch { /* localStorage blocked — skip banner */ }
   }, []);
@@ -44,6 +47,7 @@ export default function CookieConsent({ lang = 'he' }) {
     if (typeof window.gtag === 'function') {
       window.gtag('consent', 'update', { analytics_storage: 'granted' });
     }
+    loadGoogleAnalytics();   // GA loads only now (web only; a no-op in the Android app)
     setVisible(false);
   };
 

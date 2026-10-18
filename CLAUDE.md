@@ -353,6 +353,9 @@ is the ONLY inner scroll container.** Rules ([utils/scroll-mode.js](utils/scroll
   Admin list + CSV: `GET /api/admin/waitlist` ([pages/api/admin/waitlist.js](pages/api/admin/waitlist.js), gate [lib/admin-auth.js](lib/admin-auth.js): 401 no session, 403 non-admin, admin key only as the `x-admin-key` HEADER; every answer
   `no-store`; the JSON list has no userId, the CSV ([lib/csv.js](lib/csv.js): BOM, CRLF, formula-injection prefix) has the whole filtered list incl. userId; "Waitlist" card in pages/admin.js, not in the 30 s auto-refresh). Never log a row.
   Bump `WAITLIST_CONSENT_VERSION` when the purpose sentence changes. Migration of old values: `scripts/migrate-waitlist-records.mjs` (dry run by default, JSON backup 0600 first, `--rollback FILE`).
+- **Google Analytics** ([utils/ga.js](utils/ga.js)): gtag.js loads ONLY on the website and ONLY after "Accept analytics" (CookieConsent, or on mount for a returning visitor who accepted); never inside the Capacitor app,
+  where the cookie banner is not shown either. The `window.gtag` stub in pages/_document.js keeps the Consent Mode defaults and DROPS every command except `consent` until `window.__lsGa` is set, so
+  pre-consent events are never queued/replayed. Vercel Analytics (`<Analytics />`, cookieless, aggregate approximate location / device / OS / browser) runs on web + app. Privacy §6 says exactly this; tests/ga-consent.test.js.
 - `.env.example` documents every required env var.
 - If magic links fail with 535 BadCredentials, create a new Gmail App Password and update
   `EMAIL_SERVER_PASSWORD` in Vercel (Production and Preview), then redeploy. Changing the

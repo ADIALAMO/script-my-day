@@ -124,7 +124,7 @@ export const MODAL_DATA = {
         },
         {
           h: '6. עוגיות ואנליטיקה',
-          p: 'אנחנו משתמשים בעוגיות חיוניות לשמירת ההתחברות שלך, ובעוגיית הזמנה (ls_ref) לזיהוי החבר שהזמין אותך (נמחקת לאחר ' + RETENTION.referralCookieDays + ' יום). אנחנו משתמשים ב-Vercel Web Analytics, שאינו משתמש בעוגיות לזיהוי מבקרים: מבקר מזוהה באמצעות גיבוב (hash) זמני של הבקשה, שנמחק אוטומטית לאחר יממה, והנתונים המתקבלים הם מצטברים — כגון עמודים שנצפו, אתר מפנה, מיקום משוער (מדינה, אזור ועיר), סוג מכשיר, מערכת הפעלה ודפדפן, ואירועי שימוש בפיצ\'רים כמו יצירת תסריט או שיתוף. אם תאשר עוגיות אנליטיקה, אנחנו משתמשים גם ב-Google Analytics, שקובע מזהים (עוגיות) ומעבד נתונים כמו כתובת ה-IP ופרטי המכשיר שלך כדי לספק לנו סטטיסטיקות שימוש; איננו משתמשים בו לפרסום. ללא אישורך Google Analytics לא קובע עוגיות אנליטיקה.',
+          p: 'אנחנו משתמשים בעוגיות חיוניות לשמירת ההתחברות שלך, ובעוגיית הזמנה (ls_ref) לזיהוי החבר שהזמין אותך (נמחקת לאחר ' + RETENTION.referralCookieDays + ' יום). אנחנו משתמשים ב-Vercel Web Analytics, שאינו משתמש בעוגיות לזיהוי מבקרים: מבקר מזוהה באמצעות גיבוב (hash) זמני של הבקשה, שנמחק אוטומטית לאחר יממה, והנתונים המתקבלים הם מצטברים — כגון עמודים שנצפו, אתר מפנה, מיקום משוער (מדינה, אזור ועיר), סוג מכשיר, מערכת הפעלה ודפדפן, ואירועי שימוש בפיצ\'רים כמו יצירת תסריט או שיתוף. הוא פועל באתר ובאפליקציית האנדרואיד. באתר בלבד, ורק לאחר שתאשרו עוגיות אנליטיקה, אנחנו טוענים גם את Google Analytics, שקובע מזהים (עוגיות) ומעבד נתונים כמו כתובת ה-IP ופרטי המכשיר כדי לספק לנו סטטיסטיקות שימוש; איננו משתמשים בו לפרסום. Google Analytics אינו נטען לפני שתאשרו, ואינו נטען לעולם באפליקציית האנדרואיד.',
         },
         {
           h: '7. עיבוד על ידי ספקי AI חיצוניים',
@@ -166,7 +166,7 @@ export const MODAL_DATA = {
         },
         {
           h: '6. Cookies & Analytics',
-          p: 'We use essential cookies to keep you signed in, and a referral cookie (ls_ref) to recognize the friend who invited you (deleted after ' + RETENTION.referralCookieDays + ' days). We use Vercel Web Analytics, which does not use cookies to identify visitors: a visitor is counted using a temporary hash of the request that is discarded automatically after a day, and the data is aggregate — such as pages viewed, referrer, approximate location (country, region and city), device type, operating system and browser, and feature-usage events such as creating a script or sharing. If you accept analytics cookies, we also use Google Analytics, which sets identifiers (cookies) and processes data such as your IP address and device information to give us usage statistics; we do not use it for advertising. Without your acceptance Google Analytics does not store analytics cookies.',
+          p: 'We use essential cookies to keep you signed in, and a referral cookie (ls_ref) to recognize the friend who invited you (deleted after ' + RETENTION.referralCookieDays + ' days). We use Vercel Web Analytics, which does not use cookies to identify visitors: a visitor is counted using a temporary hash of the request that is discarded automatically after a day, and the data is aggregate — such as pages viewed, referrer, approximate location (country, region and city), device type, operating system and browser, and feature-usage events such as creating a script or sharing. It runs on the website and in the Android app. On the website only, and only after you accept analytics cookies, we also load Google Analytics, which sets identifiers (cookies) and processes data such as your IP address and device information to give us usage statistics; we do not use it for advertising. Google Analytics is not loaded before you accept, and it is never loaded in the Android app.',
         },
         {
           h: '7. Processing by External AI Providers',
@@ -405,6 +405,8 @@ const NATIVE_ABOUT_STAR = {
 
 // Disclosures about web-payment data and the Pro waitlist: removed from the app's copy (the full wording stays on the web pages).
 const NATIVE_TEXT_REPLACEMENTS = [
+  [' באתר בלבד, ורק לאחר שתאשרו עוגיות אנליטיקה, אנחנו טוענים גם את Google Analytics, שקובע מזהים (עוגיות) ומעבד נתונים כמו כתובת ה-IP ופרטי המכשיר כדי לספק לנו סטטיסטיקות שימוש; איננו משתמשים בו לפרסום. Google Analytics אינו נטען לפני שתאשרו, ואינו נטען לעולם באפליקציית האנדרואיד.', ''],
+  [' On the website only, and only after you accept analytics cookies, we also load Google Analytics, which sets identifiers (cookies) and processes data such as your IP address and device information to give us usage statistics; we do not use it for advertising. Google Analytics is not loaded before you accept, and it is never loaded in the Android app.', ''],
   ['מצב המנוי, מזהה לקוח אצל ספק התשלומים (אם אי פעם התחלת מנוי בתשלום), ', ''],
   ['the subscription state, a payment-provider customer ID (only if you ever started a paid subscription), ', ''],
   ['החשבון, המכסה והמנוי', 'החשבון והמכסה'],

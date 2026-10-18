@@ -132,8 +132,16 @@ test('§6 names Vercel Web Analytics (no cookies to identify visitors, aggregate
     assert.doesNotMatch(t, /producer|מפיק|film title|שם הסרט/);
   }
   assert.match(sec('privacy', 'en', 6), /does not use cookies to identify visitors/);
-  assert.match(sec('privacy', 'en', 6), /If you accept analytics cookies, we also use Google Analytics/);
-  assert.match(sec('privacy', 'he', 6), /אם תאשר עוגיות אנליטיקה, אנחנו משתמשים גם ב-Google Analytics/);
+  // GA: website only, only after acceptance, never in the Android app; Vercel: aggregate approximate location / device / OS / browser, web + app
+  assert.match(sec('privacy', 'en', 6), /On the website only, and only after you accept analytics cookies, we also load Google Analytics/);
+  assert.match(sec('privacy', 'en', 6), /Google Analytics is not loaded before you accept, and it is never loaded in the Android app\./);
+  assert.match(sec('privacy', 'en', 6), /approximate location \(country, region and city\), device type, operating system and browser/);
+  assert.match(sec('privacy', 'en', 6), /It runs on the website and in the Android app\./);
+  assert.match(sec('privacy', 'he', 6), /באתר בלבד, ורק לאחר שתאשרו עוגיות אנליטיקה, אנחנו טוענים גם את Google Analytics/);
+  assert.match(sec('privacy', 'he', 6), /Google Analytics אינו נטען לפני שתאשרו, ואינו נטען לעולם באפליקציית האנדרואיד\./);
+  assert.match(sec('privacy', 'he', 6), /מיקום משוער \(מדינה, אזור ועיר\), סוג מכשיר, מערכת הפעלה ודפדפן/);
+  assert.match(sec('privacy', 'he', 6), /הוא פועל באתר ובאפליקציית האנדרואיד\./);
+  assert.doesNotMatch(sec('privacy', 'he', 6).slice(sec('privacy', 'he', 6).indexOf('באתר בלבד')), /תאשר |שלך כדי/, 'the new Hebrew GA sentence is gender-neutral');
 });
 
 test('terms §5: we ourselves do not train on or sell the photo; providers act under their own terms (no "share beyond processing" promise)', () => {
