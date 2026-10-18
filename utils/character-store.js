@@ -12,7 +12,6 @@
  */
 export const LS_URL = 'lifescript_character_url';
 export const LS_STARRING = 'lifescript_character_starring';
-const LS_DEVICE = 'lifescript_device_id';
 
 const safe = (fn, fallback = null) => { try { return fn(); } catch { return fallback; } };
 
@@ -80,7 +79,7 @@ export function createCharacterStore({ storage = null, fetchFn = null, getFetch 
       try {
         const r = await doFetch('/api/upload-character', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-device-id': get(LS_DEVICE) || '' },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ selfieBase64, consent }),
         });
         const d = await r.json();

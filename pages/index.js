@@ -523,10 +523,9 @@ function HomePage() {
     const savedName = localStorage.getItem('lifescript_producer_name');
     if (savedName) setProducerName(savedName);
 
-    if (!localStorage.getItem('lifescript_device_id')) {
-      const newId = 'ds_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
-      localStorage.setItem('lifescript_device_id', newId);
-    }
+    // The old random 'lifescript_device_id' was sent with every request but the server never used it (guests are keyed by IP,
+    // lib/api-utils.js). It is no longer created or sent; remove a value left over from earlier versions.
+    try { localStorage.removeItem('lifescript_device_id'); } catch { /* storage blocked: nothing to clean */ }
 
     // ── URL param handling ───────────────────────────────────────────────────
     // checkout: Stripe return signal — 'success' | 'cancelled'
@@ -771,13 +770,10 @@ function HomePage() {
     setJournalText(journalEntry);
 
     try {
-      const deviceId = localStorage.getItem('lifescript_device_id') || 'unknown';
-
       const response = await fetch('/api/generate-script', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-device-id': deviceId
         },
         signal: controller.signal,
         body: JSON.stringify({
@@ -785,7 +781,6 @@ function HomePage() {
           genre,
           gender,
           producerName: displayProducerName(producerName, lang),
-          deviceId: deviceId,
         }),
       });
 
