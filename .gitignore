@@ -29,3 +29,6 @@ docs-private/
 # Script-quality benchmark: the tooling in tools/quality-eval/ is tracked; what it generates stays local.
 tools/quality-eval/outputs/
 tools/quality-eval/.cache/
+
+# waitlist migration backups contain e-mail addresses — never commit
+waitlist-backups/

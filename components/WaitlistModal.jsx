@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Crown, Check, Loader2, AlertCircle, Mail } from 'lucide-react';
+import { HONEYPOT_FIELD } from '../lib/waitlist.js';
+import { WAITLIST_COPY } from '../constants/waitlist-copy.js';
 
 /**
  * Pro waitlist modal — shown instead of the checkout while billing is gated
@@ -17,6 +19,8 @@ export default function WaitlistModal({ isOpen, onClose, lang = 'en', defaultEma
   const [email, setEmail]   = useState(defaultEmail);
   const [state, setState]   = useState('idle'); // 'idle' | 'sending' | 'success' | 'error'
   const [errorMsg, setErrorMsg] = useState('');
+  const trapRef = useRef(null);   // honeypot: real people never see or fill it
+  const L = isHe ? 'he' : 'en';
 
   // Reset on open; prefill with the signed-in email when available.
   useEffect(() => {
@@ -31,7 +35,7 @@ export default function WaitlistModal({ isOpen, onClose, lang = 'en', defaultEma
     const clean = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
       setState('error');
-      setErrorMsg(isHe ? 'נא להזין כתובת אימייל תקינה.' : 'Please enter a valid email address.');
+      setErrorMsg(WAITLIST_COPY.errors.invalid[L]);
       return;
     }
     setState('sending');
@@ -40,13 +44,18 @@ export default function WaitlistModal({ isOpen, onClose, lang = 'en', defaultEma
       const res = await fetch('/api/waitlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: clean, lang }),
+        body: JSON.stringify({ email: clean, lang, [HONEYPOT_FIELD]: trapRef.current?.value || '' }),
       });
-      if (!res.ok) throw new Error('request failed');
-      setState('success');
+      if (res.ok) { setState('success'); return; }
+      // 503 = not saved (retryable): never show the success screen for it
+      setState('error');
+      setErrorMsg(res.status === 503 ? WAITLIST_COPY.errors.unavailable[L]
+        : res.status === 429 ? WAITLIST_COPY.errors.rateLimited[L]
+        : res.status === 400 ? WAITLIST_COPY.errors.invalid[L]
+        : WAITLIST_COPY.errors.generic[L]);
     } catch {
       setState('error');
-      setErrorMsg(isHe ? 'משהו השתבש. נסה שוב.' : 'Something went wrong. Please try again.');
+      setErrorMsg(WAITLIST_COPY.errors.unavailable[L]);
     }
   };
 
@@ -147,6 +156,10 @@ export default function WaitlistModal({ isOpen, onClose, lang = 'en', defaultEma
                           disabled={state === 'sending'}
                           className={`w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3.5 text-white text-[13px] placeholder-white/25 outline-none focus:border-amber-500/40 transition-colors disabled:opacity-50 ${isHe ? 'pr-11 pl-4 text-right' : 'pl-11 pr-4'}`}
                         />
+                        {/* Honeypot: off-screen (NOT display:none), no autofill, not focusable, hidden from assistive tech. Name = HONEYPOT_FIELD (not an autofill token). */}
+                        <div aria-hidden="true" style={{ position: 'absolute', left: '-10000px', top: 'auto', width: '1px', height: '1px', overflow: 'hidden' }}>
+                          <input ref={trapRef} type="text" name={HONEYPOT_FIELD} defaultValue="" tabIndex={-1} autoComplete="off" />
+                        </div>
                       </div>
 
                       {state === 'error' && errorMsg && (
@@ -166,8 +179,10 @@ export default function WaitlistModal({ isOpen, onClose, lang = 'en', defaultEma
                           : (isHe ? 'הצטרף לרשימת ההמתנה' : 'Join the waitlist')}
                       </button>
 
-                      <p className="text-center text-white/20 text-[10px] leading-relaxed mt-3">
-                        {isHe ? 'בלי ספאם · רק עדכון אחד כשזה מוכן' : 'No spam · just one note when it’s ready'}
+                      <p className="text-center text-white/35 text-[10px] leading-relaxed mt-3">
+                        {WAITLIST_COPY.purpose[L].before}
+                        <a href="/data-deletion" target="_blank" rel="noopener noreferrer" className="underline text-white/55 hover:text-white">{WAITLIST_COPY.purpose[L].link}</a>
+                        {WAITLIST_COPY.purpose[L].after}
                       </p>
                     </>
                   )}

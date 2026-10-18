@@ -100,7 +100,14 @@ test('§4 covers rate-limit records, the deletion log with e-mail/note/IP, Teleg
   assert.match(sec('privacy', 'en', 4), /rate-limit records keyed by IP address/);
   assert.match(sec('privacy', 'en', 4), /together with your email address, your note and your IP address/);
   assert.match(sec('privacy', 'en', 4), /private Telegram chat[^.]*partly hidden email address/);
-  assert.match(sec('privacy', 'en', 4), /Waitlist email addresses are kept until you ask us to delete them/);
+  // waitlist: what is stored, the one purpose, retention + removal — no price, no payment processor, and the Telegram "partly hidden" line is said ONCE (above)
+  const w4 = sec('privacy', 'en', 4);
+  assert.match(w4, /If you join the Pro waitlist we store your email address, your language, the date, the version of the notice you saw and, if you were signed in, your account id\. We use them only to tell you once when Pro is available, and keep them until then or until you ask us to remove them \(through the data-deletion page or by email\)\./);
+  assert.equal((w4.match(/partly hidden email address/g) || []).length, 1);
+  assert.doesNotMatch(w4.slice(w4.indexOf('If you join the Pro waitlist')), /\$|price|Stripe|payment|per month/i);
+  const h4 = sec('privacy', 'he', 4);
+  assert.match(h4, /אם תצטרפו לרשימת ההמתנה ל-Pro, נשמור את כתובת האימייל, את השפה, את התאריך, את גרסת ההודעה שראיתם, ואם הייתם מחוברים — את מזהה החשבון\. נשתמש בהם רק כדי לעדכן אתכם פעם אחת כש-Pro יהיה זמין, ונשמור אותם עד אז או עד שתבקשו להסיר אותם \(דרך עמוד מחיקת הנתונים או במייל\)\./);
+  assert.doesNotMatch(h4.slice(h4.indexOf('אם תצטרפו')), /\$|מחיר|Stripe|תשלום/);
   assert.match(sec('privacy', 'en', 4), /standard server logs/);
   assert.match(sec('privacy', 'he', 4), /צ'אט טלגרם פרטי/);
   assert.match(sec('privacy', 'he', 4), /יומני שרת סטנדרטיים/);
