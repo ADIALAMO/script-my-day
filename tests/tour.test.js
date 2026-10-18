@@ -169,7 +169,7 @@ test('existing users: any history / prior-use key blocks the auto-start', () => 
   assert.equal(hasPriorActivity(fakeStorage({ lifescript_history: '{broken' }), 0), true);
   assert.equal(hasPriorActivity(fakeStorage({ ls_howto_dismissed: '1' }), 0), true);
   assert.equal(hasPriorActivity(fakeStorage({ lifescript_producer_name: 'Dana' }), 0), true);
-  assert.equal(hasPriorActivity(fakeStorage({ lifescript_device_id: 'x' }), 0), false); // created on every first visit: not a signal
+  assert.equal(hasPriorActivity(fakeStorage({ lifescript_device_id: 'x' }), 0), false); // the old (now removed) random id: still not a prior-use signal if an old browser has it
   assert.equal(hasPriorActivity(throwing, 0), false);
   assert.equal(hasPriorActivity(null, 0), false);
 });

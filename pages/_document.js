@@ -5,7 +5,9 @@ export default function Document() {
     <Html lang="he" style={{ backgroundColor: '#030712' }}>
       <Head>
         {/*
-          GA4 Consent Mode v2 — must execute before the GA loader script.
+          GA4 Consent Mode v2 + the gtag STUB. gtag.js itself is NOT loaded here: utils/ga.js loads it only on the website and only
+          after the visitor accepted analytics (never inside the Android app). Until then the stub drops every command except
+          'consent' (window.__lsGa is false), so events fired before acceptance are neither sent nor queued for later.
           Reads the stored consent decision synchronously from localStorage so that:
           - Returning users who accepted  → analytics_storage: 'granted'  (no delay)
           - Returning users who declined  → analytics_storage: 'denied'   (no delay)
@@ -18,7 +20,7 @@ export default function Document() {
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {
             window.dataLayer = window.dataLayer || [];
-            function gtag() { dataLayer.push(arguments); }
+            function gtag() { if (window.__lsGa === true || arguments[0] === 'consent') dataLayer.push(arguments); }
             window.gtag = gtag;
 
             var analyticsState = 'denied';

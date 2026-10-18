@@ -2,13 +2,13 @@
 import { SessionProvider } from 'next-auth/react';
 import '../styles/globals.css';
 import Head from 'next/head';
-import Script from 'next/script';
 import { useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { App as CapacitorApp } from '@capacitor/app';
 import { SITE_URL } from '../lib/site.js';
+import { hasAnalyticsConsent, loadGoogleAnalytics } from '../utils/ga.js';
 import { recoverOrphanedReelTrail } from '../utils/reel-diagnostics.js'; // TEMP DIAGNOSTIC (reel-crash)
 
 function MyApp({ Component, pageProps: { session, ...pageProps } }) {
@@ -17,6 +17,10 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
   // app launch; a no-op unless a PREVIOUS session left an unfinished reel trail
   // behind (the hard-kill recovery path).
   useEffect(() => { recoverOrphanedReelTrail(); }, []);
+
+  // Google Analytics: web only, and only for a visitor who already accepted analytics (a first acceptance loads it from CookieConsent).
+  // loadGoogleAnalytics() is a no-op inside the Android app. See utils/ga.js.
+  useEffect(() => { if (hasAnalyticsConsent()) loadGoogleAnalytics(); }, []);
 
   // ── Reload on resume if a new deploy went out while backgrounded (Capacitor
   // only) ─────────────────────────────────────────────────────────────────────
@@ -157,29 +161,13 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
           <meta property="og:image:type" content="image/png" />
           <meta name="twitter:card" content="summary_large_image" />
           <meta key="twitter:title" name="twitter:title" content="LIFESCRIPT | Your Life, Directed" />
-          <meta key="twitter:description" name="twitter:description" content="הפוך את רגעי היום-יום שלך לתסריט הוליוודי. יומן תסריטים קולנועי אישי." />
+          <meta key="twitter:description" name="twitter:description" content="הפוך את רגעי היום-יום שלך לתסריט קולנועי. יומן תסריטים קולנועי אישי." />
           <meta key="twitter:image" name="twitter:image" content={`${SITE_URL}/og-image.png`} />
           <link rel="icon" href="/icon.png" />
           <link rel="shortcut icon" href="/favicon.ico" />
           <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         </Head>
 
-        {/*
-          GA4 loader — window.dataLayer, window.gtag, and the consent default are
-          already set by the beforeInteractive script in _document.js <Head>, so we
-          only need the loader + config here. Consent Mode v2 ensures no data is
-          collected until the user explicitly accepts in the CookieConsent banner.
-        */}
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-YL145XYBD3"
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            gtag('js', new Date());
-            gtag('config', 'G-YL145XYBD3');
-          `}
-        </Script>
 
         <main className="min-h-screen bg-[#030712] selection:bg-[#d4a373]/30">
           <audio id="main-bg-music" preload="auto" style={{ display: 'none' }} />

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Clapperboard } from 'lucide-react';
 import { useRotatingMessages } from '../hooks/useRotatingMessages.js';
 
-// ── Hollywood microcopy ───────────────────────────────────────────────────────
+// ── Cinematic microcopy ───────────────────────────────────────────────────────
 
 const QUOTES_EN = [
   "Writing a multi-million dollar third act plot twist...",
@@ -13,7 +13,7 @@ const QUOTES_EN = [
   "Negotiating streaming rights with three platforms simultaneously...",
   "Waiting for the director's 47th take on this exact moment...",
   "The writers' room just ordered their 6th pizza of the night...",
-  "Consulting with the Cannes jury on narrative structure...",
+  "Consulting with the festival jury on narrative structure...",
   "Convincing the star to do the sequel for half the money...",
   "Running final ADR — the mic is too close to the craft table...",
   "Sourcing authentic period typewriters for the flashback scenes...",
@@ -30,7 +30,7 @@ const QUOTES_HE = [
   "מנהלים משא ומתן על זכויות סטרימינג עם שלוש פלטפורמות במקביל...",
   "מחכים לצילום ה-47 של הסצנה הזאת...",
   "חדר התסריטאים הזמין את הפיצה השישית של הלילה...",
-  "מתייעצים עם חבר השופטים של קאן על המבנה הנרטיבי...",
+  "מתייעצים עם חבר השופטים של הפסטיבל על המבנה הנרטיבי...",
   "מנסים לשכנע את הכוכב לעשות את הסרט הבא בחצי שכר...",
   "מריצים ADR אחרון — המיקרופון קרוב מדי לשולחן הקייטרינג...",
   "מחפשים מכונות כתיבה וינטאג׳ אותנטיות לסצנות הפלאשבק...",

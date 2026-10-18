@@ -116,13 +116,13 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
     return isHebrew ? {
       comingSoon: 'בקרוב בקולנוע',
       line1: `בימוי: ${finalProducerName} • הפקה: סטודיו LIFESCRIPT`,
-      line2: 'צילום: מעבדת AI • עיצוב אמנותי: הוליווד דיגיטלית • ליהוק: וירטואלי',
+      line2: 'צילום: מעבדת AI • עיצוב אמנותי: סטודיו דיגיטלי • ליהוק: וירטואלי',
       line3: 'מוזיקה: THE MASTER • עריכה: סוכן 2005 • אפקטים: מנוע קולנועי',
       copyright: `© ${year} LIFESCRIPT STUDIO • כל הזכויות שמורות`,
     } : {
       comingSoon: 'COMING SOON',
       line1: `DIRECTED BY ${finalProducerName.toUpperCase()} • PRODUCTION: LIFESCRIPT STUDIO`,
-      line2: 'CINEMATOGRAPHY: AI LAB • ART DIRECTION: DIGITAL HOLLYWOOD • CASTING: VIRTUAL',
+      line2: 'CINEMATOGRAPHY: AI LAB • ART DIRECTION: DIGITAL STUDIO • CASTING: VIRTUAL',
       line3: 'MUSIC: THE MASTER • EDITING: AGENT 2005 • VFX: CINEMATIC ENGINE',
       copyright: `© ${year} LIFESCRIPT STUDIO • ALL RIGHTS RESERVED`,
     };
@@ -472,12 +472,12 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
 
   // ── Comic style options ────────────────────────────────────────────────────
   const comicStyleOptions = useMemo(() => uiHebrew ? [
-    { value: 'anime',   label: 'אנימה סטודיו' },
+    { value: 'anime',   label: 'סגנון אנימה' },
     { value: 'marvel',  label: 'קומיקס רטרו' },
     { value: 'noir',    label: 'נואר קולנועי' },
     { value: 'painted', label: 'ציור קולנועי' },
   ] : [
-    { value: 'anime',   label: 'ANIME STUDIO' },
+    { value: 'anime',   label: 'ANIME STYLE' },
     { value: 'marvel',  label: 'RETRO COMIC' },
     { value: 'noir',    label: 'CINEMATIC NOIR' },
     { value: 'painted', label: 'CINEMATIC PAINTED' },
@@ -1226,7 +1226,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
                   {[
                     { onClick: () => { handleWhatsApp(); setShowShareModal(false); }, color: '#25D366', icon: <WhatsAppIcon />, label: uiHebrew ? 'שלח בוואטסאפ' : 'Send via WhatsApp', sub: uiHebrew ? 'שתף עם חברים ישירות' : 'Share directly with friends' },
                     { onClick: () => { handleFacebook(); setShowShareModal(false); }, color: '#1877F2', icon: <FacebookIcon />, label: uiHebrew ? 'שתף בפייסבוק' : 'Share on Facebook', sub: uiHebrew ? 'פרסם את ההפקה בפיד' : 'Post your production to your feed' },
-                    { onClick: () => { handlePrintIframe(); setShowShareModal(false); }, color: '#d4a373', icon: <Printer size={19} />, label: uiHebrew ? 'הדפסה / שמור כ-PDF' : 'Print / Save as PDF', sub: uiHebrew ? 'פורמט תסריט הוליוודי סטנדרטי' : 'Hollywood-standard screenplay format', webOnly: true },
+                    { onClick: () => { handlePrintIframe(); setShowShareModal(false); }, color: '#d4a373', icon: <Printer size={19} />, label: uiHebrew ? 'הדפסה / שמור כ-PDF' : 'Print / Save as PDF', sub: uiHebrew ? 'פורמט תסריט סטנדרטי' : 'Standard screenplay format', webOnly: true },
                     { onClick: () => { handleEmail(); setShowShareModal(false); }, color: '#8b5cf6', icon: <Mail size={19} />, label: uiHebrew ? 'שלח באימייל' : 'Send via Email', sub: uiHebrew ? 'פתח אפליקציית דואר עם התסריט' : 'Open your mail app with the script' },
                     { onClick: () => { handleNativeShare(); setShowShareModal(false); }, color: '#38bdf8', icon: <NotebookPen size={19} />, label: uiHebrew ? 'שמור / שתף טקסט' : 'Save to Notes / Share Text', sub: uiHebrew ? 'שיתוף נייטיב או העתקה לקליפבורד' : 'Native share sheet or clipboard copy' },
                   ].filter((item) => canPrint || !item.webOnly).map((item, i) => (

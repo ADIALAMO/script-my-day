@@ -68,7 +68,7 @@ test('parseAgeVerdict — exact {"apparent_age": …} only; a refusal is "unsure
 });
 
 test('screenApparentMinor never rejects what is not an image data URI (and does not call out)', async () => {
-  for (const v of [undefined, null, 'https://example.com/x.jpg', 'data:text/plain;base64,AAAA', 42]) assert.deepEqual(await screenApparentMinor(v), { reject: false, result: 'skipped' });
+  for (const v of [undefined, null, 'https://example.com/x.jpg', 'data:text/plain;base64,AAAA', 42]) assert.deepEqual(await screenApparentMinor(v), { reject: false, unavailable: true, result: 'skipped' });
 });
 
 // "age verification" must never be claimed: wherever the phrase appears it is a denial
@@ -93,4 +93,18 @@ test('privacy text discloses the text classifier and the photo screen in both la
   assert.match(he, /תסריטים וקומיקס שנוצרו נבדק גם הוא על ידי מסווג בטיחות אוטומטי/);
   assert.match(he, /מציגה בבירור ילד — בדיקה מאמץ סביר שאינה יכולה לאשר את גילו של איש/);
   assert.doesNotMatch(en, /age verification/i);
+});
+
+test('minor screen FAILS CLOSED on technical failures: the route answers 503 PHOTO_CHECK_UNAVAILABLE before anything is stored; the modal shows the localized retry message', async () => {
+  const { readFileSync } = await import('node:fs');
+  const route = readFileSync(new URL('../pages/api/upload-character.js', import.meta.url), 'utf8');
+  const i503 = route.indexOf("code: CODES.PHOTO_CHECK_UNAVAILABLE"); const iMinor = route.indexOf("code: CODES.MINOR_REJECTED"); const iPut = route.indexOf('await putImage(keys.raw');
+  assert.ok(i503 > 0 && i503 < iMinor && iMinor < iPut, 'unavailable → 503, then minor → 422, both before the raw selfie is stored');
+  assert.match(route.slice(route.indexOf('if (minor.unavailable)'), i503), /await giveBackReservation\(\)/);
+  const modal = readFileSync(new URL('../components/CharacterModal.jsx', import.meta.url), 'utf8');
+  assert.match(modal, /result\.code === CODES\.PHOTO_CHECK_UNAVAILABLE/);
+  const { getMsg, CODES, isRetryableError } = await import('../lib/messages.js');
+  assert.match(getMsg(CODES.PHOTO_CHECK_UNAVAILABLE, 'en', undefined, { native: false }), /couldn't check the photo right now.*try again in a moment/);
+  assert.match(getMsg(CODES.PHOTO_CHECK_UNAVAILABLE, 'he', undefined, { native: false }), /לא הצלחנו לבדוק את התמונה כרגע.*נסו שוב בעוד רגע/);
+  assert.equal(isRetryableError(CODES.PHOTO_CHECK_UNAVAILABLE), true);
 });

@@ -117,16 +117,14 @@ export function usePosterGeneration({
 
     const genreTag = getGenreLabel(genre, 'en');
     const prompt   = `A textless movie poster style, depicting: ${visualPrompt}. Genre: ${genreTag}. High budget Hollywood production, epic scale, 8k, ultra-detailed, sharp focus. (NO TEXT)`;
-    const deviceId = typeof window !== 'undefined' ? localStorage.getItem('lifescript_device_id') || '' : '';
 
     try {
       const response = await fetch('/api/generate-poster', {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-device-id':  deviceId,
         },
-        body: JSON.stringify({ prompt, genre, lang, deviceId, characterImageUrl: characterImageUrl || undefined }),
+        body: JSON.stringify({ prompt, genre, lang, characterImageUrl: characterImageUrl || undefined }),
       });
       const data = await response.json();
 

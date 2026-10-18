@@ -96,9 +96,9 @@ test('three independent paid-check budgets: defaults, 0 switches ONE off, junk f
   const clear = () => ENV.forEach((k) => delete process.env[k]);
   try {
     clear();
-    assert.deepEqual([checkBudgetUsd('image'), checkBudgetUsd('text'), checkBudgetUsd('minor')], [0.5, 0.3, 0.2]);
+    assert.deepEqual([checkBudgetUsd('image'), checkBudgetUsd('text'), checkBudgetUsd('minor')], [0.5, 0.3, 0.5]);
     assert.equal(checkBudgetUsd(), 0.5, 'no argument = the image budget (backward compatible)');
-    assert.deepEqual([checkMaxCalls('image'), checkMaxCalls('text'), checkMaxCalls('minor')], [Math.floor(0.5 / CHECK_COST_USD), 750, 1333]);
+    assert.deepEqual([checkMaxCalls('image'), checkMaxCalls('text'), checkMaxCalls('minor')], [Math.floor(0.5 / CHECK_COST_USD), 750, 3333]);
     assert.deepEqual([globalCheckKey('image').slice(0, 23), globalCheckKey('text').slice(0, 23), globalCheckKey('minor').slice(0, 24)], ['usage:check:paid:global', 'usage:check:text:global', 'usage:check:minor:global']);
     process.env.DAILY_TEXT_CHECK_BUDGET = '0';
     assert.deepEqual([checkMaxCalls('image') > 0, checkMaxCalls('text'), checkMaxCalls('minor') > 0], [true, 0, true], 'zeroing the text budget leaves the other two');
@@ -107,7 +107,7 @@ test('three independent paid-check budgets: defaults, 0 switches ONE off, junk f
     clear(); process.env.DAILY_MINOR_CHECK_BUDGET = '0.0003';
     assert.deepEqual([checkMaxCalls('minor'), checkMaxCalls('image') > 100, checkMaxCalls('text') > 100], [2, true, true]);
     clear(); process.env.DAILY_TEXT_CHECK_BUDGET = 'abc'; process.env.DAILY_MINOR_CHECK_BUDGET = '-1'; process.env.DAILY_CHECK_BUDGET = '';
-    assert.deepEqual([checkBudgetUsd('text'), checkBudgetUsd('minor'), checkBudgetUsd('image')], [0.3, 0.2, 0.5]);
+    assert.deepEqual([checkBudgetUsd('text'), checkBudgetUsd('minor'), checkBudgetUsd('image')], [0.3, 0.5, 0.5]);
     clear(); process.env.TEXT_CHECK_COST_USD = '0.001';
     assert.equal(checkMaxCalls('text'), 300);
     assert.equal(checkBudgetUsd('nonsense'), 0.5, 'an unknown purpose behaves like the image budget');

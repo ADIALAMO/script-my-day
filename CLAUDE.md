@@ -206,7 +206,7 @@ the index regardless of how the deletion actually happened.
 budget is left) → `CONTENT_REFUSED`; quota released in every refusal. Classifier unavailable (down / own circuit open / own budget spent / no time):
 **romance + horror fail CLOSED** (`CONTENT_CHECK_UNAVAILABLE`, 503); **every other genre is returned on the blocklist result alone** and
 `stats:textcheck:degraded:<day>` is incremented (a number, never text or keys). `lib/minor-screen.js`: best-effort apparent-minor screen at Star Yourself
-upload (after the quota reservations, before anything is stored): rejects ONLY on a clear "minor" (`MINOR_REJECTED`), every other outcome allows. It is
+upload (after the quota reservations, before anything is stored): a clear "minor" → `MINOR_REJECTED` (422); "adult" / "unsure" (incl. a model refusal) → allowed; a TECHNICAL failure (provider error, unreadable reply, open `check_minor` circuit, spent/unverifiable budget) FAILS CLOSED → 503 `PHOTO_CHECK_UNAVAILABLE` (retryable, nothing stored, reservations back). It is
 NOT age verification — never describe it so (tests/text-safety.test.js scans the repo).
 **Five independent paid budgets and circuits** (four checks + the storyboard first engine; nothing is shared, so one running dry or failing can never switch off another):
 
@@ -214,7 +214,7 @@ NOT age verification — never describe it so (tests/text-safety.test.js scans t
 |---|---|---|---|
 | image fallback | `DAILY_CHECK_BUDGET` ($0.50) | `usage:check:paid:global:<day>` | `check_gemini` |
 | text classifier | `DAILY_TEXT_CHECK_BUDGET` ($0.30) | `usage:check:text:global:<day>` | `check_text` |
-| minor screen | `DAILY_MINOR_CHECK_BUDGET` ($0.20) | `usage:check:minor:global:<day>` | `check_minor` |
+| minor screen | `DAILY_MINOR_CHECK_BUDGET` ($0.50) | `usage:check:minor:global:<day>` | `check_minor` |
 | image second opinion | `DAILY_IMAGE_SAFETY_BUDGET` ($0.50) | `usage:check:imgsafety:global:<day>` | `check_imgsafety` |
 | storyboard first engine (Gemini Flash-Lite via OpenRouter) | `DAILY_STORYBOARD_BUDGET` ($1.00) | `usage:storyboard:paid:global:<day>` | `storyboard_gemini` |
 
@@ -353,6 +353,9 @@ is the ONLY inner scroll container.** Rules ([utils/scroll-mode.js](utils/scroll
   Admin list + CSV: `GET /api/admin/waitlist` ([pages/api/admin/waitlist.js](pages/api/admin/waitlist.js), gate [lib/admin-auth.js](lib/admin-auth.js): 401 no session, 403 non-admin, admin key only as the `x-admin-key` HEADER; every answer
   `no-store`; the JSON list has no userId, the CSV ([lib/csv.js](lib/csv.js): BOM, CRLF, formula-injection prefix) has the whole filtered list incl. userId; "Waitlist" card in pages/admin.js, not in the 30 s auto-refresh). Never log a row.
   Bump `WAITLIST_CONSENT_VERSION` when the purpose sentence changes. Migration of old values: `scripts/migrate-waitlist-records.mjs` (dry run by default, JSON backup 0600 first, `--rollback FILE`).
+- **Google Analytics** ([utils/ga.js](utils/ga.js)): gtag.js loads ONLY on the website and ONLY after "Accept analytics" (CookieConsent, or on mount for a returning visitor who accepted); never inside the Capacitor app,
+  where the cookie banner is not shown either. The `window.gtag` stub in pages/_document.js keeps the Consent Mode defaults and DROPS every command except `consent` until `window.__lsGa` is set, so
+  pre-consent events are never queued/replayed. Vercel Analytics (`<Analytics />`, cookieless, aggregate approximate location / device / OS / browser) runs on web + app. Privacy §6 says exactly this; tests/ga-consent.test.js.
 - `.env.example` documents every required env var.
 - If magic links fail with 535 BadCredentials, create a new Gmail App Password and update
   `EMAIL_SERVER_PASSWORD` in Vercel (Production and Preview), then redeploy. Changing the

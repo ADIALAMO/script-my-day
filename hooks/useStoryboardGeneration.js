@@ -549,18 +549,15 @@ export function useStoryboardGeneration({
     setStoryboardError('');
     setStoryboardErrorCode('');
 
-    const deviceId = typeof window !== 'undefined' ? localStorage.getItem('lifescript_device_id') || '' : '';
-
     try {
       // 62 s ceiling (the route is killed at 60 s): a hung request becomes a normal, retryable error instead of an endless spinner.
       const { status, data } = await fetchJson('/api/generate-storyboard', {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-device-id':  deviceId,
         },
         body: JSON.stringify({
-          script: cleanScript, lang, genre, comicStyle, deviceId,
+          script: cleanScript, lang, genre, comicStyle,
           heroDescriptor: heroDescriptor || undefined,
           // Lets the server decide this comic's provider mode (comic:mode:<seed>)
           // once here, instead of racing the decision per panel — comicSeedRef was

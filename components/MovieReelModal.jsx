@@ -113,7 +113,7 @@ function resolveReelTier() {
 // repoint those two, and do NOT touch useBackgroundAudio — it must keep
 // reading the originals regardless of what the reel does.
 const SOUNDTRACKS = [
-  { key: 'drama',   emoji: '🎭', label: 'Hollywood Drama',       labelHe: 'דרמה הוליוודית',       file: '/audio/drama_bg.m4a'   },
+  { key: 'drama',   emoji: '🎭', label: 'Cinematic Drama',       labelHe: 'דרמה קולנועית',       file: '/audio/drama_bg.m4a'   },
   { key: 'action',  emoji: '🏎️', label: 'Adrenaline Rush',       labelHe: 'אדרנלין מוחלט',        file: '/audio/action_bg.m4a'  },
   { key: 'comedy',  emoji: '🍿', label: 'Sitcom Energy',         labelHe: 'אנרגיית סיטקום',       file: '/audio/reel/comedy_bg.m4a' },
   { key: 'horror',  emoji: '👁️', label: 'Psychological Thriller', labelHe: 'מתח פסיכולוגי',       file: '/audio/reel/horror_bg.m4a' },

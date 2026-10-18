@@ -141,7 +141,7 @@ test('every component that carries pricing / upgrade text uses useNative(); the 
 
 // ── Trademarks ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 test('no third-party marks in UI strings, prompts, style names or store-listing copy', () => {
-  const BAD = /marvel|x-men|xmen|sin city|\bimax\b|oscar-worthy|disney|pixar|ghibli|netflix|מארוול|אוסקר/i;
+  const BAD = /marvel|x-men|xmen|sin city|\bimax\b|oscar-worthy|disney|pixar|ghibli|studio ghibli|netflix|cannes|anime studio|hollywood drama|digital hollywood|hollywood-st(?:andard|yle)|מארוול|אוסקר|(?:^|[^א-ת])קאן(?![א-ת])|אנימה סטודיו|דרמה הוליוודית|הוליווד דיגיטלית|תסריט הוליוודי|בסגנון הוליוודי/i;
   const files = ['components', 'pages', 'constants', 'lib', 'hooks', 'store-listing'].flatMap(function walk(dir) {
     return readdirSync(path.join(ROOT, dir)).flatMap((f) => { const rel = `${dir}/${f}`; const st = statSync(path.join(ROOT, rel)); return st.isDirectory() ? walk(rel) : /\.(jsx?|md)$/.test(f) ? [rel] : []; });
   });
@@ -157,6 +157,11 @@ test('no third-party marks in UI strings, prompts, style names or store-listing 
   assert.deepEqual(offenders, []);
   const styles = readFileSync(path.join(ROOT, 'components/ScriptOutput.jsx'), 'utf8');
   assert.match(styles, /RETRO COMIC/); assert.match(styles, /קומיקס רטרו/);
+  assert.match(styles, /ANIME STYLE/); assert.match(styles, /סגנון אנימה/);
+  assert.match(readFileSync(path.join(ROOT, 'components/MovieReelModal.jsx'), 'utf8'), /label: 'Cinematic Drama',\s+labelHe: 'דרמה קולנועית'/);
+  // the scanner catches the names it is meant to catch
+  for (const bad of ['Anime Studio', 'Consulting with the Cannes jury', 'Studio Ghibli look', 'Marvel style', 'DIGITAL HOLLYWOOD', 'חבר השופטים של קאן', 'אנימה סטודיו']) assert.match(bad, BAD, bad);
+  for (const ok of ['ANIME STYLE', 'festival jury', 'Cinematic Drama', 'מקאנו', 'קאנון']) assert.doesNotMatch(ok, BAD, ok);
 });
 
 // ── Minimum age is 18 for the whole service: no 13+ / teens anywhere users (or the store) can read, and the notices exist ─────────────────

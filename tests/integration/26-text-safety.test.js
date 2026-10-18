@@ -156,6 +156,7 @@ scenario('T8', 'STORYBOARD: classifier unsafe twice → CONTENT_REFUSED; unavail
   });
 
 // ── apparent-minor screen ────────────────────────────────────────────────────────────────────────────────────────────────────
+const withEnvT10 = async (name, value, fn) => { const keep = process.env[name]; process.env[name] = value; try { return await fn(); } finally { if (keep === undefined) delete process.env[name]; else process.env[name] = keep; } };
 const up = (u, ip, extra = {}) => invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true, adult: true, ...extra }, cookies: u.cookies, ip });
 
 scenario('T9', 'a photo that CLEARLY shows a child is rejected (422 MINOR_REJECTED) before anything is stored or generated; the sheet quota and the global identity budget are returned',
@@ -173,34 +174,41 @@ scenario('T9', 'a photo that CLEARLY shows a child is rejected (422 MINOR_REJECT
     return { actual: 'clear child → rejected, nothing spent' };
   });
 
-scenario('T10', 'everything else ALLOWS the upload (it is a best-effort screen, not a gate): adult, unsure, unreadable, a model refusal, a technical failure, an open circuit, a spent daily budget',
-  'every case → 200 sheetGenerated', async () => {
-    const cases = [
-      ['adult', () => { providers.ageVerdict.value = 'adult'; }],
-      ['unsure', () => { providers.ageVerdict.value = 'unsure'; }],
-      ['unreadable', () => { providers.ageVerdict.raw = 'probably a kid'; }],
-      ['refusal', () => { providers.ageVerdict.block = true; }],
-      ['http 500', () => { providers.mode['gemini-check-age'] = 500; }],
-    ];
+scenario('T10', 'adult, unsure and a model REFUSAL allow the upload; a TECHNICAL failure FAILS CLOSED (unreadable reply, provider error, open circuit, spent or zero budget) → 503 PHOTO_CHECK_UNAVAILABLE, nothing stored, quota + budget back',
+  'adult/unsure/refusal → 200; unreadable/500/circuit/budget → 503 retryable, no R2 put, no sheet call, usage:sheet 0', async () => {
+    const reset = () => { providers.ageVerdict.value = 'adult'; providers.ageVerdict.raw = undefined; providers.ageVerdict.block = false; delete providers.mode['gemini-check-age']; ctx.advance(120_000); };
     let n = 0;
-    for (const [label, set] of cases) {
-      providers.ageVerdict.value = 'adult'; providers.ageVerdict.raw = undefined; providers.ageVerdict.block = false; delete providers.mode['gemini-check-age']; ctx.advance(120_000);
-      set();
-      const u = await makeUser(`t10-${n++}`, 'free');
-      const r = await up(u, `198.51.100.${230 + n}`);
+    for (const [label, set] of [['adult', () => {}], ['unsure', () => { providers.ageVerdict.value = 'unsure'; }], ['refusal', () => { providers.ageVerdict.block = true; }]]) {
+      reset(); set();
+      const r = await up(await makeUser(`t10-ok-${n++}`, 'free'), `198.51.100.${230 + n}`);
       assert.equal(r.status, 200, label); assert.equal(r.body.sheetGenerated, true, label);
     }
-    // circuit open (the 500 case above opened it) → the screen is skipped without a call
+    const closed = async (label, u, ip) => {
+      providers.s3puts.length = 0; const sheetCalls = (providers.counts['gemini-image'] ?? 0) + (providers.counts.grok ?? 0); const g0 = fake.num('usage:identity:global:2026-10-15');
+      const r = await up(u, ip);
+      assert.equal(r.status, 503, label); assert.deepEqual(r.body, { success: false, code: 'PHOTO_CHECK_UNAVAILABLE' }, label);
+      assert.equal(providers.s3puts.length, 0, `${label}: nothing stored`);
+      assert.equal((providers.counts['gemini-image'] ?? 0) + (providers.counts.grok ?? 0), sheetCalls, `${label}: no paid sheet call`);
+      assert.equal(fake.num(`usage:sheet:${u.identifier}:2026-10`), 0, `${label}: sheet quota given back`);
+      assert.equal(fake.num('usage:identity:global:2026-10-15'), g0, `${label}: global identity budget given back`);
+      return r;
+    };
+    reset(); providers.ageVerdict.raw = 'probably a kid';
+    await closed('unreadable', await makeUser('t10-unreadable', 'free'), '198.51.100.236');
+    reset(); providers.mode['gemini-check-age'] = 500;
+    await closed('http 500', await makeUser('t10-500', 'free'), '198.51.100.237');
+    // circuit open (the 500 case above opened check_minor) → no call at all, still closed
     const before = ageChecks();
-    const u2 = await makeUser('t10-circuit', 'free'); const r2 = await up(u2, '198.51.100.240');
-    assert.equal(r2.status, 200); assert.equal(ageChecks(), before, 'open circuit → no call');
-    // budget spent → skipped without a call
+    await closed('circuit open', await makeUser('t10-circuit', 'free'), '198.51.100.240');
+    assert.equal(ageChecks(), before, 'open circuit → no call');
+    // budget spent / zero → no call, closed
     delete providers.mode['gemini-check-age']; ctx.advance(120_000);
-    const keep = process.env.DAILY_MINOR_CHECK_BUDGET; process.env.DAILY_MINOR_CHECK_BUDGET = '0';
-    const u3 = await makeUser('t10-budget', 'free'); const r3 = await up(u3, '198.51.100.241');
-    if (keep === undefined) delete process.env.DAILY_MINOR_CHECK_BUDGET; else process.env.DAILY_MINOR_CHECK_BUDGET = keep;
-    assert.equal(r3.status, 200); assert.equal(ageChecks(), before, 'cap spent → no call');
-    return { actual: 'only an unambiguous "minor" rejects' };
+    await withEnvT10('DAILY_MINOR_CHECK_BUDGET', '0', async () => {
+      const b0 = ageChecks();
+      await closed('budget 0', await makeUser('t10-budget', 'free'), '198.51.100.241');
+      assert.equal(ageChecks(), b0, 'no budget → no call');
+    });
+    return { actual: 'only a clear "minor" rejects with 422; technical failures fail closed with a retryable 503' };
   });
 
 scenario('T11', 'refused uploads cost nothing: a quota-refused or consent-refused upload never reaches the age screen',
@@ -221,7 +229,7 @@ scenario('T12', 'the minor screen has its OWN circuit: a failing face-photo scre
     providers.mode['gemini-check-age'] = 500;
     const u = await makeUser('t12', 'free');
     const r = await up(u, '198.51.100.251');
-    assert.equal(r.status, 200, 'a failed screen still allows the upload');
+    assert.equal(r.status, 503, 'a failed screen now fails closed'); assert.equal(r.body.code, 'PHOTO_CHECK_UNAVAILABLE');
     assert.equal(fake.keys('circuit:img:check_minor').length, 1, 'the screen\'s own circuit opened');
     assert.equal(fake.keys('circuit:img:check_gemini').length, 0, 'the image-check fallback circuit is untouched');
     // …and the image fallback checker is still usable: Nemotron down → Gemini decides → the image is served
@@ -272,12 +280,12 @@ scenario('T14', 'budget independence: exhausting the TEXT budget (DAILY_TEXT_CHE
     return { actual: 'text budget empty; image and minor unaffected' };
   });
 
-scenario('T15', 'budget independence: exhausting the MINOR budget (DAILY_MINOR_CHECK_BUDGET=0) skips only the screen (upload allowed, no age call); the image fallback and the text classifier keep working',
-  'age call skipped, upload 200 even for a "minor" verdict; image fallback + romance script fine', async () => {
+scenario('T15', 'budget independence: exhausting the MINOR budget (DAILY_MINOR_CHECK_BUDGET=0) closes only Star Yourself uploads (503 PHOTO_CHECK_UNAVAILABLE, no age call); the image fallback and the text classifier keep working',
+  'age call skipped, upload 503; image fallback + romance script fine', async () => {
     await withEnv('DAILY_MINOR_CHECK_BUDGET', '0', async () => {
       providers.ageVerdict.value = 'minor';
       const before = ageChecks();
-      const age = await up(await makeUser('t15a', 'free'), '198.51.100.36'); assert.equal(age.status, 200); assert.equal(ageChecks(), before, 'no age call without budget');
+      const age = await up(await makeUser('t15a', 'free'), '198.51.100.36'); assert.equal(age.status, 503); assert.equal(age.body.code, 'PHOTO_CHECK_UNAVAILABLE'); assert.equal(ageChecks(), before, 'no age call without budget');
       const img = await posterWithNemotronDown('c'); assert.ok(!img.body.isPlaceholder); assert.equal(SPEND(), 1);
       assert.equal((await callScript(await makeUser('t15b', 'free'), 'romance', '198.51.100.37')).status, 200); assert.equal(TEXT_SPEND(), 1);
       assert.equal(MINOR_SPEND(), 0);
@@ -321,7 +329,7 @@ scenario('T17', 'circuit independence: a failing text classifier opens ONLY chec
   });
 
 scenario('T18', '"unsure" (e.g. a landscape with no person) is treated EXACTLY like "adult": the upload succeeds, the same objects are stored and cleaned up, the same quota and budget are spent, nothing is downgraded — and the screen result never reaches the response',
-  'adult / unsure / refusal / unreadable → identical outcome', async () => {
+  'adult / unsure / refusal → identical outcome; unreadable → fail closed (503, nothing stored)', async () => {
     const outcome = async (label, set) => {
       providers.s3puts.length = 0; providers.s3deletes.length = 0; providers.ageVerdict.value = 'adult'; providers.ageVerdict.raw = undefined; providers.ageVerdict.block = false;
       set();
@@ -344,10 +352,13 @@ scenario('T18', '"unsure" (e.g. a landscape with no person) is treated EXACTLY l
     const adult = await outcome('adult', () => { providers.ageVerdict.value = 'adult'; });
     const unsure = await outcome('unsure', () => { providers.ageVerdict.value = 'unsure'; });
     const refusal = await outcome('refusal', () => { providers.ageVerdict.block = true; });
-    const unreadable = await outcome('unreadable', () => { providers.ageVerdict.raw = 'a landscape, no people'; });
+    providers.s3puts.length = 0; providers.ageVerdict.value = 'adult'; providers.ageVerdict.block = false; providers.ageVerdict.raw = 'a landscape, no people';
+    const unreadableR = await up(await makeUser('t18-unreadable', 'free'), `198.51.100.${70 + (++seq % 100)}`);
+    providers.ageVerdict.raw = undefined; ctx.advance(11 * 60 * 1000);
     assert.equal(adult.status, 200); assert.equal(adult.sheetGenerated, true); assert.equal(adult.hasReference, true);
     assert.deepEqual(unsure, adult, '"unsure" changes nothing compared with "adult"');
-    assert.deepEqual(refusal, adult); assert.deepEqual(unreadable, adult);
+    assert.deepEqual(refusal, adult);
+    assert.equal(unreadableR.status, 503); assert.equal(unreadableR.body.code, 'PHOTO_CHECK_UNAVAILABLE'); assert.equal(providers.s3puts.length, 0, 'unreadable: nothing stored');
     assert.ok(!/apparent|minor|unsure|adult/i.test(adult.keys), 'the screen result is never part of the response');
     assert.equal(unsure.sheetQuota, 1); assert.equal(unsure.identityBudgetDelta, 1);
     return { actual: 'unsure = adult in every observable respect' };
