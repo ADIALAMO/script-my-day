@@ -7,7 +7,7 @@ import {
   Shield, Users, Activity, Check, AlertCircle,
   Loader2, ArrowLeft, RefreshCw, Film,
   FileText, Image as ImageIcon, BookOpen, Gauge, Crown, Wallet,
-  CreditCard, UserCog, ListChecks, Clock, Search, ChevronLeft, ChevronRight,
+  CreditCard, UserCog, ListChecks, Clock, Search, ChevronLeft, ChevronRight, Download,
 } from 'lucide-react';
 
 // ── Server-side auth gate ──────────────────────────────────────────────────────
@@ -181,6 +181,38 @@ export default function AdminDashboard({ adminEmail }) {
       .then(data => { setAllUsers(data); setAllUsersLoading(false); })
       .catch(err => { setAllUsers({ _error: err.message }); setAllUsersLoading(false); });
   }, []);
+
+  // Pro waitlist — fetched on mount and on demand ONLY (not in the 30 s auto-refresh: it is a list of e-mail addresses)
+  const WAITLIST_LIMIT = 50;
+  const [waitlist, setWaitlist] = useState(null);
+  const [waitlistLoading, setWaitlistLoading] = useState(true);
+  const [waitlistOffset, setWaitlistOffset] = useState(0);
+  const [waitlistSearch, setWaitlistSearch] = useState('');            // committed (submitted) search
+  const [waitlistSearchInput, setWaitlistSearchInput] = useState('');  // live input value
+
+  const fetchWaitlist = useCallback((offset, q) => {
+    setWaitlistLoading(true);
+    const params = new URLSearchParams({ limit: String(WAITLIST_LIMIT), offset: String(offset) });
+    if (q) params.set('q', q);
+    fetch(`/api/admin/waitlist?${params}`, { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then(data => { setWaitlist(data); setWaitlistLoading(false); })
+      .catch(err => { setWaitlist({ _error: err.message }); setWaitlistLoading(false); });
+  }, []);
+
+  useEffect(() => { fetchWaitlist(0, ''); }, [fetchWaitlist]);
+
+  const handleWaitlistSearch = (e) => {
+    e.preventDefault();
+    const q = waitlistSearchInput.trim();
+    setWaitlistSearch(q); setWaitlistOffset(0); fetchWaitlist(0, q);
+  };
+  const handleWaitlistClear = () => {
+    setWaitlistSearchInput(''); setWaitlistSearch(''); setWaitlistOffset(0); fetchWaitlist(0, '');
+  };
+  const goWaitlistPage = (next) => { setWaitlistOffset(next); fetchWaitlist(next, waitlistSearch); };
+  // plain same-origin link: the admin SESSION COOKIE authenticates it; the admin key is never put in a URL
+  const waitlistCsvHref = `/api/admin/waitlist?format=csv${waitlistSearch ? `&q=${encodeURIComponent(waitlistSearch)}` : ''}`;
 
   const fetchHealth = useCallback(() => {
     setHealthLoading(true);
@@ -728,6 +760,136 @@ export default function AdminDashboard({ adminEmail }) {
                   <button
                     onClick={handleNextPage}
                     disabled={allUsersLoading || !allUsers?.hasMore}
+                    className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-white/25 hover:text-white/50 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                  >
+                    Next <ChevronRight size={12} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* ── Pro Waitlist ──────────────────────────────────────────────── */}
+          <section className="bg-[#0f1117] border border-white/8 rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+              <div className="flex items-center gap-2.5">
+                <ListChecks size={14} className="text-[#d4a373]" />
+                <h2 className="font-black text-[11px] uppercase tracking-[0.3em] text-white/70">
+                  Waitlist
+                  {waitlist?.total != null && (
+                    <span className="text-white/25 normal-case tracking-normal">
+                      {' '}· {waitlist.total} total · {waitlist.signedIn} signed in{waitlist.legacy ? ` · ${waitlist.legacy} from before tracking` : ''}
+                    </span>
+                  )}
+                </h2>
+              </div>
+              <button
+                onClick={() => fetchWaitlist(waitlistOffset, waitlistSearch)}
+                disabled={waitlistLoading}
+                className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-white/25 hover:text-white/50 transition-colors disabled:opacity-30"
+              >
+                <RefreshCw size={11} className={waitlistLoading ? 'animate-spin' : ''} />
+                Refresh
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-start sm:justify-between">
+                <form onSubmit={handleWaitlistSearch} className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" />
+                    <input
+                      type="text"
+                      value={waitlistSearchInput}
+                      onChange={e => setWaitlistSearchInput(e.target.value)}
+                      placeholder="search email…"
+                      autoComplete="off"
+                      aria-label="Search waitlist by email"
+                      className="bg-black/50 border border-white/8 rounded-lg pl-8 pr-3 py-1.5 text-[11px] text-white placeholder-white/15 focus:border-[#d4a373]/40 outline-none transition-colors w-56"
+                    />
+                  </div>
+                  {waitlistSearch && (
+                    <button type="button" onClick={handleWaitlistClear} className="text-[10px] font-black uppercase tracking-widest text-white/25 hover:text-white/50 transition-colors">
+                      Clear
+                    </button>
+                  )}
+                </form>
+
+                <div className="sm:text-right">
+                  <a
+                    href={waitlistCsvHref}
+                    download
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#d4a373]/40 bg-[#d4a373]/10 text-[10px] font-black uppercase tracking-widest text-[#d4a373] hover:bg-[#d4a373]/20 transition-colors"
+                  >
+                    <Download size={12} /> Download CSV
+                  </a>
+                  <p className="mt-1.5 text-[10px] text-white/30">Personal data. Delete the file after use.</p>
+                </div>
+              </div>
+
+              {waitlistLoading ? (
+                <div className="flex items-center gap-2 text-white/25 text-xs">
+                  <Loader2 size={13} className="animate-spin" /> Loading…
+                </div>
+              ) : waitlist?._error ? (
+                <p className="text-red-400 text-xs font-mono">Could not load the waitlist ({waitlist._error}).</p>
+              ) : !waitlist?.entries?.length ? (
+                <p className="text-white/20 text-xs">{waitlistSearch ? 'No signup matches that search.' : 'No signups yet.'}</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-[11px]">
+                    <thead>
+                      <tr className="text-[9px] uppercase tracking-widest text-white/25">
+                        <th className="font-black py-2 pr-4">Email</th>
+                        <th className="font-black py-2 pr-4 whitespace-nowrap">Joined</th>
+                        <th className="font-black py-2 pr-4">Lang</th>
+                        <th className="font-black py-2 pr-4">Source</th>
+                        <th className="font-black py-2">Signed in</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {waitlist.entries.map(w => (
+                        <tr key={w.email}>
+                          <td className="py-2.5 pr-4 font-mono text-white/70 break-all">{w.email}</td>
+                          <td className="py-2.5 pr-4 font-mono text-white/40 whitespace-nowrap">{w.createdAt ? new Date(w.createdAt).toLocaleString() : '—'}</td>
+                          <td className="py-2.5 pr-4 text-white/40 uppercase">{w.locale || '—'}</td>
+                          <td className="py-2.5 pr-4">
+                            <span className={`px-2 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-widest whitespace-nowrap ${
+                              w.source === 'legacy-waitlist' ? 'bg-white/5 border-white/10 text-white/35' : 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                            }`}>
+                              {w.source === 'legacy-waitlist' ? 'legacy' : (w.source || '—')}
+                            </span>
+                          </td>
+                          <td className="py-2.5 text-white/40">{w.signedIn ? <Check size={13} className="text-emerald-400" aria-label="yes" /> : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {waitlist?.truncated && (
+                <p className="text-amber-400/80 text-[11px]">The list is very large: only the first 20,000 entries are shown and exported.</p>
+              )}
+              {waitlist?.unreadable > 0 && (
+                <p className="text-white/25 text-[10px]">{waitlist.unreadable} stored value(s) could not be read and are not shown.</p>
+              )}
+
+              {!!waitlist?.entries?.length && (
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    onClick={() => goWaitlistPage(Math.max(0, waitlistOffset - WAITLIST_LIMIT))}
+                    disabled={waitlistLoading || waitlistOffset === 0}
+                    className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-white/25 hover:text-white/50 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft size={12} /> Prev
+                  </button>
+                  <span className="text-[10px] text-white/20 font-mono">
+                    {waitlistOffset + 1}–{waitlistOffset + waitlist.entries.length} of {waitlist.filtered}
+                  </span>
+                  <button
+                    onClick={() => goWaitlistPage(waitlistOffset + WAITLIST_LIMIT)}
+                    disabled={waitlistLoading || !waitlist?.hasMore}
                     className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-white/25 hover:text-white/50 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
                   >
                     Next <ChevronRight size={12} />

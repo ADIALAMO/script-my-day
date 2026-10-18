@@ -350,7 +350,9 @@ is the ONLY inner scroll container.** Rules ([utils/scroll-mode.js](utils/scroll
 - **Pro waitlist** ([pages/api/waitlist.js](pages/api/waitlist.js), [lib/waitlist.js](lib/waitlist.js), [constants/waitlist-copy.js](constants/waitlist-copy.js)): `waitlist:<normalized email>` = JSON `{v:1,email,createdAt ISO,locale,source,userId,consentVersion}`
   (legacy value = a bare unix-ms number; readers accept both). Written with `SET NX` (first record wins; a duplicate answers exactly like a new signup — no "already on the list"), honeypot field `HONEYPOT_FIELD`
   (an unusual name on purpose: never "website"/"url"/… which browsers autofill), per-IP rate limit (fail-open), Redis failure = retryable 503 (never a fake success). The full address is never logged; Telegram shows the masked form.
-  Bump `WAITLIST_CONSENT_VERSION` when the purpose sentence changes. Migration of old values: `scripts/migrate-waitlist-records.mjs` (dry run by default, JSON backup 0600 first, `--rollback FILE`). Admin list/CSV = a later PR.
+  Admin list + CSV: `GET /api/admin/waitlist` ([pages/api/admin/waitlist.js](pages/api/admin/waitlist.js), gate [lib/admin-auth.js](lib/admin-auth.js): 401 no session, 403 non-admin, admin key only as the `x-admin-key` HEADER; every answer
+  `no-store`; the JSON list has no userId, the CSV ([lib/csv.js](lib/csv.js): BOM, CRLF, formula-injection prefix) has the whole filtered list incl. userId; "Waitlist" card in pages/admin.js, not in the 30 s auto-refresh). Never log a row.
+  Bump `WAITLIST_CONSENT_VERSION` when the purpose sentence changes. Migration of old values: `scripts/migrate-waitlist-records.mjs` (dry run by default, JSON backup 0600 first, `--rollback FILE`).
 - `.env.example` documents every required env var.
 - If magic links fail with 535 BadCredentials, create a new Gmail App Password and update
   `EMAIL_SERVER_PASSWORD` in Vercel (Production and Preview), then redeploy. Changing the
