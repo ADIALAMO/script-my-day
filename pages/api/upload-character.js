@@ -173,10 +173,16 @@ export default async function handler(req, res) {
         : res.status(503).json({ success: false, code: CODES.CONTENT_CHECK_UNAVAILABLE });
     }
 
-    // (4b) Best-effort screen for a photo that CLEARLY shows a child ("Star Yourself" is 18+). NOT age verification: unsure, an unreadable
-    // reply, a refusal, a failed call, an open circuit or a spent daily budget all ALLOW the photo. Runs before anything is stored or any paid
-    // sheet is generated; a rejection gives the reservations back.
+    // (4b) Best-effort screen for a photo that CLEARLY shows a child ("Star Yourself" is 18+). NOT age verification. "minor" -> MINOR_REJECTED;
+    // "adult" / "unsure" (incl. a model refusal) -> continue; a TECHNICAL failure (provider error, unreadable reply, open circuit, spent budget)
+    // FAILS CLOSED -> 503 PHOTO_CHECK_UNAVAILABLE (retryable). Runs before anything is stored or any paid sheet is generated (nothing to delete);
+    // every refusal gives the reservations back.
     const minor = await screenApparentMinor(checkedUri);
+    if (minor.unavailable) {
+      console.warn(`🛑 upload-character: apparent-minor screen unavailable (${minor.result}) — failing closed, nothing stored`);
+      await giveBackReservation(); refundOnCrash = false;
+      return res.status(503).json({ success: false, code: CODES.PHOTO_CHECK_UNAVAILABLE });
+    }
     if (minor.reject) {
       console.warn('🛑 upload-character: photo appears to show a child — rejected before storing or generating anything');
       await giveBackReservation(); refundOnCrash = false;

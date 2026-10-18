@@ -110,7 +110,7 @@ export default function CharacterModal({
     } else if (result.code === CODES.QUOTA_SHEET || result.code === CODES.IDENTITY_BUDGET_REACHED
             || result.code === CODES.QUOTA_IDENTITY || result.code === CODES.IDENTITY_LIFETIME_USED
             || result.code === CODES.SAFETY_REJECTED || result.code === CODES.RATE_LIMITED || result.code === CODES.MINOR_REJECTED
-            || result.code === CODES.IMAGE_UNSUPPORTED || result.code === CODES.CONTENT_REFUSED || result.code === CODES.CONTENT_CHECK_UNAVAILABLE || result.code === CODES.CHARACTER_SHEET_FAILED) {
+            || result.code === CODES.IMAGE_UNSUPPORTED || result.code === CODES.CONTENT_REFUSED || result.code === CODES.CONTENT_CHECK_UNAVAILABLE || result.code === CODES.PHOTO_CHECK_UNAVAILABLE || result.code === CODES.CHARACTER_SHEET_FAILED) {
       // A limit / budget / moderation answer from the server: say exactly what happened.
       // QUOTA_SHEET carries {limit, resetsAt}: say how many uploads are included and when they renew.
       const lang = isHebrew ? 'he' : 'en';

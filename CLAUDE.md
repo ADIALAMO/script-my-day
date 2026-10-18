@@ -206,7 +206,7 @@ the index regardless of how the deletion actually happened.
 budget is left) → `CONTENT_REFUSED`; quota released in every refusal. Classifier unavailable (down / own circuit open / own budget spent / no time):
 **romance + horror fail CLOSED** (`CONTENT_CHECK_UNAVAILABLE`, 503); **every other genre is returned on the blocklist result alone** and
 `stats:textcheck:degraded:<day>` is incremented (a number, never text or keys). `lib/minor-screen.js`: best-effort apparent-minor screen at Star Yourself
-upload (after the quota reservations, before anything is stored): rejects ONLY on a clear "minor" (`MINOR_REJECTED`), every other outcome allows. It is
+upload (after the quota reservations, before anything is stored): a clear "minor" → `MINOR_REJECTED` (422); "adult" / "unsure" (incl. a model refusal) → allowed; a TECHNICAL failure (provider error, unreadable reply, open `check_minor` circuit, spent/unverifiable budget) FAILS CLOSED → 503 `PHOTO_CHECK_UNAVAILABLE` (retryable, nothing stored, reservations back). It is
 NOT age verification — never describe it so (tests/text-safety.test.js scans the repo).
 **Five independent paid budgets and circuits** (four checks + the storyboard first engine; nothing is shared, so one running dry or failing can never switch off another):
 
@@ -214,7 +214,7 @@ NOT age verification — never describe it so (tests/text-safety.test.js scans t
 |---|---|---|---|
 | image fallback | `DAILY_CHECK_BUDGET` ($0.50) | `usage:check:paid:global:<day>` | `check_gemini` |
 | text classifier | `DAILY_TEXT_CHECK_BUDGET` ($0.30) | `usage:check:text:global:<day>` | `check_text` |
-| minor screen | `DAILY_MINOR_CHECK_BUDGET` ($0.20) | `usage:check:minor:global:<day>` | `check_minor` |
+| minor screen | `DAILY_MINOR_CHECK_BUDGET` ($0.50) | `usage:check:minor:global:<day>` | `check_minor` |
 | image second opinion | `DAILY_IMAGE_SAFETY_BUDGET` ($0.50) | `usage:check:imgsafety:global:<day>` | `check_imgsafety` |
 | storyboard first engine (Gemini Flash-Lite via OpenRouter) | `DAILY_STORYBOARD_BUDGET` ($1.00) | `usage:storyboard:paid:global:<day>` | `storyboard_gemini` |
 
