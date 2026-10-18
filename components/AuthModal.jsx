@@ -546,6 +546,15 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                           </button>
                         </form>
 
+                        {/* 18+ self-declaration + Terms/Privacy (covers Google AND the email link; nothing is recorded — it is a notice, not age verification) */}
+                        <p className="text-center text-white/35 text-[10px] leading-relaxed mt-3">
+                          {isHe ? (
+                            <>בהמשך אתה מאשר שאתה בן/בת 18 ומעלה ומסכים ל<a href="/terms" target="_blank" rel="noopener noreferrer" className="underline text-white/50 hover:text-white">תנאי השימוש</a> ול<a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline text-white/50 hover:text-white">מדיניות הפרטיות</a></>
+                          ) : (
+                            <>By continuing you confirm you are 18 or older and agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline text-white/50 hover:text-white">Terms</a> and <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline text-white/50 hover:text-white">Privacy Policy</a></>
+                          )}
+                        </p>
+
                         {/* Skip */}
                         <button
                           onClick={onClose}
@@ -557,23 +566,12 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
 
                       {/* ── Trust row ── */}
                       <div className="px-8 pt-4 pb-6 border-t border-white/[0.04]">
-                        <div className="flex items-center justify-center gap-1.5 mb-3">
-                          <Shield size={10} className="text-white/20" />
-                          <p className="text-[9px] text-white/20 tracking-[0.2em] uppercase">
-                            {isHe ? 'מאובטח ומופעל על ידי' : 'SECURED & POWERED BY'}
+                        {/* No payment or provider names here (Pro is not on sale; the real AI providers are listed in the Privacy Policy §7). */}
+                        <div className="flex items-center justify-center gap-1.5 mb-4">
+                          <Shield size={10} className="text-white/25" />
+                          <p className="text-[10px] text-white/30 leading-relaxed">
+                            {isHe ? 'כניסה מאובטחת · בלי סיסמאות' : 'Secure sign-in · no passwords'}
                           </p>
-                        </div>
-                        <div className="flex items-center justify-center gap-5 mb-5">
-                          {[
-                            { label: 'Together AI', sub: 'image AI'  },
-                            { label: 'Vercel',      sub: 'hosting'   },
-                            { label: 'Stripe',      sub: 'payments'  },
-                          ].map(({ label, sub }) => (
-                            <div key={label} className="flex flex-col items-center gap-0.5">
-                              <span className="text-[10px] font-bold text-white/35">{label}</span>
-                              <span className="text-[8px] text-white/15 tracking-wider uppercase">{sub}</span>
-                            </div>
-                          ))}
                         </div>
                         <p className="text-center text-[11px] text-[#d4a373]/25 italic leading-relaxed">
                           {isHe

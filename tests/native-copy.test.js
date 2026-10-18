@@ -75,11 +75,13 @@ test('native app: removed sections are really gone and the remaining headings ar
   assert.equal(native.about.he.sections.length, MODAL_DATA.about.he.sections.length - 1);
 });
 
-test('Terms say 13+ overall and Star Yourself 18+ — in both languages and in the native variant too', () => {
+test('Terms: the WHOLE service is 18+ (neutral reason, self-declaration) and Star Yourself keeps its own 18+ confirmation — in both languages and in the native variant too', () => {
   for (const data of [MODAL_DATA, modalDataFor(true)]) {
     const age = (lang) => data.terms[lang].sections.find((s) => /Age Restriction|הגבלת גיל/.test(s.h)).p;
-    assert.match(age('en'), /aged 13 and above/); assert.match(age('en'), /Star Yourself.*18 and over/);
-    assert.match(age('he'), /מגיל 13 ומעלה/); assert.match(age('he'), /בני 18 ומעלה/);
+    assert.match(age('en'), /LifeScript is intended for adults aged 18 and over\. The AI services we use require adult users, and generated stories may include mature themes\./);
+    assert.match(age('he'), /LifeScript מיועדת לבני 18 ומעלה\. שירותי ה-AI שבהם אנחנו משתמשים דורשים משתמשים בוגרים, והסיפורים שנוצרים עשויים לכלול נושאים בוגרים\./);
+    assert.match(age('en'), /Star Yourself.*confirm once/); assert.match(age('he'), /לככב בסיפור.*אישור נפרד/);
+    assert.doesNotMatch(age('en') + age('he'), /guardian|אפוטרופוס|paid subscription|מנוי/i);
     const face = (lang) => data.terms[lang].sections.find((s) => /Star Yourself|לככב בסיפור/.test(s.h)).p;
     assert.match(face('en'), /aged 18 and over/); assert.match(face('en'), /you are 18 or older/);
     assert.match(face('he'), /בני 18 ומעלה/);
@@ -155,4 +157,39 @@ test('no third-party marks in UI strings, prompts, style names or store-listing 
   assert.deepEqual(offenders, []);
   const styles = readFileSync(path.join(ROOT, 'components/ScriptOutput.jsx'), 'utf8');
   assert.match(styles, /RETRO COMIC/); assert.match(styles, /קומיקס רטרו/);
+});
+
+// ── Minimum age is 18 for the whole service: no 13+ / teens anywhere users (or the store) can read, and the notices exist ─────────────────
+test('no user-facing text or store-listing file says 13+, "13 or older", an age of 13 or teens/minors-are-welcome wording', () => {
+  const BAD = /\b13\s?\+|13 or older|13 and (?:above|over|older)|aged 13|ages 13|age of 13|age 13|מגיל 13|גיל 13|13 ומעלה|\bteens?\b|teenagers?|teenage|בני נוער|נוער|family-friendly|all ages|כל הגילאים/i;
+  const walk = (dir) => readdirSync(path.join(ROOT, dir)).flatMap((f) => { const rel = `${dir}/${f}`; const st = statSync(path.join(ROOT, rel)); return st.isDirectory() ? walk(rel) : /\.(jsx?|md)$/.test(f) ? [rel] : []; });
+  const files = [...walk('components'), ...walk('pages'), ...walk('constants'), ...walk('store-listing')].filter((f) => !/showcase\.js$|proposed-description/.test(f));
+  const offenders = [];
+  for (const rel of files) readFileSync(path.join(ROOT, rel), 'utf8').split('\n').forEach((line, i) => { if (BAD.test(line)) offenders.push(`${rel}:${i + 1}: ${line.trim().slice(0, 90)}`); });
+  assert.deepEqual(offenders, []);
+  const walkData = (o) => (typeof o === 'string' ? [o] : o && typeof o === 'object' ? Object.values(o).flatMap(walkData) : []);
+  for (const data of [MODAL_DATA, modalDataFor(true)]) assert.deepEqual(walkData(data).filter((s) => BAD.test(s)).map((s) => s.slice(0, 80)), []);
+});
+
+test('sign-in shows the 18+ self-declaration with Terms and Privacy links (he + en); the footer carries the notice for guests; nothing calls it age verification', () => {
+  const auth = readFileSync(path.join(ROOT, 'components/AuthModal.jsx'), 'utf8');
+  assert.match(auth, /By continuing you confirm you are 18 or older and agree to the/);
+  assert.match(auth, /בהמשך אתה מאשר שאתה בן\/בת 18 ומעלה ומסכים ל/);
+  assert.match(auth, /href="\/terms"/); assert.match(auth, /href="\/privacy"/);
+  const index = readFileSync(path.join(ROOT, 'pages/index.js'), 'utf8');
+  assert.match(index, /LifeScript is intended for adults aged 18 and over\./); assert.match(index, /LifeScript מיועדת לבני 18 ומעלה\./);
+  for (const rel of ['components/AuthModal.jsx', 'pages/index.js', 'constants/modalData.js', 'constants/limits-copy.js']) assert.doesNotMatch(readFileSync(path.join(ROOT, rel), 'utf8').replace(/never "age verification"|not age verification/gi, ''), /age[- ]verif|אימות גיל/i, rel);
+});
+
+test('no visible "Stripe" or "Together AI" in any component (comments excepted): the sign-in modal names no payment provider or AI vendor, the data-deletion page is processor-neutral', () => {
+  const offenders = [];
+  for (const f of readdirSync(path.join(ROOT, 'components')).filter((x) => /\.jsx?$/.test(x))) {
+    readFileSync(path.join(ROOT, 'components', f), 'utf8').split('\n').forEach((line, i) => {
+      if (/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(line)) return;
+      if (/Stripe|Together AI/i.test(line.replace(/\/\/.*$/, '').replace(/\{\/\*.*\*\/\}/, ''))) offenders.push(`components/${f}:${i + 1}: ${line.trim().slice(0, 80)}`);
+    });
+  }
+  assert.deepEqual(offenders, []);
+  const del = readFileSync(path.join(ROOT, 'components/DataDeletionPage.jsx'), 'utf8');
+  assert.match(del, /payment-provider customer ID \(if any\)/); assert.match(del, /!\(native && \/ספק התשלומים\|payment-provider\/\.test\(line\)\)/);
 });

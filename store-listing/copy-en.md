@@ -44,6 +44,8 @@ Your journal entries and production history live only on your own device — we 
 💎 FREE TO START
 Create scripts and posters every day, and comics every month, free. Invite a friend and earn a free "Star Yourself" poster.
 
+18+ — LifeScript is intended for adults aged 18 and over. The AI services we use require adult users, and generated stories may include mature themes.
+
 Ready to see today as a movie? Open LifeScript, write one sentence, and watch it become a screenplay, a poster, and a comic — starring you.
 
 🎬 Turn your day into a captivating cinematic script. Download LifeScript now.

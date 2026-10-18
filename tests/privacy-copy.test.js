@@ -143,11 +143,11 @@ test('terms last-updated date is October 2026 in both languages', () => {
 
 test('18+ wording (DRAFT, needs owner/legal review): Terms §5 and Privacy §2 state the age rules, the account record with its time, and the real retention — in he + en', () => {
   const t5 = (l) => sec('terms', l, 5), p2 = (l) => sec('privacy', l, 2);
-  assert.match(t5('en'), /intended for ages 13 and over/); assert.match(t5('en'), /only to users aged 18 and over/);
+  assert.match(t5('en'), /intended for adults aged 18 and over/); assert.doesNotMatch(t5('en'), /\b13\b/);
   assert.match(t5('en'), /Upload only a photo of yourself; do not upload a photo of another person without that person's consent, and never upload photos of minors/);
   assert.match(t5('en'), /appear to depict minors, or that are sexual or otherwise prohibited, are blocked and may be removed/);
   assert.match(t5('en'), /You can report generated content/);
-  assert.match(t5('he'), /מגיל 13 ומעלה/); assert.match(t5('he'), /בני 18 ומעלה בלבד/);
+  assert.match(t5('he'), /מיועד לבני 18 ומעלה/); assert.doesNotMatch(t5('he'), /\b13\b/);
   assert.match(t5('he'), /אסור להעלות תמונה של אדם אחר ללא הסכמתו, ואסור להעלות תמונות של קטינים/);
   assert.match(t5('he'), /נחסמות ועשויות להימחק/); assert.match(t5('he'), /ניתן לדווח על תוכן שנוצר/);
   assert.match(p2('en'), /checked automatically/); assert.match(p2('en'), /your account stores that you confirmed you are 18 or older, together with the time of the confirmation/);
