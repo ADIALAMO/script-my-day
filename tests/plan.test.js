@@ -14,6 +14,8 @@ process.env.PRO_ALLOWLIST = 'vip@example.com, Other@Example.com';
 // Dummy, obviously fake values: only used to SIGN a test payload for our own handler.
 process.env.STRIPE_SECRET_KEY = 'sk_test_dummy_not_a_real_key';
 process.env.STRIPE_WEBHOOK_SECRET = 'whsec_dummy_for_tests';
+// The webhook only grants / revokes Pro when billing is enabled; the tests below run with it ON unless they say otherwise (guard tests at the end).
+process.env.NEXT_PUBLIC_BILLING_ENABLED = 'true';
 
 const plan = await import('../lib/plan.js');
 const { default: Stripe } = await import('stripe');
@@ -154,4 +156,45 @@ test('webhook: a bad signature is rejected (400) and nothing changes', async () 
   try { await webhook(req, res); } finally { console.error = ow; }
   assert.equal(res.code, 400);
   assert.equal(tierOf('evil'), null);
+});
+
+// ── billing guard: while NEXT_PUBLIC_BILLING_ENABLED is not "true" a signed event is acknowledged but changes nothing ──
+async function withFlag(value, fn) {
+  const prev = process.env.NEXT_PUBLIC_BILLING_ENABLED;
+  if (value === undefined) delete process.env.NEXT_PUBLIC_BILLING_ENABLED; else process.env.NEXT_PUBLIC_BILLING_ENABLED = value;
+  try { return await fn(); } finally { process.env.NEXT_PUBLIC_BILLING_ENABLED = prev; }
+}
+
+test('webhook guard: flag unset / "false" → signed checkout and cancellation answer 200 {ignored}, grant and revoke NOTHING', async () => {
+  for (const flag of [undefined, 'false', 'TRUE', '1']) {
+    await withFlag(flag, async () => {
+      const ow = console.warn; console.warn = () => {};
+      try {
+        let r = await send(ev('checkout.session.completed', { id: 'cs_g', payment_status: 'paid', customer: 'cus_g', metadata: { userId: `g-${flag}` } }));
+        assert.equal(r.code, 200); assert.deepEqual(r.body, { received: true, ignored: true });
+        assert.equal(tierOf(`g-${flag}`), null, `flag=${flag}: no grant`);
+        mem._store.set(`user:tier:keep-${flag}`, 'pro'); mem._store.set(`user:tier_source:keep-${flag}`, JSON.stringify({ source: 'stripe' })); mem._store.set(`user:stripe_customer:keep-${flag}`, 'cus_k');
+        r = await send(ev('customer.subscription.deleted', { id: 'sub_g', metadata: { userId: `keep-${flag}` } }));
+        assert.equal(r.code, 200); assert.equal(tierOf(`keep-${flag}`), 'pro', `flag=${flag}: no revoke`);
+      } finally { console.warn = ow; }
+    });
+  }
+});
+
+test('webhook guard: the flag does not bypass the signature — a forged request is 400 even with billing off', async () => {
+  await withFlag(undefined, async () => {
+    const payload = JSON.stringify(ev('checkout.session.completed', { id: 'cs_f', payment_status: 'paid', metadata: { userId: 'forged' } }));
+    const req = Object.assign(Readable.from([Buffer.from(payload)]), { method: 'POST', headers: { 'stripe-signature': 't=1,v1=deadbeef' } });
+    const res = { code: null, status(c) { this.code = c; return this; }, json() { return this; }, end() { return this; } };
+    const oe = console.error; console.error = () => {};
+    try { await webhook(req, res); } finally { console.error = oe; }
+    assert.equal(res.code, 400); assert.equal(tierOf('forged'), null);
+  });
+});
+
+test('webhook guard: flag "true" restores normal behaviour (grant works)', async () => {
+  await withFlag('true', async () => {
+    const r = await send(ev('checkout.session.completed', { id: 'cs_on', payment_status: 'paid', customer: 'cus_on', metadata: { userId: 'g-on' } }));
+    assert.equal(r.code, 200); assert.equal(tierOf('g-on'), 'pro');
+  });
 });
