@@ -9,14 +9,11 @@ import { SplashScreen } from '@capacitor/splash-screen';
 import { App as CapacitorApp } from '@capacitor/app';
 import { SITE_URL } from '../lib/site.js';
 import { hasAnalyticsConsent, loadGoogleAnalytics } from '../utils/ga.js';
-import { recoverOrphanedReelTrail } from '../utils/reel-diagnostics.js'; // TEMP DIAGNOSTIC (reel-crash)
 
 function MyApp({ Component, pageProps: { session, ...pageProps } }) {
 
-  // TEMP DIAGNOSTIC (reel-crash) — see utils/reel-diagnostics.js. Runs once per
-  // app launch; a no-op unless a PREVIOUS session left an unfinished reel trail
-  // behind (the hard-kill recovery path).
-  useEffect(() => { recoverOrphanedReelTrail(); }, []);
+  // The temporary reel-crash diagnostics are gone: clear the trail an older build may have left in this browser / WebView (one-time, harmless).
+  useEffect(() => { try { localStorage.removeItem('lifescript_reel_trail_temp'); } catch { /* storage blocked */ } }, []);
 
   // Google Analytics: web only, and only for a visitor who already accepted analytics (a first acceptance loads it from CookieConsent).
   // loadGoogleAnalytics() is a no-op inside the Android app. See utils/ga.js.
