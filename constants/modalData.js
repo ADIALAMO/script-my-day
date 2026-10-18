@@ -334,7 +334,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'מהתסריט ללוח הסיפור',
-          p: 'אחרי שהתסריט מוכן, LIFESCRIPT ממשיכה בהפקה: מנתחת את הסצנות, מחלקת אותן ל-5 עד 7 פאנלים ומייצרת כל פאנל בנפרד — בסגנון שבחרת: אנימה סטודיו, קומיקס רטרו, או נואר קולנועי. הפאנלים מופיעים בהדרגה ברגע שמוכנים, כך שהיצירה מתגלה בפניך סצנה אחר סצנה.',
+          p: 'אחרי שהתסריט מוכן, LIFESCRIPT ממשיכה בהפקה: מנתחת את הסצנות, מחלקת אותן ל-5 עד 7 פאנלים ומייצרת כל פאנל בנפרד — בסגנון שבחרת: סגנון אנימה, קומיקס רטרו, או נואר קולנועי. הפאנלים מופיעים בהדרגה ברגע שמוכנים, כך שהיצירה מתגלה בפניך סצנה אחר סצנה.',
         },
         {
           h: 'לככב בסיפור שלך',
@@ -364,7 +364,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'From Script to Storyboard',
-          p: "Once your script is ready, LIFESCRIPT continues production: it analyzes scenes, breaks them into 5–7 panels, and generates each independently — in your chosen style: Anime Studio, Retro Comic, or Cinematic Noir. Panels appear progressively the moment they're ready, so your creation reveals itself scene by scene.",
+          p: "Once your script is ready, LIFESCRIPT continues production: it analyzes scenes, breaks them into 5–7 panels, and generates each independently — in your chosen style: Anime Style, Retro Comic, or Cinematic Noir. Panels appear progressively the moment they're ready, so your creation reveals itself scene by scene.",
         },
         {
           h: 'Star in Your Own Story',

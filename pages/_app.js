@@ -161,7 +161,7 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
           <meta property="og:image:type" content="image/png" />
           <meta name="twitter:card" content="summary_large_image" />
           <meta key="twitter:title" name="twitter:title" content="LIFESCRIPT | Your Life, Directed" />
-          <meta key="twitter:description" name="twitter:description" content="הפוך את רגעי היום-יום שלך לתסריט הוליוודי. יומן תסריטים קולנועי אישי." />
+          <meta key="twitter:description" name="twitter:description" content="הפוך את רגעי היום-יום שלך לתסריט קולנועי. יומן תסריטים קולנועי אישי." />
           <meta key="twitter:image" name="twitter:image" content={`${SITE_URL}/og-image.png`} />
           <link rel="icon" href="/icon.png" />
           <link rel="shortcut icon" href="/favicon.ico" />

@@ -14,7 +14,7 @@ Turn your day into a movie poster, comic book & reel — powered by AI
 ```
 🎬 YOUR LIFE IS A MOVIE. LIFESCRIPT DIRECTS IT.
 
-Ever wish today felt like a scene from your favorite film? LifeScript takes the ordinary moments of your day — a conversation, a feeling, a small victory — and turns them into a full cinematic production: a screenplay, a Hollywood-style movie poster, a comic book, and a reel. All in minutes. All starring you.
+Ever wish today felt like a scene from your favorite film? LifeScript takes the ordinary moments of your day — a conversation, a feeling, a small victory — and turns them into a full cinematic production: a screenplay, a cinematic movie poster, a comic book, and a reel. All in minutes. All starring you.
 
 ⭐ STAR YOURSELF
 This is what makes LifeScript different: upload a selfie, and our AI casts YOU as the lead. We build a consistent "Character Sheet" from your face and place you inside your own poster and comic panels — so it's not just a movie about your day, it's a movie WITH you in it.
@@ -23,7 +23,7 @@ This is what makes LifeScript different: upload a selfie, and our AI casts YOU a
 1. Write a sentence or two about your day — happy, chaotic, quiet, whatever it actually was.
 2. Our AI turns it into a real cinematic screenplay, complete with scene direction and dialogue.
 3. Generate a movie poster in your chosen genre — Action, Sci-Fi, Horror, Romance, and more.
-4. Turn the same story into a 5-7 panel comic book, illustrated in your pick of art styles: Anime Studio, Retro Comic, Cinematic Noir, or Painted.
+4. Turn the same story into a 5-7 panel comic book, illustrated in your pick of art styles: Anime Style, Retro Comic, Cinematic Noir, or Painted.
 5. Bring it all to life as a short cinematic reel you can share.
 
 🤖 BUILT ON A MULTI-PROVIDER AI ENGINE

@@ -919,7 +919,7 @@ export const SHOWCASE_REELS = [
     poster: '/gallery/comics/panel-01-5.webp',
     titleHe: 'דרמה',
     titleEn: 'Drama',
-    tagline: 'HOLLYWOOD DRAMA',
+    tagline: 'CINEMATIC DRAMA',
     color: '#d4a373',
   },
   {
