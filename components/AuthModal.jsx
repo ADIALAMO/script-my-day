@@ -84,6 +84,21 @@ function generateRelayToken() {
   });
 }
 
+// 18+ self-declaration + Terms/Privacy (covers Google AND the email link; nothing is recorded — a notice, not age verification).
+// Readable on purpose: 12px, white/70 on the dark card (~9:1 contrast), links underlined. tests/native-copy.test.js pins the position and bans faint classes.
+function AgeNotice({ isHe, className = '' }) {
+  const link = 'underline text-white/90 hover:text-white';
+  return (
+    <p className={`text-center text-white/70 text-[12px] leading-relaxed ${className}`}>
+      {isHe ? (
+        <>בהמשך אתה מאשר שאתה בן/בת 18 ומעלה ומסכים ל<a href="/terms" target="_blank" rel="noopener noreferrer" className={link}>תנאי השימוש</a> ול<a href="/privacy" target="_blank" rel="noopener noreferrer" className={link}>מדיניות הפרטיות</a></>
+      ) : (
+        <>By continuing you confirm you are 18 or older and agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" className={link}>Terms</a> and <a href="/privacy" target="_blank" rel="noopener noreferrer" className={link}>Privacy Policy</a></>
+      )}
+    </p>
+  );
+}
+
 /**
  * High-trust sign-in gate. Renders via createPortal.
  *
@@ -437,6 +452,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                         </p>
                       )}
                       {!needsRelay() && <div className="mb-6" />}
+                      <AgeNotice isHe={isHe} className="mb-5 px-1" />
                       <button
                         onClick={() => { setEmailState('idle'); setEmail(''); }}
                         className="text-white/25 hover:text-white/50 text-[11px] transition-colors"
@@ -472,9 +488,12 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                         </h2>
 
                         {/* Context message */}
-                        <p className="text-center text-white/35 text-[12px] leading-relaxed mb-6 px-2">
+                        <p className="text-center text-white/35 text-[12px] leading-relaxed mb-3 px-2">
                           {contextMsg}
                         </p>
+
+                        {/* 18+ notice: right under the heading, ABOVE both sign-in actions */}
+                        <AgeNotice isHe={isHe} className="mb-5 px-1" />
 
                         {/* ── Google CTA ── */}
                         <button
@@ -545,15 +564,6 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                             )}
                           </button>
                         </form>
-
-                        {/* 18+ self-declaration + Terms/Privacy (covers Google AND the email link; nothing is recorded — it is a notice, not age verification) */}
-                        <p className="text-center text-white/35 text-[10px] leading-relaxed mt-3">
-                          {isHe ? (
-                            <>בהמשך אתה מאשר שאתה בן/בת 18 ומעלה ומסכים ל<a href="/terms" target="_blank" rel="noopener noreferrer" className="underline text-white/50 hover:text-white">תנאי השימוש</a> ול<a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline text-white/50 hover:text-white">מדיניות הפרטיות</a></>
-                          ) : (
-                            <>By continuing you confirm you are 18 or older and agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline text-white/50 hover:text-white">Terms</a> and <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline text-white/50 hover:text-white">Privacy Policy</a></>
-                          )}
-                        </p>
 
                         {/* Skip */}
                         <button
