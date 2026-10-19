@@ -208,3 +208,8 @@ test('§7 names every AI provider the code really uses: Google Gemini API (free 
   for (const lang of ['en', 'he']) { const t = sec('privacy', lang, 7); for (const n of ['Gemini API', 'OpenRouter', 'Cloudflare Workers AI', 'Cohere']) assert.ok(t.includes(n), `${lang}: ${n}`); }
   assert.match(sec('privacy', 'en', 7), /free \(unpaid\) Gemini API tier/); assert.match(sec("privacy", "he", 7), /במסלול החינמי \(ללא תשלום\) של Gemini API/);
 });
+
+test('§4: reporting a generated script stores/sends no text — only reason, genre, language reach the team, the script is hidden on the device (he + en)', () => {
+  assert.match(sec('privacy', 'en', 4), /If you report a generated script \(text\), nothing about the script is stored or sent: our team only receives an alert with the reason, the genre and the language, and the script is hidden on your device\./);
+  assert.match(sec('privacy', 'he', 4), /אם תדווחו על תסריט שנוצר \(טקסט\), דבר אינו נשמר או נשלח מהתסריט: הצוות שלנו מקבל רק התראה עם הסיבה, הז'אנר והשפה, והתסריט מוסתר במכשיר שלכם\./);
+});

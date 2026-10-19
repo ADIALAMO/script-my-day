@@ -43,3 +43,13 @@ export function reportedGalleryRefs() {
   readPersisted().forEach(take);
   return out;
 }
+
+/** a short, stable, NON-reversible fingerprint of a script's text (djb2) — only used to keep a reported script hidden on this device; never sent anywhere */
+export function scriptKey(text) {
+  const t = typeof text === 'string' ? text : '';
+  let h = 5381;
+  for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0;
+  return `script:${(h >>> 0).toString(36)}:${t.length}`;
+}
+export const isScriptReported = (text) => !!text && isReported(scriptKey(text));
+export const markScriptReported = (text) => { if (text) markReported([scriptKey(text)]); };

@@ -84,7 +84,7 @@ Two independent cascades, each tries providers in order and returns the first su
   ([lib/report.js](lib/report.js)). Reporters are counted by a keyed HMAC (never raw IP/id); the OWNER's report hides
   at once, anyone else needs 2 distinct. Hiding = object moved to the PRIVATE bucket `R2_QUARANTINE_BUCKET_NAME`
   ([lib/quarantine.js](lib/quarantine.js)) + `report:hidden:<key>` (proxy-image answers 410; upload-panel refuses the same
-  bytes via `report:hidden:h:<sha256>`). Unset quarantine bucket = nothing deleted, alert says "still public". Restore /
+  bytes via `report:hidden:h:<sha256>`). **Script reports**: `ReportButton kind="script"` in the ScriptOutput toolbar → `{script:{genre,lang}}` only (fixed lists, NEVER text — scripts live only on the device): the owner gets a Telegram alert with reason / genre / language, `stats:report:script:<day>` counts them, the script is hidden on the reporter's device (`utils/reported-store.js scriptKey`, djb2 fingerprint) and its export menu disappears. Unset quarantine bucket = nothing deleted, alert says "still public". Restore /
   **Gallery reports:** the static showcase items (`constants/showcase.js`, files in `public/`) have the same flag (cards, genre view, poster lightbox, reel lightbox) with a
   `{ gallery: 'poster:<id>'|'reel:<id>' }` ref validated against the showcase lists ([lib/gallery-report.js](lib/gallery-report.js) — path from our list, never the client). Local hide only
   (`gallery:<ref>` in the reported-store) + a Telegram alert with the `public/` path on every distinct reporter; no Redis mark, no threshold, copy says "hidden for you". Remove the file by hand (git rm + deploy).

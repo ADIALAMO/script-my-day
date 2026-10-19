@@ -10,6 +10,9 @@ import {
 import { track } from '@vercel/analytics';
 import { getMsg, CODES, isQuotaError } from '../lib/messages.js';
 import { getGenreLabel } from '../constants/genres.js';
+import ReportButton from './ReportButton.jsx';
+import { isScriptReported, markScriptReported } from '../utils/reported-store.js';
+import { REPORT_COPY, reportText } from '../constants/report-copy.js';
 import { isCapacitorNative } from '../utils/platform.js';
 import { shareBlob } from '../utils/export-image.js';
 import { Toast } from '@capacitor/toast';
@@ -334,6 +337,9 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
 
   // ── Share / export state ───────────────────────────────────────────────────
   const [showExportMenu, setShowExportMenu] = useState(false);
+  // The user reported THIS script (kept hidden on this device; the text is never sent anywhere — see components/ReportButton.jsx kind="script").
+  const [scriptReported, setScriptReported] = useState(() => isScriptReported(script));
+  useEffect(() => { setScriptReported(isScriptReported(script)); }, [script]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showReelModal,  setShowReelModal]  = useState(false);
   // Panels the storage lifecycle already deleted (StoryboardView reports them after a confirmed 404): the reel is not offered for such a comic.
@@ -552,12 +558,25 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
             )}
           </AnimatePresence>
 
+          {/* Report this script (generated text) — hides it on this device and alerts the team with reason / genre / language only */}
+          {!scriptReported && !isEditing && !isTyping && currentDisplayText.length > 0 && (
+            <div data-tour="report-script">
+              <ReportButton
+                kind="script" compact lang={lang}
+                scriptRef={{ genre: String(genre || '').toLowerCase(), lang: isHebrew ? 'he' : 'en' }}
+                className="!p-2.5 !rounded-xl !bg-white/5 !border !border-white/10"
+                onReported={() => { markScriptReported(script); setScriptReported(true); setShowExportMenu(false); }}
+              />
+            </div>
+          )}
+
           {/* Mute */}
           <button onClick={() => setIsMuted(m => !m)} className="p-2.5 bg-white/5 border border-white/10 rounded-xl">
             {isMuted ? <VolumeX size={18} className="text-red-500" /> : <Volume2 size={18} className="text-[#d4a373]" />}
           </button>
 
-          {/* Export dropdown */}
+          {/* Export dropdown — not offered for a script the user reported */}
+          {!scriptReported && (
           <div ref={exportMenuRef} className="relative">
             <button
               onClick={() => setShowExportMenu(v => !v)}
@@ -659,6 +678,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               )}
             </AnimatePresence>
           </div>
+          )}
         </div>
       </div>
 
@@ -733,6 +753,10 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
                 ${isJournalHebrew ? 'text-right' : 'text-left'}`}
             >
               {journalEntry}
+            </div>
+          ) : scriptReported ? (
+            <div role="status" className="py-16 text-center text-white/55 text-base font-light">
+              {reportText(REPORT_COPY.hiddenScript, uiHebrew ? 'he' : 'en')}
             </div>
           ) : isEditing ? (
             <textarea

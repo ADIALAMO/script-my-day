@@ -20,11 +20,12 @@ async function hashDataUri(dataUri) {
 export function useReportContent() {
   const [sending, setSending] = useState(false);
 
-  const submit = useCallback(async ({ kind, reason, sources, galleryRef }) => {
+  const submit = useCallback(async ({ kind, reason, sources, galleryRef, scriptRef }) => {
     setSending(true);
     try {
       const refs = [];
       if (galleryRef) refs.push({ gallery: galleryRef });   // static gallery item: a lookup key only (lib/gallery-report.js)
+      if (scriptRef) refs.push({ script: { genre: scriptRef.genre, lang: scriptRef.lang } });   // a generated script: {genre, lang} only, never the text
       for (const s of (sources || []).slice(0, 8)) {
         if (typeof s !== 'string') continue;
         if (s.startsWith('http')) refs.push({ url: s });
