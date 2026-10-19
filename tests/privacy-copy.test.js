@@ -213,3 +213,8 @@ test('§4: reporting a generated script stores/sends no text — only reason, ge
   assert.match(sec('privacy', 'en', 4), /If you report a generated script \(text\), nothing about the script is stored or sent: our team only receives an alert with the reason, the genre and the language, and the script is hidden on your device\./);
   assert.match(sec('privacy', 'he', 4), /אם תדווחו על תסריט שנוצר \(טקסט\), דבר אינו נשמר או נשלח מהתסריט: הצוות שלנו מקבל רק התראה עם הסיבה, הז'אנר והשפה, והתסריט מוסתר במכשיר שלכם\./);
 });
+
+test('the accessibility statement is dated October 2026 (he + en), like the Terms and the Privacy policy', () => {
+  assert.equal(MODAL_DATA.accessibility.he.summary, 'הצהרת הנגישות עודכנה לאחרונה באוקטובר 2026.');
+  assert.equal(MODAL_DATA.accessibility.en.summary, 'This accessibility statement was last updated in October 2026.');
+});

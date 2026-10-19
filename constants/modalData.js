@@ -189,7 +189,7 @@ export const MODAL_DATA = {
   accessibility: {
     he: {
       title: 'נגישות',
-      summary: 'הצהרת הנגישות עודכנה לאחרונה ביוני 2026.',
+      summary: 'הצהרת הנגישות עודכנה לאחרונה באוקטובר 2026.',
       sections: [
         {
           h: 'המחויבות שלנו',
@@ -211,7 +211,7 @@ export const MODAL_DATA = {
     },
     en: {
       title: 'ACCESSIBILITY',
-      summary: 'This accessibility statement was last updated in June 2026.',
+      summary: 'This accessibility statement was last updated in October 2026.',
       sections: [
         {
           h: 'Our Commitment',
