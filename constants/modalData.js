@@ -272,7 +272,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'מתי אפשר לשדרג ל-Pro?',
-          p: 'מסלול Pro עדיין אינו זמין — הוא בקרוב, וכיום לא נגבים תשלומים. בתפריט החשבון בחרו "Pro — רשימת המתנה" והשאירו אימייל, ונשלח לכם הודעה אחת כשזה נפתח. מחירים ומגבלות מתוכננים עשויים להשתנות לפני ההשקה.',
+          p: 'מסלול Pro עדיין אינו זמין — הוא בקרוב, וכיום לא נגבים תשלומים. מחירים ומגבלות מתוכננים עשויים להשתנות לפני ההשקה.',
         },
       ],
     },
@@ -312,7 +312,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'When can I upgrade to Pro?',
-          p: 'Pro is not yet available — it is coming soon, and no payments are collected today. In the account menu choose "Pro — Join waitlist" and leave your email, and we\'ll send you one note when it opens. Planned prices and limits may change before launch.',
+          p: 'Pro is not yet available — it is coming soon, and no payments are collected today. Planned prices and limits may change before launch.',
         },
       ],
     },

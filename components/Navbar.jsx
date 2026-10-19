@@ -153,19 +153,16 @@ function AvatarDropdown({ session, tier, hasBillingCustomer, isHe, anchor, onClo
 
       {/* Actions */}
       <div className="py-1.5">
-        {/* Upgrade to Pro — hidden for pro/admin users, and for the Capacitor
-            shell entirely (no purchase/pricing CTA in the native app — see
-            the mobile-wrapper plan's billing decision). */}
-        {!isElevated && !native && (
+        {/* Upgrade to Pro — ONLY when billing is really live (BILLING_ENABLED). While there are no payments (Pro is "coming soon") nothing about
+            Pro / the waitlist is shown in the menu. Hidden for pro/admin users and for the Capacitor shell entirely (no purchase CTA in the native app). */}
+        {BILLING_ENABLED && !isElevated && !native && (
           <button
             onClick={() => { onClose(); onUpgradeClick(); }}
             className="w-full flex items-center gap-2.5 px-4 py-2.5 text-amber-400 hover:bg-amber-500/10 transition-colors duration-150 group"
           >
             <Crown size={13} className="shrink-0 group-hover:scale-110 transition-transform" />
             <span className="text-[11px] font-black uppercase tracking-wide">
-              {BILLING_ENABLED
-                ? (isHe ? 'שדרג לפרו 👑' : 'Upgrade to Pro 👑')
-                : (isHe ? 'Pro — רשימת המתנה 🎬' : 'Pro — Join waitlist 🎬')}
+              {isHe ? 'שדרג לפרו 👑' : 'Upgrade to Pro 👑'}
             </span>
           </button>
         )}
@@ -405,17 +402,15 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
         ) : (
           // ── Authenticated: Avatar + badge + dropdown ──
           <div className="flex items-center gap-2 shrink-0">
-            {/* Go Pro CTA — desktop, free users only. Hidden entirely on
-                Capacitor (no purchase/pricing CTA in the native app). */}
-            {!isPro && !native && (
+            {/* Go Pro CTA — desktop, free users only, ONLY when billing is really live (nothing about Pro / "soon" while there are no payments).
+                Hidden entirely on Capacitor (no purchase/pricing CTA in the native app). */}
+            {BILLING_ENABLED && !isPro && !native && (
               <button
                 onClick={() => handleOpenAuthModal('upgrade')}
                 className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 hover:border-amber-500/45 text-amber-400 text-[10px] font-black uppercase tracking-wide transition-all duration-200 whitespace-nowrap active:scale-95"
               >
                 <Crown size={11} />
-                {BILLING_ENABLED
-                  ? (isHe ? 'שדרג לפרו' : 'Go Pro')
-                  : (isHe ? 'Pro · בקרוב' : 'Pro · Soon')}
+                {isHe ? 'שדרג לפרו' : 'Go Pro'}
               </button>
             )}
 

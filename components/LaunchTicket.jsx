@@ -13,7 +13,7 @@ export default function LaunchTicket({ lang = 'he' }) {
   }, []);
 
   // One offer only — the invite bonus — on the web AND in the Android app. Nothing here mentions a plan, a price or anything paid
-  // (there are no payments; Pro is "coming soon" and lives only in the account menu / waitlist). tests/native-copy.test.js pins this.
+  // (there are no payments; Pro is "coming soon" and is not advertised here or in the menus). tests/native-copy.test.js pins this.
   const content = {
     badge: isHe ? "בונוס הזמנה" : "Invite Bonus",
     title: isHe ? "בונוס הזמנת חברים" : "Friend Invite Bonus",

@@ -271,3 +271,13 @@ test('no "world\'s leading" / "world-class" / "best result" / "perfect result" /
   assert.deepEqual(offenders, []);
   for (const bad of ["the world's leading language models", 'world-class language models', 'המתקדמים בעולם', 'a perfect result']) assert.match(bad, BAD, bad);
 });
+
+test('web navbar + account menu: no Pro / "Soon" / waitlist entry while there are no payments (they exist only behind BILLING_ENABLED); no message points to a removed menu entry', () => {
+  const nav = readFileSync(path.join(ROOT, 'components/Navbar.jsx'), 'utf8');
+  assert.doesNotMatch(nav.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, ''), /Pro · Soon|Pro · בקרוב|Join waitlist|רשימת המתנה|Pro — /);
+  assert.equal((nav.match(/BILLING_ENABLED && !isElevated && !native/g) || []).length, 1, 'account-menu entry only when billing is live');
+  assert.equal((nav.match(/BILLING_ENABLED && !isPro && !native/g) || []).length, 1, 'navbar chip only when billing is live');
+  assert.doesNotMatch(JSON.stringify(MODAL_DATA), /Pro — Join waitlist|Pro — רשימת המתנה|account menu choose|בתפריט החשבון בחרו/);
+  const msgs = readFileSync(path.join(ROOT, 'lib/messages.js'), 'utf8');
+  assert.doesNotMatch(msgs, /from the account menu|מתפריט החשבון/);
+});
