@@ -2,40 +2,31 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Ticket, X, Star } from "lucide-react";
-import { proBlurbHe, proBlurbEn } from '../constants/limits-copy.js';
-import { useNative } from '../hooks/useNative.js';
 
 export default function LaunchTicket({ lang = 'he' }) {
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const isHe = lang === 'he';
-  const native = useNative();   // the Android app shows no Pro plan / price card
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // One offer only — the invite bonus — on the web AND in the Android app. Nothing here mentions a plan, a price or anything paid
+  // (there are no payments; Pro is "coming soon" and lives only in the account menu / waitlist). tests/native-copy.test.js pins this.
   const content = {
-    // In the Android app the only offer is the invite bonus, so the button and the card say exactly that.
-    badge: native ? (isHe ? "בונוס הזמנה" : "Invite Bonus") : (isHe ? "מבצעים פעילים" : "Active Offers"),
-    title: native ? (isHe ? "בונוס הזמנת חברים" : "Friend Invite Bonus") : (isHe ? "מבצעי הפקה פעילים" : "Active Production Deals"),
-    desc: native
-      ? (isHe ? "בונוס פתוח על הסט עכשיו — נצל אותו לפני שהמצלמות מפסיקות לצלם." : "A bonus is live on set right now — grab it before the cameras stop rolling.")
-      : (isHe ? "בונוס אחד פתוח על הסט עכשיו, ומסלול Pro בדרך." : "One bonus is live on set right now, and Pro is on its way."),
+    badge: isHe ? "בונוס הזמנה" : "Invite Bonus",
+    title: isHe ? "בונוס הזמנת חברים" : "Friend Invite Bonus",
+    desc: isHe
+      ? "בונוס פתוח על הסט עכשיו — נצלו אותו לפני שהמצלמות מפסיקות לצלם."
+      : "A bonus is live on set right now — grab it before the cameras stop rolling.",
     deals: [
       {
         icon: "🎁",
-        title: isHe ? "הזמן חבר, קבל פוסטר חינם" : "Invite a friend, get a free poster",
+        title: isHe ? "הזמינו חבר, קבלו פוסטר חינם" : "Invite a friend, get a free poster",
         body: isHe
-          ? "על כל חבר שנרשם ויוצר פוסטר ראשון — אתה מקבל פוסטר \"לככב בסיפור\" חינם. דרך תפריט החשבון ← הזמן חברים."
-          : "For every friend who signs up and makes their first poster, you earn a free \"Star Yourself\" poster. Account menu → Invite friends.",
-      },
-      {
-        icon: "👑",
-        title: isHe ? "מסלול Pro — בקרוב" : "Pro plan — coming soon",
-        body: isHe
-          ? proBlurbHe()
-          : proBlurbEn(),
+          ? "על כל חבר או חברה שנרשמים ויוצרים פוסטר ראשון — מתקבל פוסטר \"לככב בסיפור\" חינם (מגיל 18). דרך תפריט החשבון ← הזמן חברים."
+          : "For every friend who signs up and makes their first poster, you earn a free \"Star Yourself\" poster (18+). Account menu → Invite friends.",
       },
     ],
     button: isHe ? "חזרה לצילומים" : "Back to Set"
@@ -104,7 +95,7 @@ export default function LaunchTicket({ lang = 'he' }) {
         </p>
         
         <div className="space-y-2 mb-4 text-start">
-          {content.deals.filter((d) => !(native && d.icon === "👑")).map((deal, i) => (
+          {content.deals.map((deal, i) => (
             <div
               key={i}
               className="bg-amber-500/[0.07] border border-amber-500/20 rounded-xl p-3 flex gap-2.5 items-start"

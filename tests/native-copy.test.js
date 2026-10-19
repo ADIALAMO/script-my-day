@@ -109,7 +109,7 @@ test('getMsg in the native shell: the upgrade / "go Pro" messages are neutral; e
 
 // ── Source guard: a pricing / upgrade literal in a component must sit next to a native check ─────────────────────────────────
 const LITERAL = /Upgrade to Pro|Go Pro|\bPro Only\b|פרו בלבד|שדרג ל-?[Pp]ro|שדרג לצפייה|Upgrade to view|\$9\/month|9\$ לחודש|Manage Subscription|נהל מנוי|Casting yourself is a Pro feature|ליהוק עצמי הוא פיצ׳ר Pro/;
-const GUARDED = ['components/Navbar.jsx', 'components/LaunchTicket.jsx', 'components/CharacterModal.jsx', 'components/StoryboardView.jsx', 'components/AuthModal.jsx', 'pages/index.js'];
+const GUARDED = ['components/Navbar.jsx', 'components/CharacterModal.jsx', 'components/StoryboardView.jsx', 'components/AuthModal.jsx', 'pages/index.js'];
 const WEB_ONLY = new Set(['components/UpgradeModal.jsx', 'components/WaitlistModal.jsx']);   // only ever opened through openAuthModal('upgrade'), a no-op in the app
 
 test('every component that carries pricing / upgrade text uses useNative(); the upgrade route is a no-op natively; nothing else has such text', () => {
@@ -124,12 +124,13 @@ test('every component that carries pricing / upgrade text uses useNative(); the 
   assert.match(readFileSync(path.join(ROOT, 'components/LegalPage.jsx'), 'utf8'), /modalDataFor\(native\)/);
   // specific hides: Manage Subscription, the Pro card of the launch ticket, the AuthModal upgrade context
   assert.match(readFileSync(path.join(ROOT, 'components/Navbar.jsx'), 'utf8'), /\{isPro && hasBillingCustomer && !native && \(/);   // and only with a payment-provider customer on record (api/me.hasBillingCustomer)
-  assert.match(readFileSync(path.join(ROOT, 'components/LaunchTicket.jsx'), 'utf8'), /native && d\.icon === "👑"/);
   assert.match(readFileSync(path.join(ROOT, 'components/AuthModal.jsx'), 'utf8'), /native && context === 'upgrade'/);
-  // the launch ticket: on native the button/badge/title/description only refer to the invite bonus, and the web Pro card has no price
+  // the "Active Offers" button / card: ONE offer (the invite bonus) on the web and in the app — no plan, no price, no Pro, nothing paid, no native fork needed
   const ticket = readFileSync(path.join(ROOT, 'components/LaunchTicket.jsx'), 'utf8');
-  assert.match(ticket, /badge: native \?/); assert.match(ticket, /title: native \?/); assert.match(ticket, /desc: native/);
-  assert.match(ticket, /Pro plan — coming soon/); assert.doesNotMatch(ticket, NOT_YET);
+  assert.match(ticket, /badge: isHe \? "בונוס הזמנה" : "Invite Bonus"/); assert.match(ticket, /title: isHe \? "בונוס הזמנת חברים" : "Friend Invite Bonus"/);
+  assert.equal((ticket.match(/icon: "/g) || []).length, 1, 'exactly one deal card');
+  assert.doesNotMatch(ticket.replace(/\/\/.*$/gm, ''), /\bPro\b|פרו|coming soon|בקרוב|proBlurb|useNative|\$\s?\d|\d\s?\$(?!\{)|price|מחיר|plan|מסלול|subscription|מנוי|Active Offers|Production Deals/i);
+  assert.doesNotMatch(ticket, NOT_YET);
   assert.match(readFileSync(path.join(ROOT, 'components/WaitlistModal.jsx'), 'utf8').replace(/\s+/g, ' '), /COMING SOON/);
   assert.doesNotMatch(readFileSync(path.join(ROOT, 'components/WaitlistModal.jsx'), 'utf8'), /priority queue|תור מועדף|reels/i);
   // and the web-only modals are still the ONLY other places with such literals
