@@ -15,14 +15,20 @@ test('the page tells people how to start it in the app (account menu → "Delete
   assert.doesNotMatch(read('components/Navbar.jsx').slice(nav.indexOf('data-deletion?from=account') - 400, nav.indexOf('data-deletion?from=account')), /!native/, 'the account-menu entry is also available inside the Android app');
 });
 
-test('the timeline states what is real: manual processing after verification, the request log kept RETENTION.deletionLogDays, stored images expiring on their own — numbers come from config, no invented SLA', () => {
+test('the timeline states what is real: manual processing after verification, the request log kept RETENTION.deletionLogDays, stored images expiring on their own — numbers come from config, and the owner-committed 30-day SLA', async () => {
   assert.match(page, /import \{ RETENTION \} from '\.\.\/config\/limits\.js'/);
   for (const k of ['deletionLogDays', 'posterObjectDays', 'panelObjectDays', 'characterObjectDays']) assert.ok(page.includes(`RETENTION.${k}`), k);
   assert.match(page, /then process it by hand — there is no automatic deletion yet/);
   assert.match(page, /ואז מטפלים בה ידנית — אין עדיין מחיקה אוטומטית/);
   assert.match(page, /Stored images expire on their own, with or without a request/);
   assert.doesNotMatch(page, /reasonable time|זמן סביר/, 'the vague "reasonable time" is replaced by the concrete timeline');
-  assert.doesNotMatch(page.replace(/\/\/.*$/gm, ''), /within \d+ (?:days|hours)|תוך \d+ (?:ימים|שעות)/, 'no promised processing deadline that the owner has not set');
+  // the owner-committed SLA: 30 days from receipt (from the user's confirmation when we must confirm first) — shown in the timeline, the form text and the success message, he + en
+  assert.equal((page.match(/within 30 days of receiving it/g) || []).length, 3);
+  assert.equal((page.match(/תוך 30 ימים מקבלתה/g) || []).length, 3);
+  assert.match(page, /if we need to confirm it with you first, the 30 days count from your confirmation/); assert.match(page, /30 הימים נספרים מרגע האישור שלכם/);
+  assert.doesNotMatch(page.replace(/\/\/.*$/gm, ''), /within (?!30 days)\d+ (?:days|hours)|תוך (?!30 ימים)\d+ (?:ימים|שעות)/, 'only the committed 30 days');
+  const { MODAL_DATA } = await import('../constants/modalData.js');
+  for (const lang of ['en', 'he']) assert.match(MODAL_DATA.privacy[lang].sections.find((x) => x.h.startsWith('9.')).p, lang === 'en' ? /within 30 days of receiving it/ : /תוך 30 ימים מקבלתה/);
 });
 
 test('no payment provider on the page (there is none): no customer ID, no payment provider, no Stripe — in both languages', () => {

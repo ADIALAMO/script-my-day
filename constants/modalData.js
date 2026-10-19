@@ -136,7 +136,7 @@ export const MODAL_DATA = {
         },
         {
           h: '9. הזכויות שלך ובעל המאגר',
-          p: 'אתה יכול לבקש בכל עת לעיין במידע שלך, לתקנו או למחוק את חשבונך, את תמונות הפנים שהעלית או כל מידע אחר שאנחנו מחזיקים. ניתן להגיש בקשת מחיקה דרך עמוד מחיקת החשבון והמידע שלנו, או ישירות במייל adialamo@gmail.com. לפני כל מחיקה אנחנו מאמתים שהבקשה הוגשה על ידי בעל החשבון (בקשה שנשלחת בזמן שאתה מחובר מאומתת אוטומטית, אחרת נאשר מול הכתובת) — ונטפל בכל בקשה בהקדם.',
+          p: 'אתה יכול לבקש בכל עת לעיין במידע שלך, לתקנו או למחוק את חשבונך, את תמונות הפנים שהעלית או כל מידע אחר שאנחנו מחזיקים. ניתן להגיש בקשת מחיקה דרך עמוד מחיקת החשבון והמידע שלנו, או ישירות במייל adialamo@gmail.com. לפני כל מחיקה אנחנו מאמתים שהבקשה הוגשה על ידי בעל החשבון (בקשה שנשלחת בזמן שאתה מחובר מאומתת אוטומטית, אחרת נאשר מול הכתובת) — ונטפל בכל בקשה מאומתת תוך 30 ימים מקבלתה (אם נצטרך לאשר אותה מולכם קודם, 30 הימים נספרים מרגע האישור שלכם).',
         },
       ],
     },
@@ -178,7 +178,7 @@ export const MODAL_DATA = {
         },
         {
           h: '9. Your Rights & Data Controller',
-          p: 'You can request at any time to access your data, correct it, or delete your account, the face photos you uploaded, or any other data we hold. You can submit a deletion request through our account & data deletion page, or directly at adialamo@gmail.com. Before anything is deleted we verify that the request comes from the account owner (a request sent while you are signed in is verified automatically, otherwise we confirm with the address) — and we will handle every request promptly.',
+          p: 'You can request at any time to access your data, correct it, or delete your account, the face photos you uploaded, or any other data we hold. You can submit a deletion request through our account & data deletion page, or directly at adialamo@gmail.com. Before anything is deleted we verify that the request comes from the account owner (a request sent while you are signed in is verified automatically, otherwise we confirm with the address) — and we process every verified request within 30 days of receiving it (if we need to confirm it with you first, the 30 days count from your confirmation).',
         },
       ],
     },
