@@ -27,7 +27,7 @@ This is what makes LifeScript different: upload a selfie, and our AI casts YOU a
 5. Bring it all to life as a short cinematic reel you can share.
 
 🤖 BUILT ON A MULTI-PROVIDER AI ENGINE
-Behind every tap, LifeScript races several of the world's leading language and image models at once and automatically picks whichever returns the best result first — so your poster and panels come through fast, even under heavy load. No single point of failure, no long waits.
+Behind every tap, LifeScript races several AI language and image models at once and automatically uses whichever answers first — so your poster and panels usually come through quickly, even when one provider is slow or down.
 
 📖 A JOURNAL THAT ACTUALLY SHOWS YOU SOMETHING
 Most journaling apps give you back a wall of text. LifeScript gives you back a poster you'd hang on a wall, a comic you'd actually read, and a script that reads like it was written by a real screenwriter — because your day deserves more than a diary entry.
@@ -39,7 +39,7 @@ Share your personal invite link. Every friend who joins and creates their first 
 LifeScript automatically detects the language you write in and produces your script, poster, and comic in that same language — full right-to-left support for Hebrew, built in from day one, not bolted on after.
 
 🔒 YOUR STORY STAYS YOURS
-Your journal entries and production history live only on your own device — we don't store them on our servers. The face photo you upload for "Star Yourself" is deleted right after your Character Sheet is created, and the sheet itself is deleted automatically after a while. We never sell your data or use your words for advertising. Full details in our Privacy Policy.
+Your journal entries and production history live only on your own device — we don't store them on our servers. To create your script, poster and comic, the text you write is sent to the AI services we use for processing. The face photo you upload for "Star Yourself" is deleted right after your Character Sheet is created, and the sheet itself is deleted automatically after a while. We never sell your data or use your words for advertising. Full details in our Privacy Policy.
 
 💎 FREE TO START
 Create scripts and posters every day, and comics every month, free. Invite a friend and earn a free "Star Yourself" poster.

@@ -16,12 +16,12 @@ export const MODAL_DATA = {
           p: 'כל התסריטים, הפוסטרים, פאנלי הקומיקס וכל תוכן שנוצר עבורך שייכים לך באופן מלא ובלעדי. LIFESCRIPT אינה טוענת לבעלות כלשהי על יצירותיך — לא על הסיפורים, לא על הדמויות ולא על התוצר הויזואלי שנוצר עבורך.',
         },
         {
-          h: '2. מסלולים, מכסות ושימוש הוגן',
+          h: '2. מכסות ושימוש הוגן',
           p: termsPlansHe(),
         },
         {
-          h: '3. חיוב, חידוש וביטול מנוי (עם השקת Pro)',
-          p: 'מסלול Pro עדיין אינו זמין וכיום לא נגבים תשלומים. הסעיף הזה יחול רק עם השקת Pro: מנוי Pro יחויב באמצעות ספק תשלומים, במחיר שיוצג לך לפני התשלום, ויתחדש אוטומטית מדי חודש עד לביטול. את הביטול תוכל לבצע דרך תפריט החשבון; הביטול ייכנס לתוקף בתום תקופת החיוב הנוכחית, ולא יתבצע חיוב נוסף לאחריו. התשלום עבור תקופת חיוב שכבר החלה לא יוחזר, ולא תחויב בגין תקופות עתידיות לאחר הביטול — הכול בכפוף לזכות ביטול סטטוטורית לפי הדין החל עליך (לרבות זכות ביטול עסקה לפי חוק הגנת הצרכן). לא נראה ולא נשמור את פרטי כרטיס האשראי שלך — נתוני התשלום ינוהלו ויאובטחו על ידי ספק התשלומים. בכל שאלה בנושא חיוב או החזר ניתן לפנות אלינו במייל adialamo@gmail.com.',
+          h: '3. תשלומים',
+          p: 'LIFESCRIPT חינמית לשימוש ואינה גובה תשלומים. אם אי פעם יוצעו פיצ\'רים בתשלום, תנאים אלה יעודכנו לפני כן והמחיר יוצג לפני התשלום.',
         },
         {
           h: '4. הגנת תוכן וניקוי קלטים אוטומטי',
@@ -58,12 +58,12 @@ export const MODAL_DATA = {
           p: 'All scripts, posters, comic panels, and any content generated for you belong entirely and exclusively to you. LIFESCRIPT makes no claim of ownership over your creations — not your stories, characters, or the visual output generated on your behalf.',
         },
         {
-          h: '2. Plans, Quotas & Fair Use',
+          h: '2. Quotas & Fair Use',
           p: termsPlansEn(),
         },
         {
-          h: '3. Billing, Renewal & Cancellation (when Pro launches)',
-          p: 'Pro is not yet available and no payments are collected today. This section will apply only when Pro launches: the Pro subscription will be billed through a payment provider at the price shown to you before you pay, and will renew automatically each month until cancelled. You will be able to cancel via the account menu; cancellation will take effect at the end of the current billing period, with no further charges afterward. Payment for a billing period already begun will be non-refundable, and you will not be charged for future periods after cancellation — all subject to any statutory cancellation right under the law applicable to you (including consumer-protection withdrawal rights). We will not see or store your card details — payment data will be handled and secured by the payment provider. For any billing or refund question, contact us at adialamo@gmail.com.',
+          h: '3. Payments',
+          p: 'LIFESCRIPT is free to use and does not collect payments. If paid features are ever offered, these terms will be updated first and the price will be shown before you pay.',
         },
         {
           h: '4. Content Protection & Automatic Input Sanitization',
@@ -120,11 +120,11 @@ export const MODAL_DATA = {
         },
         {
           h: '5. תשלומים',
-          p: 'מסלול Pro עדיין אינו זמין וכיום לא נגבים תשלומים. עם השקת Pro, תשלומי המנוי יעובדו במלואם על ידי ספק תשלומים. אנחנו לעולם לא נראה, נקבל או נשמור את פרטי כרטיס האשראי שלך — אנחנו מצפים לשמור רק מזהה לקוח אצל אותו ספק, המקושר לחשבונך, לצורך ניהול המנוי.',
+          p: 'LIFESCRIPT חינמית לשימוש ואינה גובה תשלומים, ולכן אין בידינו פרטי תשלום או כרטיס אשראי.',
         },
         {
           h: '6. עוגיות ואנליטיקה',
-          p: 'אנחנו משתמשים בעוגיות חיוניות לשמירת ההתחברות שלך, ובעוגיית הזמנה (ls_ref) לזיהוי החבר שהזמין אותך (נמחקת לאחר ' + RETENTION.referralCookieDays + ' יום). אנחנו משתמשים ב-Vercel Web Analytics, שאינו משתמש בעוגיות לזיהוי מבקרים: מבקר מזוהה באמצעות גיבוב (hash) זמני של הבקשה, שנמחק אוטומטית לאחר יממה, והנתונים המתקבלים הם מצטברים — כגון עמודים שנצפו, אתר מפנה, מיקום משוער (מדינה, אזור ועיר), סוג מכשיר, מערכת הפעלה ודפדפן, ואירועי שימוש בפיצ\'רים כמו יצירת תסריט או שיתוף. הוא פועל באתר ובאפליקציית האנדרואיד. באתר בלבד, ורק לאחר שתאשרו עוגיות אנליטיקה, אנחנו טוענים גם את Google Analytics, שקובע מזהים (עוגיות) ומעבד נתונים כמו כתובת ה-IP ופרטי המכשיר כדי לספק לנו סטטיסטיקות שימוש; איננו משתמשים בו לפרסום. Google Analytics אינו נטען לפני שתאשרו, ואינו נטען לעולם באפליקציית האנדרואיד.',
+          p: 'אנחנו משתמשים בעוגיות חיוניות לשמירת ההתחברות שלך, ובעוגיית הזמנה (ls_ref) לזיהוי החבר שהזמין אותך (נמחקת לאחר ' + RETENTION.referralCookieDays + ' יום). אנחנו משתמשים ב-Vercel Web Analytics, שאינו משתמש בעוגיות לזיהוי מבקרים: מבקר מזוהה באמצעות גיבוב (hash) זמני של הבקשה, שנמחק אוטומטית לאחר יממה, והנתונים המתקבלים הם מצטברים — כגון עמודים שנצפו, אתר מפנה, מיקום משוער (מדינה, אזור ועיר), סוג מכשיר, מערכת הפעלה ודפדפן, ואירועי שימוש בפיצ\'רים כמו יצירת תסריט או שיתוף. הוא פועל באתר ובאפליקציית האנדרואיד. באתר בלבד, ורק לאחר שתאשרו עוגיות אנליטיקה, אנחנו טוענים גם את Google Analytics, שקובע מזהים (עוגיות) ומעבד נתונים כמו כתובת ה-IP ופרטי המכשיר כדי לספק לנו סטטיסטיקות שימוש; איננו משתמשים בו לפרסום. Google Analytics פועל לפי בחירת הסכמה השמורה במכשיר שלכם (Google Consent Mode: אחסון האנליטיקה מוגדר כברירת מחדל כ-"denied" והופך ל-"granted" רק כשתאשרו; אחסון הפרסום חסום תמיד). לפני שתחליטו הוא אינו נטען ושום דבר אינו נשלח ל-Google; אם תאשרו הוא נטען ומתחיל לספור את הביקורים שלכם; אם תסרבו הוא לא ייטען לעולם. אפשר לאפס את הבחירה על ידי ניקוי נתוני האתר בדפדפן. הוא אינו נטען לעולם באפליקציית האנדרואיד.',
         },
         {
           h: '7. עיבוד על ידי ספקי AI חיצוניים',
@@ -136,7 +136,7 @@ export const MODAL_DATA = {
         },
         {
           h: '9. הזכויות שלך ובעל המאגר',
-          p: 'אתה יכול לבקש בכל עת לעיין במידע שלך, לתקנו או למחוק את חשבונך, את תמונות הפנים שהעלית או כל מידע אחר שאנחנו מחזיקים. ניתן להגיש בקשת מחיקה דרך עמוד מחיקת החשבון והמידע שלנו, או ישירות במייל adialamo@gmail.com. לפני כל מחיקה אנחנו מאמתים שהבקשה הוגשה על ידי בעל החשבון (בקשה שנשלחת בזמן שאתה מחובר מאומתת אוטומטית, אחרת נאשר מול הכתובת) — ונטפל בכל בקשה בהקדם.',
+          p: 'אתה יכול לבקש בכל עת לעיין במידע שלך, לתקנו או למחוק את חשבונך, את תמונות הפנים שהעלית או כל מידע אחר שאנחנו מחזיקים. ניתן להגיש בקשת מחיקה דרך עמוד מחיקת החשבון והמידע שלנו, או ישירות במייל adialamo@gmail.com. לפני כל מחיקה אנחנו מאמתים שהבקשה הוגשה על ידי בעל החשבון (בקשה שנשלחת בזמן שאתה מחובר מאומתת אוטומטית, אחרת נאשר מול הכתובת) — ונטפל בכל בקשה מאומתת תוך 30 ימים מקבלתה (אם נצטרך לאשר אותה מולכם קודם, 30 הימים נספרים מרגע האישור שלכם).',
         },
       ],
     },
@@ -162,11 +162,11 @@ export const MODAL_DATA = {
         },
         {
           h: '5. Payments',
-          p: 'Pro is not yet available and no payments are collected today. When Pro launches, subscription payments will be processed entirely by a payment provider. We will never see, receive, or store your card details — we expect to store only a customer ID from that provider, linked to your account, for the purpose of managing the subscription.',
+          p: 'LIFESCRIPT is free to use and does not collect payments, so we hold no payment or card details.',
         },
         {
           h: '6. Cookies & Analytics',
-          p: 'We use essential cookies to keep you signed in, and a referral cookie (ls_ref) to recognize the friend who invited you (deleted after ' + RETENTION.referralCookieDays + ' days). We use Vercel Web Analytics, which does not use cookies to identify visitors: a visitor is counted using a temporary hash of the request that is discarded automatically after a day, and the data is aggregate — such as pages viewed, referrer, approximate location (country, region and city), device type, operating system and browser, and feature-usage events such as creating a script or sharing. It runs on the website and in the Android app. On the website only, and only after you accept analytics cookies, we also load Google Analytics, which sets identifiers (cookies) and processes data such as your IP address and device information to give us usage statistics; we do not use it for advertising. Google Analytics is not loaded before you accept, and it is never loaded in the Android app.',
+          p: 'We use essential cookies to keep you signed in, and a referral cookie (ls_ref) to recognize the friend who invited you (deleted after ' + RETENTION.referralCookieDays + ' days). We use Vercel Web Analytics, which does not use cookies to identify visitors: a visitor is counted using a temporary hash of the request that is discarded automatically after a day, and the data is aggregate — such as pages viewed, referrer, approximate location (country, region and city), device type, operating system and browser, and feature-usage events such as creating a script or sharing. It runs on the website and in the Android app. On the website only, and only after you accept analytics cookies, we also load Google Analytics, which sets identifiers (cookies) and processes data such as your IP address and device information to give us usage statistics; we do not use it for advertising. Google Analytics works with a consent choice that is stored on your device (Google Consent Mode: analytics storage is "denied" by default and becomes "granted" only when you accept; advertising storage is always denied). Before you decide it is not loaded and nothing is sent to Google; if you accept it is loaded and starts counting your visits; if you decline it is never loaded. You can reset the choice by clearing this site\'s data in your browser. It is never loaded in the Android app.',
         },
         {
           h: '7. Processing by External AI Providers',
@@ -178,7 +178,7 @@ export const MODAL_DATA = {
         },
         {
           h: '9. Your Rights & Data Controller',
-          p: 'You can request at any time to access your data, correct it, or delete your account, the face photos you uploaded, or any other data we hold. You can submit a deletion request through our account & data deletion page, or directly at adialamo@gmail.com. Before anything is deleted we verify that the request comes from the account owner (a request sent while you are signed in is verified automatically, otherwise we confirm with the address) — and we will handle every request promptly.',
+          p: 'You can request at any time to access your data, correct it, or delete your account, the face photos you uploaded, or any other data we hold. You can submit a deletion request through our account & data deletion page, or directly at adialamo@gmail.com. Before anything is deleted we verify that the request comes from the account owner (a request sent while you are signed in is verified automatically, otherwise we confirm with the address) — and we process every verified request within 30 days of receiving it (if we need to confirm it with you first, the 30 days count from your confirmation).',
         },
       ],
     },
@@ -189,7 +189,7 @@ export const MODAL_DATA = {
   accessibility: {
     he: {
       title: 'נגישות',
-      summary: 'הצהרת הנגישות עודכנה לאחרונה ביוני 2026.',
+      summary: 'הצהרת הנגישות עודכנה לאחרונה באוקטובר 2026.',
       sections: [
         {
           h: 'המחויבות שלנו',
@@ -211,7 +211,7 @@ export const MODAL_DATA = {
     },
     en: {
       title: 'ACCESSIBILITY',
-      summary: 'This accessibility statement was last updated in June 2026.',
+      summary: 'This accessibility statement was last updated in October 2026.',
       sections: [
         {
           h: 'Our Commitment',
@@ -264,15 +264,11 @@ export const MODAL_DATA = {
         },
         {
           h: 'איך "מלככבים" בפוסטר עם הפנים שלי?',
-          p: 'בשלב יצירת הפוסטר או הקומיקס תמצא אפשרות להעלות תמונת פנים. ה-AI בונה ממנה "גיליון דמות" ומחדיר אותך לסצנות. כל משתמש רשום מקבל פוסטר אחד חינם להתנסות; מנויי Pro מקבלים מכסה חודשית. ' + uploadsSentenceHe() + ' שים לב — הפיצ\'ר מיועד לבני 18 ומעלה, ומותר להעלות רק את הפנים שלך, או של בגיר שנתן הסכמה.',
+          p: 'בשלב יצירת הפוסטר או הקומיקס תמצא אפשרות להעלות תמונת פנים. ה-AI בונה ממנה "גיליון דמות" ומחדיר אותך לסצנות. כל משתמש רשום מקבל פוסטר אחד חינם להתנסות. ' + uploadsSentenceHe() + ' שים לב — הפיצ\'ר מיועד לבני 18 ומעלה, ומותר להעלות רק את הפנים שלך, או של בגיר שנתן הסכמה.',
         },
         {
           h: 'איך עובד "הזמן חברים"?',
           p: 'בתפריט החשבון (אחרי התחברות) לחץ על "הזמן חברים" כדי לקבל קישור אישי. על כל חבר שנרשם דרך הקישור ויוצר פוסטר ראשון — אתה מקבל פוסטר "לככב בסיפור" חינם נוסף. אפשר לעקוב אחרי כמה חברים הצטרפו וכמה פוסטרים צברת ישירות בחלון.',
-        },
-        {
-          h: 'מתי אפשר לשדרג ל-Pro?',
-          p: 'מסלול Pro עדיין אינו זמין — הוא בקרוב, וכיום לא נגבים תשלומים. בתפריט החשבון בחרו "Pro — רשימת המתנה" והשאירו אימייל, ונשלח לכם הודעה אחת כשזה נפתח. מחירים ומגבלות מתוכננים עשויים להשתנות לפני ההשקה.',
         },
       ],
     },
@@ -304,15 +300,11 @@ export const MODAL_DATA = {
         },
         {
           h: 'How do I "star" in the poster with my own face?',
-          p: 'During poster or comic generation you\'ll find an option to upload a face photo. The AI builds a "Character Sheet" from it and casts you into the scenes. Every registered user gets one free poster to try it; Pro members get a monthly allowance. ' + uploadsSentenceEn() + ' Note — this feature is for users aged 18 and over, and you may only upload your own face, or an adult who has consented.',
+          p: 'During poster or comic generation you\'ll find an option to upload a face photo. The AI builds a "Character Sheet" from it and casts you into the scenes. Every registered user gets one free poster to try it. ' + uploadsSentenceEn() + ' Note — this feature is for users aged 18 and over, and you may only upload your own face, or an adult who has consented.',
         },
         {
           h: 'How does "Invite friends" work?',
           p: 'In the account menu (after signing in), tap "Invite friends" to get a personal link. For every friend who signs up through it and makes their first poster, you earn a free "Star Yourself" poster. You can track how many friends joined and how many posters you\'ve earned right inside the window.',
-        },
-        {
-          h: 'When can I upgrade to Pro?',
-          p: 'Pro is not yet available — it is coming soon, and no payments are collected today. In the account menu choose "Pro — Join waitlist" and leave your email, and we\'ll send you one note when it opens. Planned prices and limits may change before launch.',
         },
       ],
     },
@@ -330,7 +322,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'מנגנון AI מרובה-ספקים',
-          p: 'מאחורי כל לחיצה פועל מנגנון שמריץ בו-זמנית מספר מודלי שפה מהמתקדמים בעולם — Gemini Flash, Gemma ו-DeepSeek — ובוחר אוטומטית את המהיר שמחזיר תוצאה מושלמת. לתמונות, קסקדה חכמה של ספקים ויזואליים — Gemini, FLUX, Cloudflare AI ועוד — מבטיחה פוסטר ופאנלים תמיד, גם בשיא העומס.',
+          p: 'מאחורי כל לחיצה פועל מנגנון שמריץ בו-זמנית מספר מודלי שפה — Gemini Flash, Gemma ו-DeepSeek — ובוחר אוטומטית את המהיר שמחזיר תוצאה. לתמונות, קסקדה של ספקים ויזואליים — Gemini, FLUX, Cloudflare AI ועוד — עוזרת להגיש פוסטר ופאנלים גם בעומס גבוה.',
         },
         {
           h: 'מהתסריט ללוח הסיפור',
@@ -338,10 +330,10 @@ export const MODAL_DATA = {
         },
         {
           h: 'לככב בסיפור שלך',
-          p: 'הפיצ\'ר החתום שלנו: העלה תמונת פנים, וה-AI יהפוך אותך לדמות הראשית בפוסטר ובקומיקס שלך. אנחנו בונים "גיליון דמות" עקבי כדי שתיראה כמוך לאורך כל הסצנות. כל משתמש רשום מקבל פוסטר "לככב בסיפור" אחד חינם להתנסות; מנויי Pro מקבלים מכסה חודשית נדיבה.',
+          p: 'הפיצ\'ר החתום שלנו: העלה תמונת פנים, וה-AI יהפוך אותך לדמות הראשית בפוסטר ובקומיקס שלך. אנחנו בונים "גיליון דמות" עקבי כדי שתיראה כמוך לאורך כל הסצנות. כל משתמש רשום מקבל פוסטר "לככב בסיפור" אחד חינם להתנסות.',
         },
         {
-          h: 'חינמי, Pro והזמנת חברים',
+          h: 'חינמי והזמנת חברים',
           p: faqPlansHe(),
         },
         {
@@ -360,7 +352,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'Intelligent Multi-Provider AI Engine',
-          p: 'Behind every click, an engine simultaneously races multiple world-class language models — Gemini Flash, Gemma, and DeepSeek — automatically selecting the fastest model that returns a perfect result. For visuals, a smart cascade of image providers — Gemini, FLUX, Cloudflare AI, and more — ensures your poster and panels are always delivered, even under heavy global load.',
+          p: 'Behind every click, an engine simultaneously races multiple language models — Gemini Flash, Gemma, and DeepSeek — automatically selecting the fastest model that returns a result. For visuals, a cascade of image providers — Gemini, FLUX, Cloudflare AI, and more — helps deliver your poster and panels even under heavy load.',
         },
         {
           h: 'From Script to Storyboard',
@@ -368,10 +360,10 @@ export const MODAL_DATA = {
         },
         {
           h: 'Star in Your Own Story',
-          p: 'Our signature feature: upload a face photo, and the AI turns you into the lead character of your own poster and comic. We build a consistent "Character Sheet" so you look like yourself across every scene. Every registered user gets one free "Star Yourself" poster to try it; Pro members get a generous monthly allowance.',
+          p: 'Our signature feature: upload a face photo, and the AI turns you into the lead character of your own poster and comic. We build a consistent "Character Sheet" so you look like yourself across every scene. Every registered user gets one free "Star Yourself" poster to try it.',
         },
         {
-          h: 'Free, Pro & Inviting Friends',
+          h: 'Free & Inviting Friends',
           p: faqPlansEn(),
         },
         {
@@ -389,7 +381,7 @@ export const MODAL_DATA = {
 // MODAL_DATA above is unchanged; the app renders modalDataFor(true), which drops the billing / payments / "how to upgrade"
 // sections, neutralises the plan descriptions, and renumbers the headings.
 // (tests/native-copy.test.js scans the result for any leftover price / subscription / upgrade wording.)
-const NATIVE_DROP = /^\s*(?:\d+\.\s*)?(?:חיוב, חידוש|Billing, Renewal|תשלומים$|Payments$)|משדרגים ל-Pro|לשדרג ל-Pro|upgrade to Pro|חינמי, Pro|Free, Pro/i;
+const NATIVE_DROP = /^\s*(?:\d+\.\s*)?(?:חיוב, חידוש|Billing, Renewal|תשלומים$|Payments$)|משדרגים ל-Pro|לשדרג ל-Pro|upgrade to Pro|חינמי והזמנת|Free & Inviting/i;
 const NATIVE_PLANS = {
   he: 'השימוש בשירות כפוף למכסות שימוש הוגן יומיות וחודשיות, שעשויות להשתנות ומתחדשות לפי החלון המוצג באפליקציה. כל משתמש רשום מקבל מכסה של תסריטים, פוסטרים וקומיקסים, וכן פוסטר "לככב בסיפור" אחד חינם (חד-פעמי).',
   en: 'Use of the service is subject to daily and monthly fair-use quotas, which may change and renew on the schedule shown in the app. Every registered user receives an allowance of scripts, posters and comics, plus one free "Star Yourself" poster (one-time).',
@@ -405,25 +397,21 @@ const NATIVE_ABOUT_STAR = {
 
 // Disclosures about web-payment data and the Pro waitlist: removed from the app's copy (the full wording stays on the web pages).
 const NATIVE_TEXT_REPLACEMENTS = [
-  [' באתר בלבד, ורק לאחר שתאשרו עוגיות אנליטיקה, אנחנו טוענים גם את Google Analytics, שקובע מזהים (עוגיות) ומעבד נתונים כמו כתובת ה-IP ופרטי המכשיר כדי לספק לנו סטטיסטיקות שימוש; איננו משתמשים בו לפרסום. Google Analytics אינו נטען לפני שתאשרו, ואינו נטען לעולם באפליקציית האנדרואיד.', ''],
-  [' On the website only, and only after you accept analytics cookies, we also load Google Analytics, which sets identifiers (cookies) and processes data such as your IP address and device information to give us usage statistics; we do not use it for advertising. Google Analytics is not loaded before you accept, and it is never loaded in the Android app.', ''],
-  ['מצב המנוי, מזהה לקוח אצל ספק התשלומים (אם אי פעם התחלת מנוי בתשלום), ', ''],
-  ['the subscription state, a payment-provider customer ID (only if you ever started a paid subscription), ', ''],
-  ['החשבון, המכסה והמנוי', 'החשבון והמכסה'],
-  ['account, quota and subscription', 'account and quota'],
+  [' באתר בלבד, ורק לאחר שתאשרו עוגיות אנליטיקה, אנחנו טוענים גם את Google Analytics, שקובע מזהים (עוגיות) ומעבד נתונים כמו כתובת ה-IP ופרטי המכשיר כדי לספק לנו סטטיסטיקות שימוש; איננו משתמשים בו לפרסום. Google Analytics פועל לפי בחירת הסכמה השמורה במכשיר שלכם (Google Consent Mode: אחסון האנליטיקה מוגדר כברירת מחדל כ-"denied" והופך ל-"granted" רק כשתאשרו; אחסון הפרסום חסום תמיד). לפני שתחליטו הוא אינו נטען ושום דבר אינו נשלח ל-Google; אם תאשרו הוא נטען ומתחיל לספור את הביקורים שלכם; אם תסרבו הוא לא ייטען לעולם. אפשר לאפס את הבחירה על ידי ניקוי נתוני האתר בדפדפן. הוא אינו נטען לעולם באפליקציית האנדרואיד.', ''],
+  [' On the website only, and only after you accept analytics cookies, we also load Google Analytics, which sets identifiers (cookies) and processes data such as your IP address and device information to give us usage statistics; we do not use it for advertising. Google Analytics works with a consent choice that is stored on your device (Google Consent Mode: analytics storage is "denied" by default and becomes "granted" only when you accept; advertising storage is always denied). Before you decide it is not loaded and nothing is sent to Google; if you accept it is loaded and starts counting your visits; if you decline it is never loaded. You can reset the choice by clearing this site\'s data in your browser. It is never loaded in the Android app.', ''],
+  ['המסלול שלך (כולל גישה מיוחדת שהענקנו), ', ''],
+  ['your plan (including any special access we granted), ', ''],
   [', הרשמות לרשימת ההמתנה ובקשות', ' ובקשות'],
   ['Feedback, waitlist sign-ups and deletion requests', 'Feedback and deletion requests'],
-  [' אם תצטרפו לרשימת ההמתנה ל-Pro, נשמור את כתובת האימייל, את השפה, את התאריך, את גרסת ההודעה שראיתם, ואם הייתם מחוברים — את מזהה החשבון. נשתמש בהם רק כדי לעדכן אתכם פעם אחת כש-Pro יהיה זמין, ונשמור אותם עד אז או עד שתבקשו להסיר אותם (דרך עמוד מחיקת הנתונים או במייל).', ''],
-  [' If you join the Pro waitlist we store your email address, your language, the date, the version of the notice you saw and, if you were signed in, your account id. We use them only to tell you once when Pro is available, and keep them until then or until you ask us to remove them (through the data-deletion page or by email).', ''],
-  [' ומזהה לקוח אצל ספק התשלומים, אם אי פעם התחלת מנוי בתשלום)', ')'],
+  [' אם תצטרפו לרשימת ההמתנה לאפשרות בתשלום עתידית, נשמור את כתובת האימייל, את השפה, את התאריך, את גרסת ההודעה שראיתם, ואם הייתם מחוברים — את מזהה החשבון. נשתמש בהם רק כדי לעדכן אתכם פעם אחת כשהאפשרות תהיה זמינה, ונשמור אותם עד אז או עד שתבקשו להסיר אותם (דרך עמוד מחיקת הנתונים או במייל).', ''],
+  [' If you join the waitlist for a possible future paid option we store your email address, your language, the date, the version of the notice you saw and, if you were signed in, your account id. We use them only to tell you once when it is available, and keep them until then or until you ask us to remove them (through the data-deletion page or by email).', ''],
   ['waitlist and deletion-request messages', 'deletion-request messages'],
   ['בהרשמה לרשימת ההמתנה ובבקשת מחיקה', 'בבקשת מחיקה'],
-  [' and, if you ever started a paid subscription, a payment-provider customer ID)', ')'],
 ];
 const applyNativeReplacements = (p) => NATIVE_TEXT_REPLACEMENTS.reduce((t, [from, to]) => t.split(from).join(to), p);
 
 function nativeParagraph(h, p) {
-  if (/^\d+\.\s*(?:מסלולים, מכסות|Plans, Quotas)/.test(h)) return /[א-ת]/.test(h) ? NATIVE_PLANS.he : NATIVE_PLANS.en;
+  if (/^\d+\.\s*(?:מכסות ושימוש|Quotas & Fair)/.test(h)) return /[א-ת]/.test(h) ? NATIVE_PLANS.he : NATIVE_PLANS.en;
   if (/^\d+\.\s*(?:הגבלת גיל|Age Restriction)/.test(h)) return applyNativeReplacements(p);
   if (/מלככבים" בפוסטר|"star" in the poster/.test(h)) return /[א-ת]/.test(h) ? NATIVE_STAR.he : NATIVE_STAR.en;
   if (/לככב בסיפור שלך|Star in Your Own Story/.test(h)) return /[א-ת]/.test(h) ? NATIVE_ABOUT_STAR.he : NATIVE_ABOUT_STAR.en;

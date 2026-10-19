@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Loader2, Camera, Sparkles, RefreshCw, Crown, ShieldCheck } from 'lucide-react';
 import { isCapacitorNative } from '../utils/platform.js';
-import { useNative } from '../hooks/useNative.js';
 import { getMsg, CODES } from '../lib/messages.js';
 
 // Downscale a selected file to a JPEG data URI (max 1024px, q0.9) before upload.
@@ -45,15 +44,13 @@ function fileToDownscaledDataUri(file, maxDim = 1024, quality = 0.9) {
  *   confirmAdult      () => Promise<{ok, code?}> — records the declaration for the account
  *   clearCharacter    () => void
  *   removeCharacter   () => Promise<{ok, code?}> — deletes the photo/sheet and the saved pointer on the server (owner only)
- *   onUpgrade         () => void   — called when the API gates a free user (403)
  */
 export default function CharacterModal({
   isOpen, onClose, lang,
-  status, characterImageUrl, uploadCharacter, clearCharacter, removeCharacter, onUpgrade, adultConfirmed, confirmAdult,
+  status, characterImageUrl, uploadCharacter, clearCharacter, removeCharacter, adultConfirmed, confirmAdult,
   gender, setGender,
 }) {
   const isHebrew = lang === 'he';
-  const native = useNative();   // Android app: neutral "not available" wording, no Pro / upgrade text
 
   const genderOptions = isHebrew
     ? [{ value: 'male', label: 'גבר' }, { value: 'female', label: 'אישה' }, { value: 'neutral', label: 'ניטרלי' }]
@@ -235,29 +232,11 @@ export default function CharacterModal({
                   <Crown size={24} className="text-[#d4a373]" />
                 </div>
                 <p className="text-white font-bold text-[14px]">
-                  {native
-                    ? (isHebrew ? 'ליהוק עצמי אינו זמין במסלול הנוכחי שלך' : 'Casting yourself isn\'t available on your current plan')
-                    : (isHebrew ? 'ליהוק עצמי הוא פיצ׳ר Pro' : 'Casting yourself is a Pro feature')}
+                  {isHebrew ? 'ליהוק עצמי אינו זמין בחשבון שלך' : 'Casting yourself isn\'t available on your account'}
                 </p>
                 <p className="text-gray-500 text-[11.5px] leading-relaxed">
-                  {native
-                    ? (isHebrew ? 'הפיצ׳ר הזה אינו פתוח כרגע בחשבון שלך.' : 'This feature isn\'t open on your account right now.')
-                    : (isHebrew
-                      ? 'שדרג ל-Pro כדי להפוך לגיבור של הקומיקס והפוסטרים שלך.'
-                      : 'Upgrade to Pro to become the hero of your comics and posters.')}
+                  {isHebrew ? 'הפיצ׳ר הזה אינו פתוח כרגע בחשבון שלך.' : 'This feature isn\'t open on your account right now.'}
                 </p>
-                {/* No purchase/pricing CTA in the Capacitor shell (per the
-                    mobile-wrapper plan's billing decision) — the informational
-                    copy above still explains the gate, this button just isn't
-                    shown, since tapping it can't lead anywhere on native. */}
-                {!native && (
-                  <button
-                    onClick={() => { onClose(); onUpgrade?.(); }}
-                    className="w-full bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black font-black py-3 rounded-2xl text-[12px] uppercase tracking-wider"
-                  >
-                    {isHebrew ? 'שדרג ל-Pro' : 'Upgrade to Pro'}
-                  </button>
-                )}
               </div>
             )}
 

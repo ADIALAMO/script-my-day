@@ -187,7 +187,7 @@ export const GUEST_RETENTION = {
 
 // ─── Retention periods that the CODE enforces (the privacy text is built from these) ───
 //   characterPointerDays: Redis `character:<id>` (links to the character sheet) — set at upload, NOT refreshed on use.
-//   deletionLogDays:      Redis `deletion-request:*` audit record of a data-deletion request.
+//   deletionLogDays:      Redis `deletion-request:*` audit record of a data-deletion request (45 days: longer than the 30-day processing SLA, so there is always proof the deadline was met).
 //   characterObjectDays / posterObjectDays / panelObjectDays: the numbers the PRIVACY TEXT promises for the FILES in R2. NOT enforced by code: they mirror the
 //                         Cloudflare R2 lifecycle rules the owner set in the dashboard — `characters/` 90 days, `posters/` 60 days, `panels/` 30 days (rules
 //                         count from object creation and run asynchronously). Characters are promised "within about 100 days" to cover that lag (and the
@@ -198,7 +198,7 @@ export const RETENTION = {
   characterObjectDays:  envInt('CHARACTER_OBJECT_DAYS', 100),   // R2 rule 90 + lag margin
   posterObjectDays:     envInt('POSTER_OBJECT_DAYS', 60),       // R2 rule `posters/` 60 days
   panelObjectDays:      envInt('PANEL_OBJECT_DAYS', 30),        // R2 rule `panels/` 30 days
-  deletionLogDays:      envInt('DELETION_LOG_DAYS', 30),
+  deletionLogDays:      envInt('DELETION_LOG_DAYS', 45),   // must stay PAST the 30-day processing SLA promised on /data-deletion + Privacy §9, so the record outlives the deadline (tests/data-deletion-copy.test.js)
   referralCookieDays:   envInt('REFERRAL_COOKIE_DAYS', 30),   // ls_ref cookie set by /i/<code>
 };
 

@@ -43,7 +43,7 @@ test('reporterSegment: one-way HMAC, deterministic, 32 hex, never contains the i
 });
 
 test('limits and enums', () => {
-  assert.deepEqual(REPORT_KINDS, ['poster', 'panel', 'reel', 'character']); assert.deepEqual(REPORT_REASONS, ['sexual', 'violent', 'other']); assert.equal(MAX_REFS, 8);
+  assert.deepEqual(REPORT_KINDS, ['poster', 'panel', 'reel', 'character', 'script']); assert.deepEqual(REPORT_REASONS, ['sexual', 'violent', 'other']); assert.equal(MAX_REFS, 8);
   assert.equal(isValidHash('0'.repeat(64)), true); assert.equal(isValidHash('0'.repeat(63)), false);
 });
 

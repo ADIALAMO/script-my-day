@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { TIER_LIMITS, COMIC, SHEET_LIMITS, SCRIPT_MONTHLY_LIMITS } from '../config/limits.js';
-import { LIMITS, termsPlansHe, termsPlansEn, faqPlansHe, faqPlansEn, proBlurbHe, proBlurbEn, checkoutDescription } from '../constants/limits-copy.js';
+import { LIMITS, termsPlansHe, termsPlansEn, faqPlansHe, faqPlansEn, checkoutDescription } from '../constants/limits-copy.js';
 import { MODAL_DATA } from '../constants/modalData.js';
 
 const root = new URL('..', import.meta.url);
@@ -27,24 +27,14 @@ test('LIMITS mirrors config exactly', () => {
   assert.equal(LIMITS.proUploadsPerMonth, SHEET_LIMITS.pro);
 });
 
-test('the Pro plan copy states the daily AND monthly script/comic limits, in he + en, everywhere it is described', () => {
-  const texts = { termsHe: termsPlansHe(), termsEn: termsPlansEn(), faqHe: faqPlansHe(), faqEn: faqPlansEn(), blurbHe: proBlurbHe(), blurbEn: proBlurbEn(), checkout: checkoutDescription() };
+test('the plan copy states the registered-user limits in he + en and carries no Pro / price wording', () => {
+  const texts = { termsHe: termsPlansHe(), termsEn: termsPlansEn(), faqHe: faqPlansHe(), faqEn: faqPlansEn() };
   for (const [name, text] of Object.entries(texts)) {
-    for (const n of [LIMITS.proScriptsPerDay, LIMITS.proScriptsPerMonth, LIMITS.proComicsPerDay, LIMITS.proComicsPerMonth]) {
-      assert.match(text, new RegExp(`(?<![\\d])${n}(?![\\d])`), `${name} must state ${n}`);
-    }
+    assert.doesNotMatch(text, /\bPro\b|מנוי|\$\s?9\b|cancel anytime|ביטול בכל עת|priority|reels?\b|רילז|coming soon|בקרוב/i, name);
   }
+  assert.match(termsPlansEn(), /free to use/); assert.match(termsPlansHe(), /חינמית/);
   const json = JSON.stringify(MODAL_DATA);
   assert.ok(json.includes(JSON.stringify(termsPlansHe()).slice(1, 80)) && json.includes(JSON.stringify(faqPlansEn()).slice(1, 80)), 'modalData uses the generated copy');
-});
-
-test('no price / "Cancel anytime" / priority queue / reels-as-Pro in the generated Pro copy; Terms plans say Pro is not yet available', () => {
-  const NOT_YET = /\$\s?9\b|\b9\s?\$|9\$|cancel anytime|ביטול בכל עת|priority|תור (?:עיבוד )?מועדף|reels?\b|רילז/i;
-  for (const [name, text] of Object.entries({ termsHe: termsPlansHe(), termsEn: termsPlansEn(), faqHe: faqPlansHe(), faqEn: faqPlansEn(), blurbHe: proBlurbHe(), blurbEn: proBlurbEn(), checkout: checkoutDescription() })) {
-    assert.doesNotMatch(text, NOT_YET, name);
-  }
-  assert.match(termsPlansEn(), /Pro is not yet available/); assert.match(termsPlansHe(), /עדיין אינו זמין/);
-  assert.match(proBlurbEn(), /coming soon/); assert.match(proBlurbHe(), /בקרוב/);
 });
 
 // ── scan for hard-coded numbers ─────────────────────────────────────────────────────────

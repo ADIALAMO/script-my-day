@@ -6,6 +6,14 @@
 // Stored as JSON {off:0|1, debug:0|1} in localStorage `ls_variant_flags` (iOS home-screen web apps have their OWN localStorage). Nothing in the URL and
 // nothing stored = the default (the script window + the document as page scroller). Older stored sets from the preview comparison are ignored.
 export const FLAGS_KEY = 'ls_variant_flags';
+
+/**
+ * The scroll DEBUG overlay is a developer tool and must never be switchable by a visitor (a URL parameter or a localStorage value is client-settable).
+ * It exists only in a build where the owner set NEXT_PUBLIC_SCROLL_DEBUG=true (e.g. a Preview deployment); in Production that variable is unset, so
+ * ?debug=1 and a stored {debug:1} are ignored, the stored debug bit is cleaned up, and pages/index.js never even bundles the overlay.
+ * (The `?variant=off` legacy-scroll escape hatch is separate: it only changes the visitor's OWN scroll behaviour and shows nothing.)
+ */
+export const DEBUG_ALLOWED = process.env.NEXT_PUBLIC_SCROLL_DEBUG === 'true';
 const EMPTY = { off: false, debug: false };
 
 const param = (search, name) => {
@@ -28,12 +36,17 @@ export function parseStored(raw) {
  * -> { flags: {off, debug}, source: 'url' | 'stored' | 'none', store: object | null, clear: boolean }
  * A flag in the URL overrides the stored value of THAT flag only (so `?debug=1` keeps a stored `off`); `store` = what to write (numbers 0/1), `clear` = remove it.
  */
-export function resolveFlags({ search = '', stored = null } = {}) {
-  const prev = parseStored(stored) || { ...EMPTY };
+export function resolveFlags({ search = '', stored = null, allowDebug = true } = {}) {
+  const prevRaw = parseStored(stored) || { ...EMPTY };
+  const staleDebug = !allowDebug && prevRaw.debug;                 // a debug bit left in storage while the overlay is not allowed
+  const prev = { off: prevRaw.off, debug: allowDebug ? prevRaw.debug : false };
   const variant = param(search, 'variant');
-  const debug = param(search, 'debug');
+  const debug = allowDebug ? param(search, 'debug') : null;        // ?debug is ignored entirely when not allowed
   const hasUrl = (variant === 'off' || variant === 'on') || debug === '1' || debug === '0';
-  if (!hasUrl) return { flags: prev, source: parseStored(stored) ? 'stored' : 'none', store: null, clear: false };
+  if (!hasUrl) {
+    if (staleDebug) return { flags: prev, source: prev.off ? 'stored' : 'none', store: prev.off ? { off: 1, debug: 0 } : null, clear: !prev.off };   // clean the leftover
+    return { flags: prev, source: parseStored(stored) ? 'stored' : 'none', store: null, clear: false };
+  }
   const flags = {
     off: variant === 'off' ? true : variant === 'on' ? false : prev.off,
     debug: debug === '1' ? true : debug === '0' ? false : prev.debug,
@@ -51,7 +64,7 @@ export function readEffectiveFlags(win = typeof window !== 'undefined' ? window 
   let storedRaw = null;
   try { storedRaw = win.localStorage.getItem(FLAGS_KEY); } catch { /* storage unavailable: URL only */ }
   const search = win.location?.search || '';
-  const r = resolveFlags({ search, stored: storedRaw });
+  const r = resolveFlags({ search, stored: storedRaw, allowDebug: DEBUG_ALLOWED });
   try {
     if (r.clear) win.localStorage.removeItem(FLAGS_KEY);
     else if (r.store) win.localStorage.setItem(FLAGS_KEY, JSON.stringify(r.store));

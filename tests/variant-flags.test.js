@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (f) => readFileSync(path.join(ROOT, f), 'utf8');
-const { FLAGS_KEY, parseStored, resolveFlags, readEffectiveFlags, _resetFlagsMemo } = await import('../utils/variant-flags.js');
+const { FLAGS_KEY, DEBUG_ALLOWED, parseStored, resolveFlags, readEffectiveFlags, _resetFlagsMemo } = await import('../utils/variant-flags.js');
 
 const fakeWin = ({ search = '', stored = null, throwing = false } = {}) => {
   const m = stored === null ? {} : { [FLAGS_KEY]: stored };
@@ -52,13 +52,14 @@ test('stored values: old preview sets and garbage are ignored, never "off" by ac
 
 test('browser layer: persists off / debug, survives a reload without the query, ?variant=on clears, tolerates blocked storage', () => {
   _resetFlagsMemo();
+  // in this (production-like) test env NEXT_PUBLIC_SCROLL_DEBUG is unset: ?debug=1 is IGNORED, only `off` persists
   const w1 = fakeWin({ search: '?variant=off&debug=1' });
-  assert.deepEqual(readEffectiveFlags(w1).flags, { off: true, debug: true });
-  assert.equal(w1.localStorage._m[FLAGS_KEY], JSON.stringify({ off: 1, debug: 1 }));
+  assert.deepEqual(readEffectiveFlags(w1).flags, { off: true, debug: false });
+  assert.equal(w1.localStorage._m[FLAGS_KEY], JSON.stringify({ off: 1, debug: 0 }));
   _resetFlagsMemo();
   const w2 = fakeWin({ search: '', stored: w1.localStorage._m[FLAGS_KEY] });
   const r2 = readEffectiveFlags(w2);
-  assert.deepEqual(r2.flags, { off: true, debug: true }); assert.equal(r2.source, 'stored');
+  assert.deepEqual(r2.flags, { off: true, debug: false }); assert.equal(r2.source, 'stored');
   assert.equal(readEffectiveFlags(w2), r2, 'resolved once per page load');
   _resetFlagsMemo();
   const w3 = fakeWin({ search: '?variant=on&debug=0', stored: w1.localStorage._m[FLAGS_KEY] });
@@ -109,4 +110,39 @@ test('consumers read the EFFECTIVE flags, never raw location.search', () => {
   const idx = read('pages/index.js');
   assert.match(idx, /readEffectiveFlags\(\)\.flags\.debug/);
   assert.ok(!/window\.location\.search/.test(idx.slice(idx.indexOf('const [debugScroll'), idx.indexOf('const [debugScroll') + 400)));
+});
+
+// ── the debug overlay is NOT switchable by a visitor (production) ──────────────────────────────────────────────────────────────────────────
+
+test('production: DEBUG_ALLOWED is false unless the OWNER builds with NEXT_PUBLIC_SCROLL_DEBUG=true', () => {
+  assert.equal(process.env.NEXT_PUBLIC_SCROLL_DEBUG, undefined);
+  assert.equal(DEBUG_ALLOWED, false);
+});
+
+test('resolveFlags(allowDebug:false): ?debug=1 and a stored {debug:1} never turn the overlay on; the stale bit is cleaned; ?variant=off still works', () => {
+  assert.deepEqual(resolveFlags({ search: '?debug=1', allowDebug: false }).flags, { off: false, debug: false });
+  assert.equal(resolveFlags({ search: '?debug=1', allowDebug: false }).store, null);
+  const stale = resolveFlags({ search: '', stored: JSON.stringify({ off: 0, debug: 1 }), allowDebug: false });
+  assert.deepEqual(stale.flags, { off: false, debug: false }); assert.equal(stale.clear, true, 'a leftover {"off":0,"debug":1} is removed from localStorage');
+  const keepOff = resolveFlags({ search: '', stored: JSON.stringify({ off: 1, debug: 1 }), allowDebug: false });
+  assert.deepEqual(keepOff.flags, { off: true, debug: false }); assert.deepEqual(keepOff.store, { off: 1, debug: 0 });
+  assert.deepEqual(resolveFlags({ search: '?variant=off&debug=1', allowDebug: false }).store, { off: 1, debug: 0 });
+  // the owner's build keeps the old behaviour
+  assert.deepEqual(resolveFlags({ search: '?debug=1', allowDebug: true }).flags, { off: false, debug: true });
+});
+
+test('browser layer: a visitor who sets localStorage {debug:1} (or ?debug=1) gets no overlay and the key is cleaned on load', () => {
+  _resetFlagsMemo();
+  const w = fakeWin({ search: '?debug=1', stored: JSON.stringify({ off: 0, debug: 1 }) });
+  assert.equal(readEffectiveFlags(w).flags.debug, false);
+  assert.ok(!(FLAGS_KEY in w.localStorage._m), 'the stored debug flag is removed');
+  _resetFlagsMemo();
+});
+
+test('source: the overlay is not even bundled without the owner env var; documented in .env.example', () => {
+  const idx = read('pages/index.js');
+  assert.match(idx, /process\.env\.NEXT_PUBLIC_SCROLL_DEBUG === 'true' \? dynamic/);
+  assert.match(idx, /\{ScrollDebug && debugScroll && <ScrollDebug \/>\}/);
+  assert.match(read('.env.example'), /NEXT_PUBLIC_SCROLL_DEBUG/);
+  assert.match(read('next.config.js'), /NEXT_PUBLIC_SCROLL_DEBUG: process\.env\.NEXT_PUBLIC_SCROLL_DEBUG === 'true' \? 'true' : 'false'/);   // inlined, so the build can drop the chunk
 });

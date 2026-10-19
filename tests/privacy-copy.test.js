@@ -102,24 +102,25 @@ test('§4 covers rate-limit records, the deletion log with e-mail/note/IP, Teleg
   assert.match(sec('privacy', 'en', 4), /private Telegram chat[^.]*partly hidden email address/);
   // waitlist: what is stored, the one purpose, retention + removal — no price, no payment processor, and the Telegram "partly hidden" line is said ONCE (above)
   const w4 = sec('privacy', 'en', 4);
-  assert.match(w4, /If you join the Pro waitlist we store your email address, your language, the date, the version of the notice you saw and, if you were signed in, your account id\. We use them only to tell you once when Pro is available, and keep them until then or until you ask us to remove them \(through the data-deletion page or by email\)\./);
+  assert.match(w4, /If you join the waitlist for a possible future paid option we store your email address, your language, the date, the version of the notice you saw and, if you were signed in, your account id\. We use them only to tell you once when it is available, and keep them until then or until you ask us to remove them \(through the data-deletion page or by email\)\./);
   assert.equal((w4.match(/partly hidden email address/g) || []).length, 1);
-  assert.doesNotMatch(w4.slice(w4.indexOf('If you join the Pro waitlist')), /\$|price|Stripe|payment|per month/i);
+  assert.doesNotMatch(w4.slice(w4.indexOf('If you join the waitlist')), /\$|price|Stripe|per month/i);
   const h4 = sec('privacy', 'he', 4);
-  assert.match(h4, /אם תצטרפו לרשימת ההמתנה ל-Pro, נשמור את כתובת האימייל, את השפה, את התאריך, את גרסת ההודעה שראיתם, ואם הייתם מחוברים — את מזהה החשבון\. נשתמש בהם רק כדי לעדכן אתכם פעם אחת כש-Pro יהיה זמין, ונשמור אותם עד אז או עד שתבקשו להסיר אותם \(דרך עמוד מחיקת הנתונים או במייל\)\./);
-  assert.doesNotMatch(h4.slice(h4.indexOf('אם תצטרפו')), /\$|מחיר|Stripe|תשלום/);
+  assert.match(h4, /אם תצטרפו לרשימת ההמתנה לאפשרות בתשלום עתידית, נשמור את כתובת האימייל, את השפה, את התאריך, את גרסת ההודעה שראיתם, ואם הייתם מחוברים — את מזהה החשבון\. נשתמש בהם רק כדי לעדכן אתכם פעם אחת כשהאפשרות תהיה זמינה, ונשמור אותם עד אז או עד שתבקשו להסיר אותם \(דרך עמוד מחיקת הנתונים או במייל\)\./);
+  assert.doesNotMatch(h4.slice(h4.indexOf('אם תצטרפו')), /\$|מחיר|Stripe/);
   assert.match(sec('privacy', 'en', 4), /standard server logs/);
   assert.match(sec('privacy', 'he', 4), /צ'אט טלגרם פרטי/);
   assert.match(sec('privacy', 'he', 4), /יומני שרת סטנדרטיים/);
 });
 
-test('§5 Payments: Pro is not yet available, no payments today, "a payment provider" (no Stripe) — and the data lists say a provider customer ID only if a subscription was ever started', () => {
-  assert.match(sec('privacy', 'en', 5), /Pro is not yet available and no payments are collected today\. When Pro launches, subscription payments will be processed entirely by a payment provider/);
-  assert.match(sec('privacy', 'he', 5), /עדיין אינו זמין וכיום לא נגבים תשלומים/);
-  assert.match(sec('privacy', 'he', 5), /ספק תשלומים/);
+test('§5 Payments: free to use, no payments collected (no Stripe); §3/§4 mention no subscription and no payment-provider customer ID (none exists today)', () => {
+  assert.match(sec('privacy', 'en', 5), /free to use and does not collect payments, so we hold no payment or card details/);
+  assert.match(sec('privacy', 'he', 5), /ואינה גובה תשלומים/);
   for (const lang of ['he', 'en']) {
     assert.doesNotMatch(JSON.stringify(MODAL_DATA.privacy[lang]), /Stripe/);
-    assert.match(sec('privacy', lang, 4), lang === 'en' ? /payment-provider customer ID \(only if you ever started a paid subscription\)/ : /מזהה לקוח אצל ספק התשלומים \(אם אי פעם התחלת מנוי בתשלום\)/);
+    for (const n of [3, 4]) assert.doesNotMatch(sec('privacy', lang, n), /customer ID|מזהה לקוח|subscription|מנוי|Stripe/i, `§${n} ${lang}`);
+    assert.match(sec('privacy', lang, 4), lang === 'en' ? /your plan \(including any special access we granted\)/ : /המסלול שלך \(כולל גישה מיוחדת שהענקנו\)/);
+    assert.match(sec('privacy', lang, 3), lang === 'en' ? /to manage your account and quota\./ : /כדי לנהל את החשבון והמכסה\./);
   }
 });
 
@@ -134,11 +135,13 @@ test('§6 names Vercel Web Analytics (no cookies to identify visitors, aggregate
   assert.match(sec('privacy', 'en', 6), /does not use cookies to identify visitors/);
   // GA: website only, only after acceptance, never in the Android app; Vercel: aggregate approximate location / device / OS / browser, web + app
   assert.match(sec('privacy', 'en', 6), /On the website only, and only after you accept analytics cookies, we also load Google Analytics/);
-  assert.match(sec('privacy', 'en', 6), /Google Analytics is not loaded before you accept, and it is never loaded in the Android app\./);
+  assert.match(sec('privacy', 'en', 6), /consent choice that is stored on your device \(Google Consent Mode: analytics storage is "denied" by default and becomes "granted" only when you accept; advertising storage is always denied\)\. Before you decide it is not loaded and nothing is sent to Google; if you accept it is loaded and starts counting your visits; if you decline it is never loaded\./);
+  assert.match(sec('privacy', 'en', 6), /It is never loaded in the Android app\./);
   assert.match(sec('privacy', 'en', 6), /approximate location \(country, region and city\), device type, operating system and browser/);
   assert.match(sec('privacy', 'en', 6), /It runs on the website and in the Android app\./);
   assert.match(sec('privacy', 'he', 6), /באתר בלבד, ורק לאחר שתאשרו עוגיות אנליטיקה, אנחנו טוענים גם את Google Analytics/);
-  assert.match(sec('privacy', 'he', 6), /Google Analytics אינו נטען לפני שתאשרו, ואינו נטען לעולם באפליקציית האנדרואיד\./);
+  assert.match(sec('privacy', 'he', 6), /Google Analytics פועל לפי בחירת הסכמה השמורה במכשיר שלכם \(Google Consent Mode: אחסון האנליטיקה מוגדר כברירת מחדל כ-"denied" והופך ל-"granted" רק כשתאשרו; אחסון הפרסום חסום תמיד\)/);
+  assert.match(sec('privacy', 'he', 6), /הוא אינו נטען לעולם באפליקציית האנדרואיד\./);
   assert.match(sec('privacy', 'he', 6), /מיקום משוער \(מדינה, אזור ועיר\), סוג מכשיר, מערכת הפעלה ודפדפן/);
   assert.match(sec('privacy', 'he', 6), /הוא פועל באתר ובאפליקציית האנדרואיד\./);
   assert.doesNotMatch(sec('privacy', 'he', 6).slice(sec('privacy', 'he', 6).indexOf('באתר בלבד')), /תאשר |שלך כדי/, 'the new Hebrew GA sentence is gender-neutral');
@@ -193,4 +196,24 @@ test('changing the object retention in config changes the wording: CHARACTER_OBJ
   const [en, he, en1, he1] = JSON.parse(out);
   assert.match(en, /within about 120 days/); assert.doesNotMatch(en, /about 100 days/); assert.match(he, /כ-120 ימים/);
   assert.match(en1, /about 45 days after they are created and comic panels about 14 days/); assert.match(he1, /כ-45 ימים[^.]*כ-14 ימים/);
+});
+
+test('§7: the apparent-minor photo check is described as best-effort, never age verification, and as FAILING CLOSED (photo not used, nothing stored or generated, retry) — he + en', () => {
+  assert.match(sec('privacy', 'en', 7), /a best-effort check that cannot confirm the age of anyone\. If this check cannot run \(for example during a provider outage\), the photo is not used: nothing is stored or generated, nothing is used from your quota, and you can try again in a moment\./);
+  assert.match(sec('privacy', 'he', 7), /בדיקה מאמץ סביר שאינה יכולה לאשר את גילו של איש\. אם הבדיקה אינה יכולה לפעול \(למשל בעת תקלה אצל ספק\), לא נעשה בתמונה שימוש: דבר אינו נשמר או נוצר, לא נוצל דבר מהמכסה שלכם, ואפשר לנסות שוב בעוד רגע\./);
+});
+
+test('§7 names every AI provider the code really uses: Google Gemini API (free tier), OpenRouter, Cloudflare Workers AI, Cohere', () => {
+  for (const lang of ['en', 'he']) { const t = sec('privacy', lang, 7); for (const n of ['Gemini API', 'OpenRouter', 'Cloudflare Workers AI', 'Cohere']) assert.ok(t.includes(n), `${lang}: ${n}`); }
+  assert.match(sec('privacy', 'en', 7), /free \(unpaid\) Gemini API tier/); assert.match(sec("privacy", "he", 7), /במסלול החינמי \(ללא תשלום\) של Gemini API/);
+});
+
+test('§4: reporting a generated script stores/sends no text — only reason, genre, language reach the team, the script is hidden on the device (he + en)', () => {
+  assert.match(sec('privacy', 'en', 4), /If you report a generated script \(text\), nothing about the script is stored or sent: our team only receives an alert with the reason, the genre and the language, and the script is hidden on your device\./);
+  assert.match(sec('privacy', 'he', 4), /אם תדווחו על תסריט שנוצר \(טקסט\), דבר אינו נשמר או נשלח מהתסריט: הצוות שלנו מקבל רק התראה עם הסיבה, הז'אנר והשפה, והתסריט מוסתר במכשיר שלכם\./);
+});
+
+test('the accessibility statement is dated October 2026 (he + en), like the Terms and the Privacy policy', () => {
+  assert.equal(MODAL_DATA.accessibility.he.summary, 'הצהרת הנגישות עודכנה לאחרונה באוקטובר 2026.');
+  assert.equal(MODAL_DATA.accessibility.en.summary, 'This accessibility statement was last updated in October 2026.');
 });

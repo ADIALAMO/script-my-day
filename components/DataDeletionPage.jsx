@@ -6,6 +6,7 @@ import { Check, Loader2, AlertCircle } from 'lucide-react';
 import { SITE_URL } from '../lib/site';
 import { useNative } from '../hooks/useNative.js';
 import { DATA_DELETION_WAITLIST_LINE } from '../constants/waitlist-copy.js';
+import { RETENTION } from '../config/limits.js';
 
 const COPY = {
   he: {
@@ -17,20 +18,32 @@ const COPY = {
     what: [
       'כתובת האימייל, השם ותמונת הפרופיל שלך (אם נרשמת עם Google)',
       'תמונת הפנים שהעלית ל"לככב בסיפור" וגיליון הדמות שנוצר ממנה',
-      'מוני השימוש היומיים/החודשיים שלך ומזהה הלקוח שלך אצל ספק התשלומים (אם קיים)',
+      'מוני השימוש היומיים/החודשיים שלך ואישור הגיל 18+ שנשמר בחשבון',
+    ],
+    startH: 'איך מבקשים',
+    start: [
+      'באפליקציה: פתחו את תפריט החשבון ובחרו "מחק את החשבון שלי" — העמוד הזה נפתח עם האימייל שלכם כבר ממולא.',
+      'באתר: אפשר למלא את הטופס שלמטה, או לפנות אלינו במייל.',
+    ],
+    timeH: 'לוח זמנים',
+    time: [
+      `הבקשה: קודם מאמתים אותה (אוטומטית כשהיא נשלחת מתוך החשבון המחובר, ובכל מקרה אחר מול כתובת האימייל), ואז מטפלים בה ידנית — אין עדיין מחיקה אוטומטית — תוך 30 ימים מקבלתה (אם נצטרך לאשר אותה מולכם קודם, 30 הימים נספרים מרגע האישור שלכם). הבקשה עצמה (אימייל, הערה וכתובת IP) נשמרת ${RETENTION.deletionLogDays} ימים ונמחקת אחר כך אוטומטית.`,
+      'אחרי הטיפול: החשבון והנתונים השמורים עליו נמחקים — האימייל, השם, תמונת הפרופיל, מוני השימוש, אישור הגיל והקישור לגיליון הדמות.',
+      `תמונות שנשמרו פוגות מעצמן, גם בלי בקשה: פוסטרים כ-${RETENTION.posterObjectDays} ימים מיצירתם, פאנלים של קומיקס כ-${RETENTION.panelObjectDays} ימים, וגיליון הדמות תוך כ-${RETENTION.characterObjectDays} ימים מההעלאה (תמונת הפנים המקורית נמחקת מיד לאחר יצירת הגיליון). אפשר גם להשתמש מיד ב"הסר את הדמות שלי" בחלון "לככב בסיפור".`,
+      'עותקים שספקי AI חיצוניים עשויים להחזיק לפי המדיניות שלהם אינם בשליטתנו (ראו מדיניות הפרטיות, סעיף 7).',
     ],
     notH: 'מה לא רלוונטי למחיקה',
     not: [
       'הטקסט, התסריטים וההיסטוריה שלך — נשמרים בזיכרון המקומי של הדפדפן (localStorage) בלבד, ואין לנו עותק במסד נתונים; נקה את נתוני הדפדפן כדי למחוק אותם. עותקי תמונות שנוצרו (פוסטרים/פאנלים) עשויים להישמר באחסון ענן ונמחקים לפי בקשתך — ציין זאת בהערה. מידע שנשלח לספקי AI חיצוניים כפוף למדיניות הספקים.',
     ],
     formH: 'בקשת מחיקה',
-    formSub: 'הזן את כתובת האימייל המשויכת לחשבון שלך. לפני כל מחיקה אנחנו מאמתים שהבקשה הוגשה על ידי בעל החשבון: בקשה שנשלחת כשאתה מחובר לחשבון מאומתת אוטומטית, ובכל מקרה אחר נאשר מול הכתובת. נטפל בבקשה תוך זמן סביר.',
+    formSub: 'הזן את כתובת האימייל המשויכת לחשבון שלך. לפני כל מחיקה אנחנו מאמתים שהבקשה הוגשה על ידי בעל החשבון: בקשה שנשלחת כשאתה מחובר לחשבון מאומתת אוטומטית, ובכל מקרה אחר נאשר מול הכתובת. נטפל בבקשה ידנית תוך 30 ימים מקבלתה, לפי לוח הזמנים שלמעלה.',
     emailPh: 'האימייל שלך',
     notePh: 'הערה נוספת (לא חובה)',
     submit: 'שלח בקשת מחיקה',
     sending: 'שולח…',
     success: 'הבקשה התקבלה',
-    successSub: 'קיבלנו את בקשת המחיקה שלך. נאמת שהיא הוגשה על ידי בעל החשבון ואז נטפל בה תוך זמן סביר; אישור יישלח לכתובת שהזנת.',
+    successSub: 'קיבלנו את בקשת המחיקה שלך. נאמת שהיא הוגשה על ידי בעל החשבון ואז נטפל בה ידנית תוך 30 ימים מקבלתה, לפי לוח הזמנים שבעמוד; אישור יישלח לכתובת שהזנת.',
     invalidEmail: 'נא להזין כתובת אימייל תקינה.',
     genericError: 'משהו השתבש. אפשר גם לפנות ישירות במייל.',
     orEmail: 'אפשר גם לפנות ישירות ל-',
@@ -46,20 +59,32 @@ const COPY = {
     what: [
       'Your email address, name, and profile photo (if you signed in with Google)',
       'The face photo you uploaded for "Star Yourself" and the Character Sheet generated from it',
-      'Your daily/monthly usage counters and your payment-provider customer ID (if any)',
+      'Your daily/monthly usage counters and the 18+ confirmation stored on your account',
+    ],
+    startH: 'How to request it',
+    start: [
+      'In the app: open the account menu and choose "Delete my account" — this page opens with your email already filled in.',
+      'On the website: fill in the form below, or email us.',
+    ],
+    timeH: 'Timeline',
+    time: [
+      `Your request: we verify it first (automatic when it is sent from your signed-in account; otherwise we confirm with your email address), then process it by hand — there is no automatic deletion yet — within 30 days of receiving it (if we need to confirm it with you first, the 30 days count from your confirmation). The request itself (email, note and IP address) is kept for ${RETENTION.deletionLogDays} days and then deleted automatically.`,
+      'Once processed: your account and the data stored on it are deleted — email, name, profile photo, usage counters, the age confirmation and the link to your Character Sheet.',
+      `Stored images expire on their own, with or without a request: posters about ${RETENTION.posterObjectDays} days after creation, comic panels about ${RETENTION.panelObjectDays} days, and your Character Sheet within about ${RETENTION.characterObjectDays} days of the upload (the original face photo is deleted right after the sheet is made). You can also use "Remove my character" in the Star Yourself window straight away.`,
+      'Copies that external AI providers may hold under their own policies are outside our control (see the Privacy Policy, section 7).',
     ],
     notH: 'What deletion does not apply to',
     not: [
       'Your text, scripts and history are kept in your browser\'s local storage (localStorage) only; we hold no database copy, so clear your browser data to remove them. Copies of generated images (posters/panels) may be stored in cloud storage and are deleted on your request — mention it in the note. Content sent to external AI providers is subject to those providers\' policies.',
     ],
     formH: 'Deletion request',
-    formSub: 'Enter the email address associated with your account. Before anything is deleted we verify that the request comes from the account owner: a request sent while you are signed in to that account is verified automatically; in every other case we confirm with the address. We then process it within a reasonable time.',
+    formSub: 'Enter the email address associated with your account. Before anything is deleted we verify that the request comes from the account owner: a request sent while you are signed in to that account is verified automatically; in every other case we confirm with the address. We then process it by hand within 30 days of receiving it, on the timeline above.',
     emailPh: 'your@email.com',
     notePh: 'Additional note (optional)',
     submit: 'Submit deletion request',
     sending: 'Sending…',
     success: 'Request received',
-    successSub: 'We received your deletion request. We will verify that it comes from the account owner and then process it within a reasonable time; confirmation will be sent to the address you entered.',
+    successSub: 'We received your deletion request. We will verify that it comes from the account owner and then process it by hand within 30 days of receiving it, on the timeline on this page; confirmation will be sent to the address you entered.',
     invalidEmail: 'Please enter a valid email address.',
     genericError: 'Something went wrong. You can also reach us directly by email.',
     orEmail: 'You can also reach us directly at ',
@@ -70,7 +95,7 @@ const COPY = {
 
 export default function DataDeletionPage() {
   const { data: session } = useSession();
-  const native = useNative();   // Android app: the "what gets deleted" list names no payment provider
+  const native = useNative();   // Android app: the Pro-waitlist line is hidden
   const [lang, setLang] = useState('he');
   const isHe = lang === 'he';
   const t = COPY[lang];
@@ -160,7 +185,31 @@ export default function DataDeletionPage() {
           <section className="border-b border-white/[0.05] py-8">
             <h2 className="text-[#d4a373] font-bold text-[14px] mb-3 leading-snug">{t.whatH}</h2>
             <ul className="space-y-2">
-              {t.what.filter((line) => !(native && /ספק התשלומים|payment-provider/.test(line))).map((line, i) => (
+              {t.what.map((line, i) => (
+                <li key={i} className="text-white/58 text-[13px] leading-[1.85] flex gap-2">
+                  <span className="text-[#d4a373]/50 shrink-0">—</span>
+                  <span>{line}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="border-b border-white/[0.05] py-8">
+            <h2 className="text-[#d4a373] font-bold text-[14px] mb-3 leading-snug">{t.startH}</h2>
+            <ul className="space-y-2">
+              {t.start.map((line, i) => (
+                <li key={i} className="text-white/58 text-[13px] leading-[1.85] flex gap-2">
+                  <span className="text-[#d4a373]/50 shrink-0">—</span>
+                  <span>{line}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="border-b border-white/[0.05] py-8">
+            <h2 className="text-[#d4a373] font-bold text-[14px] mb-3 leading-snug">{t.timeH}</h2>
+            <ul className="space-y-2">
+              {t.time.map((line, i) => (
                 <li key={i} className="text-white/58 text-[13px] leading-[1.85] flex gap-2">
                   <span className="text-[#d4a373]/50 shrink-0">—</span>
                   <span>{line}</span>
