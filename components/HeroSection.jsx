@@ -24,7 +24,7 @@ function HeroSection({ lang, onGetStarted }) {
       </div>
 
       <div className="block mb-4 relative">
-        <div className="inline-block px-6 py-1.5 rounded-full border border-[#d4a373]/20 bg-gradient-to-r from-transparent via-[#d4a373]/5 to-transparent backdrop-blur-xl text-[#d4a373] text-[9px] md:text-[10px] font-black tracking-[0.4em] uppercase italic">
+        <div className="inline-block px-6 py-1.5 rounded-full border border-[#d4a373]/20 bg-gradient-to-r from-transparent via-[#d4a373]/5 to-transparent backdrop-blur-xl text-[#d4a373] text-[10px] md:text-[10px] font-black tracking-[0.4em] uppercase italic">
           {lang === 'he' ? 'חזון קולנועי' : 'Cinematic Vision'}
         </div>
       </div>

@@ -115,7 +115,7 @@ const ScriptForm = ({ onSubmit, onCancel, loading, locked = false, lang, produce
               type="button"
               onClick={dismissHowTo}
               aria-label={lang === 'he' ? 'סגור' : 'Dismiss'}
-              className={`absolute top-3 ${lang === 'he' ? 'left-3' : 'right-3'} text-white/25 hover:text-[#d4a373] transition-colors p-1`}
+              className={`absolute top-3 ${lang === 'he' ? 'left-3' : 'right-3'} text-white/45 hover:text-[#d4a373] transition-colors p-1`}
             >
               <X size={16} />
             </button>
@@ -156,7 +156,7 @@ const ScriptForm = ({ onSubmit, onCancel, loading, locked = false, lang, produce
             <div className="w-10 h-10 rounded-full border border-[#d4a373]/30 flex items-center justify-center bg-[#030712] group-hover:bg-[#d4a373]/20 group-hover:border-[#d4a373] shadow-[0_0_20px_rgba(212,163,115,0.15)] transition-all duration-500">
               <span className="text-sm">💡</span>
             </div>
-            <span className="text-[9px] font-black tracking-[0.3em] uppercase text-[#d4a373]/60 group-hover:text-[#d4a373] transition-all duration-300">
+            <span className="text-[10px] font-black tracking-[0.3em] uppercase text-[#d4a373]/70 group-hover:text-[#d4a373] transition-all duration-300">
               {lang === 'he' ? 'טיפים להפקה' : 'PRODUCTION TIPS'}
             </span>
           </button>
@@ -182,13 +182,13 @@ const ScriptForm = ({ onSubmit, onCancel, loading, locked = false, lang, produce
                   dir={lang === 'he' ? 'rtl' : 'ltr'}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#d4a373] text-[8px] font-black px-3 py-1 rounded-full text-black tracking-widest uppercase">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#d4a373] text-[10px] font-black px-3 py-1 rounded-full text-black tracking-widest uppercase">
                     {lang === 'he' ? 'הנחיות בימוי' : 'Director Notes'}
                   </div>
 
-                  <h4 className="text-[#d4a373] font-black text-xs mb-6 uppercase tracking-widest italic border-b border-[#d4a373]/10 pb-3 text-center">
+                  <h2 className="text-[#d4a373] font-black text-xs mb-6 uppercase tracking-widest italic border-b border-[#d4a373]/10 pb-3 text-center">
                     {lang === 'he' ? 'איך להפיק את המיטב?' : 'HOW TO DIRECT?'}
-                  </h4>
+                  </h2>
 
                   <ul className="space-y-5">
                     {[
@@ -272,7 +272,7 @@ const ScriptForm = ({ onSubmit, onCancel, loading, locked = false, lang, produce
             {!journalEntry.trim() && !isLocked && (
               <motion.span
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="text-[10px] font-bold text-[#d4a373]/60 tracking-wide"
+                className="text-[10px] font-bold text-[#d4a373]/70 tracking-wide"
               >
                 {lang === 'he' ? 'אין לך מה לכתוב? התחילו עם רעיון מוכן' : 'No idea what to write? Start with a ready prompt'}
               </motion.span>
@@ -312,17 +312,17 @@ const ScriptForm = ({ onSubmit, onCancel, loading, locked = false, lang, produce
             }}
             // הנעילה (isLocked) תהיה תקפה רק בזמן ש-isLoading מהשרת הוא true
             disabled={isLocked}
-            className={`w-full px-6 py-8 md:px-10 md:py-10 text-lg md:text-xl text-white bg-black/40 border border-white/10 rounded-[2rem] md:rounded-[3rem] focus:border-[#d4a373]/50 focus:bg-black/60 outline-none transition-all duration-500 min-h-[220px] md:min-h-[280px] shadow-[inset_0_2px_40px_rgba(0,0,0,0.7)] leading-relaxed resize-none backdrop-blur-sm placeholder-gray-700 ${isLocked ? 'opacity-50 cursor-not-allowed grayscale-[0.5]' : ''}`}
+            className={`w-full px-6 py-8 md:px-10 md:py-10 text-lg md:text-xl text-white bg-black/40 border border-white/10 rounded-[2rem] md:rounded-[3rem] focus:border-[#d4a373]/50 focus:bg-black/60 outline-none transition-all duration-500 min-h-[220px] md:min-h-[280px] shadow-[inset_0_2px_40px_rgba(0,0,0,0.7)] leading-relaxed resize-none backdrop-blur-sm placeholder-gray-500 ${isLocked ? 'opacity-50 cursor-not-allowed grayscale-[0.5]' : ''}`}
             placeholder={lang === 'he' ? 'איך עבר היום? ספר לי במילים שלך...' : 'How was your day? Tell me in your own words...'}
             aria-label={lang === 'he' ? 'הסיפור או היום שלך' : 'Your story or your day'}
             style={{ fontFamily: "'Courier Prime', 'Courier New', monospace" }}
           />
           <div className="absolute -bottom-10 right-2 flex items-center gap-3">
             <div className="flex flex-col items-end">
-              <span className={`text-[9px] font-black tracking-[0.2em] uppercase ${currentWordCount >= 480 ? 'text-red-500' : 'text-[#d4a373]/50'}`}>{lang === 'he' ? 'מונה מילים' : 'WORD COUNT'}</span>
+              <span className={`text-[10px] font-black tracking-[0.2em] uppercase ${currentWordCount >= 480 ? 'system-notice-text' : 'text-[#d4a373]/70'}`}>{lang === 'he' ? 'מונה מילים' : 'WORD COUNT'}</span>
               <div className="flex items-baseline gap-1 font-mono">
                 <span className="text-sm font-bold text-white">{currentWordCount}</span>
-                <span className="text-[10px] text-white/20">/ 500</span>
+                <span className="text-[10px] text-white/45">/ 500</span>
               </div>
             </div>
           </div>
@@ -354,7 +354,7 @@ const ScriptForm = ({ onSubmit, onCancel, loading, locked = false, lang, produce
                 initial={{ opacity: 0, x: lang === 'he' ? 6 : -6 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0 }}
-                className="text-[9px] font-bold tracking-widest text-[#d4a373]/50 normal-case not-italic"
+                className="text-[10px] font-bold tracking-widest text-[#d4a373]/70 normal-case not-italic"
               >
                 {lang === 'he' ? '✦ זוהה מהטקסט' : '✦ Detected'}
               </motion.span>
@@ -398,15 +398,15 @@ const ScriptForm = ({ onSubmit, onCancel, loading, locked = false, lang, produce
             localStorage.setItem('lifescript_producer_name', val);
           }}
           aria-invalid={cleanProducerName(producerName).blocked || undefined}
-          className="w-full bg-black/40 border-b border-[#d4a373]/30 p-3 text-white focus:border-[#d4a373] outline-none transition-all italic tracking-widest text-sm placeholder:text-white/25 placeholder:not-italic placeholder:tracking-normal"
+          className="w-full bg-black/40 border-b border-[#d4a373]/30 p-3 text-white focus:border-[#d4a373] outline-none transition-all italic tracking-widest text-sm placeholder:text-white/45 placeholder:not-italic placeholder:tracking-normal"
           maxLength={22}
         />
         {cleanProducerName(producerName).blocked ? (
-          <p role="alert" className="mt-1.5 text-[9px] text-red-300/90 tracking-wide">
+          <p role="alert" className="mt-1.5 text-[10px] system-notice-text tracking-wide">
             {lang === 'he' ? 'לא ניתן להשתמש בשם הזה בקרדיטים — יוצג "אורח" במקומו' : "This name can't be used in the credits — \"Guest\" will be shown instead"}
           </p>
         ) : (
-          <p className="mt-1.5 text-[9px] text-white/28 tracking-wide">
+          <p className="mt-1.5 text-[10px] text-white/45 tracking-wide">
             {lang === 'he' ? 'אופציונלי · מופיע בפוסטר ובפתיח התסריט' : 'Optional · shown in the poster & script header'}
           </p>
         )}

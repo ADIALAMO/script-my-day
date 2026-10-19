@@ -102,7 +102,7 @@ export default function InviteLanding({ code, name, lang, ogImage, inviteUrl }) 
               </div>
             </div>
 
-            <p className="text-[9px] font-black tracking-[0.35em] text-[#d4a373]/55 uppercase mb-3">LIFESCRIPT</p>
+            <p className="text-[10px] font-black tracking-[0.35em] text-[#d4a373]/55 uppercase mb-3">LIFESCRIPT</p>
             <h1 className="text-[22px] font-black text-white leading-tight mb-3">{heroTitle}</h1>
             <p className="text-white/45 text-[13px] leading-relaxed mb-5">{heroSub}</p>
 
@@ -118,7 +118,7 @@ export default function InviteLanding({ code, name, lang, ogImage, inviteUrl }) 
               {cta}
             </a>
 
-            <p className="mt-7 text-[9px] font-black tracking-[0.25em] text-white/10 uppercase">Adialamo Production</p>
+            <p className="mt-7 text-[10px] font-black tracking-[0.25em] text-white/45 uppercase">Adialamo Production</p>
           </div>
         </motion.div>
       </div>

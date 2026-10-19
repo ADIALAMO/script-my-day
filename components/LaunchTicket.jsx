@@ -54,7 +54,7 @@ export default function LaunchTicket({ lang = 'he' }) {
           other nav item already collapses to icon-only on mobile; this brings
           the badge in line with that existing pattern instead of being the
           one exception. */}
-      <span className="hidden sm:inline text-[9px] md:text-[10px] font-black tracking-[0.1em] text-amber-500 uppercase italic whitespace-nowrap">
+      <span className="hidden sm:inline text-[10px] md:text-[10px] font-black tracking-[0.1em] text-amber-500 uppercase italic whitespace-nowrap">
                 {content.badge}
       </span>
     </button>

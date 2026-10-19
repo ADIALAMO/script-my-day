@@ -115,14 +115,14 @@ export default function CinematicLoader({
 
               {/* Status label */}
               <span
-                className="shrink-0 text-[7.5px] font-black uppercase tracking-[0.24em]"
+                className="shrink-0 text-[10px] font-black uppercase tracking-[0.24em]"
                 style={{ color: 'rgba(212,163,115,0.65)' }}
               >
                 {statusLabel}
               </span>
 
               {/* Separator */}
-              <span className="shrink-0 text-[7px]" style={{ color: 'rgba(255,255,255,0.14)' }}>·</span>
+              <span className="shrink-0 text-[10px]" style={{ color: 'rgba(255,255,255,0.14)' }}>·</span>
 
               {/* Rotating quote — truncated to a single line */}
               <div className="flex-1 min-w-0 overflow-hidden">
@@ -133,7 +133,7 @@ export default function CinematicLoader({
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: isHebrew ? 6 : -6 }}
                     transition={{ duration: 0.28, ease: 'easeOut' }}
-                    className="text-[9.5px] font-light truncate"
+                    className="text-[10px] font-light truncate"
                     style={{
                       color: 'rgba(255,255,255,0.35)',
                       fontFamily: "'Courier Prime','Courier New',monospace",
@@ -165,7 +165,7 @@ export default function CinematicLoader({
                   animate={{ opacity: 1 }}
                   transition={{ delay: 3, duration: 0.35 }}
                   onClick={onCancel}
-                  className="pointer-events-auto shrink-0 flex items-center gap-1 px-2.5 py-[5px] rounded-full text-[7px] font-black uppercase tracking-widest transition-colors duration-200"
+                  className="pointer-events-auto shrink-0 flex items-center gap-1 px-2.5 py-[5px] rounded-full text-[10px] font-black uppercase tracking-widest transition-colors duration-200"
                   style={{
                     border: '1px solid rgba(239,68,68,0.22)',
                     background: 'rgba(239,68,68,0.06)',

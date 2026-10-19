@@ -166,7 +166,7 @@ export default function DataDeletionPage() {
             <button
               onClick={() => setLang(isHe ? 'en' : 'he')}
               aria-label={isHe ? 'Switch to English' : 'עבור לעברית'}
-              className="text-white/35 hover:text-white/70 text-[11px] font-mono tracking-widest transition-colors px-3 py-1.5 rounded-full border border-white/10 hover:border-white/25"
+              className="text-white/45 hover:text-white/70 text-[11px] font-mono tracking-widest transition-colors px-3 py-1.5 rounded-full border border-white/10 hover:border-white/25"
             >
               {isHe ? 'EN' : 'HE'}
             </button>
@@ -175,13 +175,13 @@ export default function DataDeletionPage() {
 
         <main id="main-content" tabIndex={-1} className="max-w-2xl mx-auto px-6 py-14 outline-none">
           <div className="mb-10 pb-8 border-b border-white/[0.06]">
-            <p className="text-[10px] font-black tracking-[0.35em] text-[#d4a373]/50 uppercase mb-3">
+            <p className="text-[10px] font-black tracking-[0.35em] text-[#d4a373]/70 uppercase mb-3">
               LIFESCRIPT Studio
             </p>
             <h1 className="text-3xl font-black tracking-wide text-white leading-tight">
               {t.h1}
             </h1>
-            <p className="mt-3 text-white/30 text-[12px] leading-relaxed">
+            <p className="mt-3 text-white/45 text-[12px] leading-relaxed">
               {t.summary}
             </p>
           </div>
@@ -191,7 +191,7 @@ export default function DataDeletionPage() {
             <ul className="space-y-2">
               {t.what.filter((line) => !(native && /ספק התשלומים|payment-provider/.test(line))).map((line, i) => (
                 <li key={i} className="text-white/58 text-[13px] leading-[1.85] flex gap-2">
-                  <span className="text-[#d4a373]/50 shrink-0">—</span>
+                  <span className="text-[#d4a373]/70 shrink-0">—</span>
                   <span>{line}</span>
                 </li>
               ))}
@@ -203,7 +203,7 @@ export default function DataDeletionPage() {
             <ul className="space-y-2">
               {t.start.map((line, i) => (
                 <li key={i} className="text-white/58 text-[13px] leading-[1.85] flex gap-2">
-                  <span className="text-[#d4a373]/50 shrink-0">—</span>
+                  <span className="text-[#d4a373]/70 shrink-0">—</span>
                   <span>{line}</span>
                 </li>
               ))}
@@ -215,7 +215,7 @@ export default function DataDeletionPage() {
             <ul className="space-y-2">
               {t.time.map((line, i) => (
                 <li key={i} className="text-white/58 text-[13px] leading-[1.85] flex gap-2">
-                  <span className="text-[#d4a373]/50 shrink-0">—</span>
+                  <span className="text-[#d4a373]/70 shrink-0">—</span>
                   <span>{line}</span>
                 </li>
               ))}
@@ -231,7 +231,7 @@ export default function DataDeletionPage() {
 
           <section className="py-8">
             <h2 className="text-[#d4a373] font-bold text-[14px] mb-1 leading-snug">{t.formH}</h2>
-            <p className="text-white/40 text-[12px] leading-relaxed mb-5">
+            <p className="text-white/45 text-[12px] leading-relaxed mb-5">
               {t.formSub}
               {!native && <> {DATA_DELETION_WAITLIST_LINE[isHe ? 'he' : 'en']}</>}
             </p>
@@ -256,7 +256,7 @@ export default function DataDeletionPage() {
                   aria-label={isHe ? 'האימייל שלך' : 'Your email address'}
                   dir="ltr"
                   disabled={state === 'sending'}
-                  className={`w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3.5 px-4 text-white text-[13px] placeholder-white/25 outline-none focus:border-[#d4a373]/50 transition-colors disabled:opacity-50 mb-3 ${isHe ? 'text-right' : ''}`}
+                  className={`w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3.5 px-4 text-white text-[13px] placeholder-white/45 outline-none focus:border-[#d4a373]/50 transition-colors disabled:opacity-50 mb-3 ${isHe ? 'text-right' : ''}`}
                 />
                 <textarea
                   value={note}
@@ -265,13 +265,13 @@ export default function DataDeletionPage() {
                   aria-label={t.notePh}
                   rows={2}
                   disabled={state === 'sending'}
-                  className={`w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3.5 px-4 text-white text-[13px] placeholder-white/25 outline-none focus:border-[#d4a373]/50 transition-colors disabled:opacity-50 mb-3 resize-none ${isHe ? 'text-right' : ''}`}
+                  className={`w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3.5 px-4 text-white text-[13px] placeholder-white/45 outline-none focus:border-[#d4a373]/50 transition-colors disabled:opacity-50 mb-3 resize-none ${isHe ? 'text-right' : ''}`}
                 />
 
                 {state === 'error' && errorMsg && (
-                  <div className="mb-3 p-3 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-start gap-2.5">
-                    <AlertCircle size={14} className="text-red-400 shrink-0 mt-0.5" />
-                    <p className="text-red-400/90 text-[12px] leading-snug">{errorMsg}</p>
+                  <div className="mb-3 p-3 rounded-2xl system-notice border flex items-start gap-2.5">
+                    <AlertCircle size={14} className="system-notice-text shrink-0 mt-0.5" />
+                    <p className="system-notice-text text-[12px] leading-snug">{errorMsg}</p>
                   </div>
                 )}
 
@@ -285,19 +285,19 @@ export default function DataDeletionPage() {
                     : t.submit}
                 </button>
 
-                <p className="text-center text-white/25 text-[11px] leading-relaxed mt-4">
+                <p className="text-center text-white/45 text-[11px] leading-relaxed mt-4">
                   {t.orEmail}
-                  <a href="mailto:adialamo@gmail.com" className="text-[#d4a373]/60 hover:text-[#d4a373]">adialamo@gmail.com</a>
+                  <a href="mailto:adialamo@gmail.com" className="text-[#d4a373]/70 hover:text-[#d4a373]">adialamo@gmail.com</a>
                 </p>
               </>
             )}
           </section>
 
           <div className="mt-10 pt-8 border-t border-white/[0.06] flex flex-col items-center gap-3 text-center">
-            <p className="text-[10px] tracking-[0.3em] font-black text-white/15 uppercase">
+            <p className="text-[10px] tracking-[0.3em] font-black text-white/45 uppercase">
               LIFESCRIPT Studio
             </p>
-            <Link href="/privacy" className="text-white/20 hover:text-white/50 text-[11px] transition-colors">
+            <Link href="/privacy" className="text-white/45 hover:text-white/50 text-[11px] transition-colors">
               {t.privacy}
             </Link>
           </div>

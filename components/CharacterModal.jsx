@@ -160,7 +160,7 @@ export default function CharacterModal({
   // user who does not confirm can still remove an existing character.
   const removeBlock = removeCharacter && (
     removeStep === 'idle' ? (
-      <button onClick={() => setRemoveStep('confirm')} className="min-h-[44px] px-3 text-gray-600 hover:text-red-400 text-[10px] font-bold uppercase tracking-wider transition-colors">
+      <button onClick={() => setRemoveStep('confirm')} className="min-h-[44px] px-3 text-gray-500 hover:text-red-400 text-[10px] font-bold uppercase tracking-wider transition-colors">
         {isHebrew ? 'הסר את הדמות שלי' : 'Remove my character'}
       </button>
     ) : (
@@ -207,7 +207,7 @@ export default function CharacterModal({
           <div className="relative px-6 pt-6 pb-5 border-b border-white/[0.05]">
             <div className="flex items-center gap-2 mb-2">
               <Sparkles size={12} className="text-[#d4a373]/70" />
-              <span className="text-[#d4a373]/70 text-[9px] font-black uppercase tracking-[0.2em]">
+              <span className="text-[#d4a373]/70 text-[10px] font-black uppercase tracking-[0.2em]">
                 {isHebrew ? 'ליהוק הדמות' : 'Cast Your Character'}
               </span>
             </div>
@@ -267,7 +267,7 @@ export default function CharacterModal({
                   </span>
                   <span className="text-gray-200 text-[12px] font-bold">{isHebrew ? 'אני בן/בת 18 ומעלה' : 'I am 18 or older'}</span>
                 </button>
-                <p className="text-gray-600 text-[10.5px] leading-relaxed">
+                <p className="text-gray-500 text-[10.5px] leading-relaxed">
                   {isHebrew ? 'בהמשך אתה מסכים ל' : 'By continuing you agree to the '}
                   <a href="/terms" target="_blank" rel="noopener noreferrer" className="inline-flex items-center min-h-[44px] px-1 underline text-gray-400 hover:text-white">{isHebrew ? 'תנאי השימוש' : 'Terms'}</a>
                   {isHebrew ? ' ול' : ' and '}
@@ -306,7 +306,7 @@ export default function CharacterModal({
                   <p className="text-[#d4a373] font-bold text-[12px]">
                     {isHebrew ? 'העלה סלפי ברור' : 'Upload a clear selfie'}
                   </p>
-                  <p className="text-gray-600 text-[10px] px-8 text-center leading-relaxed">
+                  <p className="text-gray-500 text-[10px] px-8 text-center leading-relaxed">
                     {isHebrew ? 'פנים חזיתיות, תאורה טובה, פנים בודדות' : 'Front-facing, well-lit, single face'}
                   </p>
                 </button>
@@ -376,7 +376,7 @@ export default function CharacterModal({
                 <p className="text-[#d4a373] font-bold text-[13px]">
                   {isHebrew ? 'מלהק אותך לתפקיד...' : 'Casting you into the story...'}
                 </p>
-                <p className="text-gray-600 text-[10px]">
+                <p className="text-gray-500 text-[10px]">
                   {isHebrew ? 'בדיקת בטיחות · יצירת גיליון דמות' : 'Safety check · Generating character sheet'}
                 </p>
               </div>
@@ -397,7 +397,7 @@ export default function CharacterModal({
 
                 {/* Gender selector — drives the per-panel disambiguation descriptor */}
                 <div className="w-full">
-                  <p className="text-gray-500 text-[9px] font-black uppercase tracking-[0.18em] text-center mb-2">
+                  <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.18em] text-center mb-2">
                     {isHebrew ? 'איך להציג אותך בפאנלים?' : 'How should we portray you?'}
                   </p>
                   <div className="flex items-center justify-center gap-2">
@@ -405,7 +405,7 @@ export default function CharacterModal({
                       <button
                         key={opt.value}
                         onClick={() => setGender?.(opt.value)}
-                        className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all duration-200
+                        className={`px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-200
                           ${gender === opt.value
                             ? 'bg-[#d4a373]/20 border border-[#d4a373]/60 text-[#d4a373]'
                             : 'bg-white/[0.04] border border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20'
@@ -437,7 +437,7 @@ export default function CharacterModal({
             )}
 
             {fileError && (
-              <p className="mt-4 text-red-400 text-[11px] text-center">{fileError}</p>
+              <p className="mt-4 system-notice-text text-[11px] text-center">{fileError}</p>
             )}
 
             <input
@@ -452,7 +452,7 @@ export default function CharacterModal({
           {/* Footer brand */}
           <div className="px-6 py-3 border-t border-white/[0.05] flex items-center justify-center gap-1.5">
             <Sparkles size={10} className="text-[#d4a373]/30" />
-            <span className="text-[#d4a373]/30 text-[8.5px] font-black uppercase tracking-[0.22em]">LIFESCRIPT STUDIO</span>
+            <span className="text-[#d4a373]/30 text-[10px] font-black uppercase tracking-[0.22em]">LIFESCRIPT STUDIO</span>
           </div>
         </div>
       </motion.div>

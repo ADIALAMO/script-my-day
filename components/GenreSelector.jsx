@@ -75,7 +75,7 @@ export const GenreSelector = memo(({ activeGenre, onGenreChange, isLocked, lang 
             <div className={`mt-2 transition-all duration-500 ${isSelected ? `${genre.textClass} scale-110 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]` : 'text-gray-500 grayscale opacity-70'}`}>
               <Visual isSelected={isSelected} />
             </div>
-            <span className={`text-[9px] md:text-[10px] font-black uppercase tracking-widest z-10 ${isSelected ? 'text-white' : 'text-gray-600'}`}>
+            <span className={`text-[10px] md:text-[10px] font-black uppercase tracking-widest z-10 ${isSelected ? 'text-white' : 'text-gray-500'}`}>
               {lang === 'he' ? genre.label.he : genre.label.en}
             </span>
             {isSelected && (

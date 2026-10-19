@@ -393,7 +393,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                 <button
                   onClick={onClose}
                   aria-label={isHe ? 'סגור' : 'Close'}
-                  className={`absolute top-5 z-10 text-white/25 hover:text-[#d4a373] transition-colors duration-200 p-1.5 rounded-full hover:bg-white/5 ${isHe ? 'left-5' : 'right-5'}`}
+                  className={`absolute top-5 z-10 text-white/45 hover:text-[#d4a373] transition-colors duration-200 p-1.5 rounded-full hover:bg-white/5 ${isHe ? 'left-5' : 'right-5'}`}
                 >
                   <X size={18} />
                 </button>
@@ -413,16 +413,16 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                       <div className="w-14 h-14 rounded-2xl bg-[#d4a373]/10 border border-[#d4a373]/20 flex items-center justify-center mb-5 shadow-[0_0_30px_rgba(212,163,115,0.15)]">
                         <Film className="text-[#d4a373] w-7 h-7" />
                       </div>
-                      <p className="text-[9px] font-black tracking-[0.35em] text-[#d4a373]/60 uppercase mb-3">
+                      <p className="text-[10px] font-black tracking-[0.35em] text-[#d4a373]/70 uppercase mb-3">
                         {isHe ? 'מחובר בהצלחה' : 'SIGNED IN'}
                       </p>
                       <h2 className="text-[21px] font-black text-white leading-tight mb-3">
                         {isHe ? 'ברוך הבא לאולפן!' : 'Welcome to the Studio!'}
                       </h2>
-                      <p className="text-white/35 text-[12px] leading-relaxed mb-5">
+                      <p className="text-white/45 text-[12px] leading-relaxed mb-5">
                         {isHe ? 'מכין את האולפן שלך...' : 'Setting up your studio…'}
                       </p>
-                      <Loader2 size={18} className="text-[#d4a373]/40 animate-spin" />
+                      <Loader2 size={18} className="text-[#d4a373]/70 animate-spin" />
                     </motion.div>
 
                   ) : emailState === 'sent' ? (
@@ -438,13 +438,13 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                       <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-5">
                         <CheckCircle className="text-emerald-400 w-7 h-7" />
                       </div>
-                      <p className="text-[9px] font-black tracking-[0.35em] text-emerald-400/60 uppercase mb-3">
+                      <p className="text-[10px] font-black tracking-[0.35em] text-emerald-400/60 uppercase mb-3">
                         {isHe ? 'המייל נשלח' : 'MAGIC LINK SENT'}
                       </p>
                       <h2 className="text-[21px] font-black text-white leading-tight mb-3">
                         {isHe ? 'בדוק את תיבת המייל שלך' : 'Check your inbox'}
                       </h2>
-                      <p className="text-white/35 text-[12px] leading-relaxed mb-4">
+                      <p className="text-white/45 text-[12px] leading-relaxed mb-4">
                         {isHe
                           ? `שלחנו קישור כניסה לכתובת ${email}. הוא יפוג תוך 10 דקות.`
                           : `We sent a sign-in link to ${email}. It expires in 10 minutes.`}
@@ -460,7 +460,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                       <AgeNotice isHe={isHe} className="mb-5 px-1" />
                       <button
                         onClick={() => { setEmailState('idle'); setEmail(''); }}
-                        className="text-white/25 hover:text-white/50 text-[11px] transition-colors"
+                        className="text-white/45 hover:text-white/50 text-[11px] transition-colors"
                       >
                         {isHe ? 'שלח לכתובת אחרת' : 'Try a different email'}
                       </button>
@@ -479,7 +479,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                         </div>
 
                         {/* Label */}
-                        <p className="text-center text-[9px] font-black tracking-[0.35em] text-[#d4a373]/50 uppercase mb-3">
+                        <p className="text-center text-[10px] font-black tracking-[0.35em] text-[#d4a373]/70 uppercase mb-3">
                           {isHe ? 'גישה לאולפן' : 'STUDIO ACCESS'}
                         </p>
 
@@ -493,7 +493,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                         </h2>
 
                         {/* Context message */}
-                        <p className="text-center text-white/35 text-[12px] leading-relaxed mb-3 px-2">
+                        <p className="text-center text-white/45 text-[12px] leading-relaxed mb-3 px-2">
                           {contextMsg}
                         </p>
 
@@ -522,7 +522,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                         {/* ── Divider ── */}
                         <div className="flex items-center gap-3 my-4">
                           <div className="flex-1 h-px bg-white/[0.07]" />
-                          <span className="text-[10px] text-white/20 tracking-widest uppercase">
+                          <span className="text-[10px] text-white/45 tracking-widest uppercase">
                             {isHe ? 'או' : 'or'}
                           </span>
                           <div className="flex-1 h-px bg-white/[0.07]" />
@@ -533,7 +533,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                           <div className="relative mb-3">
                             <Mail
                               size={14}
-                              className={`absolute top-1/2 -translate-y-1/2 text-white/20 pointer-events-none ${isHe ? 'right-3.5' : 'left-3.5'}`}
+                              className={`absolute top-1/2 -translate-y-1/2 text-white/45 pointer-events-none ${isHe ? 'right-3.5' : 'left-3.5'}`}
                             />
                             <input
                               type="email"
@@ -543,11 +543,11 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                               placeholder={isHe ? 'כתובת מייל שלך...' : 'your@email.com'}
                               aria-label={isHe ? 'כתובת המייל שלך' : 'Your email address'}
                               dir={isHe ? 'rtl' : 'ltr'}
-                              className={`w-full bg-white/[0.04] border ${emailError ? 'border-red-500/50' : 'border-white/10'} rounded-xl px-4 py-3 ${isHe ? 'pr-9 text-right' : 'pl-9'} text-white text-[13px] placeholder-white/20 focus:outline-none focus:border-[#d4a373]/40 transition-colors duration-200`}
+                              className={`w-full bg-white/[0.04] border ${emailError ? 'border-[#d4a373]/60' : 'border-white/10'} rounded-xl px-4 py-3 ${isHe ? 'pr-9 text-right' : 'pl-9'} text-white text-[13px] placeholder-white/45 focus:outline-none focus:border-[#d4a373]/40 transition-colors duration-200`}
                             />
                           </div>
                           {emailError && (
-                            <p className="text-red-400/80 text-[11px] mb-2 px-1">
+                            <p className="system-notice-text text-[11px] mb-2 px-1">
                               {emailError}
                             </p>
                           )}
@@ -574,7 +574,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                         {/* Skip */}
                         <button
                           onClick={onClose}
-                          className="w-full text-center text-white/20 hover:text-white/45 text-[11px] py-3 transition-colors duration-200"
+                          className="w-full text-center text-white/45 hover:text-white/45 text-[11px] py-3 transition-colors duration-200"
                         >
                           {isHe ? 'המשך כאורח' : 'Continue as guest'}
                         </button>
@@ -584,12 +584,12 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                       <div className="px-8 pt-4 pb-6 border-t border-white/[0.04]">
                         {/* No payment or provider names here (Pro is not on sale; the real AI providers are listed in the Privacy Policy §7). */}
                         <div className="flex items-center justify-center gap-1.5 mb-4">
-                          <Shield size={10} className="text-white/25" />
-                          <p className="text-[10px] text-white/30 leading-relaxed">
+                          <Shield size={10} className="text-white/45" />
+                          <p className="text-[10px] text-white/45 leading-relaxed">
                             {isHe ? 'כניסה מאובטחת · בלי סיסמאות' : 'Secure sign-in · no passwords'}
                           </p>
                         </div>
-                        <p className="text-center text-[11px] text-[#d4a373]/25 italic leading-relaxed">
+                        <p className="text-center text-[11px] text-[#d4a373]/70 italic leading-relaxed">
                           {isHe
                             ? '"נבנה על ידי אדם אחד שרצה לראות את חייו כסרט. עכשיו אתה יכול לראות את שלך."'
                             : '"Built by one person who wanted to see their life as a movie. Now you can see yours."'}

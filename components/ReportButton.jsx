@@ -41,7 +41,7 @@ export default function ReportButton({ kind = 'panel', sources, galleryRef, scri
         onClick={(e) => { e.stopPropagation(); setOpen(true); }}
         aria-label={t(isScript ? REPORT_COPY.buttonAriaScript : REPORT_COPY.buttonAria)}
         title={t(isScript ? REPORT_COPY.buttonAriaScript : REPORT_COPY.buttonAria)}
-        className={`flex items-center gap-1.5 ${compact ? `p-2 rounded-lg bg-black/55 text-white/55 hover:text-red-300${/!p-/.test(className) ? '' : " relative after:absolute after:-inset-[9px] after:content-['']"}` : 'px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/35 hover:text-red-300'} transition-colors ${className}`}
+        className={`flex items-center gap-1.5 ${compact ? `p-2 rounded-lg bg-black/55 text-white/55 hover:text-red-300${/!p-/.test(className) ? '' : " relative after:absolute after:-inset-[9px] after:content-['']"}` : 'px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/45 hover:text-red-300'} transition-colors ${className}`}
       >
         <Flag size={compact ? 11 : 12} />
         {!compact && <span>{t(REPORT_COPY.button)}</span>}
@@ -68,7 +68,7 @@ export default function ReportButton({ kind = 'panel', sources, galleryRef, scri
                 <>
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-[#d4a373] font-black text-sm">{t(REPORT_COPY.title[kind] || REPORT_COPY.title.panel)}</h3>
-                    <button type="button" onClick={close} disabled={sending} aria-label={t(REPORT_COPY.cancel)} className="p-1 text-white/30 hover:text-white/70"><X size={16} /></button>
+                    <button type="button" onClick={close} disabled={sending} aria-label={t(REPORT_COPY.cancel)} className="p-1 text-white/45 hover:text-white/70"><X size={16} /></button>
                   </div>
                   <p className="text-white/50 text-xs leading-relaxed mb-4">{t(isScript ? REPORT_COPY.introScript : galleryRef ? REPORT_COPY.introGallery : REPORT_COPY.intro)}</p>
                   <div className="space-y-2 mb-4">
@@ -79,7 +79,7 @@ export default function ReportButton({ kind = 'panel', sources, galleryRef, scri
                       </label>
                     ))}
                   </div>
-                  {error && <p role="alert" className="text-red-400 text-xs mb-3">{error}</p>}
+                  {error && <p role="alert" className="system-notice-text text-xs mb-3">{error}</p>}
                   <div className="flex gap-2">
                     <button type="button" onClick={send} disabled={sending} className="flex-1 py-2.5 rounded-xl bg-red-500/80 text-white text-xs font-black uppercase tracking-widest disabled:opacity-50">
                       {sending ? t(REPORT_COPY.sending) : t(REPORT_COPY.send)}

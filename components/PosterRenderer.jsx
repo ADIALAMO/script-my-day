@@ -80,7 +80,7 @@ function PosterRenderer({
       <div ref={posterRef} className="relative aspect-[2/3] w-full max-w-[450px] mx-auto rounded-[3.5rem] md:rounded-[4.5rem] overflow-hidden bg-[#030712] shadow-4xl border border-[#d4a373]/30">
         {posterUrl && posterHidden && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#06040a] px-6 text-center" role="status">
-            <span className="text-white/40 text-xs font-bold tracking-wide">{reportText(REPORT_COPY.hiddenTile, isHebrew ? 'he' : 'en')}</span>
+            <span className="text-white/45 text-xs font-bold tracking-wide">{reportText(REPORT_COPY.hiddenTile, isHebrew ? 'he' : 'en')}</span>
           </div>
         )}
         {posterUrl && !posterHidden && (posterExpired || posterChecking) && (
@@ -218,7 +218,7 @@ function PosterRenderer({
                   this scrim only needs to protect the TITLE at the top. */}
               <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-transparent to-transparent -z-10" />
               <div className="w-full text-center mt-4">
-                <h1
+                <div
                   className="text-white font-black uppercase italic drop-shadow-[0_10px_30px_rgba(0,0,0,1)]"
                   style={{
                     fontSize: 'clamp(1.1rem, 5vw, 2.5rem)',
@@ -228,7 +228,7 @@ function PosterRenderer({
                   }}
                 >
                   {posterTitle}
-                </h1>
+                </div>
                 <div className="h-[1px] w-1/3 mx-auto mt-4 bg-gradient-to-r from-transparent via-[#d4a373]/50 to-transparent" />
               </div>
             </div>
@@ -270,7 +270,7 @@ function PosterRenderer({
             type="button"
             onClick={() => setIdentityNoticeDismissed(true)}
             aria-label={isHebrew ? 'סגור' : 'Dismiss'}
-            className="close-button relative shrink-0 text-white/40 hover:text-white transition-colors"
+            className="close-button relative shrink-0 text-white/45 hover:text-white transition-colors"
           >
             <X size={14} />
           </button>

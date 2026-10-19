@@ -54,7 +54,7 @@ export default function AuthSuccess() {
             </div>
 
             {/* Label */}
-            <p className="text-[9px] font-black tracking-[0.35em] text-[#d4a373]/55 uppercase mb-3">
+            <p className="text-[10px] font-black tracking-[0.35em] text-[#d4a373]/55 uppercase mb-3">
               VERIFIED
             </p>
 
@@ -64,7 +64,7 @@ export default function AuthSuccess() {
             </h1>
 
             {/* Primary instruction */}
-            <p className="text-white/40 text-[13px] leading-relaxed">
+            <p className="text-white/45 text-[13px] leading-relaxed">
               Return to your original window to continue.<br />
               This tab will close automatically.
             </p>
@@ -73,7 +73,7 @@ export default function AuthSuccess() {
             <div className="my-7 h-px bg-white/[0.06]" />
 
             {/* Manual close fallback */}
-            <p className="text-white/20 text-[11px] mb-3">
+            <p className="text-white/45 text-[11px] mb-3">
               Tab didn&rsquo;t close automatically?
             </p>
             <button
@@ -84,7 +84,7 @@ export default function AuthSuccess() {
             </button>
 
             {/* Brand mark */}
-            <p className="mt-8 text-[9px] font-black tracking-[0.25em] text-white/10 uppercase">
+            <p className="mt-8 text-[10px] font-black tracking-[0.25em] text-white/45 uppercase">
               LifeScript Studio
             </p>
 

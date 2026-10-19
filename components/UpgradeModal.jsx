@@ -21,7 +21,7 @@ function FeatureValue({ value, isHe }) {
   );
   if (value && typeof value === 'object') return <span className="text-white/70 font-bold text-[11px] leading-tight">{isHe ? value.he : value.en}</span>;
   if (value === true)  return <Check size={13} className="text-emerald-400 mx-auto" />;
-  if (value === false) return <Minus size={13} className="text-white/15 mx-auto" />;
+  if (value === false) return <Minus size={13} className="text-white/45 mx-auto" />;
   return <span className="text-white/70 font-bold text-[12px]">{value}</span>;
 }
 
@@ -152,7 +152,7 @@ export default function UpgradeModal({ isOpen, onClose, lang = 'en' }) {
                   <button
                     onClick={onClose}
                     aria-label={isHe ? 'סגור' : 'Close'}
-                    className={`absolute top-5 z-10 text-white/25 hover:text-amber-400 transition-colors duration-200 p-1.5 rounded-full hover:bg-white/5 ${isHe ? 'left-5' : 'right-5'}`}
+                    className={`absolute top-5 z-10 text-white/45 hover:text-amber-400 transition-colors duration-200 p-1.5 rounded-full hover:bg-white/5 ${isHe ? 'left-5' : 'right-5'}`}
                   >
                     <X size={18} />
                   </button>
@@ -167,29 +167,29 @@ export default function UpgradeModal({ isOpen, onClose, lang = 'en' }) {
                   </div>
 
                   {/* Label + price */}
-                  <p className="text-center text-[9px] font-black tracking-[0.35em] text-amber-400/50 uppercase mb-2">
+                  <p className="text-center text-[10px] font-black tracking-[0.35em] text-amber-400/50 uppercase mb-2">
                     {isHe ? 'מסלול פרו' : 'PRO PLAN'}
                   </p>
                   <div className="text-center mb-1">
                     <span className="text-[36px] font-black text-white leading-none">$9</span>
-                    <span className="text-white/35 text-[13px] ml-1">
+                    <span className="text-white/45 text-[13px] ml-1">
                       {isHe ? '/ חודש' : '/ month'}
                     </span>
                   </div>
-                  <p className="text-center text-white/25 text-[11px] mb-6">
+                  <p className="text-center text-white/45 text-[11px] mb-6">
                     {isHe ? 'ביטול בכל עת · ללא חוזים' : 'Cancel anytime · No contracts'}
                   </p>
 
                   {/* Feature comparison table */}
                   <div className="rounded-2xl border border-white/[0.06] overflow-hidden mb-5">
                     <div className="grid grid-cols-3 bg-white/[0.03] border-b border-white/[0.06]">
-                      <div className="px-3 py-2 text-[9px] font-black text-white/25 tracking-widest uppercase">
+                      <div className="px-3 py-2 text-[10px] font-black text-white/45 tracking-widest uppercase">
                         {isHe ? 'פיצ׳ר' : 'Feature'}
                       </div>
-                      <div className="px-3 py-2 text-center text-[9px] font-black text-white/25 tracking-widest uppercase">
+                      <div className="px-3 py-2 text-center text-[10px] font-black text-white/45 tracking-widest uppercase">
                         {isHe ? 'חינמי' : 'Free'}
                       </div>
-                      <div className="px-3 py-2 text-center text-[9px] font-black text-amber-400/70 tracking-widest uppercase">
+                      <div className="px-3 py-2 text-center text-[10px] font-black text-amber-400/70 tracking-widest uppercase">
                         Pro ✦
                       </div>
                     </div>
@@ -217,7 +217,7 @@ export default function UpgradeModal({ isOpen, onClose, lang = 'en' }) {
                       <p className="text-amber-400 text-[12px] font-bold mb-1">
                         {isHe ? '✦ אתה כבר חבר פרו!' : '✦ You are already Pro!'}
                       </p>
-                      <p className="text-white/35 text-[11px]">
+                      <p className="text-white/45 text-[11px]">
                         {isHe ? 'רענן את הדף כדי לראות את הסטטוס המעודכן.' : 'Refresh the page to see your updated status.'}
                       </p>
                       <button
@@ -232,9 +232,9 @@ export default function UpgradeModal({ isOpen, onClose, lang = 'en' }) {
 
                   {/* ── Error state ── */}
                   {checkoutState === 'error' && errorMsg && (
-                    <div className="mb-4 p-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-start gap-2.5">
-                      <AlertCircle size={14} className="text-red-400 shrink-0 mt-0.5" />
-                      <p className="text-red-400/90 text-[12px] leading-snug">{errorMsg}</p>
+                    <div className="mb-4 p-3.5 rounded-2xl system-notice border flex items-start gap-2.5">
+                      <AlertCircle size={14} className="system-notice-text shrink-0 mt-0.5" />
+                      <p className="system-notice-text text-[12px] leading-snug">{errorMsg}</p>
                     </div>
                   )}
 
@@ -266,7 +266,7 @@ export default function UpgradeModal({ isOpen, onClose, lang = 'en' }) {
                   )}
 
                   {/* Trust line */}
-                  <p className="text-center text-white/20 text-[10px] leading-relaxed">
+                  <p className="text-center text-white/45 text-[10px] leading-relaxed">
                     {isHe
                       ? 'תשלום מאובטח · ביטול בלחיצה אחת'
                       : 'Secure checkout · Cancel in one click'}
@@ -277,7 +277,7 @@ export default function UpgradeModal({ isOpen, onClose, lang = 'en' }) {
                 <div className="px-7 pt-3 pb-5 border-t border-white/[0.04]">
                   <div className="flex items-center gap-2 justify-center">
                     <Zap size={10} className="text-amber-400/40" />
-                    <p className="text-[10px] text-white/20 italic">
+                    <p className="text-[10px] text-white/45 italic">
                       {isHe
                         ? '"בנוי על ידי אדם אחד שרצה לראות את חייו כסרט. עכשיו אתה יכול לראות את שלך."'
                         : '"Built by one person who wanted to see their life as a movie. Now you can see yours."'}

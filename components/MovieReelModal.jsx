@@ -1047,7 +1047,7 @@ export default function MovieReelModal({
                     <h2 className="text-white font-black text-[13px] sm:text-[14.5px] uppercase tracking-wider leading-none truncate">
                       {isHebrew ? 'גנרטור ריל קולנועי' : 'Cinematic Reel Generator'}
                     </h2>
-                    <p className="text-[#d4a373]/38 text-[7.5px] sm:text-[8.5px] font-black tracking-[0.25em] uppercase mt-1.5">
+                    <p className="text-[#d4a373]/38 text-[10px] sm:text-[10px] font-black tracking-[0.25em] uppercase mt-1.5">
                       {isHebrew ? 'אינסטגרם · טיקטוק · יוטיוב שורטס' : 'Instagram · TikTok · YouTube Shorts'}
                     </p>
                   </div>
@@ -1084,7 +1084,7 @@ export default function MovieReelModal({
                     {/* Panel readiness bar */}
                     <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-3.5 space-y-2.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-white/45 text-[9.5px] font-bold uppercase tracking-wider">
+                        <span className="text-white/45 text-[10px] font-bold uppercase tracking-wider">
                           {isHebrew ? 'פאנלים מוכנים לייצוא' : 'Panels ready for export'}
                         </span>
                         <span className={`text-[10px] font-black tabular-nums ${readyCount === totalCount ? 'text-green-400' : 'text-[#d4a373]'}`}>
@@ -1118,8 +1118,8 @@ export default function MovieReelModal({
                             onClick={() => setSoundtrack(opt.key)}
                           >
                             <span className="text-[22px] leading-none">{opt.emoji}</span>
-                            <span className={`text-[8px] font-black uppercase tracking-wide text-center leading-snug ${
-                              soundtrack === opt.key ? 'text-[#d4a373]' : 'text-white/38'
+                            <span className={`text-[10px] font-black uppercase tracking-wide text-center leading-snug ${
+                              soundtrack === opt.key ? 'text-[#d4a373]' : 'text-white/45'
                             }`}>
                               {isHebrew ? opt.labelHe : opt.label}
                             </span>
@@ -1143,8 +1143,8 @@ export default function MovieReelModal({
                             onClick={() => setVisualGrade(opt.key)}
                           >
                             <span className="text-[22px] leading-none">{opt.emoji}</span>
-                            <span className={`text-[8px] font-black uppercase tracking-wide text-center leading-snug ${
-                              visualGrade === opt.key ? 'text-[#d4a373]' : 'text-white/38'
+                            <span className={`text-[10px] font-black uppercase tracking-wide text-center leading-snug ${
+                              visualGrade === opt.key ? 'text-[#d4a373]' : 'text-white/45'
                             }`}>
                               {isHebrew ? opt.labelHe : opt.label}
                             </span>
@@ -1153,7 +1153,7 @@ export default function MovieReelModal({
                       </div>
 
                       {/* Active grade filter preview label */}
-                      <p className="text-center text-[7.5px] font-mono text-white/20 tracking-widest">
+                      <p className="text-center text-[10px] font-mono text-white/45 tracking-widest">
                         {VISUAL_GRADES.find(g => g.key === visualGrade)?.filter || 'none'}
                       </p>
                     </div>
@@ -1161,7 +1161,7 @@ export default function MovieReelModal({
                     {/* Format note */}
                     <div className="flex items-center justify-center gap-1.5 flex-wrap pt-1">
                       {['9:16 Portrait', '720 × 1280', '30 FPS', 'Ken Burns FX'].map(c => (
-                        <span key={c} className="px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.07] text-[7.5px] font-bold text-white/30 uppercase tracking-wider">
+                        <span key={c} className="px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.07] text-[10px] font-bold text-white/45 uppercase tracking-wider">
                           {c}
                         </span>
                       ))}
@@ -1186,10 +1186,10 @@ export default function MovieReelModal({
                     {/* Progress */}
                     <div className="w-full space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-[#d4a373] text-[9px] font-black uppercase tracking-widest truncate pr-2">
+                        <span className="text-[#d4a373] text-[10px] font-black uppercase tracking-widest truncate pr-2">
                           {label}
                         </span>
-                        <span className="text-white/40 text-[10px] font-mono shrink-0">{progress}%</span>
+                        <span className="text-white/45 text-[10px] font-mono shrink-0">{progress}%</span>
                       </div>
                       <div className="h-1.5 bg-white/[0.07] rounded-full overflow-hidden">
                         <motion.div
@@ -1198,7 +1198,7 @@ export default function MovieReelModal({
                           transition={{ duration: 0.3, ease: 'linear' }}
                         />
                       </div>
-                      <p className="text-white/20 text-[8px] text-center tracking-[0.18em] uppercase">
+                      <p className="text-white/45 text-[10px] text-center tracking-[0.18em] uppercase">
                         {isHebrew ? 'אל תסגור חלון זה בזמן הרנדור' : 'Keep this window open during rendering'}
                       </p>
                     </div>
@@ -1259,7 +1259,7 @@ export default function MovieReelModal({
                     </div>
                     <div className="w-full space-y-3">
                       {/* Success badge */}
-                      <p className="text-green-400 text-[9.5px] font-black uppercase tracking-widest text-center">
+                      <p className="text-green-400 text-[10px] font-black uppercase tracking-widest text-center">
                         ✓ {isHebrew ? 'הריל מוכן!' : 'Reel Ready!'}
                       </p>
 
@@ -1284,7 +1284,7 @@ export default function MovieReelModal({
                         }}
                       >
                         <p
-                          className="text-[7.5px] leading-relaxed text-center"
+                          className="text-[10px] leading-relaxed text-center"
                           style={{ color: 'rgba(255,255,255,0.28)' }}
                           dir={isHebrew ? 'rtl' : 'ltr'}
                         >
@@ -1303,8 +1303,8 @@ export default function MovieReelModal({
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                     className="flex flex-col items-center gap-3 py-6 text-center"
                   >
-                    <AlertCircle size={26} className="text-red-400 shrink-0" />
-                    <p className="text-red-400/80 text-[11px] font-medium leading-relaxed max-w-[280px]">
+                    <AlertCircle size={26} className="system-notice-text shrink-0" />
+                    <p className="system-notice-text text-[11px] font-medium leading-relaxed max-w-[280px]">
                       {errorMsg}
                     </p>
                   </motion.div>
@@ -1324,7 +1324,7 @@ export default function MovieReelModal({
                       ${phase === 'generating'
                         ? 'bg-[#d4a373]/12 text-[#d4a373]/40 cursor-not-allowed'
                       : readyCount === 0
-                        ? 'bg-white/[0.04] text-white/18 cursor-not-allowed'
+                        ? 'bg-white/[0.04] text-white/45 cursor-not-allowed'
                       : 'bg-gradient-to-br from-[#d4a373] to-[#b3865b] text-black hover:from-white hover:to-white shadow-[0_8px_28px_rgba(212,163,115,0.35)]'}`}
                   >
                     {phase === 'generating' ? (
@@ -1349,7 +1349,7 @@ export default function MovieReelModal({
                     </button>
                     <button
                       onClick={handleReset}
-                      className="w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/28 hover:text-white/55 transition-colors"
+                      className="w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/45 hover:text-white/55 transition-colors"
                     >
                       {isHebrew ? 'צור ריל חדש' : 'Generate New Reel'}
                     </button>
@@ -1357,7 +1357,7 @@ export default function MovieReelModal({
                 )}
 
                 <div className="flex items-center justify-center gap-1.5 pt-1">
-                  <span className="text-[#d4a373]/22 text-[7px] font-black uppercase tracking-[0.3em]">
+                  <span className="text-[#d4a373]/22 text-[10px] font-black uppercase tracking-[0.3em]">
                     LIFESCRIPT STUDIO
                   </span>
                 </div>
@@ -1376,7 +1376,7 @@ function SectionLabel({ text }) {
   return (
     <div className="flex items-center gap-2.5">
       <div className="h-px flex-1 bg-white/[0.07]" />
-      <span className="text-[8px] font-black uppercase tracking-[0.28em] text-white/28 whitespace-nowrap">
+      <span className="text-[10px] font-black uppercase tracking-[0.28em] text-white/45 whitespace-nowrap">
         {text}
       </span>
       <div className="h-px flex-1 bg-white/[0.07]" />
