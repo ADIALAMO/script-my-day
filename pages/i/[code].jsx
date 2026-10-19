@@ -125,3 +125,6 @@ export default function InviteLanding({ code, name, lang, ogImage, inviteUrl }) 
     </>
   );
 }
+
+// pages/_app.js wraps this page in its <main id="main-content"> (it has no <main> of its own)
+InviteLanding.needsMain = true;

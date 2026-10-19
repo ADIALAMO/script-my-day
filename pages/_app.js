@@ -168,10 +168,18 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
 
 
         <SkipLink />
-        <main className="min-h-screen bg-[#030712] selection:bg-[#d4a373]/30">
-          <audio id="main-bg-music" preload="auto" style={{ display: 'none' }} />
-          <Component {...pageProps} />
-        </main>
+        {/* ONE <main> per page: pages that render their own <main id="main-content"> (home, legal pages, data deletion, admin) are wrapped in a plain <div>;
+            the few minimal pages without one (Component.needsMain: the sign-in relay pages, the share page) get the wrapper as their <main>. */}
+        {(() => {
+          const Wrapper = Component.needsMain ? 'main' : 'div';
+          const mainProps = Component.needsMain ? { id: 'main-content', tabIndex: -1 } : {};
+          return (
+            <Wrapper {...mainProps} className="min-h-screen bg-[#030712] selection:bg-[#d4a373]/30 outline-none">
+              <audio id="main-bg-music" preload="auto" style={{ display: 'none' }} />
+              <Component {...pageProps} />
+            </Wrapper>
+          );
+        })()}
       </>
     </SessionProvider>
   );

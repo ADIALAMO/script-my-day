@@ -93,7 +93,7 @@ export default function LegalPage({ contentKey }) {
         </header>
 
         {/* ── Page content ──────────────────────────────────────────────────── */}
-        <main className="max-w-2xl mx-auto px-6 py-14">
+        <main id="main-content" tabIndex={-1} className="max-w-2xl mx-auto px-6 py-14 outline-none">
 
           {/* Header block */}
           <div className="mb-10 pb-8 border-b border-white/[0.06]">
