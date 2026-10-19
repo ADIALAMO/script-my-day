@@ -330,7 +330,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'מנגנון AI מרובה-ספקים',
-          p: 'מאחורי כל לחיצה פועל מנגנון שמריץ בו-זמנית מספר מודלי שפה מהמתקדמים בעולם — Gemini Flash, Gemma ו-DeepSeek — ובוחר אוטומטית את המהיר שמחזיר תוצאה מושלמת. לתמונות, קסקדה חכמה של ספקים ויזואליים — Gemini, FLUX, Cloudflare AI ועוד — מבטיחה פוסטר ופאנלים תמיד, גם בשיא העומס.',
+          p: 'מאחורי כל לחיצה פועל מנגנון שמריץ בו-זמנית מספר מודלי שפה — Gemini Flash, Gemma ו-DeepSeek — ובוחר אוטומטית את המהיר שמחזיר תוצאה. לתמונות, קסקדה של ספקים ויזואליים — Gemini, FLUX, Cloudflare AI ועוד — עוזרת להגיש פוסטר ופאנלים גם בעומס גבוה.',
         },
         {
           h: 'מהתסריט ללוח הסיפור',
@@ -360,7 +360,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'Intelligent Multi-Provider AI Engine',
-          p: 'Behind every click, an engine simultaneously races multiple world-class language models — Gemini Flash, Gemma, and DeepSeek — automatically selecting the fastest model that returns a perfect result. For visuals, a smart cascade of image providers — Gemini, FLUX, Cloudflare AI, and more — ensures your poster and panels are always delivered, even under heavy global load.',
+          p: 'Behind every click, an engine simultaneously races multiple language models — Gemini Flash, Gemma, and DeepSeek — automatically selecting the fastest model that returns a result. For visuals, a cascade of image providers — Gemini, FLUX, Cloudflare AI, and more — helps deliver your poster and panels even under heavy load.',
         },
         {
           h: 'From Script to Storyboard',

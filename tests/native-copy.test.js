@@ -260,3 +260,14 @@ test('AuthModal is scrollable on short viewports: the overlay scrolls (overflow-
   assert.match(src, /className="relative w-full max-w-sm m-auto"/);
   assert.doesNotMatch(src, /overscroll-behavior|overscroll-contain|overscroll-none/);   // CLAUDE.md §8: never "fix" a scroller with overscroll-behavior
 });
+
+// ── no unsubstantiated superiority / guarantee claims in user-visible copy or the store listing (Play "misleading claims" risk) ───────────────────
+test('no "world\'s leading" / "world-class" / "best result" / "perfect result" / "always delivered" style claims (he + en)', () => {
+  const BAD = /world'?s? (?:leading|best|first)|world-class|leading (?:AI|language|image)|best[- ]in[- ]class|state[- ]of[- ]the[- ]art|cutting[- ]edge|the best result|perfect result|always delivered|no single point of failure|המתקדמים בעולם|המובילים בעולם|מהמתקדמים|התוצאה הכי טובה|תוצאה מושלמת|מבטיחה פוסטר|ללא נקודת כשל|בלי נקודת כשל/i;
+  const walk = (dir) => readdirSync(path.join(ROOT, dir)).flatMap((f) => { const rel = `${dir}/${f}`; const st = statSync(path.join(ROOT, rel)); return st.isDirectory() ? walk(rel) : /\.(jsx?|md)$/.test(f) ? [rel] : []; });
+  const files = [...walk('components'), ...walk('constants'), ...walk('pages').filter((f) => !f.startsWith('pages/api/')), ...walk('store-listing')].filter((f) => !/proposed-description/.test(f));
+  const offenders = [];
+  for (const rel of files) readFileSync(path.join(ROOT, rel), 'utf8').split('\n').forEach((line, i) => { if (BAD.test(line)) offenders.push(`${rel}:${i + 1}: ${line.trim().slice(0, 90)}`); });
+  assert.deepEqual(offenders, []);
+  for (const bad of ["the world's leading language models", 'world-class language models', 'המתקדמים בעולם', 'a perfect result']) assert.match(bad, BAD, bad);
+});
