@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { displayProducerName } from '../utils/producer-name.js';
+import { displayProducerName, cleanProducerName } from '../utils/producer-name.js';
 import Head from 'next/head';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -24,6 +24,8 @@ import { skipPageAutoScroll } from '../utils/scroll-mode.js';
 import { scrollToScriptWindow } from '../utils/scroll-to-anchor.js';
 import { createScriptFlow } from '../utils/script-flow.js';
 import ConfirmReplaceDialog from '../components/ConfirmReplaceDialog.jsx';
+import AgeGateDialog from '../components/AgeGateDialog.jsx';
+import { needsAgeGate, rememberAge } from '../utils/age-gate.js';
 import { readEffectiveFlags } from '../utils/variant-flags.js';
 import { modalDataFor } from '../constants/modalData';
 import ReportButton from '../components/ReportButton';
@@ -342,7 +344,7 @@ function ReelCard({ reel, lang, onClick }) {
 }
 
 function HomePage() {
-  const { data: session, update: updateSession } = useSession();
+  const { data: session, status: sessionStatus, update: updateSession } = useSession();
 
   const [script, setScript] = useState('');
   const [scriptLoading, setScriptLoading] = useState(false);
@@ -668,12 +670,24 @@ function HomePage() {
   const scriptFlow = flowRef.current;
   const [flowState, setFlowState] = useState(scriptFlow.getState());
   useEffect(() => scriptFlow.subscribe(setFlowState), [scriptFlow]);
-  const requestGenerate = useCallback((entry, genre) => (!entry || entry.trim().length < 5) ? 'ignored' : scriptFlow.request(entry, genre, { hasScript: !!scriptRef.current }), [scriptFlow]);
+  // Guest 18+ notice (utils/age-gate.js): a visitor who is not signed in confirms once, before the first script; the tap that opened it is then carried out.
+  const [ageGatePending, setAgeGatePending] = useState(null);   // { entry, genre } waiting for the confirmation
+  const requestGenerate = useCallback((entry, genre) => {
+    if (!entry || entry.trim().length < 5) return 'ignored';
+    if (needsAgeGate({ status: sessionStatus })) { setAgeGatePending({ entry, genre }); return 'age-gate'; }
+    return scriptFlow.request(entry, genre, { hasScript: !!scriptRef.current });
+  }, [scriptFlow, sessionStatus]);
+  const confirmAgeGate = useCallback(() => {
+    const pending = ageGatePending;
+    rememberAge();
+    setAgeGatePending(null);
+    if (pending) scriptFlow.request(pending.entry, pending.genre, { hasScript: !!scriptRef.current });
+  }, [ageGatePending, scriptFlow]);
   // ScriptOutput reports its typewriter here (start / finished / skipped / unmounted); `isTyping` stays what it was (the form's textarea also writes it)
   const onOutputTyping = useCallback((on) => { setIsTyping(on); scriptFlow.outputTyping(on); }, [scriptFlow]);
   const tourBlocked = !!modalContent || !!selectedPoster || !!selectedReel || showAuthModal || showUpgradeModal || showWaitlistModal
     || showHistory || showFeedback || showTips || characterModalOpenMirror || dropdownOpenMirror
-    || scriptLoading || generationBusy || flowState.confirming;
+    || scriptLoading || generationBusy || flowState.confirming || !!ageGatePending;
   // ?debug=1 shows the scroll overlay (components/ScrollDebug.jsx); decided once, after mount
   const [debugScroll, setDebugScroll] = useState(false);
   useEffect(() => { setDebugScroll(readEffectiveFlags().flags.debug); }, []);   // URL or stored flags (utils/variant-flags.js)
@@ -685,12 +699,14 @@ function HomePage() {
     showAuthModal, showUpgradeModal, showWaitlistModal,
     showHistory, showFeedback, showTips,
     replaceConfirming: flowState.confirming,
+    ageGateOpen: !!ageGatePending,
   };
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
     const listenerPromise = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
       const s = backStateRef.current;
+      if (s.ageGateOpen)           { setAgeGatePending(null);   return; }
       if (s.replaceConfirming)     { scriptFlow.cancel();       return; }
       if (s.tourRunning)           { s.tourFinish();           return; }
       if (s.selectedReel)          { setSelectedReel(null);    return; }
@@ -781,7 +797,7 @@ function HomePage() {
           journalEntry,
           genre,
           gender,
-          producerName: displayProducerName(producerName, lang),
+          producerName: cleanProducerName(producerName).name,   // '' when empty / blocked: the server uses it as the protagonist's name only when it is a real name
         }),
       });
 
@@ -1722,6 +1738,7 @@ function HomePage() {
         </div>
       </footer>
       
+      <AgeGateDialog open={!!ageGatePending} lang={lang} onConfirm={confirmAgeGate} onCancel={() => setAgeGatePending(null)} />
       <ConfirmReplaceDialog open={flowState.confirming} lang={lang} onConfirm={() => scriptFlow.confirm()} onCancel={() => scriptFlow.cancel()} />
 
       {/* Cinematic fullscreen loader — script generation */}

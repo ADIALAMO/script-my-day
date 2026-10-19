@@ -14,7 +14,7 @@ export const privacyAccountEn = () =>
   'If you sign up, we store your email address and name (from Google or the magic-link sign-in) and, for Google sign-in, your profile-photo URL and the technical sign-in record that the sign-in library keeps for your Google account, to manage your account and quota. This data is kept until you ask us to delete your account. Besides this account data we hold other personal data described in sections 2, 4, 5 and 6 (for example face photos you upload, IP addresses of visitors who are not signed in).';
 
 export const privacyProvidersHe = () =>
-  'כדי ליצור תסריטים, קומיקס ופוסטרים אנחנו שולחים לספקי AI חיצוניים (בהצפנת HTTPS) את הטקסט שכתבת, תיאורי תמונה שנגזרים ממנו, ובפיצ\'ר "לככב בסיפור" גם את תמונת הפנים שלך. הספקים: ' +
+  'כדי ליצור תסריטים, קומיקס ופוסטרים אנחנו שולחים לספקי AI חיצוניים (בהצפנת HTTPS) את הטקסט שכתבת (וכן את שם היוצר, אם הזנת), תיאורי תמונה שנגזרים ממנו, ובפיצ\'ר "לככב בסיפור" גם את תמונת הפנים שלך. הספקים: ' +
   '(א) Google (Gemini API) מקבלת את הטקסט שלך ליצירת תסריטים ותוכנית הקומיקס.' +
   (geminiTier() === 'free'
     ? ' אנחנו משתמשים במסלול החינמי (ללא תשלום) של Gemini API; לפי התנאים של Google למסלול זה, Google עשויה להשתמש בתוכן שנשלח כדי לשפר את מוצריה, ובודקים אנושיים עשויים לקרוא אותו.'
@@ -24,7 +24,7 @@ export const privacyProvidersHe = () =>
   ' (ד) ספק גיבוי נוסף: Cohere.' +
   ' לכן איננו יכולים להבטיח שהתוכן שלך אינו נשמר או משמש אצל ספקים אלה. אל תזין מידע רגיש במיוחד או תמונות של אנשים אחרים ללא הסכמתם. אנחנו לא מוכרים את התוכן ולא משתמשים בו לפרסום.';
 export const privacyProvidersEn = () =>
-  'To create scripts, comics and posters we send to external AI providers (over HTTPS) the text you wrote, image descriptions derived from it and, for "Star Yourself", your face photo. The providers: ' +
+  'To create scripts, comics and posters we send to external AI providers (over HTTPS) the text you wrote (and the creator name, if you enter one), image descriptions derived from it and, for "Star Yourself", your face photo. The providers: ' +
   '(a) Google (Gemini API) receives your text to create scripts and the comic plan.' +
   (geminiTier() === 'free'
     ? " We use Google's free (unpaid) Gemini API tier; under Google's terms for that tier, Google may use submitted content to improve its products and human reviewers may read it."

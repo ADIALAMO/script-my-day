@@ -1,3 +1,4 @@
+import { protagonistNameFrom } from '../../utils/producer-name.js';
 import { generateScript } from '../../lib/story-service.js';
 import redis from '../../lib/redis.js';
 import { sanitize } from '../../utils/input-processor';
@@ -46,7 +47,7 @@ export default async function handler(req, res) {
     if (await enforceRateLimit(req, res, 'generate-script')) return;
 
     // ── Parse body ────────────────────────────────────────────────────────────
-    const { journalEntry, genre, gender } = req.body;
+    const { journalEntry, genre, gender, producerName } = req.body;
 
     const isAdmin = isAdminRequest(req);
     let tier = 'admin';
@@ -80,6 +81,8 @@ export default async function handler(req, res) {
 
     // Never trust the client blindly — coerce to the only three values we speak.
     const cleanGender = ['male', 'female', 'neutral'].includes(gender) ? gender : 'neutral';
+    // The creator credit becomes the protagonist's name (utils/producer-name.js: 1-3 letter-only words, blocklisted, not the guest default); anything else is ignored.
+    const protagonistName = protagonistNameFrom(producerName);
 
     // ── Quota gate ────────────────────────────────────────────────────────────
     // Reserved atomically (INCR then compare) once the input is valid; given back below if no
@@ -125,7 +128,7 @@ export default async function handler(req, res) {
     // ── AI generation ─────────────────────────────────────────────────────────
     let result;
     try {
-      result = await generateScript(safeJournalEntry, cleanGenre, cleanGender);
+      result = await generateScript(safeJournalEntry, cleanGenre, cleanGender, { protagonistName });
     } catch (e) {
       await releaseScriptQuota(reservation);
       if (guestBudgetReserved) await releaseGuestScriptBudget();
@@ -170,7 +173,7 @@ export default async function handler(req, res) {
         console.warn(`🛑 generate-script: output held back (${check.stage}) — regenerating once`);
         let again;
         try {
-          again = await generateScript(safeJournalEntry, cleanGenre, cleanGender, { extraSafety: REGENERATION_SAFETY_LINE, budgetMs: left() - 9000 });
+          again = await generateScript(safeJournalEntry, cleanGenre, cleanGender, { protagonistName, extraSafety: REGENERATION_SAFETY_LINE, budgetMs: left() - 9000 });
         } catch { again = { success: false }; }
         if (!again.success) return refuse('regeneration failed');
         check = await checkTextOutput(again.output, { genre: cleanGenre, budgetMs: left() });
