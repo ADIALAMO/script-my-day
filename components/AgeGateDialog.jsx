@@ -66,7 +66,7 @@ export default function AgeGateDialog({ open, lang, onConfirm, onCancel }) {
           </span>
           <span className="text-gray-200 text-[12px] font-bold">{ageGateCopy('checkbox', lang)}</span>
         </button>
-        <p className="mt-2 text-gray-500 text-[10.5px] leading-relaxed">
+        <p className="mt-2 text-gray-400 text-[10.5px] leading-relaxed">
           {ageGateCopy('agreeBefore', lang)}
           <a data-age-link href="/terms" target="_blank" rel="noopener noreferrer" className={link}>{ageGateCopy('terms', lang)}</a>
           {ageGateCopy('and', lang)}

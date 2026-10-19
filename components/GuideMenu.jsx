@@ -42,7 +42,7 @@ export default function GuideMenu({ anchor, lang, stages, onPick, onClose }) {
       dir={isHe ? 'rtl' : 'ltr'}
       className={`z-[9999] bg-[#0a0a12] border border-white/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.9)] overflow-hidden ${isHe ? 'font-heebo' : ''}`}
     >
-      <p className="px-4 pt-3 pb-1 text-[10px] font-black tracking-[0.3em] uppercase text-[#d4a373]/60">{tourText(TOUR_UI.menuTitle, lang)}</p>
+      <p className="px-4 pt-3 pb-1 text-[10px] font-black tracking-[0.3em] uppercase text-[#d4a373]/75">{tourText(TOUR_UI.menuTitle, lang)}</p>
       {CHAPTERS.map((chapter) => {
         const available = chapterAvailable(chapter, stages);
         return (

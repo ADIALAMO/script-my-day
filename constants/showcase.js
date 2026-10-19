@@ -970,7 +970,7 @@ export const SHOWCASE_REELS = [
     titleHe: 'אימה III',
     titleEn: 'Horror III',
     tagline: 'DARK PURSUIT',
-    color: '#6366f1',
+    color: '#818cf8',
   },
   {
     id: 'reel-horror-4',

@@ -253,7 +253,7 @@ export default function GuidedTour({ chapter: chapterId, lang, manual = false, o
             }}
           />
         )}
-        <p className="text-[10px] font-black tracking-[0.3em] uppercase text-[#d4a373]/70 mb-1.5">{t({ he: TOUR_UI.chapterLabel.he(chapter.id, k, total), en: TOUR_UI.chapterLabel.en(chapter.id, k, total) })}</p>
+        <p className="text-[10px] font-black tracking-[0.3em] uppercase text-[#d4a373]/75 mb-1.5">{t({ he: TOUR_UI.chapterLabel.he(chapter.id, k, total), en: TOUR_UI.chapterLabel.en(chapter.id, k, total) })}</p>
         <p aria-live="polite" className="text-[14px] leading-snug text-white/90 mb-4">{t(step.copy)}</p>
         <div className="flex items-center justify-between gap-2">
           <button type="button" onClick={() => onFinish?.('skip')} className="px-3 py-2 rounded-xl border border-white/20 text-white/80 hover:text-white hover:border-white/40 text-[11px] font-black uppercase tracking-wider transition-colors">

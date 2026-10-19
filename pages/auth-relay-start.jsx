@@ -43,7 +43,7 @@ export default function AuthRelayStart() {
         <title>Signing in… · LifeScript Studio</title>
       </Head>
       <div className="min-h-screen flex items-center justify-center bg-[#030712]">
-        <p className="text-white/45 text-sm">Redirecting to Google…</p>
+        <p className="text-white/50 text-sm">Redirecting to Google…</p>
       </div>
     </>
   );

@@ -80,7 +80,7 @@ function PosterRenderer({
       <div ref={posterRef} className="relative aspect-[2/3] w-full max-w-[450px] mx-auto rounded-[3.5rem] md:rounded-[4.5rem] overflow-hidden bg-[#030712] shadow-4xl border border-[#d4a373]/30">
         {posterUrl && posterHidden && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#06040a] px-6 text-center" role="status">
-            <span className="text-white/45 text-xs font-bold tracking-wide">{reportText(REPORT_COPY.hiddenTile, isHebrew ? 'he' : 'en')}</span>
+            <span className="text-white/50 text-xs font-bold tracking-wide">{reportText(REPORT_COPY.hiddenTile, isHebrew ? 'he' : 'en')}</span>
           </div>
         )}
         {posterUrl && !posterHidden && (posterExpired || posterChecking) && (
@@ -270,7 +270,7 @@ function PosterRenderer({
             type="button"
             onClick={() => setIdentityNoticeDismissed(true)}
             aria-label={isHebrew ? 'סגור' : 'Dismiss'}
-            className="close-button relative shrink-0 text-white/45 hover:text-white transition-colors"
+            className="close-button relative shrink-0 text-white/50 hover:text-white transition-colors"
           >
             <X size={14} />
           </button>

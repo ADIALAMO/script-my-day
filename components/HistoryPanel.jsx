@@ -46,7 +46,7 @@ function EmptyState({ lang }) {
             transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut', repeatDelay: 3.5 }}
             style={{ transformOrigin: '50% 90%' }}
           >
-            <Clapperboard size={30} className="text-[#d4a373]/25" strokeWidth={1.5} />
+            <Clapperboard size={30} className="text-[#d4a373]/75" strokeWidth={1.5} />
           </motion.div>
         </div>
         {/* Pulse ring */}
@@ -65,11 +65,11 @@ function EmptyState({ lang }) {
         </div>
       </div>
 
-      <h3 className="text-[#d4a373]/45 font-black text-[10px] uppercase tracking-[0.55em] mb-3">
+      <h3 className="text-[#d4a373]/75 font-black text-[10px] uppercase tracking-[0.55em] mb-3">
         {lang === 'he' ? 'אין הפקות קודמות' : 'No Past Productions'}
       </h3>
 
-      <p className="text-gray-500 text-[10.5px] leading-relaxed max-w-[188px]">
+      <p className="text-gray-400 text-[10.5px] leading-relaxed max-w-[188px]">
         {lang === 'he'
           ? 'התסריטים שלך יישמרו כאן אוטומטית לאחר כל הפקה'
           : 'Your scripts are saved here automatically after each generation'}
@@ -81,7 +81,7 @@ function EmptyState({ lang }) {
         <div className="w-1 h-1 rounded-full bg-[#d4a373]/20" />
         <div className="flex-1 h-[1px] bg-[#d4a373]/10" />
       </div>
-      <p className="mt-4 text-[10px] text-gray-500 tracking-[0.65em] uppercase">
+      <p className="mt-4 text-[10px] text-gray-400 tracking-[0.65em] uppercase">
         LIFESCRIPT STUDIO
       </p>
     </motion.div>
@@ -174,7 +174,7 @@ const HistoryItem = memo(function HistoryItem({ entry, onReload, onDelete, lang,
             <span className={`text-[10px] font-black uppercase tracking-wider px-1.5 py-[3px] rounded-md ${gm.chipCls}`}>
               {genreLabel}
             </span>
-            <span className={`flex items-center gap-1 text-[10px] text-gray-500 shrink-0 ${isRtl ? '' : 'ml-auto'}`}>
+            <span className={`flex items-center gap-1 text-[10px] text-gray-400 shrink-0 ${isRtl ? '' : 'ml-auto'}`}>
               <Clock size={7.5} className="opacity-50" />
               {relTime}
             </span>
@@ -193,7 +193,7 @@ const HistoryItem = memo(function HistoryItem({ entry, onReload, onDelete, lang,
           {/* Original journal preview — the raw diary this script was born from */}
           {entry.journalEntry && (
             <p
-              className={`text-[10px] text-gray-500/70 italic truncate leading-snug ${isRtl ? 'text-right' : 'text-left'}`}
+              className={`text-[10px] text-gray-400 italic truncate leading-snug ${isRtl ? 'text-right' : 'text-left'}`}
               title={entry.journalEntry}
             >
               📓 {entry.journalEntry}
@@ -202,7 +202,7 @@ const HistoryItem = memo(function HistoryItem({ entry, onReload, onDelete, lang,
 
           {/* Producer credit */}
           {entry.producerName && (
-            <p className={`text-[10px] text-[#d4a373]/28 uppercase tracking-widest truncate ${isRtl ? 'text-right' : ''}`}>
+            <p className={`text-[10px] text-[#d4a373]/75 uppercase tracking-widest truncate ${isRtl ? 'text-right' : ''}`}>
               {isRtl ? `בימוי: ${entry.producerName}` : `DIR: ${entry.producerName}`}
             </p>
           )}
@@ -211,7 +211,7 @@ const HistoryItem = memo(function HistoryItem({ entry, onReload, onDelete, lang,
         {/* Reload chevron — subtle directional hint */}
         <ChevronRight
           size={12}
-          className={`shrink-0 text-[#d4a373]/15 group-hover:text-[#d4a373]/45
+          className={`shrink-0 text-[#d4a373]/75 group-hover:text-[#d4a373]
             group-hover:translate-x-0.5 transition-all duration-300
             ${isRtl ? 'rotate-180 group-hover:-translate-x-0.5 group-hover:translate-x-0' : ''}`}
         />
@@ -224,7 +224,7 @@ const HistoryItem = memo(function HistoryItem({ entry, onReload, onDelete, lang,
           p-[7px] rounded-lg transition-all duration-250
           ${isConfirming
             ? 'bg-red-500/18 text-red-400 scale-110'
-            : 'text-gray-500 opacity-60 md:opacity-0 md:group-hover:opacity-100 [@media(hover:hover)]:hover:text-red-400 [@media(hover:hover)]:hover:bg-red-500/12'
+            : 'text-gray-400 opacity-60 md:opacity-0 md:group-hover:opacity-100 [@media(hover:hover)]:hover:text-red-400 [@media(hover:hover)]:hover:bg-red-500/12'
           }`}
         onClick={handleDeleteClick}
         title={
@@ -244,7 +244,7 @@ const HistoryItem = memo(function HistoryItem({ entry, onReload, onDelete, lang,
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="text-[10px] text-red-400/60 text-center tracking-widest uppercase overflow-hidden pb-2"
+            className="text-[10px] text-red-400/85 text-center tracking-widest uppercase overflow-hidden pb-2"
           >
             {isRtl ? '← לחץ שוב למחיקה' : 'Tap delete again to confirm →'}
           </motion.p>
@@ -329,7 +329,7 @@ function HistoryPanel({ isOpen, onClose, history, onReload, onDelete, lang }) {
                     {lang === 'he' ? 'ארכיון הפקות' : 'PRODUCTION ARCHIVE'}
                   </h2>
                   {history.length > 0 && (
-                    <p className="text-[#d4a373]/35 text-[10px] tracking-widest mt-0.5 uppercase">
+                    <p className="text-[#d4a373]/75 text-[10px] tracking-widest mt-0.5 uppercase">
                       {lang === 'he'
                         ? `${history.length} תסריטים שמורים`
                         : `${history.length} ${history.length === 1 ? 'script' : 'scripts'} saved`}
@@ -341,7 +341,7 @@ function HistoryPanel({ isOpen, onClose, history, onReload, onDelete, lang }) {
               <button
                 type="button"
                 onClick={onClose}
-                className="close-button relative p-2 rounded-xl text-gray-500
+                className="close-button relative p-2 rounded-xl text-gray-400
                   [@media(hover:hover)]:hover:text-[#d4a373] [@media(hover:hover)]:hover:bg-[#d4a373]/10
                   transition-all duration-300"
                 aria-label={lang === 'he' ? 'סגור' : 'Close'}
@@ -378,7 +378,7 @@ function HistoryPanel({ isOpen, onClose, history, onReload, onDelete, lang }) {
                 transition={{ delay: 0.3 }}
                 className="shrink-0 px-5 py-3 border-t border-white/[0.04]"
               >
-                <p className="text-[10px] text-gray-500 text-center tracking-[0.5em] uppercase">
+                <p className="text-[10px] text-gray-400 text-center tracking-[0.5em] uppercase">
                   {lang === 'he'
                     ? 'נשמר מקומית · עד 20 הפקות'
                     : 'Saved locally · Up to 20 productions'}

@@ -94,20 +94,20 @@ export default function AuthRelayComplete() {
               </div>
             </div>
 
-            <p className="text-[10px] font-black tracking-[0.35em] text-[#d4a373]/55 uppercase mb-3">
+            <p className="text-[10px] font-black tracking-[0.35em] text-[#d4a373]/75 uppercase mb-3">
               VERIFIED
             </p>
             <h1 className="text-[22px] font-black text-white leading-tight mb-4">
               Return to the app
             </h1>
-            <p className="text-white/45 text-[13px] leading-relaxed">
+            <p className="text-white/50 text-[13px] leading-relaxed">
               Switch back to LifeScript —<br />
               your session will load automatically.
             </p>
 
             <div className="my-7 h-px bg-white/[0.06]" />
 
-            <p className="text-[10px] font-black tracking-[0.25em] text-white/45 uppercase">
+            <p className="text-[10px] font-black tracking-[0.25em] text-white/50 uppercase">
               LifeScript Studio
             </p>
 

@@ -160,7 +160,7 @@ export default function CharacterModal({
   // user who does not confirm can still remove an existing character.
   const removeBlock = removeCharacter && (
     removeStep === 'idle' ? (
-      <button onClick={() => setRemoveStep('confirm')} className="min-h-[44px] px-3 text-gray-500 hover:text-red-400 text-[10px] font-bold uppercase tracking-wider transition-colors">
+      <button onClick={() => setRemoveStep('confirm')} className="min-h-[44px] px-3 text-gray-400 hover:text-red-400 text-[10px] font-bold uppercase tracking-wider transition-colors">
         {isHebrew ? 'הסר את הדמות שלי' : 'Remove my character'}
       </button>
     ) : (
@@ -206,8 +206,8 @@ export default function CharacterModal({
           {/* Header */}
           <div className="relative px-6 pt-6 pb-5 border-b border-white/[0.05]">
             <div className="flex items-center gap-2 mb-2">
-              <Sparkles size={12} className="text-[#d4a373]/70" />
-              <span className="text-[#d4a373]/70 text-[10px] font-black uppercase tracking-[0.2em]">
+              <Sparkles size={12} className="text-[#d4a373]/75" />
+              <span className="text-[#d4a373]/75 text-[10px] font-black uppercase tracking-[0.2em]">
                 {isHebrew ? 'ליהוק הדמות' : 'Cast Your Character'}
               </span>
             </div>
@@ -216,7 +216,7 @@ export default function CharacterModal({
             </p>
             <button
               onClick={onClose}
-              className="absolute top-[22px] left-5 rtl:left-auto rtl:right-5 w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-gray-500 hover:text-white transition-all duration-150"
+              className="absolute top-[22px] left-5 rtl:left-auto rtl:right-5 w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all duration-150"
               style={isHebrew ? { left: 'auto', right: '1.25rem' } : {}}
             >
               <X size={13} />
@@ -234,7 +234,7 @@ export default function CharacterModal({
                 <p className="text-white font-bold text-[14px]">
                   {isHebrew ? 'ליהוק עצמי אינו זמין בחשבון שלך' : 'Casting yourself isn\'t available on your account'}
                 </p>
-                <p className="text-gray-500 text-[11.5px] leading-relaxed">
+                <p className="text-gray-400 text-[11.5px] leading-relaxed">
                   {isHebrew ? 'הפיצ׳ר הזה אינו פתוח כרגע בחשבון שלך.' : 'This feature isn\'t open on your account right now.'}
                 </p>
               </div>
@@ -249,7 +249,7 @@ export default function CharacterModal({
                 <p className="text-white font-bold text-[14px]">
                   {isHebrew ? '"לככב בסיפור" מיועד למשתמשים מגיל 18' : '"Star Yourself" is for ages 18 and over'}
                 </p>
-                <p className="text-gray-500 text-[11.5px] leading-relaxed">
+                <p className="text-gray-400 text-[11.5px] leading-relaxed">
                   {isHebrew
                     ? 'מאשרים פעם אחת וממשיכים. לא רוצים להשתמש בתמונה? אפשר להמשיך ליצור גם בלעדיה.'
                     : 'Confirm once and you can continue. Don\'t want to use a photo? You can keep creating without one.'}
@@ -267,7 +267,7 @@ export default function CharacterModal({
                   </span>
                   <span className="text-gray-200 text-[12px] font-bold">{isHebrew ? 'אני בן/בת 18 ומעלה' : 'I am 18 or older'}</span>
                 </button>
-                <p className="text-gray-500 text-[10.5px] leading-relaxed">
+                <p className="text-gray-400 text-[10.5px] leading-relaxed">
                   {isHebrew ? 'בהמשך אתה מסכים ל' : 'By continuing you agree to the '}
                   <a href="/terms" target="_blank" rel="noopener noreferrer" className="inline-flex items-center min-h-[44px] px-1 underline text-gray-400 hover:text-white">{isHebrew ? 'תנאי השימוש' : 'Terms'}</a>
                   {isHebrew ? ' ול' : ' and '}
@@ -306,12 +306,12 @@ export default function CharacterModal({
                   <p className="text-[#d4a373] font-bold text-[12px]">
                     {isHebrew ? 'העלה סלפי ברור' : 'Upload a clear selfie'}
                   </p>
-                  <p className="text-gray-500 text-[10px] px-8 text-center leading-relaxed">
+                  <p className="text-gray-400 text-[10px] px-8 text-center leading-relaxed">
                     {isHebrew ? 'פנים חזיתיות, תאורה טובה, פנים בודדות' : 'Front-facing, well-lit, single face'}
                   </p>
                 </button>
                 {characterImageUrl && (
-                  <button onClick={() => setChanging(false)} className="text-gray-500 hover:text-gray-300 text-[10px] font-bold uppercase tracking-wider">
+                  <button onClick={() => setChanging(false)} className="text-gray-400 hover:text-gray-300 text-[10px] font-bold uppercase tracking-wider">
                     {isHebrew ? '← חזור' : '← Back'}
                   </button>
                 )}
@@ -324,7 +324,7 @@ export default function CharacterModal({
                 <div className="w-full aspect-square rounded-[1.5rem] overflow-hidden border border-white/10">
                   <img src={picked} alt={isHebrew ? 'תצוגה מקדימה של הסלפי שהעלית' : 'Preview of your uploaded selfie'} className="w-full h-full object-cover" />
                 </div>
-                <p className="text-gray-500 text-[10.5px] text-center leading-relaxed px-2">
+                <p className="text-gray-400 text-[10.5px] text-center leading-relaxed px-2">
                   {isHebrew
                     ? 'ניצור גיליון דמות מסוגנן מהתמונה (לוקח כ-15 שניות).'
                     : "We'll craft a stylized character sheet from this (~15s)."}
@@ -376,7 +376,7 @@ export default function CharacterModal({
                 <p className="text-[#d4a373] font-bold text-[13px]">
                   {isHebrew ? 'מלהק אותך לתפקיד...' : 'Casting you into the story...'}
                 </p>
-                <p className="text-gray-500 text-[10px]">
+                <p className="text-gray-400 text-[10px]">
                   {isHebrew ? 'בדיקת בטיחות · יצירת גיליון דמות' : 'Safety check · Generating character sheet'}
                 </p>
               </div>
@@ -397,7 +397,7 @@ export default function CharacterModal({
 
                 {/* Gender selector — drives the per-panel disambiguation descriptor */}
                 <div className="w-full">
-                  <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.18em] text-center mb-2">
+                  <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.18em] text-center mb-2">
                     {isHebrew ? 'איך להציג אותך בפאנלים?' : 'How should we portray you?'}
                   </p>
                   <div className="flex items-center justify-center gap-2">
@@ -408,7 +408,7 @@ export default function CharacterModal({
                         className={`px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-200
                           ${gender === opt.value
                             ? 'bg-[#d4a373]/20 border border-[#d4a373]/60 text-[#d4a373]'
-                            : 'bg-white/[0.04] border border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20'
+                            : 'bg-white/[0.04] border border-white/10 text-gray-400 hover:text-gray-300 hover:border-white/20'
                           }`}
                       >
                         {opt.label}
@@ -451,8 +451,8 @@ export default function CharacterModal({
 
           {/* Footer brand */}
           <div className="px-6 py-3 border-t border-white/[0.05] flex items-center justify-center gap-1.5">
-            <Sparkles size={10} className="text-[#d4a373]/30" />
-            <span className="text-[#d4a373]/30 text-[10px] font-black uppercase tracking-[0.22em]">LIFESCRIPT STUDIO</span>
+            <Sparkles size={10} className="text-[#d4a373]/75" />
+            <span className="text-[#d4a373]/75 text-[10px] font-black uppercase tracking-[0.22em]">LIFESCRIPT STUDIO</span>
           </div>
         </div>
       </motion.div>

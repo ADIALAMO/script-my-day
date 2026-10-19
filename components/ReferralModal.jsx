@@ -131,7 +131,7 @@ export default function ReferralModal({ isOpen, onClose, lang = 'en' }) {
                 <button
                   onClick={onClose}
                   aria-label={isHe ? 'סגור' : 'Close'}
-                  className={`absolute top-5 z-10 text-white/45 hover:text-[#d4a373] transition-colors duration-200 p-1.5 rounded-full hover:bg-white/5 ${isHe ? 'left-5' : 'right-5'}`}
+                  className={`absolute top-5 z-10 text-white/50 hover:text-[#d4a373] transition-colors duration-200 p-1.5 rounded-full hover:bg-white/5 ${isHe ? 'left-5' : 'right-5'}`}
                 >
                   <X size={18} />
                 </button>
@@ -147,7 +147,7 @@ export default function ReferralModal({ isOpen, onClose, lang = 'en' }) {
                   <h2 className="text-center text-white font-black text-[20px] leading-tight mb-2">
                     {isHe ? 'הזמן חברים, קבל פוסטרים' : 'Invite friends, earn posters'}
                   </h2>
-                  <p className="text-center text-white/45 text-[12px] leading-relaxed mb-6">
+                  <p className="text-center text-white/50 text-[12px] leading-relaxed mb-6">
                     {isHe
                       ? 'על כל חבר שנרשם ויוצר פוסטר ראשון — אתה מקבל פוסטר "לככב בסיפור" חינם נוסף. 🎬'
                       : 'For every friend who signs up and makes their first poster, you earn another free "Star Yourself" poster. 🎬'}
@@ -155,7 +155,7 @@ export default function ReferralModal({ isOpen, onClose, lang = 'en' }) {
 
                   {/* Loading */}
                   {state === 'loading' && (
-                    <div className="flex items-center justify-center gap-2 py-8 text-white/45">
+                    <div className="flex items-center justify-center gap-2 py-8 text-white/50">
                       <Loader2 size={16} className="animate-spin" />
                       <span className="text-[12px]">{isHe ? 'טוען את הקישור שלך…' : 'Loading your link…'}</span>
                     </div>
@@ -180,13 +180,13 @@ export default function ReferralModal({ isOpen, onClose, lang = 'en' }) {
                       <div className="grid grid-cols-2 gap-2.5 mb-5">
                         <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-3 py-3 text-center">
                           <p className="text-[#d4a373] font-black text-[22px] leading-none">{data.referrals}</p>
-                          <p className="text-white/45 text-[10px] mt-1.5 leading-tight">
+                          <p className="text-white/50 text-[10px] mt-1.5 leading-tight">
                             {isHe ? 'חברים הצטרפו' : 'Friends joined'}
                           </p>
                         </div>
                         <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-3 py-3 text-center">
                           <p className="text-[#d4a373] font-black text-[22px] leading-none">{data.bonusCredits}</p>
-                          <p className="text-white/45 text-[10px] mt-1.5 leading-tight">
+                          <p className="text-white/50 text-[10px] mt-1.5 leading-tight">
                             {isHe ? 'פוסטרים שהרווחת' : 'Posters earned'}
                           </p>
                         </div>
