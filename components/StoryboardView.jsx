@@ -395,7 +395,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                         <img
                           src={imgUrl}
                           onError={() => { setBrokenIdx((prev) => (prev.has(idx) ? prev : new Set(prev).add(idx))); checkPanelExpiry(idx, imgUrl); }}   // e.g. the object was quarantined after a report → the "Frame lost" tile, never a broken-image icon
-                          alt={`Panel ${panel.panel}`}
+                          alt={isHebrew ? `פאנל קומיקס ${panel.panel} מתוך ${panels.length}, נוצר בבינה מלאכותית` : `AI-generated comic panel ${panel.panel} of ${panels.length}`}
                           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                         />
                       </motion.div>

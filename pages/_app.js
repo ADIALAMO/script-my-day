@@ -1,4 +1,5 @@
 // pages/_app.js
+import SkipLink from '../components/SkipLink.jsx';
 import { SessionProvider } from 'next-auth/react';
 import '../styles/globals.css';
 import Head from 'next/head';
@@ -166,6 +167,7 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
         </Head>
 
 
+        <SkipLink />
         <main className="min-h-screen bg-[#030712] selection:bg-[#d4a373]/30">
           <audio id="main-bg-music" preload="auto" style={{ display: 'none' }} />
           <Component {...pageProps} />

@@ -134,7 +134,7 @@ function PosterRenderer({
               }, 50);
             }}
             onError={() => { setPosterLoading(false); checkExpiry(); }}
-            alt="Movie Poster"
+            alt={isHebrew ? 'פוסטר סרט שנוצר בבינה מלאכותית עבור התסריט שלך' : 'AI-generated movie poster for your script'}
           />
         )}
 

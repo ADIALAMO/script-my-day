@@ -766,6 +766,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               onChange={handleEditChange}
               dir={isHebrew ? 'rtl' : 'ltr'}
               spellCheck={false}
+              aria-label={isHebrew ? 'עריכת התסריט' : 'Edit the script'}
               className={`w-full min-h-[420px] md:min-h-[570px] bg-transparent outline-none resize-none
                 script-font text-xl md:text-3xl leading-[2.5] text-gray-100
                 placeholder-gray-700 caret-[#d4a373]

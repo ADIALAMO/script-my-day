@@ -152,6 +152,7 @@ export default function WaitlistModal({ isOpen, onClose, lang = 'en', defaultEma
                           onChange={e => { setEmail(e.target.value); if (state === 'error') setState('idle'); }}
                           onKeyDown={e => { if (e.key === 'Enter' && state !== 'sending') submit(); }}
                           placeholder={isHe ? 'האימייל שלך' : 'your@email.com'}
+                          aria-label={isHe ? 'האימייל שלך' : 'Your email address'}
                           dir="ltr"
                           disabled={state === 'sending'}
                           className={`w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3.5 text-white text-[13px] placeholder-white/25 outline-none focus:border-amber-500/40 transition-colors disabled:opacity-50 ${isHe ? 'pr-11 pl-4 text-right' : 'pl-11 pr-4'}`}

@@ -1,3 +1,4 @@
+import { useDocumentLang } from '../utils/document-lang.js';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -43,6 +44,7 @@ const SIBLING = { privacy: 'terms', terms: 'privacy' };
  */
 export default function LegalPage({ contentKey }) {
   const [lang, setLang] = useState('he');
+  useDocumentLang(lang);   // <html lang> follows the UI language (WCAG 3.1.1)
   const isHe   = lang === 'he';
   const native = useNative();   // Android app: the same document without pricing / subscription sections
   const data   = modalDataFor(native)[contentKey][lang];

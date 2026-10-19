@@ -10,7 +10,7 @@ import { loadGoogleAnalytics, CONSENT_KEY } from '../utils/ga.js';
  *
  * Two actions — not a notice, a real consent gate:
  *   "Accept Analytics"  → stores {analytics:true},  calls gtag consent update → 'granted'
- *   "Essential Only"    → stores {analytics:false}, GA stays silent
+ *   "Decline Google Analytics" → stores {analytics:false}, GA stays silent (Vercel Web Analytics, cookie-free, is not tied to this choice: it is named in the banner text and in Privacy §5)
  *
  * The X button is an alias for "Essential Only" (dismiss without analytics).
  *
@@ -82,13 +82,13 @@ export default function CookieConsent({ lang = 'he' }) {
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] md:text-[12px] text-white/50 leading-snug mb-3">
                   {isHe
-                    ? <>אנחנו משתמשים בעוגיות חיוניות ובGoogle Analytics לשיפור השירות.{' '}
+                    ? <>אנחנו משתמשים בעוגיות חיוניות, ב-Google Analytics ובספירת ביקורים אנונימית וללא עוגיות (Vercel). אפשר לדחות את Google Analytics למטה.{' '}
                         <a href="/privacy" target="_blank" rel="noopener noreferrer"
                            className="text-[#d4a373] hover:text-[#e0b487] underline underline-offset-2 transition-colors font-semibold">
                           מדיניות פרטיות ↗
                         </a>
                       </>
-                    : <>We use essential cookies and Google Analytics to improve the service.{' '}
+                    : <>We use essential cookies, Google Analytics, and anonymous cookie-free visit counts (Vercel). You can decline Google Analytics below.{' '}
                         <a href="/privacy" target="_blank" rel="noopener noreferrer"
                            className="text-[#d4a373] hover:text-[#e0b487] underline underline-offset-2 transition-colors font-semibold">
                           Privacy Policy ↗
@@ -103,7 +103,7 @@ export default function CookieConsent({ lang = 'he' }) {
                     onClick={handleDecline}
                     className="text-white/30 hover:text-white/60 text-[11px] underline underline-offset-2 transition-colors leading-none"
                   >
-                    {isHe ? 'חיוניים בלבד' : 'Essential only'}
+                    {isHe ? 'לדחות את Google Analytics' : 'Decline Google Analytics'}
                   </button>
 
                   <button
@@ -118,7 +118,7 @@ export default function CookieConsent({ lang = 'he' }) {
               {/* X = Essential Only — explicit 44×44 touch target */}
               <button
                 onClick={handleDecline}
-                aria-label={isHe ? 'דחה ותמשיך ללא אנליטיקה' : 'Decline analytics and continue'}
+                aria-label={isHe ? 'לדחות את Google Analytics' : 'Decline Google Analytics'}
                 className="shrink-0 w-11 h-11 -mt-1.5 flex items-center justify-center text-white/25 hover:text-white/60 transition-colors rounded-xl hover:bg-white/5"
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">

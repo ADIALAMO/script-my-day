@@ -1,3 +1,4 @@
+import { useDocumentLang } from '../utils/document-lang.js';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { displayProducerName, cleanProducerName } from '../utils/producer-name.js';
 import Head from 'next/head';
@@ -350,6 +351,7 @@ function HomePage() {
   const [scriptLoading, setScriptLoading] = useState(false);
   const [error, setError] = useState('');
   const [lang, setLang] = useState('en');
+  useDocumentLang(lang);   // <html lang> follows the UI language (WCAG 3.1.1)
   const [mounted, setMounted] = useState(false);
 
   const [selectedGenre, setSelectedGenre] = useState(null);
@@ -948,7 +950,7 @@ function HomePage() {
       {ScrollDebug && debugScroll && <ScrollDebug />}
       {tour.running && <GuidedTour key={tour.chapter} chapter={tour.chapter} manual={tour.manual} lang={lang} onFinish={tour.finish} onAbort={tour.abort} />}
 
-      <main className="container mx-auto pt-4 md:pt-8 pb-12 px-6 max-w-5xl flex-grow relative">
+      <main id="main-content" tabIndex={-1} className="container mx-auto pt-4 md:pt-8 pb-12 px-6 max-w-5xl flex-grow relative outline-none">
 
         <HeroSection
           lang={lang}
@@ -1675,6 +1677,7 @@ function HomePage() {
                   value={feedbackText}
                   onChange={(e) => setFeedbackText(e.target.value)}
                   placeholder={lang === 'he' ? 'שתף אותנו בחוויה שלך, הצעות לשיפור או באגים...' : 'Share your experience, suggestions, or bugs...'}
+                  aria-label={lang === 'he' ? 'המשוב שלך' : 'Your feedback'}
                   className="w-full bg-black/40 border border-white/5 rounded-2xl p-4 text-sm text-white placeholder-gray-600 focus:border-[#d4a373]/40 outline-none transition-all min-h-[120px] resize-none mb-6"
                 />
 
