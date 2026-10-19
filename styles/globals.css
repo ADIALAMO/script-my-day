@@ -22,6 +22,21 @@
   color-scheme: dark;
 }
 
+/* ── System notices (limit / error / "not available" messages) ─────────────────
+   ONE token set for every system notice, in the brand gold instead of alarm red. To try another shade, change these three variables (or the .system-notice*
+   rules below) and every notice follows. Destructive actions (delete / remove / cancel buttons) deliberately keep their red. */
+:root {
+  --notice-bg: rgba(212, 163, 115, 0.10);
+  --notice-border: rgba(212, 163, 115, 0.30);
+  --notice-text: #e0b487;
+}
+@layer components {
+  .system-notice { background-color: var(--notice-bg); border-color: var(--notice-border); color: var(--notice-text); }
+  .system-notice-text { color: var(--notice-text); }
+  .system-notice-btn { background-color: rgba(212, 163, 115, 0.16); border-color: var(--notice-border); color: var(--notice-text); }
+  .system-notice-btn:hover { background-color: rgba(212, 163, 115, 0.26); }
+}
+
 /* ── Base ───────────────────────────────────────────────────────────────────── */
 body {
   margin: 0;

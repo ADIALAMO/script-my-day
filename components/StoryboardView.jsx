@@ -217,12 +217,12 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
             <h3 className="text-[#d4a373] font-black uppercase text-[10px] tracking-[0.35em]">
               {isHebrew ? 'סטוריבורד קולנועי' : 'COMIC STORYBOARD'}
             </h3>
-            <p className="text-gray-600 text-[9px] tracking-widest mt-0.5 uppercase">
+            <p className="text-gray-500 text-[10px] tracking-widest mt-0.5 uppercase">
               {isHebrew ? `${panels.length} פאנלים • נוצר עם AI` : `${panels.length} PANELS • AI GENERATED`}
             </p>
           </div>
         </div>
-        <button onClick={onClose} className="p-2 rounded-xl text-white/20 hover:text-[#d4a373] hover:bg-[#d4a373]/8 transition-all duration-200 shrink-0">
+        <button onClick={onClose} className="p-2 rounded-xl text-white/45 hover:text-[#d4a373] hover:bg-[#d4a373]/8 transition-all duration-200 shrink-0">
           <X size={15} />
         </button>
       </div>
@@ -297,14 +297,14 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
 
                     {/* Panel badge */}
                     <div className="absolute top-3 left-3 z-20 px-2.5 py-1 bg-black/70 backdrop-blur-sm border border-amber-500/12 rounded-lg" dir="ltr">
-                      <span className="text-amber-500/38 font-black text-[9px] tracking-[0.35em] uppercase">
+                      <span className="text-amber-500/38 font-black text-[10px] tracking-[0.35em] uppercase">
                         {`PANEL ${String(panel.panel).padStart(2, '0')}`}
                       </span>
                     </div>
 
                     {/* Scene badge — blurred to hint without revealing */}
                     <div className="absolute top-3 right-3 z-20 max-w-[52%] px-2 py-1 bg-black/40 backdrop-blur-sm rounded-lg">
-                      <span className="text-white/15 text-[8px] font-mono tracking-wide truncate block blur-[3px] select-none" dir="ltr">
+                      <span className="text-white/45 text-[10px] font-mono tracking-wide truncate block blur-[3px] select-none" dir="ltr">
                         {panel.scene}
                       </span>
                     </div>
@@ -314,7 +314,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                       <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/22 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.13)] group-hover:shadow-[0_0_30px_rgba(245,158,11,0.24)] group-hover:bg-amber-500/16 transition-all duration-350">
                         <Lock size={19} className="text-amber-400/65 group-hover:text-amber-400 transition-colors duration-250" />
                       </div>
-                      <p className="text-amber-400/55 font-black text-[8.5px] tracking-[0.32em] uppercase group-hover:text-amber-400/90 transition-colors duration-250">
+                      <p className="text-amber-400/55 font-black text-[10px] tracking-[0.32em] uppercase group-hover:text-amber-400/90 transition-colors duration-250">
                         {isHebrew ? 'נעול' : 'Locked'}
                       </p>
                     </div>
@@ -324,7 +324,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                   <div className="p-4 space-y-2.5">
                     {panel.dialogue && (
                       <p
-                        className="text-white/10 text-[13.5px] italic leading-relaxed blur-[4px] select-none pointer-events-none"
+                        className="text-white/45 text-[13.5px] italic leading-relaxed blur-[4px] select-none pointer-events-none"
                         dir={isHebrew ? 'rtl' : 'ltr'}
                       >
                         &ldquo;{panel.dialogue}&rdquo;
@@ -332,7 +332,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                     )}
                     <div className="flex items-center gap-1.5 text-amber-500/32 group-hover:text-amber-500/65 transition-colors duration-250">
                       <Lock size={8} />
-                      <span className="text-[7.5px] font-black uppercase tracking-widest">
+                      <span className="text-[10px] font-black uppercase tracking-widest">
                         {isHebrew ? 'לא זמין' : 'Not available'}
                       </span>
                     </div>
@@ -376,7 +376,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                           transition={{ repeat: Infinity, duration: 2.4, ease: 'linear' }}
                         />
                         <Loader2 size={22} className="text-[#d4a373]/30 animate-spin relative z-10" />
-                        <span className="text-[#d4a373]/22 text-[9px] font-black tracking-[0.35em] uppercase relative z-10">
+                        <span className="text-[#d4a373]/22 text-[10px] font-black tracking-[0.35em] uppercase relative z-10">
                           {imgState === 'pending'
                             ? (isHebrew ? 'ממתין בתור...' : 'In queue...')
                             : (isHebrew ? 'מפתח פריים...' : 'Developing frame...')}
@@ -431,7 +431,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                         className="absolute inset-0 flex items-center justify-center bg-[#06040a] px-4 text-center"
                         role="status"
                       >
-                        <span className="text-white/40 text-[10px] font-bold tracking-wide">
+                        <span className="text-white/45 text-[10px] font-bold tracking-wide">
                           {reportText(REPORT_COPY.hiddenTile, isHebrew ? 'he' : 'en')}
                         </span>
                       </motion.div>
@@ -466,7 +466,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                         ) : (
                           <div className="flex flex-col items-center gap-2 opacity-35">
                             <X size={22} className="text-red-400" />
-                            <span className="text-red-300/70 text-[9px] font-mono uppercase tracking-widest">
+                            <span className="text-red-300/70 text-[10px] font-mono uppercase tracking-widest">
                               {isHebrew ? 'שגיאת פריים' : 'Frame Lost'}
                             </span>
                           </div>
@@ -498,7 +498,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                   {isRegenerating && (
                     <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-black/55 backdrop-blur-[2px]">
                       <Loader2 size={22} className="text-[#d4a373] animate-spin" />
-                      <span className="text-[#d4a373]/85 text-[9px] font-black tracking-[0.35em] uppercase">
+                      <span className="text-[#d4a373]/85 text-[10px] font-black tracking-[0.35em] uppercase">
                         {isHebrew ? 'מחליף פריים...' : 'Replacing...'}
                       </span>
                     </div>
@@ -521,7 +521,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                           title={regensLeft > 0
                             ? (isHebrew ? `החלף תמונה • נותרו ${regensLeft}` : `Replace image • ${regensLeft} left`)
                             : (isHebrew ? 'נגמרו ההחלפות' : 'No replacements left')}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-white/80 disabled:hover:border-white/20 disabled:hover:bg-black/75"
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-white/80 disabled:hover:border-white/20 disabled:hover:bg-black/75"
                         >
                           <RefreshCw size={10} />
                           <span>{isHebrew ? 'החלף' : 'Replace'}{regensLeft > 0 ? ` ${regensLeft}` : ''}</span>
@@ -539,7 +539,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                             onClick={() => exportFrame(imgUrl, panel.panel, isDesktop ? 'download' : 'share')}
                             aria-disabled={showPreparing}
                             style={showPreparing ? { pointerEvents: 'none' } : undefined}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200"
                           >
                             {showPreparing ? (
                               <>
@@ -556,7 +556,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                         );
                       })()}
                       {isDesktop && (
-                        <button type="button" onClick={() => exportFrame(imgUrl, panel.panel, 'share')} aria-label={isHebrew ? 'שתף' : 'Share'} className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[9px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200">
+                        <button type="button" onClick={() => exportFrame(imgUrl, panel.panel, 'share')} aria-label={isHebrew ? 'שתף' : 'Share'} className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200">
                           <Share2 size={10} />
                           <span>{isHebrew ? 'שתף' : 'Share'}</span>
                         </button>
@@ -577,14 +577,14 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
 
                   {/* PANEL badge — always LTR regardless of lang */}
                   <div className="absolute top-3 left-3 z-20 px-2.5 py-1 bg-black/75 backdrop-blur-sm border border-[#d4a373]/30 rounded-lg" dir="ltr">
-                    <span className="text-[#d4a373] font-black text-[9px] tracking-[0.35em] uppercase">
+                    <span className="text-[#d4a373] font-black text-[10px] tracking-[0.35em] uppercase">
                       {`PANEL ${String(panel.panel).padStart(2, '0')}`}
                     </span>
                   </div>
 
                   {/* Scene badge — top right, always LTR for film notation */}
                   <div className="absolute top-3 right-3 z-20 max-w-[52%] px-2 py-1 bg-black/60 backdrop-blur-sm rounded-lg">
-                    <span className="text-white/45 text-[8px] font-mono tracking-wide truncate block" dir="ltr">
+                    <span className="text-white/45 text-[10px] font-mono tracking-wide truncate block" dir="ltr">
                       {panel.scene}
                     </span>
                   </div>
@@ -605,7 +605,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                     <>
                       <button
                         onClick={() => togglePrompt(idx)}
-                        className="flex items-center gap-1.5 text-[8.5px] font-black uppercase tracking-widest text-gray-600 hover:text-[#d4a373] transition-colors duration-200"
+                        className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-[#d4a373] transition-colors duration-200"
                         dir="ltr"
                       >
                         <ChevronDown size={10} className={`transition-transform duration-250 ${isExpanded ? 'rotate-180' : ''}`} />
@@ -616,12 +616,12 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                       <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-64' : 'max-h-0'}`}>
                         <div className="bg-black/40 rounded-xl p-3 border border-white/5">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-[#d4a373]/38 text-[7.5px] font-black tracking-widest uppercase" dir="ltr">
+                            <span className="text-[#d4a373]/38 text-[10px] font-black tracking-widest uppercase" dir="ltr">
                               {isHebrew ? 'מותאם ל-Midjourney / Flux' : 'MIDJOURNEY / FLUX READY'}
                             </span>
                             <button
                               onClick={() => copyPanel(idx, panel.visual)}
-                              className="flex items-center gap-1 text-[7.5px] font-bold text-gray-600 hover:text-[#d4a373] transition-colors duration-200"
+                              className="flex items-center gap-1 text-[10px] font-bold text-gray-500 hover:text-[#d4a373] transition-colors duration-200"
                             >
                               {copiedIndex === idx ? (
                                 <><Check size={8} className="text-green-400" /><span className="text-green-400">{isHebrew ? 'הועתק' : 'Copied'}</span></>
@@ -694,7 +694,7 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
       {/* ── Footer watermark ───────────────────────────────────── */}
       <div className="px-6 py-3 border-t border-white/[0.04] flex items-center justify-center gap-1.5">
         <Film size={9} className="text-[#d4a373]/25" />
-        <span className="text-[#d4a373]/25 text-[8px] font-black uppercase tracking-[0.25em]">LIFESCRIPT STUDIO</span>
+        <span className="text-[#d4a373]/25 text-[10px] font-black uppercase tracking-[0.25em]">LIFESCRIPT STUDIO</span>
       </div>
     </motion.div>
   );
@@ -719,7 +719,7 @@ function RateLimitedRetry({ isHebrew, retryAvailableAt, onRetry }) {
   return (
     <div className="flex flex-col items-center gap-2.5 px-4" dir={isHebrew ? 'rtl' : 'ltr'}>
       <RefreshCw size={20} className="text-amber-400/70" />
-      <span className="text-amber-200/70 text-[9px] font-mono uppercase tracking-widest text-center">
+      <span className="text-amber-200/70 text-[10px] font-mono uppercase tracking-widest text-center">
         {isHebrew ? 'יותר מדי בקשות' : 'Too many requests'}
       </span>
       <button
@@ -727,10 +727,10 @@ function RateLimitedRetry({ isHebrew, retryAvailableAt, onRetry }) {
         onClick={onRetry}
         disabled={!ready}
         aria-label={isHebrew ? 'נסה שוב ליצור את הפאנל' : 'Retry generating this panel'}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all duration-200 ${
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all duration-200 ${
           ready
             ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25'
-            : 'bg-white/[0.03] border-white/10 text-white/25 cursor-not-allowed'
+            : 'bg-white/[0.03] border-white/10 text-white/45 cursor-not-allowed'
         }`}
       >
         <RefreshCw size={10} />

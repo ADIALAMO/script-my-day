@@ -101,7 +101,7 @@ export default function CookieConsent({ lang = 'he' }) {
                 <div className="flex items-center gap-3 flex-wrap">
                   <button
                     onClick={handleDecline}
-                    className="text-white/30 hover:text-white/60 text-[11px] underline underline-offset-2 transition-colors leading-none"
+                    className="text-white/45 hover:text-white/60 text-[11px] underline underline-offset-2 transition-colors leading-none"
                   >
                     {isHe ? 'לדחות את Google Analytics' : 'Decline Google Analytics'}
                   </button>
@@ -119,7 +119,7 @@ export default function CookieConsent({ lang = 'he' }) {
               <button
                 onClick={handleDecline}
                 aria-label={isHe ? 'לדחות את Google Analytics' : 'Decline Google Analytics'}
-                className="shrink-0 w-11 h-11 -mt-1.5 flex items-center justify-center text-white/25 hover:text-white/60 transition-colors rounded-xl hover:bg-white/5"
+                className="shrink-0 w-11 h-11 -mt-1.5 flex items-center justify-center text-white/45 hover:text-white/60 transition-colors rounded-xl hover:bg-white/5"
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                   <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>

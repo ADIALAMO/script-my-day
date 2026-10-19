@@ -39,8 +39,8 @@ export const InspirationModal = ({ isOpen, onClose, onSelect, lang, isLocked }) 
                 >
                   <span className="text-sm flex-shrink-0 group-hover/item:scale-110 transition-transform">{example.emoji}</span>
                   <div className="flex flex-col items-start overflow-hidden text-start">
-                    <span className="text-[8px] font-black text-[#d4a373] uppercase tracking-tighter">{example.label}</span>
-                    <span className="text-[9px] text-white/50 truncate w-full">{example.short}</span>
+                    <span className="text-[10px] font-black text-[#d4a373] uppercase tracking-tighter">{example.label}</span>
+                    <span className="text-[10px] text-white/50 truncate w-full">{example.short}</span>
                   </div>
                 </button>
               ))}

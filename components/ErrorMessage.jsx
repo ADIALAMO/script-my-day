@@ -27,13 +27,11 @@ export default function ErrorMessage({ code, message, onRetry, lang = 'en' }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       className={`rounded-2xl border flex flex-col items-center gap-3 px-6 py-5 text-center ${
-        isQuota
-          ? 'bg-[#d4a373]/8 border-[#d4a373]/20'
-          : 'bg-red-500/10 border-red-500/20'
+        'system-notice'
       }`}
       dir={isHebrew ? 'rtl' : 'ltr'}
     >
-      <div className={`flex items-center gap-2 text-sm font-bold ${isQuota ? 'text-[#d4a373]/80' : 'text-red-400'}`}>
+      <div className={`flex items-center gap-2 text-sm font-bold system-notice-text`}>
         <Icon size={16} className="shrink-0" />
         <span>{message}</span>
       </div>
