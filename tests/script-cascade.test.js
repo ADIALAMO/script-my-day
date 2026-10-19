@@ -13,7 +13,7 @@ const SECRET_OR = 'dummy-openrouter-key-BBB222';
 const SECRET_FREE = 'dummy-free-key-CCC333';
 const SECRET_COHERE = 'dummy-cohere-key-DDD444';
 const SECRET_TG = 'dummy-telegram-token-EEE555';
-Object.assign(process.env, { GOOGLE_GEMINI_API_KEY: SECRET_GEMINI, OPENROUTER_API_KEY: SECRET_OR, COHERE_API_KEY: SECRET_COHERE, TELEGRAM_BOT_TOKEN: SECRET_TG, TELEGRAM_CHAT_ID: '1' });
+Object.assign(process.env, { DAILY_SCRIPT_BUDGET: '0', GOOGLE_GEMINI_API_KEY: SECRET_GEMINI, OPENROUTER_API_KEY: SECRET_OR, COHERE_API_KEY: SECRET_COHERE, TELEGRAM_BOT_TOKEN: SECRET_TG, TELEGRAM_CHAT_ID: '1' });
 delete process.env.OPENROUTER_FREE_KEY; // first test checks the "unset key" log; later tests set it
 
 const redis = createMemoryRedis();

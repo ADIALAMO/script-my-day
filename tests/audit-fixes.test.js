@@ -44,3 +44,17 @@ test('the route and the client wire the name through', () => {
   assert.equal((route.match(/generateScript\([^)]*protagonistName/g) || []).length, 2, 'first call and the safety regeneration');
   assert.match(readFileSync(new URL('../pages/index.js', import.meta.url), 'utf8'), /producerName: cleanProducerName\(producerName\)\.name/);
 });
+
+test('Privacy §1 lists the on-device settings incl. the guest age confirmation, and what sign-out removes (he + en)', async () => {
+  const { MODAL_DATA } = await import('../constants/modalData.js');
+  const en = MODAL_DATA.privacy.en.sections[0].p; const he = MODAL_DATA.privacy.he.sections[0].p;
+  assert.match(en, /"I am 18 or older" confirmation given by visitors who are not signed in/);
+  assert.match(en, /Signing out removes the saved history, the creator name and the link to your character from this device/);
+  assert.match(he, /אישור "אני בן\/בת 18 ומעלה" שנתן מי שלא התחבר/);
+  assert.match(he, /התנתקות מהחשבון מסירה מהמכשיר את ההיסטוריה השמורה/);
+});
+
+test('the script route records the serving stage for the first generation and for the safety regeneration', () => {
+  const route = readFileSync(new URL('../pages/api/generate-script.js', import.meta.url), 'utf8');
+  assert.equal((route.match(/await recordScriptStage\(/g) || []).length, 2);
+});

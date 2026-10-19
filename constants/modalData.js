@@ -104,7 +104,7 @@ export const MODAL_DATA = {
       sections: [
         {
           h: '1. מה נשמר ומה לא',
-          p: 'הטקסט שאתה כותב (יומן, תסריט) אינו נשמר על ידינו במסד נתונים, וההיסטוריה שלך נשמרת בזיכרון המקומי (localStorage) של הדפדפן שלך. שים לב: הטקסט נשלח לספקי AI חיצוניים כדי ליצור את התוצר (ראה סעיף 7). פוסטרים ופאנלי קומיקס שנוצרו עשויים להישמר גם באחסון ענן (Cloudflare R2) בכתובת אינטרנט אקראית שאינה מופיעה באף רשימה, כדי שיהיה אפשר להציג ולשתף אותם; מי שמחזיק בכתובת יכול לפתוח את הקובץ. ' + storedFilesHe() + ' קבצים שנוצרו לפני אוקטובר 2026 עשויים להישמר בכתובת פחות אקראית, וניתן לבקש את מחיקתם (סעיף 9).',
+          p: 'הטקסט שאתה כותב (יומן, תסריט) אינו נשמר על ידינו במסד נתונים, וההיסטוריה שלך נשמרת בזיכרון המקומי (localStorage) של הדפדפן שלך. שים לב: הטקסט נשלח לספקי AI חיצוניים כדי ליצור את התוצר (ראה סעיף 7). פוסטרים ופאנלי קומיקס שנוצרו עשויים להישמר גם באחסון ענן (Cloudflare R2) בכתובת אינטרנט אקראית שאינה מופיעה באף רשימה, כדי שיהיה אפשר להציג ולשתף אותם; מי שמחזיק בכתובת יכול לפתוח את הקובץ. ' + storedFilesHe() + ' קבצים שנוצרו לפני אוקטובר 2026 עשויים להישמר בכתובת פחות אקראית, וניתן לבקש את מחיקתם (סעיף 9). הדפדפן שומר במכשיר בלבד גם כמה הגדרות: שם היוצר, אישור "אני בן/בת 18 ומעלה" שנתן מי שלא התחבר, בחירת העוגיות והתקדמות במדריך. הן אינן נשלחות אלינו. התנתקות מהחשבון מסירה מהמכשיר את ההיסטוריה השמורה, את שם היוצר ואת הקישור לדמות שלך.',
         },
         {
           h: '2. תמונות "לככב בסיפור"',
@@ -146,7 +146,7 @@ export const MODAL_DATA = {
       sections: [
         {
           h: '1. What We Store and What We Don\'t',
-          p: 'The text you write (diary, script) is not stored by us in a database, and your history is kept in your browser\'s local storage (localStorage). Note: the text is sent to external AI providers to produce the result (see section 7). Generated posters and comic panels may also be stored in cloud storage (Cloudflare R2) at a random web address that is not listed anywhere, so they can be displayed and shared; anyone who has the address can open the file. ' + storedFilesEn() + ' Files created before October 2026 may be stored at a less random address, and you can ask us to delete them (section 9).',
+          p: 'The text you write (diary, script) is not stored by us in a database, and your history is kept in your browser\'s local storage (localStorage). Note: the text is sent to external AI providers to produce the result (see section 7). Generated posters and comic panels may also be stored in cloud storage (Cloudflare R2) at a random web address that is not listed anywhere, so they can be displayed and shared; anyone who has the address can open the file. ' + storedFilesEn() + ' Files created before October 2026 may be stored at a less random address, and you can ask us to delete them (section 9). Your browser also keeps a few settings on this device only: your creator name, the "I am 18 or older" confirmation given by visitors who are not signed in, your cookie choice and your guided-tour progress. They are not sent to us. Signing out removes the saved history, the creator name and the link to your character from this device.',
         },
         {
           h: '2. "Star Yourself" Photos',

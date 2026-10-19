@@ -1,3 +1,4 @@
+import { recordScriptStage } from '../../lib/script-stats.js';
 import { protagonistNameFrom } from '../../utils/producer-name.js';
 import { generateScript } from '../../lib/story-service.js';
 import redis from '../../lib/redis.js';
@@ -135,6 +136,7 @@ export default async function handler(req, res) {
       throw e;
     }
 
+    await recordScriptStage(result);   // which stage served it (counts only: lib/script-stats.js)
     if (!result.success) {
       await releaseScriptQuota(reservation); // nothing was produced → no script spent
       if (guestBudgetReserved) await releaseGuestScriptBudget();
@@ -175,6 +177,7 @@ export default async function handler(req, res) {
         try {
           again = await generateScript(safeJournalEntry, cleanGenre, cleanGender, { protagonistName, extraSafety: REGENERATION_SAFETY_LINE, budgetMs: left() - 9000 });
         } catch { again = { success: false }; }
+        await recordScriptStage(again);
         if (!again.success) return refuse('regeneration failed');
         check = await checkTextOutput(again.output, { genre: cleanGenre, budgetMs: left() });
         if (check.verdict === 'unavailable') return unavailable();
