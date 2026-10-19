@@ -54,7 +54,7 @@ function HeroSection({ lang, onGetStarted }) {
         ).map((chip) => (
           <span
             key={chip}
-            className="px-3 py-1 rounded-full border border-[#d4a373]/15 bg-[#d4a373]/[0.04] text-[#d4a373]/70 text-[10px] md:text-[11px] font-bold tracking-wide whitespace-nowrap"
+            className="px-3 py-1 rounded-full border border-[#d4a373]/15 bg-[#d4a373]/[0.04] text-[#d4a373]/75 text-[10px] md:text-[11px] font-bold tracking-wide whitespace-nowrap"
           >
             {chip}
           </span>

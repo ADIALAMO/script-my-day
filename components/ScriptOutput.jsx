@@ -527,7 +527,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
                   <button
                     onClick={handleEditRevert}
                     title={uiHebrew ? 'בטל עריכה' : 'Revert to original'}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-xl text-gray-500 hover:text-red-400 hover:border-red-500/30 hover:bg-red-500/8 transition-all duration-200 text-[10px] font-black uppercase tracking-wider"
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-xl text-gray-400 hover:text-red-400 hover:border-red-500/30 hover:bg-red-500/8 transition-all duration-200 text-[10px] font-black uppercase tracking-wider"
                   >
                     <RotateCcw size={12} />
                     <span className="hidden sm:inline">{uiHebrew ? 'שחזר' : 'Revert'}</span>
@@ -602,7 +602,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
                     className="flex items-center gap-3 w-full px-4 py-3 text-[10.5px] font-bold uppercase tracking-wider text-gray-300 hover:text-[#d4a373] hover:bg-[#d4a373]/8 transition-colors duration-150"
                     style={{ textAlign: uiHebrew ? 'right' : 'left' }}
                   >
-                    {isCopied ? <Check size={13} className="text-green-400 shrink-0" /> : <Copy size={13} className="text-[#d4a373]/50 shrink-0" />}
+                    {isCopied ? <Check size={13} className="text-green-400 shrink-0" /> : <Copy size={13} className="text-[#d4a373]/75 shrink-0" />}
                     {isCopied ? (uiHebrew ? 'הועתק!' : 'Copied!') : (uiHebrew ? 'העתק טקסט' : 'Copy Text')}
                   </button>
 
@@ -646,7 +646,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
                     className="flex items-center gap-3 w-full px-4 py-3 text-[10.5px] font-bold uppercase tracking-wider text-gray-300 hover:text-[#d4a373] hover:bg-[#d4a373]/8 transition-colors duration-150"
                     style={{ textAlign: uiHebrew ? 'right' : 'left' }}
                   >
-                    {isDownloaded ? <Check size={13} className="text-green-400 shrink-0" /> : <FileText size={13} className="text-[#d4a373]/50 shrink-0" />}
+                    {isDownloaded ? <Check size={13} className="text-green-400 shrink-0" /> : <FileText size={13} className="text-[#d4a373]/75 shrink-0" />}
                     {isDownloaded ? (uiHebrew ? 'נשמר!' : 'Saved!') : (uiHebrew ? 'הורד .txt' : 'Download .txt')}
                   </button>
 
@@ -660,7 +660,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
                       className="flex items-center gap-3 w-full px-4 py-3 text-[10.5px] font-bold uppercase tracking-wider text-gray-300 hover:text-[#d4a373] hover:bg-[#d4a373]/8 transition-colors duration-150"
                       style={{ textAlign: uiHebrew ? 'right' : 'left' }}
                     >
-                      <Printer size={13} className="text-[#d4a373]/50 shrink-0" />
+                      <Printer size={13} className="text-[#d4a373]/75 shrink-0" />
                       {uiHebrew ? 'ייצוא PDF / הדפסה' : 'Export PDF / Print'}
                     </button>
                   )}
@@ -672,7 +672,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
                     className="flex items-center gap-3 w-full px-4 py-3 text-[10.5px] font-bold uppercase tracking-wider text-gray-300 hover:text-[#d4a373] hover:bg-[#d4a373]/8 transition-colors duration-150"
                     style={{ textAlign: uiHebrew ? 'right' : 'left' }}
                   >
-                    <Share2 size={13} className="text-[#d4a373]/50 shrink-0" />
+                    <Share2 size={13} className="text-[#d4a373]/75 shrink-0" />
                     {uiHebrew ? 'שתף…' : 'Share…'}
                   </button>
                 </motion.div>
@@ -698,7 +698,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               className={`px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200
                 ${viewMode === 'journal'
                   ? 'bg-[#d4a373]/20 border border-[#d4a373]/60 text-[#d4a373]'
-                  : 'border border-transparent text-gray-500 hover:text-gray-300'}`}
+                  : 'border border-transparent text-gray-400 hover:text-gray-300'}`}
             >
               📓 {uiHebrew ? 'היומן המקורי שלי' : 'My Original Journal'}
             </button>
@@ -707,7 +707,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               className={`px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200
                 ${viewMode === 'script'
                   ? 'bg-[#d4a373]/20 border border-[#d4a373]/60 text-[#d4a373]'
-                  : 'border border-transparent text-gray-500 hover:text-gray-300'}`}
+                  : 'border border-transparent text-gray-400 hover:text-gray-300'}`}
             >
               🎬 {uiHebrew ? 'התסריט שנוצר' : 'The Screenplay'}
             </button>
@@ -769,7 +769,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               aria-label={isHebrew ? 'עריכת התסריט' : 'Edit the script'}
               className={`w-full min-h-[420px] md:min-h-[570px] bg-transparent outline-none resize-none
                 script-font text-xl md:text-3xl leading-[2.5] text-gray-100
-                placeholder-gray-500 caret-[#d4a373]
+                placeholder-gray-400 caret-[#d4a373]
                 ${isHebrew ? 'text-right' : 'text-left'}`}
               style={{ fontFamily: "'Courier Prime', 'Courier New', monospace" }}
             />
@@ -824,7 +824,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               key="save-flash"
               initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 6 }} transition={{ duration: 0.2 }}
-              className={`absolute ${innerScroll ? 'top-1/2 -translate-y-1/2' : 'bottom-5'} right-6 z-30 flex items-center gap-1.5 text-[#d4a373]/60 text-[10px] font-black uppercase tracking-widest`}
+              className={`absolute ${innerScroll ? 'top-1/2 -translate-y-1/2' : 'bottom-5'} right-6 z-30 flex items-center gap-1.5 text-[#d4a373]/75 text-[10px] font-black uppercase tracking-widest`}
             >
               <CheckCheck size={11} />
               {uiHebrew ? 'נשמר' : 'Saved'}
@@ -843,7 +843,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
           {/* ── REVIEW BEAT — frames editing as a stage before locking the poster ── */}
           {!isEditing && (
             <div className="flex flex-col items-center gap-2 pb-1 text-center">
-              <p className="text-white/45 text-[11px] md:text-[12px] font-light leading-snug">
+              <p className="text-white/50 text-[11px] md:text-[12px] font-light leading-snug">
                 {uiHebrew ? 'מרוצה מהתסריט?' : 'Happy with your script?'}
               </p>
               <div className="flex items-center gap-2.5">
@@ -855,7 +855,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
                   <Pencil size={11} />
                   {uiHebrew ? 'ערוך כל שורה' : 'Edit any line'}
                 </button>
-                <span className="text-white/45 text-[10px] font-bold uppercase tracking-wider">
+                <span className="text-white/50 text-[10px] font-bold uppercase tracking-wider">
                   {uiHebrew ? 'או צור פוסטר ↓' : 'or generate poster ↓'}
                 </span>
               </div>
@@ -866,7 +866,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
           {characterExpired && !hasCharacter && (
             <div role="status" className="mx-auto mb-2 max-w-md flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/[0.04] border border-white/10 text-gray-300 text-[11px] leading-relaxed">
               <span className="flex-1">{uiHebrew ? 'הדמות השמורה שלך אינה זמינה יותר. אפשר להעלות תמונה וליצור אותה מחדש.' : 'Your saved character is no longer available. You can upload a photo to create it again.'}</span>
-              <button onClick={dismissCharacterExpired} aria-label={uiHebrew ? 'סגור הודעה' : 'Dismiss'} className="shrink-0 w-11 h-11 flex items-center justify-center text-gray-500 hover:text-white"><X size={14} /></button>
+              <button onClick={dismissCharacterExpired} aria-label={uiHebrew ? 'סגור הודעה' : 'Dismiss'} className="shrink-0 w-11 h-11 flex items-center justify-center text-gray-400 hover:text-white"><X size={14} /></button>
             </div>
           )}
           {/* ── CHARACTER CHIP — governs both poster & comic (Identity Track) ── */}
@@ -881,11 +881,11 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
                   <span className={`relative w-8 h-[18px] rounded-full transition-colors duration-200 ${starring ? 'bg-[#d4a373]' : 'bg-white/15'}`}>
                     <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-black transition-all duration-200 ${starring ? 'left-[16px]' : 'left-[2px]'}`} />
                   </span>
-                  <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${starring ? 'text-[#d4a373]' : 'text-gray-500'}`}>
+                  <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${starring ? 'text-[#d4a373]' : 'text-gray-400'}`}>
                     {uiHebrew ? 'בכיכובי' : 'Starring me'}
                   </span>
                 </button>
-                <button onClick={() => setShowCharacterModal(true)} className="text-gray-500 hover:text-red-400 transition-colors" title={uiHebrew ? 'הסר / נהל את הדמות' : 'Remove / manage character'}>
+                <button onClick={() => setShowCharacterModal(true)} className="text-gray-400 hover:text-red-400 transition-colors" title={uiHebrew ? 'הסר / נהל את הדמות' : 'Remove / manage character'}>
                   <X size={13} />
                 </button>
               </div>
@@ -972,7 +972,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
             <button
               onClick={dismissReferralNudge}
               aria-label={uiHebrew ? 'סגור' : 'Dismiss'}
-              className="shrink-0 p-1 text-[#d4a373]/40 hover:text-[#d4a373] transition-colors"
+              className="shrink-0 p-1 text-[#d4a373]/75 hover:text-[#d4a373] transition-colors"
             >
               <X size={14} />
             </button>
@@ -993,7 +993,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
           >
             <button
               onClick={cancelPoster}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border border-red-500/25 bg-red-500/[0.06] text-red-400/70 hover:text-red-400 hover:border-red-500/45 hover:bg-red-500/10 transition-all duration-200"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border border-red-500/25 bg-red-500/[0.06] text-red-400/85 hover:text-red-400 hover:border-red-500/45 hover:bg-red-500/10 transition-all duration-200"
             >
               <X size={11} /> {uiHebrew ? 'בטל יצירת פוסטר' : 'CANCEL POSTER'}
             </button>
@@ -1011,7 +1011,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
           {/* Divider / section header */}
           <div className="flex items-center gap-3 py-1">
             <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-            <span className="text-[10px] font-black uppercase tracking-[0.28em]" style={{ color: 'rgba(255,255,255,0.18)' }}>
+            <span className="text-[10px] font-black uppercase tracking-[0.28em]" style={{ color: 'rgba(255,255,255,0.5)' }}>
               {uiHebrew ? 'קומיקס' : 'COMIC STORYBOARD'}
             </span>
             <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
@@ -1027,7 +1027,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
                   className={`px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-200
                     ${comicStyle === opt.value
                       ? 'bg-[#d4a373]/20 border border-[#d4a373]/60 text-[#d4a373]'
-                      : 'bg-white/[0.04] border border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20'
+                      : 'bg-white/[0.04] border border-white/10 text-gray-400 hover:text-gray-300 hover:border-white/20'
                     }`}
                 >
                   {opt.label}
@@ -1042,7 +1042,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
             className="w-full border border-[#d4a373]/40 bg-[#050710] text-[#d4a373] font-black py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-[#d4a373]/10 hover:border-[#d4a373]/70 transition-all duration-300 disabled:opacity-60"
           >
             {storyboardLoading
-              ? <Clapperboard size={18} className="animate-spin text-[#d4a373]/60" />
+              ? <Clapperboard size={18} className="animate-spin text-[#d4a373]/75" />
               : <><Clapperboard size={18} /><span>{uiHebrew ? 'צור קומיקס' : 'GENERATE COMIC STORYBOARD'}</span></>
             }
           </button>
@@ -1150,7 +1150,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
                 <p className="text-[#d4a373] font-black text-[11px] uppercase tracking-[0.22em]">
                   {uiHebrew ? 'צור ריל קולנועי' : 'GENERATE CINEMATIC REEL'}
                 </p>
-                <p className="text-white/45 text-[10px] tracking-wide mt-0.5">
+                <p className="text-white/50 text-[10px] tracking-wide mt-0.5">
                   {uiHebrew
                     ? 'קומפוזיציה קולנועית מוכנה לשיתוף · 9:16 · אינסטגרם / טיקטוק'
                     : 'Cinematic composition ready to share · 9:16 · Instagram / TikTok'}
@@ -1219,8 +1219,8 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               <div className="w-full max-w-[340px] pointer-events-auto rounded-[2rem] overflow-hidden bg-[#07070f]/98 backdrop-blur-3xl border border-[#d4a373]/12 shadow-[0_48px_120px_rgba(0,0,0,0.9),0_0_0_1px_rgba(212,163,115,0.07)]">
                 <div className="relative px-6 pt-6 pb-5 border-b border-white/[0.05]">
                   <div className="flex items-center gap-2 mb-2">
-                    <Share2 size={12} className="text-[#d4a373]/70" />
-                    <span className="text-[#d4a373]/70 text-[10px] font-black uppercase tracking-[0.2em]">
+                    <Share2 size={12} className="text-[#d4a373]/75" />
+                    <span className="text-[#d4a373]/75 text-[10px] font-black uppercase tracking-[0.2em]">
                       {uiHebrew ? 'הפץ את ההפקה' : 'Distribution Hub'}
                     </span>
                   </div>
@@ -1229,7 +1229,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
                   </p>
                   <button
                     onClick={() => setShowShareModal(false)}
-                    className="absolute top-[22px] right-5 w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-gray-500 hover:text-white transition-all duration-150"
+                    className="absolute top-[22px] right-5 w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all duration-150"
                   >
                     <X size={13} />
                   </button>
@@ -1257,15 +1257,15 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
                       </div>
                       <div>
                         <p className="text-white font-bold text-[13px] leading-none mb-[5px]">{item.label}</p>
-                        <p className="text-gray-500 text-[11px] leading-none">{item.sub}</p>
+                        <p className="text-gray-400 text-[11px] leading-none">{item.sub}</p>
                       </div>
                     </button>
                   ))}
                 </div>
 
                 <div className="px-6 py-3 border-t border-white/[0.05] flex items-center justify-center gap-1.5">
-                  <Film size={10} className="text-[#d4a373]/30" />
-                  <span className="text-[#d4a373]/30 text-[10px] font-black uppercase tracking-[0.22em]">LIFESCRIPT STUDIO</span>
+                  <Film size={10} className="text-[#d4a373]/75" />
+                  <span className="text-[#d4a373]/75 text-[10px] font-black uppercase tracking-[0.22em]">LIFESCRIPT STUDIO</span>
                 </div>
               </div>
             </motion.div>

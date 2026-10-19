@@ -85,7 +85,7 @@ export default function LegalPage({ contentKey }) {
             <button
               onClick={() => setLang(isHe ? 'en' : 'he')}
               aria-label={isHe ? 'Switch to English' : 'עבור לעברית'}
-              className="text-white/45 hover:text-white/70 text-[11px] font-mono tracking-widest transition-colors px-3 py-1.5 rounded-full border border-white/10 hover:border-white/25"
+              className="text-white/50 hover:text-white/70 text-[11px] font-mono tracking-widest transition-colors px-3 py-1.5 rounded-full border border-white/10 hover:border-white/25"
             >
               {isHe ? 'EN' : 'HE'}
             </button>
@@ -97,14 +97,14 @@ export default function LegalPage({ contentKey }) {
 
           {/* Header block */}
           <div className="mb-10 pb-8 border-b border-white/[0.06]">
-            <p className="text-[10px] font-black tracking-[0.35em] text-[#d4a373]/70 uppercase mb-3">
+            <p className="text-[10px] font-black tracking-[0.35em] text-[#d4a373]/75 uppercase mb-3">
               LIFESCRIPT Studio
             </p>
             <h1 className="text-3xl font-black tracking-wide text-white leading-tight">
               {data.title}
             </h1>
             {data.summary && (
-              <p className="mt-3 text-white/45 text-[12px] leading-relaxed">
+              <p className="mt-3 text-white/50 text-[12px] leading-relaxed">
                 {data.summary}
               </p>
             )}
@@ -129,18 +129,18 @@ export default function LegalPage({ contentKey }) {
 
           {/* Footer links */}
           <div className="mt-14 pt-8 border-t border-white/[0.06] flex flex-col items-center gap-3 text-center">
-            <p className="text-[10px] tracking-[0.3em] font-black text-white/45 uppercase">
+            <p className="text-[10px] tracking-[0.3em] font-black text-white/50 uppercase">
               LIFESCRIPT Studio
             </p>
             <a
               href="mailto:adialamo@gmail.com"
-              className="text-[#d4a373]/70 hover:text-[#d4a373] text-[12px] transition-colors"
+              className="text-[#d4a373]/75 hover:text-[#d4a373] text-[12px] transition-colors"
             >
               adialamo@gmail.com
             </a>
             <Link
               href={`/${sib}`}
-              className="text-white/45 hover:text-white/50 text-[11px] transition-colors"
+              className="text-white/50 hover:text-white/70 text-[11px] transition-colors"
             >
               {sib === 'privacy'
                 ? (isHe ? 'מדיניות פרטיות' : 'Privacy Policy')
@@ -149,7 +149,7 @@ export default function LegalPage({ contentKey }) {
             {contentKey === 'privacy' && (
               <Link
                 href="/data-deletion"
-                className="text-white/45 hover:text-white/50 text-[11px] transition-colors"
+                className="text-white/50 hover:text-white/70 text-[11px] transition-colors"
               >
                 {isHe ? 'מחיקת חשבון ומידע' : 'Account & Data Deletion'}
               </Link>

@@ -116,13 +116,13 @@ export default function CinematicLoader({
               {/* Status label */}
               <span
                 className="shrink-0 text-[10px] font-black uppercase tracking-[0.24em]"
-                style={{ color: 'rgba(212,163,115,0.65)' }}
+                style={{ color: 'rgba(212,163,115,0.8)' }}
               >
                 {statusLabel}
               </span>
 
               {/* Separator */}
-              <span className="shrink-0 text-[10px]" style={{ color: 'rgba(255,255,255,0.14)' }}>·</span>
+              <span className="shrink-0 text-[10px]" style={{ color: 'rgba(255,255,255,0.5)' }}>·</span>
 
               {/* Rotating quote — truncated to a single line */}
               <div className="flex-1 min-w-0 overflow-hidden">
@@ -135,7 +135,7 @@ export default function CinematicLoader({
                     transition={{ duration: 0.28, ease: 'easeOut' }}
                     className="text-[10px] font-light truncate"
                     style={{
-                      color: 'rgba(255,255,255,0.35)',
+                      color: 'rgba(255,255,255,0.5)',
                       fontFamily: "'Courier Prime','Courier New',monospace",
                       direction: isHebrew ? 'rtl' : 'ltr',
                     }}
@@ -169,7 +169,7 @@ export default function CinematicLoader({
                   style={{
                     border: '1px solid rgba(239,68,68,0.22)',
                     background: 'rgba(239,68,68,0.06)',
-                    color: 'rgba(248,113,113,0.55)',
+                    color: 'rgba(248,113,113,0.85)',
                   }}
                   onMouseEnter={e => {
                     e.currentTarget.style.color = 'rgba(248,113,113,0.9)';

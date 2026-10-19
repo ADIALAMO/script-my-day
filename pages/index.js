@@ -83,7 +83,7 @@ function PosterCardBody({ poster, lang, compact = false, eager = false }) {
         <div className="absolute inset-0 opacity-[0.035]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: compact ? '8px 8px' : '10px 10px' }} />
         <div className="absolute inset-0 opacity-10" style={{ background: `radial-gradient(ellipse at center, ${poster.accent}55 0%, transparent 70%)` }} />
         <div className="relative z-10 text-center space-y-1">
-          {!compact && <p className="text-[10px] tracking-[0.4em] font-black uppercase" style={{ color: `${poster.accent}66` }}>{poster.textSub}</p>}
+          {!compact && <p className="text-[10px] tracking-[0.4em] font-black uppercase" style={{ color: poster.accent }}>{poster.textSub}</p>}
           {poster.textDisplay.split('\n').map((line, i) => (
             <p key={i} className="font-black leading-[0.9] select-none"
               style={{ fontSize: compact ? '0.85rem' : 'clamp(1.5rem, 7.5vw, 2rem)', color: poster.accent, fontFamily: 'Impact, "Arial Black", sans-serif', textShadow: `0 0 32px ${poster.accent}55` }}>
@@ -93,7 +93,7 @@ function PosterCardBody({ poster, lang, compact = false, eager = false }) {
           {!compact && (
             <>
               <div className="w-6 h-0.5 mx-auto mt-1.5 rounded-full" style={{ background: `${poster.accent}50` }} />
-              <p className="text-[10px] tracking-[0.5em] font-black uppercase" style={{ color: `${poster.accent}35` }}>LIFESCRIPT</p>
+              <p className="text-[10px] tracking-[0.5em] font-black uppercase" style={{ color: poster.accent }}>LIFESCRIPT</p>
             </>
           )}
         </div>
@@ -191,7 +191,7 @@ function PosterLightbox({ poster, onClose, onReported, lang }) {
             type="button"
             onClick={e => { e.stopPropagation(); onClose(); }}
             aria-label={lang === 'he' ? 'סגור' : 'Close'}
-            className="close-button absolute right-5 text-white/45 [@media(hover:hover)]:hover:text-[#d4a373] transition-all duration-300 z-[200] p-3.5 bg-black/25 backdrop-blur-md rounded-full group"
+            className="close-button absolute right-5 text-white/50 [@media(hover:hover)]:hover:text-[#d4a373] transition-all duration-300 z-[200] p-3.5 bg-black/25 backdrop-blur-md rounded-full group"
             style={{ top: 'calc(var(--sat,0px) + 14px)', touchAction: 'manipulation' }}
           >
             <X size={20} className="[@media(hover:hover)]:group-hover:rotate-90 transition-transform duration-450" />
@@ -963,7 +963,7 @@ function HomePage() {
         {/* ── Poster teaser strip — social proof above the form ────────── */}
         <div className="mb-8 -mx-2">
           <div className="flex items-center justify-between mb-2 px-2">
-            <p className="text-[#d4a373]/50 text-[10px] font-black tracking-[0.45em] uppercase">
+            <p className="text-[#d4a373]/75 text-[10px] font-black tracking-[0.45em] uppercase">
               {lang === 'he' ? 'דוגמאות הפקה' : 'PRODUCTION SAMPLES'}
             </p>
             <button
@@ -971,13 +971,13 @@ function HomePage() {
                 document.getElementById('production-samples')
                   ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
               }
-              className="text-[#d4a373]/40 hover:text-[#d4a373]/80 text-[10px] font-black tracking-[0.3em] uppercase transition-colors duration-200"
+              className="text-[#d4a373]/75 hover:text-[#d4a373]/80 text-[10px] font-black tracking-[0.3em] uppercase transition-colors duration-200"
             >
               {lang === 'he' ? 'כל הגלריה ←' : 'VIEW ALL →'}
             </button>
           </div>
           {scriptCount > 0 && (
-            <p className="text-center text-white/45 text-[10px] font-black tracking-[0.3em] uppercase tabular-nums mb-2 px-2">
+            <p className="text-center text-white/50 text-[10px] font-black tracking-[0.3em] uppercase tabular-nums mb-2 px-2">
               ✦ {scriptCount.toLocaleString()} {lang === 'he' ? 'תסריטים נוצרו' : 'SCRIPTS CREATED'} ✦
             </p>
           )}
@@ -1029,8 +1029,8 @@ function HomePage() {
               className="relative shrink-0 rounded-2xl overflow-hidden border border-[#d4a373]/20 bg-[#d4a373]/[0.04] hover:bg-[#d4a373]/[0.09] transition-colors duration-200 flex flex-col items-center justify-center gap-1.5"
               style={{ width: 110, height: 165 }}
             >
-              <span className="text-[#d4a373]/60 text-xl font-black">+</span>
-              <span className="text-[#d4a373]/50 text-[10px] font-black tracking-wide uppercase text-center leading-tight px-2">
+              <span className="text-[#d4a373]/75 text-xl font-black">+</span>
+              <span className="text-[#d4a373]/75 text-[10px] font-black tracking-wide uppercase text-center leading-tight px-2">
                 {lang === 'he' ? 'עוד הפקות' : 'More\nSamples'}
               </span>
             </button>
@@ -1060,7 +1060,7 @@ function HomePage() {
                     <p className="text-amber-400 font-black text-[13px] leading-none mb-0.5">
                       {lang === 'he' ? '✦ ברוך הבא לפרו!' : '✦ Welcome to Pro!'}
                     </p>
-                    <p className="text-amber-400/55 text-[11px]">
+                    <p className="text-amber-400/65 text-[11px]">
                       {lang === 'he'
                         ? 'החשבון שלך שודרג. כל יכולות הפרו פעילות עכשיו.'
                         : 'Your account is upgraded. All Pro features are now active.'}
@@ -1069,7 +1069,7 @@ function HomePage() {
                   <button
                     onClick={() => setCheckoutNotice(null)}
                     aria-label={lang === 'he' ? 'סגור' : 'Dismiss'}
-                    className="shrink-0 p-1.5 rounded-lg text-amber-400/35 hover:text-amber-400 hover:bg-amber-500/10 transition-all duration-150"
+                    className="shrink-0 p-1.5 rounded-lg text-amber-400/65 hover:text-amber-400 hover:bg-amber-500/10 transition-all duration-150"
                   >
                     <X size={13} />
                   </button>
@@ -1079,8 +1079,8 @@ function HomePage() {
                   className="flex items-center gap-3.5 px-5 py-4 rounded-2xl bg-white/[0.04] border border-white/8"
                   dir={lang === 'he' ? 'rtl' : 'ltr'}
                 >
-                  <AlertCircle size={15} className="shrink-0 text-white/45" />
-                  <p className="flex-1 text-white/45 text-[12px]">
+                  <AlertCircle size={15} className="shrink-0 text-white/50" />
+                  <p className="flex-1 text-white/50 text-[12px]">
                     {lang === 'he'
                       ? 'הרכישה בוטלה — תוכל לשדרג בכל עת.'
                       : 'Checkout was cancelled — you can upgrade anytime.'}
@@ -1088,7 +1088,7 @@ function HomePage() {
                   <button
                     onClick={() => setCheckoutNotice(null)}
                     aria-label={lang === 'he' ? 'סגור' : 'Dismiss'}
-                    className="shrink-0 p-1.5 text-white/45 hover:text-white/50 transition-colors duration-150"
+                    className="shrink-0 p-1.5 text-white/50 hover:text-white/70 transition-colors duration-150"
                   >
                     <X size={13} />
                   </button>
@@ -1143,7 +1143,7 @@ function HomePage() {
                       type="button"
                       onClick={() => setModalContent(null)}
                       aria-label={lang === 'he' ? 'סגור' : 'Close'}
-                      className="close-button relative text-white/45 [@media(hover:hover)]:hover:text-[#d4a373] transition-colors p-2"
+                      className="close-button relative text-white/50 [@media(hover:hover)]:hover:text-[#d4a373] transition-colors p-2"
                     >
                       <X size={28} />
                     </button>
@@ -1176,14 +1176,14 @@ function HomePage() {
                     )}
 
                     {modalData[modalContent][lang].quote && (
-                      <p className="text-center text-[10px] tracking-[0.6em] text-[#d4a373]/40 uppercase py-4 border-t border-white/5">
+                      <p className="text-center text-[10px] tracking-[0.6em] text-[#d4a373]/75 uppercase py-4 border-t border-white/5">
                         {modalData[modalContent][lang].quote}
                       </p>
                     )}
 
                     {modalData[modalContent][lang].footerLabel && (
                       <div className="pt-6 text-center border-t border-white/5">
-                        <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-4">
+                        <p className="text-gray-400 text-[10px] uppercase tracking-widest mb-4">
                           {modalData[modalContent][lang].footerLabel}
                         </p>
                         <div className="inline-block px-6 py-2 rounded-full bg-[#d4a373]/10 border border-[#d4a373]/20 text-[#d4a373] text-[11px] font-black uppercase tracking-widest">
@@ -1200,7 +1200,7 @@ function HomePage() {
                       <div className="pt-6 text-center border-t border-white/5">
                         <Link
                           href="/data-deletion"
-                          className="text-white/45 hover:text-white/50 text-[11px] transition-colors"
+                          className="text-white/50 hover:text-white/70 text-[11px] transition-colors"
                         >
                           {lang === 'he' ? 'מחיקת חשבון ומידע' : 'Account & Data Deletion'}
                         </Link>
@@ -1238,10 +1238,10 @@ function HomePage() {
                       return (
                         <motion.span
                           key={label}
-                          animate={{ opacity: active ? 1 : done ? 0.6 : 0.22, scale: active ? 1 : 0.94 }}
+                          animate={{ opacity: 1, scale: active ? 1 : 0.94 }}
                           transition={{ duration: 0.45, ease: 'easeInOut' }}
                           className="text-[10px] font-black uppercase tracking-[0.3em]"
-                          style={{ color: done || active ? '#d4a373' : 'rgba(255,255,255,0.3)' }}
+                          style={{ color: active ? '#d4a373' : done ? 'rgba(212,163,115,0.8)' : 'rgba(255,255,255,0.5)' }}
                         >
                           {done ? '✓ ' : ''}{label}
                         </motion.span>
@@ -1350,7 +1350,7 @@ function HomePage() {
               {/* ── Header + Segmented View Toggle ───────────────────────── */}
               <div className="flex items-start justify-between mb-9 px-1">
                 <div className="flex-1 flex flex-col items-center gap-2 pt-0.5">
-                  <h2 className="text-[#d4a373] text-[10px] font-black tracking-[0.5em] uppercase opacity-60">
+                  <h2 className="text-[#d4a373] text-[10px] font-black tracking-[0.5em] uppercase">
                     {lang === 'he' ? 'גלריית הפקות' : 'PRODUCTION SAMPLES'}
                   </h2>
                   <div className="h-[1px] w-20 bg-[#d4a373]/30" />
@@ -1368,7 +1368,7 @@ function HomePage() {
                       className={`px-3 py-[5px] rounded-[9px] text-[10px] font-black uppercase tracking-wide transition-all duration-200 ${
                         galleryMode === seg.key
                           ? 'bg-[#d4a373] text-black shadow-sm'
-                          : 'text-white/45 hover:text-white/58'
+                          : 'text-white/50 hover:text-white/58'
                       }`}
                     >
                       {lang === 'he' ? seg.labelHe : seg.labelEn}
@@ -1381,7 +1381,7 @@ function HomePage() {
               <div className="mb-8 px-1">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="h-px flex-1 bg-[#d4a373]/12" />
-                  <span className="text-[10px] font-black tracking-[0.45em] uppercase text-white/45 whitespace-nowrap">
+                  <span className="text-[10px] font-black tracking-[0.45em] uppercase text-white/50 whitespace-nowrap">
                     {lang === 'he' ? '▶  ריל קולנועי' : '▶  MOTION REELS'}
                   </span>
                   <div className="h-px flex-1 bg-[#d4a373]/12" />
@@ -1649,7 +1649,7 @@ function HomePage() {
                   <span className="text-[#d4a373] font-black tracking-[0.2em] text-xs uppercase">
                     {lang === 'he' ? 'יומן הבמאי' : "DIRECTOR'S LOG"}
                   </span>
-                  <p className="text-gray-500 text-[10px] font-light tracking-wide">
+                  <p className="text-gray-400 text-[10px] font-light tracking-wide">
                     {lang === 'he' ? 'משוב, תמיכה ודיווח תקלות — דברו איתנו' : 'Feedback, support & issues — talk to us'}
                   </p>
                 </div>
@@ -1661,7 +1661,7 @@ function HomePage() {
               >
                 <button 
                   onClick={() => setShowFeedback(false)}
-                  className="absolute top-4 right-4 text-white/45 hover:text-[#d4a373] transition-colors p-2"
+                  className="absolute top-4 right-4 text-white/50 hover:text-[#d4a373] transition-colors p-2"
                 >
                   <X size={20} />
                 </button>
@@ -1678,7 +1678,7 @@ function HomePage() {
                   onChange={(e) => setFeedbackText(e.target.value)}
                   placeholder={lang === 'he' ? 'שתף אותנו בחוויה שלך, הצעות לשיפור או באגים...' : 'Share your experience, suggestions, or bugs...'}
                   aria-label={lang === 'he' ? 'המשוב שלך' : 'Your feedback'}
-                  className="w-full bg-black/40 border border-white/5 rounded-2xl p-4 text-sm text-white placeholder-gray-500 focus:border-[#d4a373]/40 outline-none transition-all min-h-[120px] resize-none mb-6"
+                  className="w-full bg-black/40 border border-white/5 rounded-2xl p-4 text-sm text-white placeholder-gray-400 focus:border-[#d4a373]/40 outline-none transition-all min-h-[120px] resize-none mb-6"
                 />
 
                 {feedbackError && (
@@ -1717,10 +1717,10 @@ function HomePage() {
                 <Film size={16} />
                 <span className="font-black tracking-[0.3em] text-[10px] uppercase italic">LIFESCRIPT Studio</span>
               </div>
-              <p className="text-gray-500 text-[10px] tracking-widest uppercase">
+              <p className="text-gray-400 text-[10px] tracking-widest uppercase">
                 &copy; {new Date().getFullYear()} {lang === 'he' ? 'כל הזכויות שמורות' : 'All Rights Reserved'}
               </p>
-              <p className="text-gray-500 text-[10px] mt-1.5">
+              <p className="text-gray-400 text-[10px] mt-1.5">
                 {lang === 'he' ? 'LifeScript מיועדת לבני 18 ומעלה.' : 'LifeScript is intended for adults aged 18 and over.'}
               </p>
             </div>
@@ -1731,7 +1731,7 @@ function HomePage() {
                 <button
                   key={item}
                   onClick={() => setModalContent(item)}
-                  className="text-[10px] font-black text-gray-500 hover:text-[#d4a373] transition-colors uppercase tracking-[0.2em]"
+                  className="text-[10px] font-black text-gray-400 hover:text-[#d4a373] transition-colors uppercase tracking-[0.2em]"
                 >
                   {modalData[item][lang].title.split(' - ')[0]}
                 </button>
@@ -1788,7 +1788,7 @@ function HomePage() {
             <button
               onClick={() => setShowSaveFailedNotice(false)}
               aria-label={lang === 'he' ? 'סגור' : 'Dismiss'}
-              className="shrink-0 p-1 -m-1 text-amber-400/50 hover:text-amber-300 transition-colors"
+              className="shrink-0 p-1 -m-1 text-amber-400/65 hover:text-amber-300 transition-colors"
             >
               <X size={13} />
             </button>

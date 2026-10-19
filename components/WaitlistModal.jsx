@@ -94,7 +94,7 @@ export default function WaitlistModal({ isOpen, onClose, lang = 'en', defaultEma
                 <button
                   onClick={onClose}
                   aria-label={isHe ? 'סגור' : 'Close'}
-                  className={`absolute top-5 z-10 text-white/45 hover:text-amber-400 transition-colors duration-200 p-1.5 rounded-full hover:bg-white/5 ${isHe ? 'left-5' : 'right-5'}`}
+                  className={`absolute top-5 z-10 text-white/50 hover:text-amber-400 transition-colors duration-200 p-1.5 rounded-full hover:bg-white/5 ${isHe ? 'left-5' : 'right-5'}`}
                 >
                   <X size={18} />
                 </button>
@@ -107,7 +107,7 @@ export default function WaitlistModal({ isOpen, onClose, lang = 'en', defaultEma
                     </div>
                   </div>
 
-                  <p className="text-center text-[10px] font-black tracking-[0.35em] text-amber-400/50 uppercase mb-2">
+                  <p className="text-center text-[10px] font-black tracking-[0.35em] text-amber-400/65 uppercase mb-2">
                     {isHe ? 'מסלול פרו · בקרוב' : 'PRO PLAN · COMING SOON'}
                   </p>
 
@@ -121,7 +121,7 @@ export default function WaitlistModal({ isOpen, onClose, lang = 'en', defaultEma
                       <h2 className="text-center text-white font-black text-[19px] leading-tight mb-2">
                         {isHe ? 'נרשמתם לרשימה! 🎬' : "You're on the list! 🎬"}
                       </h2>
-                      <p className="text-center text-white/45 text-[12px] leading-relaxed mb-6">
+                      <p className="text-center text-white/50 text-[12px] leading-relaxed mb-6">
                         {isHe
                           ? 'נעדכן אתכם ברגע ש-Pro ייפתח. עד אז אפשר להמשיך להפיק במסלול החינמי.'
                           : "We'll let you know the moment Pro opens. Until then — keep creating on the Free plan."}
@@ -138,14 +138,14 @@ export default function WaitlistModal({ isOpen, onClose, lang = 'en', defaultEma
                       <h2 className="text-center text-white font-black text-[19px] leading-tight mb-2">
                         {isHe ? 'היו הראשונים לקבל Pro' : 'Be first to get Pro'}
                       </h2>
-                      <p className="text-center text-white/45 text-[12px] leading-relaxed mb-6">
+                      <p className="text-center text-white/50 text-[12px] leading-relaxed mb-6">
                         {isHe
                           ? 'יותר תסריטים, פוסטרים וקומיקסים ביום. השאירו אימייל ונעדכן אתכם ברגע שזה עולה לאוויר.'
                           : 'More scripts, posters & comics a day. Drop your email and we’ll tell you the moment it goes live.'}
                       </p>
 
                       <div className="relative mb-3">
-                        <Mail size={15} className={`absolute top-1/2 -translate-y-1/2 text-white/45 ${isHe ? 'right-4' : 'left-4'}`} />
+                        <Mail size={15} className={`absolute top-1/2 -translate-y-1/2 text-white/50 ${isHe ? 'right-4' : 'left-4'}`} />
                         <input
                           type="email"
                           value={email}
@@ -155,7 +155,7 @@ export default function WaitlistModal({ isOpen, onClose, lang = 'en', defaultEma
                           aria-label={isHe ? 'האימייל שלך' : 'Your email address'}
                           dir="ltr"
                           disabled={state === 'sending'}
-                          className={`w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3.5 text-white text-[13px] placeholder-white/45 outline-none focus:border-amber-500/40 transition-colors disabled:opacity-50 ${isHe ? 'pr-11 pl-4 text-right' : 'pl-11 pr-4'}`}
+                          className={`w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3.5 text-white text-[13px] placeholder-white/50 outline-none focus:border-amber-500/40 transition-colors disabled:opacity-50 ${isHe ? 'pr-11 pl-4 text-right' : 'pl-11 pr-4'}`}
                         />
                         {/* Honeypot: off-screen (NOT display:none), no autofill, not focusable, hidden from assistive tech. Name = HONEYPOT_FIELD (not an autofill token). */}
                         <div aria-hidden="true" style={{ position: 'absolute', left: '-10000px', top: 'auto', width: '1px', height: '1px', overflow: 'hidden' }}>
@@ -180,7 +180,7 @@ export default function WaitlistModal({ isOpen, onClose, lang = 'en', defaultEma
                           : (isHe ? 'הצטרפות לרשימת ההמתנה' : 'Join the waitlist')}
                       </button>
 
-                      <p className="text-center text-white/45 text-[10px] leading-relaxed mt-3">
+                      <p className="text-center text-white/50 text-[10px] leading-relaxed mt-3">
                         {WAITLIST_COPY.purpose[L].before}
                         <a href="/data-deletion" target="_blank" rel="noopener noreferrer" className="underline text-white/55 hover:text-white">{WAITLIST_COPY.purpose[L].link}</a>
                         {WAITLIST_COPY.purpose[L].after}

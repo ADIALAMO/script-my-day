@@ -44,7 +44,7 @@ const ProBadge = ({ isHe }) => (
 
 // The muted "Free Plan" badge.
 const FreeBadge = ({ isHe }) => (
-  <span className="hidden md:inline-block text-[10px] font-bold text-white/45 tracking-widest uppercase whitespace-nowrap">
+  <span className="hidden md:inline-block text-[10px] font-bold text-white/50 tracking-widest uppercase whitespace-nowrap">
     {isHe ? 'חינמי' : 'Free'}
   </span>
 );
@@ -133,7 +133,7 @@ function AvatarDropdown({ session, tier, hasBillingCustomer, isHe, anchor, onClo
       {/* Identity block */}
       <div className="px-4 py-3.5 border-b border-white/[0.06]">
         <p className="text-white text-[13px] font-bold leading-tight truncate">{name}</p>
-        <p className="text-white/45 text-[11px] truncate mt-0.5">{email}</p>
+        <p className="text-white/50 text-[11px] truncate mt-0.5">{email}</p>
         {/* Current plan */}
         <div className="mt-2 flex items-center gap-1.5">
           {isAdmin ? (
@@ -145,7 +145,7 @@ function AvatarDropdown({ session, tier, hasBillingCustomer, isHe, anchor, onClo
               ✦ {isHe ? 'חבר פרו' : 'Pro Member'}
             </span>
           ) : (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 border border-white/8 text-white/45 text-[10px] font-bold tracking-wider uppercase">
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 border border-white/8 text-white/50 text-[10px] font-bold tracking-wider uppercase">
               {isHe ? 'מסלול חינמי' : 'Free Plan'}
             </span>
           )}
@@ -210,7 +210,7 @@ function AvatarDropdown({ session, tier, hasBillingCustomer, isHe, anchor, onClo
         <a
           href="/data-deletion?from=account"
           onClick={onClose}
-          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-white/45 hover:text-red-300 hover:bg-white/[0.04] transition-colors duration-150"
+          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-white/50 hover:text-red-300 hover:bg-white/[0.04] transition-colors duration-150"
         >
           <Trash2 size={13} className="shrink-0" />
           <span className="text-[11px] font-medium uppercase tracking-wide">{isHe ? 'מחק את החשבון שלי' : 'Delete my account'}</span>
@@ -222,7 +222,7 @@ function AvatarDropdown({ session, tier, hasBillingCustomer, isHe, anchor, onClo
             if (hasSavedHistory() && !window.confirm(SIGN_OUT_CONFIRM[isHe ? 'he' : 'en'])) return;
             onClose(); clearPersonalLocalData(); signOut({ callbackUrl: '/' });
           }}
-          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-white/45 hover:text-white/70 hover:bg-white/[0.04] transition-colors duration-150"
+          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-white/50 hover:text-white/70 hover:bg-white/[0.04] transition-colors duration-150"
         >
           <LogOut size={13} className="shrink-0" />
           <span className="text-[11px] font-medium uppercase tracking-wide">{isHe ? 'התנתק' : 'Sign out'}</span>
@@ -327,7 +327,7 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
             } ${isMuteLocked ? 'opacity-30' : ''}`}
           >
             {isMusicMuted
-              ? <VolumeX size={14} className="text-[#d4a373]/55 md:w-[15px] md:h-[15px] transition-colors duration-300" />
+              ? <VolumeX size={14} className="text-[#d4a373]/75 md:w-[15px] md:h-[15px] transition-colors duration-300" />
               : <Volume2 size={14} className="text-[#d4a373] md:w-[15px] md:h-[15px] transition-colors duration-300" />}
             <IconTooltip label={isHe ? (isMusicMuted ? 'בטל השתקה' : 'השתק מוזיקה') : (isMusicMuted ? 'Unmute music' : 'Mute music')} />
           </button>
@@ -346,8 +346,8 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
             aria-label={isHe ? 'הדרכה' : 'Guide'}
             className={`group relative flex items-center justify-center gap-1.5 h-8 md:h-9 w-8 md:w-auto md:px-3 border border-white/15 rounded-xl [@media(hover:hover)]:hover:border-[#d4a373]/40 [@media(hover:hover)]:hover:bg-[#d4a373]/8 transition-all duration-300 shrink-0 ${tourDisabled && !guideOpen ? 'opacity-30' : ''}`}
           >
-            <CircleHelp size={14} className="text-[#d4a373]/70 md:w-[15px] md:h-[15px]" />
-            <span className={`hidden md:inline text-[10px] font-black uppercase tracking-widest text-[#d4a373]/70 ${isHe ? 'font-heebo' : ''}`}>{isHe ? 'הדרכה' : 'Guide'}</span>
+            <CircleHelp size={14} className="text-[#d4a373]/75 md:w-[15px] md:h-[15px]" />
+            <span className={`hidden md:inline text-[10px] font-black uppercase tracking-widest text-[#d4a373]/75 ${isHe ? 'font-heebo' : ''}`}>{isHe ? 'הדרכה' : 'Guide'}</span>
             <IconTooltip label={isHe ? 'הדרכה' : 'Guide'} />
           </button>
         )}
@@ -359,7 +359,7 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
           aria-label={isHe ? 'ארכיון הפקות' : 'Production archive'}
           className="group relative flex items-center justify-center w-8 h-8 md:w-9 md:h-9 border border-white/15 rounded-xl hover:border-[#d4a373]/40 hover:bg-[#d4a373]/8 transition-all duration-300 shrink-0"
         >
-          <Clapperboard size={14} className="text-[#d4a373]/55 md:w-[15px] md:h-[15px] transition-colors duration-300" />
+          <Clapperboard size={14} className="text-[#d4a373]/75 md:w-[15px] md:h-[15px] transition-colors duration-300" />
           {historyCount > 0 && (
             <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-[3px] rounded-full bg-[#d4a373] text-black text-[10px] font-black leading-none flex items-center justify-center">
               {historyCount > 9 ? '9+' : historyCount}
@@ -392,7 +392,7 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
               aria-label={isHe ? 'הזמן חברים' : 'Invite friends'}
               className="group relative flex items-center justify-center max-[380px]:hidden w-8 h-8 md:w-9 md:h-9 border border-[#d4a373]/25 rounded-xl hover:border-[#d4a373]/50 hover:bg-[#d4a373]/8 transition-all duration-300 shrink-0"
             >
-              <Gift size={14} className="text-[#d4a373]/65 md:w-[15px] md:h-[15px]" />
+              <Gift size={14} className="text-[#d4a373]/75 md:w-[15px] md:h-[15px]" />
               <IconTooltip label={isHe ? 'הזמן חברים' : 'Invite friends'} />
             </button>
             <button
@@ -443,7 +443,7 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
                   />
                 ) : (
                   <div className="w-full h-full bg-[#d4a373]/20 flex items-center justify-center">
-                    <User size={14} className="text-[#d4a373]/70" />
+                    <User size={14} className="text-[#d4a373]/75" />
                   </div>
                 )}
                 {/* Pro ring pulse */}
