@@ -1,3 +1,4 @@
+import { hasSavedHistory, clearPersonalLocalData, SIGN_OUT_CONFIRM } from '../utils/sign-out-cleanup.js';
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Film, Languages, Clapperboard, LogOut, Crown, ChevronDown, User, CreditCard, Loader2, Gift, Volume2, VolumeX, Trash2, CircleHelp } from 'lucide-react';
@@ -217,7 +218,10 @@ function AvatarDropdown({ session, tier, hasBillingCustomer, isHe, anchor, onClo
 
         {/* Sign out */}
         <button
-          onClick={() => { onClose(); signOut({ callbackUrl: '/' }); }}
+          onClick={() => {
+            if (hasSavedHistory() && !window.confirm(SIGN_OUT_CONFIRM[isHe ? 'he' : 'en'])) return;
+            onClose(); clearPersonalLocalData(); signOut({ callbackUrl: '/' });
+          }}
           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-white/40 hover:text-white/70 hover:bg-white/[0.04] transition-colors duration-150"
         >
           <LogOut size={13} className="shrink-0" />
