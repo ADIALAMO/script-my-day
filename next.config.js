@@ -164,6 +164,8 @@ const nextConfig = {
   // answer is yes — no reload on every resume, no time-based heuristic, exact.
   env: {
     NEXT_PUBLIC_BUILD_SHA: process.env.VERCEL_GIT_COMMIT_SHA || '',
+    // Always inlined (never left to a runtime lookup) so the build can drop the scroll-debug overlay when it is not enabled: see utils/variant-flags.js DEBUG_ALLOWED.
+    NEXT_PUBLIC_SCROLL_DEBUG: process.env.NEXT_PUBLIC_SCROLL_DEBUG === 'true' ? 'true' : 'false',
   },
 
   async headers() {

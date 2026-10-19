@@ -110,7 +110,7 @@ test('overlay explains the script box: mounted or not, and why it is the legacy 
   const dbg = read('components/ScrollDebug.jsx');
   for (const k of ['location.search', 'stored flags (ls_variant_flags)', 'resolved flags | source', 'hover:none=', 'pointer:coarse=', 'passive: true']) assert.ok(dbg.includes(k), k);
   assert.ok(!/\bfetch\(|XMLHttpRequest|sendBeacon|gtag|scrollTo\(|scrollBy\(|scrollTop\s*=|\.style\.\w+\s*=/.test(dbg), 'the overlay never writes to the page or the network');
-  assert.match(read('pages/index.js'), /const ScrollDebug = dynamic\(\(\) => import\('\.\.\/components\/ScrollDebug'\), \{ ssr: false \}\)/);
+  assert.match(read('pages/index.js'), /const ScrollDebug = process\.env\.NEXT_PUBLIC_SCROLL_DEBUG === 'true' \? dynamic\(\(\) => import\('\.\.\/components\/ScrollDebug'\), \{ ssr: false \}\) : null;/);
   assert.match(read('pages/index.js'), /setDebugScroll\(readEffectiveFlags\(\)\.flags\.debug\)/);
 });
 

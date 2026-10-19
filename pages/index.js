@@ -43,7 +43,8 @@ import { useGender } from '../hooks/useGender';
 const AuthModal    = dynamic(() => import('../components/AuthModal'),    { ssr: false });
 const UpgradeModal = dynamic(() => import('../components/UpgradeModal'), { ssr: false });
 const GuidedTour = dynamic(() => import('../components/GuidedTour'), { ssr: false });
-const ScrollDebug = dynamic(() => import('../components/ScrollDebug'), { ssr: false });   // ?debug=1 only
+// The scroll overlay is bundled ONLY when the owner builds with NEXT_PUBLIC_SCROLL_DEBUG=true (never in Production): the constant folds at build time, so no chunk exists.
+const ScrollDebug = process.env.NEXT_PUBLIC_SCROLL_DEBUG === 'true' ? dynamic(() => import('../components/ScrollDebug'), { ssr: false }) : null;
 const HistoryPanel = dynamic(() => import('../components/HistoryPanel'), { ssr: false });
 
 // ── Genre metadata for filmstrip grouping ────────────────────────────────────
@@ -928,7 +929,7 @@ function HomePage() {
         tourDisabled={tourBlocked}
         tourStages={{ ...tour.reached, script: tour.reached.script || !!script }}
       />
-      {debugScroll && <ScrollDebug />}
+      {ScrollDebug && debugScroll && <ScrollDebug />}
       {tour.running && <GuidedTour key={tour.chapter} chapter={tour.chapter} manual={tour.manual} lang={lang} onFinish={tour.finish} onAbort={tour.abort} />}
 
       <main className="container mx-auto pt-4 md:pt-8 pb-12 px-6 max-w-5xl flex-grow relative">
