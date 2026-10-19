@@ -8,9 +8,10 @@ test('bold markers become bold segments and the asterisks never reach the screen
 });
 test('an unclosed marker while typing bolds the rest; no segment contains "**"; empty input is safe', () => {
   assert.deepEqual(splitBold('x **CHAR'), [{ text: 'x ', bold: false }, { text: 'CHAR', bold: true }]);
-  for (const t of ['**', '****', 'a**b**c**d']) assert.ok(splitBold(t).every((s) => !s.text.includes('**')));
+  for (const t of ['**', '****', 'a**b**c**d', '*a* *b* *c', 'x *']) assert.ok(splitBold(t).every((s) => !s.text.includes('**')));
   assert.deepEqual(splitBold(undefined), []);
   assert.deepEqual(splitBold('a * b'), [{ text: 'a * b', bold: false }]);
+  assert.deepEqual(splitBold('walking *her* now'), [{ text: 'walking ', bold: false }, { text: 'her', bold: false, italic: true }, { text: ' now', bold: false }]);
 });
 test('the script view renders through splitBold (not the raw string)', async () => {
   const { readFileSync } = await import('node:fs');

@@ -11,7 +11,16 @@ export function splitBold(text) {
   const out = [];
   parts.forEach((part, i) => {
     if (part === '') return;
-    out.push({ text: part, bold: i % 2 === 1 });
+    const bold = i % 2 === 1;
+    // single *emphasis* inside a segment becomes italic; a lone, unpaired "*" stays as text
+    const bits = part.split('*');
+    if (bits.length < 3) { out.push({ text: part, bold }); return; }
+    const pairs = Math.floor((bits.length - 1) / 2);
+    bits.forEach((bit, j) => {
+      if (bit === '') return;
+      const inPair = j % 2 === 1 && j <= pairs * 2 - 1;
+      out.push(inPair ? { text: bit, bold, italic: true } : { text: bit, bold });
+    });
   });
   return out;
 }
