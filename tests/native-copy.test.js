@@ -281,3 +281,10 @@ test('web navbar + account menu: no Pro / "Soon" / waitlist entry while there ar
   const msgs = readFileSync(path.join(ROOT, 'lib/messages.js'), 'utf8');
   assert.doesNotMatch(msgs, /from the account menu|מתפריט החשבון/);
 });
+
+test('store listing "YOUR STORY STAYS YOURS": says the journal text is sent to AI providers for processing (matches Privacy §1/§7), he + en; the listing is capped at 4000 characters', () => {
+  const en = readFileSync(path.join(ROOT, 'store-listing/copy-en.md'), 'utf8'); const he = readFileSync(path.join(ROOT, 'store-listing/copy-he.md'), 'utf8');
+  assert.match(en, /we don't store them on our servers\. To create your script, poster and comic, the text you write is sent to the AI services we use for processing\./);
+  assert.match(he, /כדי ליצור את התסריט, הפוסטר והקומיקס, הטקסט שאתם כותבים נשלח לשירותי ה-AI שבהם אנחנו משתמשים לצורך עיבוד\./);
+  for (const md of [en, he]) assert.ok(md.slice(md.indexOf('```', md.indexOf('Full description')) + 3, md.lastIndexOf('```')).length < 4000, 'full description under 4000 characters');
+});
