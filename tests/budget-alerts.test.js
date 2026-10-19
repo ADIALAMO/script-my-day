@@ -92,3 +92,26 @@ test('Telegram: exactly ONE message per budget per day, with name/count/limit an
     server.close();
   }
 });
+
+test('script budget: one early warning at 80%, once per day, then the normal "reached" alert at the cap', async () => {
+  process.env.DAILY_SCRIPT_BUDGET = '0.04';          // 5 calls at 0.008
+  const { reserveCheckBudget, checkMaxCalls } = await import('../lib/budget.js');
+  assert.equal(checkMaxCalls('script'), 5);
+  const warnLines = () => logs.filter((l) => l.includes('BUDGET 80%'));
+  for (let i = 1; i <= 3; i++) await reserveCheckBudget('script');
+  assert.equal(warnLines().length, 0, '3/5 = 60%: silent');
+  await reserveCheckBudget('script');                // 4/5 = 80%
+  assert.equal(warnLines().length, 1); assert.match(warnLines()[0], /DAILY_SCRIPT_BUDGET 4\/5/);
+  await reserveCheckBudget('script');                // 5/5
+  assert.equal(warnLines().length, 1, 'once per day');
+  assert.equal((await reserveCheckBudget('script')).ok, false);
+  assert.equal(budgetLines().length, 1, 'the "reached" alert is separate and still fires');
+  delete process.env.DAILY_SCRIPT_BUDGET;
+});
+
+test('the early warning ignores the other paid budgets and never throws', async () => {
+  const { reportBudgetWarning } = await import('../lib/budget-alerts.js');
+  await reportBudgetWarning('DAILY_SCRIPT_BUDGET', 1, 0);
+  await reportBudgetWarning('DAILY_SCRIPT_BUDGET', 1, 10);
+  assert.equal(logs.filter((l) => l.includes('BUDGET 80%')).length, 0);
+});
