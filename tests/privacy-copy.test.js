@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { MODAL_DATA } from '../constants/modalData.js';
+import { MODAL_DATA, modalDataFor } from '../constants/modalData.js';
 
 test('no unverifiable no-retention / no-training promise about AI providers, in either language', () => {
   const text = JSON.stringify({ p: MODAL_DATA.privacy, t: MODAL_DATA.terms });
@@ -113,12 +113,14 @@ test('§4 covers rate-limit records, the deletion log with e-mail/note/IP, Teleg
   assert.match(sec('privacy', 'he', 4), /יומני שרת סטנדרטיים/);
 });
 
-test('§5 Payments: free to use, no payments collected (no Stripe); §3/§4 mention no subscription and no payment-provider customer ID (none exists today)', () => {
+test('§5 Payments: free to use, no payments collected (no Stripe); §3/§4 mention no subscription; §4 names a payment-provider customer ID only conditionally', () => {
   assert.match(sec('privacy', 'en', 5), /free to use and does not collect payments, so we hold no payment or card details/);
   assert.match(sec('privacy', 'he', 5), /ואינה גובה תשלומים/);
   for (const lang of ['he', 'en']) {
     assert.doesNotMatch(JSON.stringify(MODAL_DATA.privacy[lang]), /Stripe/);
-    for (const n of [3, 4]) assert.doesNotMatch(sec('privacy', lang, n), /customer ID|מזהה לקוח|subscription|מנוי|Stripe/i, `§${n} ${lang}`);
+    for (const n of [3, 4]) assert.doesNotMatch(sec('privacy', lang, n), /subscription|מנוי|Stripe/i, `§${n} ${lang}`);
+    assert.match(sec('privacy', lang, 4), lang === 'en' ? /customer ID \(only if such a customer record was ever created for you/ : /מזהה לקוח אצל ספק תשלומים \(רק אם אי פעם נוצרה עבורך/);
+    assert.doesNotMatch(JSON.stringify(modalDataFor(true).privacy[lang]), /customer ID|מזהה לקוח/);
     assert.match(sec('privacy', lang, 4), lang === 'en' ? /your plan \(including any special access we granted\)/ : /המסלול שלך \(כולל גישה מיוחדת שהענקנו\)/);
     assert.match(sec('privacy', lang, 3), lang === 'en' ? /to manage your account and quota\./ : /כדי לנהל את החשבון והמכסה\./);
   }

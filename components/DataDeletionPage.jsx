@@ -19,6 +19,7 @@ const COPY = {
       'כתובת האימייל, השם ותמונת הפרופיל שלך (אם נרשמת עם Google)',
       'תמונת הפנים שהעלית ל"לככב בסיפור" וגיליון הדמות שנוצר ממנה',
       'מוני השימוש היומיים/החודשיים שלך ואישור הגיל 18+ שנשמר בחשבון',
+      'מזהה הלקוח שלך אצל ספק התשלומים (אם קיים)',
     ],
     startH: 'איך מבקשים',
     start: [
@@ -60,6 +61,7 @@ const COPY = {
       'Your email address, name, and profile photo (if you signed in with Google)',
       'The face photo you uploaded for "Star Yourself" and the Character Sheet generated from it',
       'Your daily/monthly usage counters and the 18+ confirmation stored on your account',
+      'Your payment-provider customer ID (if one exists)',
     ],
     startH: 'How to request it',
     start: [
@@ -95,7 +97,7 @@ const COPY = {
 
 export default function DataDeletionPage() {
   const { data: session } = useSession();
-  const native = useNative();   // Android app: the Pro-waitlist line is hidden
+  const native = useNative();   // Android app: the Pro-waitlist line and the payment-provider line are hidden
   const [lang, setLang] = useState('he');
   const isHe = lang === 'he';
   const t = COPY[lang];
@@ -185,7 +187,7 @@ export default function DataDeletionPage() {
           <section className="border-b border-white/[0.05] py-8">
             <h2 className="text-[#d4a373] font-bold text-[14px] mb-3 leading-snug">{t.whatH}</h2>
             <ul className="space-y-2">
-              {t.what.map((line, i) => (
+              {t.what.filter((line) => !(native && /ספק התשלומים|payment-provider/.test(line))).map((line, i) => (
                 <li key={i} className="text-white/58 text-[13px] leading-[1.85] flex gap-2">
                   <span className="text-[#d4a373]/50 shrink-0">—</span>
                   <span>{line}</span>

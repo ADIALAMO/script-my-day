@@ -32,3 +32,6 @@ tools/quality-eval/.cache/
 
 # waitlist migration backups contain e-mail addresses — never commit
 waitlist-backups/
+
+# stripe-customer cleanup backups hold payment-provider customer ids — never commit
+stripe-customer-backups/

@@ -185,7 +185,8 @@ test('no visible "Stripe" or "Together AI" in any component (comments excepted):
   }
   assert.deepEqual(offenders, []);
   const del = readFileSync(path.join(ROOT, 'components/DataDeletionPage.jsx'), 'utf8');
-  assert.doesNotMatch(del.replace(/\/\/.*$/gm, ''), /customer ID|מזהה לקוח|ספק התשלומים|payment provider|payment-provider|Stripe/i, 'no payment provider on the deletion page: there is none');
+  assert.doesNotMatch(del.replace(/\/\/.*$/gm, ''), /Stripe/i);
+  assert.match(del, /!\(native && \/ספק התשלומים\|payment-provider\/\.test\(line\)\)/, 'the payment-provider line is filtered out in the app');
 });
 
 // ── Pro waitlist (web only): purpose + removal sentence in the form, gender-neutral Hebrew, nothing of it in the app ─────────────────────────
