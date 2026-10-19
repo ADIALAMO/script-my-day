@@ -1,3 +1,4 @@
+import { verifyProAfterCheckout } from '../utils/checkout-notice.js';
 import { useDocumentLang } from '../utils/document-lang.js';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { displayProducerName, cleanProducerName } from '../utils/producer-name.js';
@@ -542,14 +543,10 @@ function HomePage() {
       if (!checkoutParam) return false;
 
       if (checkoutParam === 'success') {
-        setCheckoutNotice('success');
+        // NOT shown from the URL alone: the "Welcome to Pro" notice and the GA4 `subscribe` event wait for the server to confirm this account is Pro
+        // (verifyProAfterCheckout below, utils/checkout-notice.js). Anyone can type ?checkout=success.
         updateSession?.(); // force NextAuth to re-fetch session JWT
         setTierVersion(v => v + 1); // immediate tier re-fetch in Navbar
-        // GA4 paid-conversion event (the "Pro signup"). sign_up tracks free accounts;
-        // this tracks the upgrade to Pro on Stripe return.
-        if (typeof window !== 'undefined' && window.gtag) {
-          window.gtag('event', 'subscribe', { method: 'stripe', plan: 'pro' });
-        }
       } else if (checkoutParam === 'cancelled') {
         setCheckoutNotice('cancelled');
       }
@@ -582,6 +579,16 @@ function HomePage() {
 
     // Stripe webhooks are async — tier may not be 'pro' in Redis the instant
     // the user lands back on the app. Poll two more times to catch the update.
+    const cancelVerify = wasCheckoutSuccess
+      ? verifyProAfterCheckout({
+          fetchMe: () => fetch('/api/me', { cache: 'no-store' }).then((r) => r.json()),
+          onPro: () => {
+            setCheckoutNotice('success');
+            // GA4 paid-conversion event: only for an account the server reports as Pro
+            if (typeof window !== 'undefined' && window.gtag) window.gtag('event', 'subscribe', { method: 'stripe', plan: 'pro' });
+          },
+        })
+      : () => {};
     const retryTimers = wasCheckoutSuccess
       ? [
           setTimeout(() => setTierVersion(v => v + 1), 3000),
@@ -617,6 +624,7 @@ function HomePage() {
 
     return () => {
       retryTimers.forEach(clearTimeout);
+      cancelVerify();
       window.removeEventListener('pageshow', handlePageShow);
     };
   }, []);
