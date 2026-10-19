@@ -40,3 +40,15 @@ test('Hebrew additions are gender-neutral (plural / infinitive forms)', () => {
   for (const bad of [' פתח את תפריט', ' בחר "מחק', 'האימייל שלך כבר ממולא']) assert.ok(!he.includes(bad), bad);
   for (const good of ['פתחו את תפריט החשבון', 'אפשר למלא את הטופס', 'העמוד הזה נפתח עם האימייל שלכם']) assert.ok(he.includes(good), good);
 });
+
+test('the request record outlives the 30-day processing SLA (45 days), the pages and Privacy quote the same number from config, and the route uses it as the key TTL', async () => {
+  const { RETENTION } = await import('../config/limits.js');
+  const { MODAL_DATA } = await import('../constants/modalData.js');
+  assert.equal(RETENTION.deletionLogDays, 45); assert.ok(RETENTION.deletionLogDays > 30 + 7, 'a safe margin past the SLA');
+  for (const lang of ['en', 'he']) {
+    const p4 = MODAL_DATA.privacy[lang].sections.find((x) => x.h.startsWith('4.')).p;
+    assert.match(p4, lang === 'en' ? /A deletion request is kept for 45 days/ : /בקשת מחיקה נשמרת 45 ימים/);
+  }
+  assert.match(read('pages/api/request-deletion.js'), /ex: RETENTION\.deletionLogDays/);
+  assert.equal(process.env.DELETION_LOG_DAYS, undefined, 'the test environment uses the default');
+});

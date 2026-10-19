@@ -60,7 +60,7 @@ export default async function handler(req, res) {
     }
   } catch { /* guest / unreadable cookie → unverified */ }
 
-  // ── Log the request (one key per submission; kept 30 days for audit) ───────
+  // ── Log the request (one key per submission; kept RETENTION.deletionLogDays = 45 days for audit: longer than the 30-day processing SLA) ───────
   try {
     const key = `deletion-request:${clean}:${Date.now()}`;
     await redis.set(key, JSON.stringify({ email: clean, note: cleanNote, ip, ts: Date.now(), userId: sessionUserId, sessionEmailMatches }), { ex: RETENTION.deletionLogDays * 86400 });

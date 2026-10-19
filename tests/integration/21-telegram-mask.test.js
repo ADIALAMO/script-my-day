@@ -20,7 +20,7 @@ scenario('T1', 'waitlist signup: Telegram text has a***@gmail.com, never the ful
     return { actual: `telegram: ${JSON.stringify(t)}` };
   });
 
-scenario('T2', 'deletion request: masked in Telegram, full address kept in the 30-day Redis record',
+scenario('T2', 'deletion request: masked in Telegram, full address kept in the 45-day Redis record',
   'masked text + pointer to the Redis key; deletion-request:<email>:<ts> holds the full email', async () => {
     providers.telegram.length = 0;
     const r = await invoke(deletion, { body: { email: 'private.person@example.org', note: 'please', lang: 'en' }, ip: '198.51.100.111' });
@@ -29,7 +29,7 @@ scenario('T2', 'deletion request: masked in Telegram, full address kept in the 3
     assert.ok(t.includes('p\\*\\*\\*@example.org'), t); assert.ok(!t.includes('private.person'), t);
     const keys = fake.keys('deletion-request:');
     assert.equal(keys.length, 1); assert.ok(keys[0].includes('private.person@example.org'));
-    assert.ok(fake.ttl(keys[0]) > 29 * 86400 && fake.ttl(keys[0]) <= 30 * 86400);
+    assert.ok(fake.ttl(keys[0]) > 44 * 86400 && fake.ttl(keys[0]) <= 45 * 86400);
     return { actual: `telegram: ${JSON.stringify(t)} ; redis key ${keys[0].replace(/@.*/, '@…')}` };
   });
 
