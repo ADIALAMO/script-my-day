@@ -102,25 +102,24 @@ test('§4 covers rate-limit records, the deletion log with e-mail/note/IP, Teleg
   assert.match(sec('privacy', 'en', 4), /private Telegram chat[^.]*partly hidden email address/);
   // waitlist: what is stored, the one purpose, retention + removal — no price, no payment processor, and the Telegram "partly hidden" line is said ONCE (above)
   const w4 = sec('privacy', 'en', 4);
-  assert.match(w4, /If you join the Pro waitlist we store your email address, your language, the date, the version of the notice you saw and, if you were signed in, your account id\. We use them only to tell you once when Pro is available, and keep them until then or until you ask us to remove them \(through the data-deletion page or by email\)\./);
+  assert.match(w4, /If you join the waitlist for a possible future paid option we store your email address, your language, the date, the version of the notice you saw and, if you were signed in, your account id\. We use them only to tell you once when it is available, and keep them until then or until you ask us to remove them \(through the data-deletion page or by email\)\./);
   assert.equal((w4.match(/partly hidden email address/g) || []).length, 1);
-  assert.doesNotMatch(w4.slice(w4.indexOf('If you join the Pro waitlist')), /\$|price|Stripe|payment|per month/i);
+  assert.doesNotMatch(w4.slice(w4.indexOf('If you join the waitlist')), /\$|price|Stripe|per month/i);
   const h4 = sec('privacy', 'he', 4);
-  assert.match(h4, /אם תצטרפו לרשימת ההמתנה ל-Pro, נשמור את כתובת האימייל, את השפה, את התאריך, את גרסת ההודעה שראיתם, ואם הייתם מחוברים — את מזהה החשבון\. נשתמש בהם רק כדי לעדכן אתכם פעם אחת כש-Pro יהיה זמין, ונשמור אותם עד אז או עד שתבקשו להסיר אותם \(דרך עמוד מחיקת הנתונים או במייל\)\./);
-  assert.doesNotMatch(h4.slice(h4.indexOf('אם תצטרפו')), /\$|מחיר|Stripe|תשלום/);
+  assert.match(h4, /אם תצטרפו לרשימת ההמתנה לאפשרות בתשלום עתידית, נשמור את כתובת האימייל, את השפה, את התאריך, את גרסת ההודעה שראיתם, ואם הייתם מחוברים — את מזהה החשבון\. נשתמש בהם רק כדי לעדכן אתכם פעם אחת כשהאפשרות תהיה זמינה, ונשמור אותם עד אז או עד שתבקשו להסיר אותם \(דרך עמוד מחיקת הנתונים או במייל\)\./);
+  assert.doesNotMatch(h4.slice(h4.indexOf('אם תצטרפו')), /\$|מחיר|Stripe/);
   assert.match(sec('privacy', 'en', 4), /standard server logs/);
   assert.match(sec('privacy', 'he', 4), /צ'אט טלגרם פרטי/);
   assert.match(sec('privacy', 'he', 4), /יומני שרת סטנדרטיים/);
 });
 
-test('§5 Payments: Pro is not yet available, no payments today, "a payment provider" (no Stripe); §3/§4 mention no subscription and no payment-provider customer ID (none exists today)', () => {
-  assert.match(sec('privacy', 'en', 5), /Pro is not yet available and no payments are collected today\. When Pro launches, subscription payments will be processed entirely by a payment provider/);
-  assert.match(sec('privacy', 'he', 5), /עדיין אינו זמין וכיום לא נגבים תשלומים/);
-  assert.match(sec('privacy', 'he', 5), /ספק תשלומים/);
+test('§5 Payments: free to use, no payments collected (no Stripe); §3/§4 mention no subscription and no payment-provider customer ID (none exists today)', () => {
+  assert.match(sec('privacy', 'en', 5), /free to use and does not collect payments, so we hold no payment or card details/);
+  assert.match(sec('privacy', 'he', 5), /ואינה גובה תשלומים/);
   for (const lang of ['he', 'en']) {
     assert.doesNotMatch(JSON.stringify(MODAL_DATA.privacy[lang]), /Stripe/);
     for (const n of [3, 4]) assert.doesNotMatch(sec('privacy', lang, n), /customer ID|מזהה לקוח|subscription|מנוי|Stripe/i, `§${n} ${lang}`);
-    assert.match(sec('privacy', lang, 4), lang === 'en' ? /your plan \(Free or Pro, including any Pro access we granted\)/ : /המסלול שלך \(חינמי או Pro, כולל גישת Pro שהענקנו\)/);
+    assert.match(sec('privacy', lang, 4), lang === 'en' ? /your plan \(including any special access we granted\)/ : /המסלול שלך \(כולל גישה מיוחדת שהענקנו\)/);
     assert.match(sec('privacy', lang, 3), lang === 'en' ? /to manage your account and quota\./ : /כדי לנהל את החשבון והמכסה\./);
   }
 });

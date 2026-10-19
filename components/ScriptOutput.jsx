@@ -1101,10 +1101,6 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               panelImages={panelImages}
               onClose={closeStoryboard}
               unlockedPanels={unlockedPanels}
-              // Omitted entirely on Capacitor — StoryboardView only renders its
-              // upgrade CTA banner when onUpgrade is truthy (no purchase/pricing
-              // CTA in the native app, per the mobile-wrapper plan).
-              onUpgrade={isCapacitorNative() ? undefined : () => onAuthRequired('upgrade')}
               onRegenerate={regeneratePanel}
               onRetryFrame={retryFrame}
               onGenerateMissing={generateMissingFrames}
@@ -1199,7 +1195,6 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
         confirmAdult={confirmAdult}
         gender={gender}
         setGender={setGender}
-        onUpgrade={() => onAuthRequired?.('upgrade')}
       />
 
       {/* ── Distribution Hub modal ────────────────────────────────────── */}

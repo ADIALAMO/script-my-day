@@ -18,32 +18,20 @@ test('the web copy is untouched by the native variant: modalDataFor(false) IS MO
 // ── Pro is "coming soon": no price, no "cancel anytime", no processor name, nothing that is not implemented ─────────────────
 const NOT_YET = /Stripe|\$\s?9\b|\b9\s?\$|9\$|cancel anytime|ביטול בכל עת|priority (?:queue|processing)|תור (?:עיבוד )?מועדף|reels? generation|יצירת רילז/i;
 
-test('web Terms / Privacy / FAQ: Pro is "coming soon" — no price, no "Cancel anytime", no Stripe, no priority queue, no reels-as-Pro (he + en)', () => {
+test('web Terms / Privacy / FAQ: no Pro plan, price, subscription or upgrade wording anywhere (he + en) — no payments exist', () => {
   const walk = (o, p = '') => (typeof o === 'string' ? [[p, o]] : o && typeof o === 'object' ? Object.entries(o).flatMap(([k, v]) => walk(v, `${p}.${k}`)) : []);
-  const hits = walk(MODAL_DATA).filter(([, s]) => NOT_YET.test(s)).map(([p, s]) => `${p}: …${s.slice(Math.max(0, s.search(NOT_YET) - 30), s.search(NOT_YET) + 40)}…`);
+  const BAD = new RegExp(NOT_YET.source + '|\\bPro\\b|מנוי|subscription|upgrade|שדרג|coming soon|בקרוב|Billing, Renewal|חיוב, חידוש|Pro · Soon', 'i');
+  const hits = walk(MODAL_DATA).filter(([, s]) => BAD.test(s)).map(([p, s]) => `${p}: …${s.slice(Math.max(0, s.search(BAD) - 30), s.search(BAD) + 40)}…`);
   assert.deepEqual(hits, []);
   const json = JSON.stringify(MODAL_DATA);
-  assert.match(json, /Pro is not yet available and no payments are collected today/);
-  assert.match(json, /מסלול Pro עדיין אינו זמין וכיום לא נגבים תשלומים/);
-  assert.match(json, /Billing, Renewal & Cancellation \(when Pro launches\)/);
-  assert.match(json, /חיוב, חידוש וביטול מנוי \(עם השקת Pro\)/);
-  assert.match(json, /through a payment provider/);
-});
-
-test('web Terms §2 (plans): the planned Pro limits are labelled "coming soon / planned" and the not-yet-available sentence is there', () => {
-  for (const lang of ['en', 'he']) {
-    const plans = MODAL_DATA.terms[lang].sections.find((s) => /Plans, Quotas|מסלולים, מכסות/.test(s.h)).p;
-    assert.doesNotMatch(plans, NOT_YET);
-    assert.match(plans, lang === 'en' ? /Pro plan \(coming soon; planned limits\)/ : /מסלול Pro \(בקרוב; מגבלות מתוכננות\)/);
-    assert.match(plans, lang === 'en' ? /Pro is not yet available: any planned price or limit may change before launch, and no payments are collected today\./ : /עדיין אינו זמין: כל מחיר או מגבלה מתוכננים עשויים להשתנות לפני ההשקה, וכיום לא נגבים תשלומים\./);
-  }
+  assert.match(json, /LIFESCRIPT is free to use and does not collect payments/);
+  assert.match(json, /LIFESCRIPT חינמית לשימוש ואינה גובה תשלומים/);
 });
 
 test('web quota / upsell messages never sell Pro as available now (no "upgrade", no "go Pro")', () => {
   for (const code of [CODES.NEEDS_PRO, CODES.QUOTA_COMIC_MONTH, CODES.IDENTITY_LIFETIME_USED]) for (const lang of ['en', 'he']) {
     const t = getMsg(code, lang, undefined, { native: false });
-    assert.doesNotMatch(t, /upgrade|go Pro|שדרג|עבור ל-Pro/i, `${code}/${lang}: ${t}`);
-    assert.match(t, lang === 'en' ? /coming soon/ : /בקרוב|שיגיע/, `${code}/${lang} says coming soon`);
+    assert.doesNotMatch(t, /upgrade|go Pro|שדרג|עבור ל-Pro|coming soon|בקרוב/i, `${code}/${lang}: ${t}`);
   }
 });
 
@@ -71,7 +59,7 @@ test('native app: removed sections are really gone and the remaining headings ar
     }
   }
   assert.ok(!native.support.en.sections.some((s) => /upgrade/i.test(s.h)));
-  assert.equal(native.support.en.sections.length, MODAL_DATA.support.en.sections.length - 1);
+  assert.equal(native.support.en.sections.length, MODAL_DATA.support.en.sections.length);
   assert.equal(native.about.he.sections.length, MODAL_DATA.about.he.sections.length - 1);
 });
 
@@ -92,7 +80,7 @@ test('getMsg in the native shell: the upgrade / "go Pro" messages are neutral; e
   const sellers = [CODES.NEEDS_PRO, CODES.QUOTA_COMIC_MONTH, CODES.IDENTITY_LIFETIME_USED];
   for (const code of sellers) for (const lang of ['en', 'he']) {
     assert.doesNotMatch(getMsg(code, lang, undefined, { native: true }), FORBIDDEN, `${code}/${lang}`);
-    assert.match(getMsg(code, lang, undefined, { native: false }), /Pro|פרו|Pro/, `${code}/${lang} web copy keeps the upgrade text`);
+    assert.ok(getMsg(code, lang, undefined, { native: false }).length > 10, `${code}/${lang} web copy exists`);
   }
   // every other code, native: only the messages addressed to people who ALREADY have the Pro plan may say "Pro plan"
   const PRO_PLAN_NOTICES = new Set([CODES.QUOTA_SCRIPT_PRO, CODES.QUOTA_SCRIPT_PRO_MONTH, CODES.QUOTA_COMIC_PRO_MONTH]);
@@ -109,7 +97,7 @@ test('getMsg in the native shell: the upgrade / "go Pro" messages are neutral; e
 
 // ── Source guard: a pricing / upgrade literal in a component must sit next to a native check ─────────────────────────────────
 const LITERAL = /Upgrade to Pro|Go Pro|\bPro Only\b|פרו בלבד|שדרג ל-?[Pp]ro|שדרג לצפייה|Upgrade to view|\$9\/month|9\$ לחודש|Manage Subscription|נהל מנוי|Casting yourself is a Pro feature|ליהוק עצמי הוא פיצ׳ר Pro/;
-const GUARDED = ['components/Navbar.jsx', 'components/CharacterModal.jsx', 'components/StoryboardView.jsx', 'components/AuthModal.jsx', 'pages/index.js'];
+const GUARDED = ['components/Navbar.jsx', 'components/AuthModal.jsx', 'pages/index.js'];
 const WEB_ONLY = new Set(['components/UpgradeModal.jsx', 'components/WaitlistModal.jsx']);   // only ever opened through openAuthModal('upgrade'), a no-op in the app
 
 test('every component that carries pricing / upgrade text uses useNative(); the upgrade route is a no-op natively; nothing else has such text', () => {
@@ -287,4 +275,11 @@ test('store listing "YOUR STORY STAYS YOURS": says the journal text is sent to A
   assert.match(en, /we don't store them on our servers\. To create your script, poster and comic, the text you write is sent to the AI services we use for processing\./);
   assert.match(he, /כדי ליצור את התסריט, הפוסטר והקומיקס, הטקסט שאתם כותבים נשלח לשירותי ה-AI שבהם אנחנו משתמשים לצורך עיבוד\./);
   for (const md of [en, he]) assert.ok(md.slice(md.indexOf('```', md.indexOf('Full description')) + 3, md.lastIndexOf('```')).length < 4000, 'full description under 4000 characters');
+});
+
+test('CharacterModal / StoryboardView carry no Pro, upgrade or waitlist wording at all (web and app alike)', () => {
+  for (const rel of ['components/CharacterModal.jsx', 'components/StoryboardView.jsx']) {
+    const src = readFileSync(path.join(ROOT, rel), 'utf8').replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    assert.doesNotMatch(src, /\bPro\b|upgrade|שדרג|waitlist|רשימת ההמתנה|coming soon|בקרוב/i, rel);
+  }
 });
