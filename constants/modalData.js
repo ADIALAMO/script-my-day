@@ -124,7 +124,7 @@ export const MODAL_DATA = {
         },
         {
           h: '6. עוגיות ואנליטיקה',
-          p: 'אנחנו משתמשים בעוגיות חיוניות לשמירת ההתחברות שלך, ובעוגיית הזמנה (ls_ref) לזיהוי החבר שהזמין אותך (נמחקת לאחר ' + RETENTION.referralCookieDays + ' יום). אנחנו משתמשים ב-Vercel Web Analytics, שאינו משתמש בעוגיות לזיהוי מבקרים: מבקר מזוהה באמצעות גיבוב (hash) זמני של הבקשה, שנמחק אוטומטית לאחר יממה, והנתונים המתקבלים הם מצטברים — כגון עמודים שנצפו, אתר מפנה, מיקום משוער (מדינה, אזור ועיר), סוג מכשיר, מערכת הפעלה ודפדפן, ואירועי שימוש בפיצ\'רים כמו יצירת תסריט או שיתוף. הוא פועל באתר ובאפליקציית האנדרואיד. באתר בלבד, ורק לאחר שתאשרו עוגיות אנליטיקה, אנחנו טוענים גם את Google Analytics, שקובע מזהים (עוגיות) ומעבד נתונים כמו כתובת ה-IP ופרטי המכשיר כדי לספק לנו סטטיסטיקות שימוש; איננו משתמשים בו לפרסום. Google Analytics אינו נטען לפני שתאשרו, ואינו נטען לעולם באפליקציית האנדרואיד.',
+          p: 'אנחנו משתמשים בעוגיות חיוניות לשמירת ההתחברות שלך, ובעוגיית הזמנה (ls_ref) לזיהוי החבר שהזמין אותך (נמחקת לאחר ' + RETENTION.referralCookieDays + ' יום). אנחנו משתמשים ב-Vercel Web Analytics, שאינו משתמש בעוגיות לזיהוי מבקרים: מבקר מזוהה באמצעות גיבוב (hash) זמני של הבקשה, שנמחק אוטומטית לאחר יממה, והנתונים המתקבלים הם מצטברים — כגון עמודים שנצפו, אתר מפנה, מיקום משוער (מדינה, אזור ועיר), סוג מכשיר, מערכת הפעלה ודפדפן, ואירועי שימוש בפיצ\'רים כמו יצירת תסריט או שיתוף. הוא פועל באתר ובאפליקציית האנדרואיד. באתר בלבד, ורק לאחר שתאשרו עוגיות אנליטיקה, אנחנו טוענים גם את Google Analytics, שקובע מזהים (עוגיות) ומעבד נתונים כמו כתובת ה-IP ופרטי המכשיר כדי לספק לנו סטטיסטיקות שימוש; איננו משתמשים בו לפרסום. Google Analytics פועל לפי בחירת הסכמה השמורה במכשיר שלכם (Google Consent Mode: אחסון האנליטיקה מוגדר כברירת מחדל כ-"denied" והופך ל-"granted" רק כשתאשרו; אחסון הפרסום חסום תמיד). לפני שתחליטו הוא אינו נטען ושום דבר אינו נשלח ל-Google; אם תאשרו הוא נטען ומתחיל לספור את הביקורים שלכם; אם תסרבו הוא לא ייטען לעולם. אפשר לאפס את הבחירה על ידי ניקוי נתוני האתר בדפדפן. הוא אינו נטען לעולם באפליקציית האנדרואיד.',
         },
         {
           h: '7. עיבוד על ידי ספקי AI חיצוניים',
@@ -166,7 +166,7 @@ export const MODAL_DATA = {
         },
         {
           h: '6. Cookies & Analytics',
-          p: 'We use essential cookies to keep you signed in, and a referral cookie (ls_ref) to recognize the friend who invited you (deleted after ' + RETENTION.referralCookieDays + ' days). We use Vercel Web Analytics, which does not use cookies to identify visitors: a visitor is counted using a temporary hash of the request that is discarded automatically after a day, and the data is aggregate — such as pages viewed, referrer, approximate location (country, region and city), device type, operating system and browser, and feature-usage events such as creating a script or sharing. It runs on the website and in the Android app. On the website only, and only after you accept analytics cookies, we also load Google Analytics, which sets identifiers (cookies) and processes data such as your IP address and device information to give us usage statistics; we do not use it for advertising. Google Analytics is not loaded before you accept, and it is never loaded in the Android app.',
+          p: 'We use essential cookies to keep you signed in, and a referral cookie (ls_ref) to recognize the friend who invited you (deleted after ' + RETENTION.referralCookieDays + ' days). We use Vercel Web Analytics, which does not use cookies to identify visitors: a visitor is counted using a temporary hash of the request that is discarded automatically after a day, and the data is aggregate — such as pages viewed, referrer, approximate location (country, region and city), device type, operating system and browser, and feature-usage events such as creating a script or sharing. It runs on the website and in the Android app. On the website only, and only after you accept analytics cookies, we also load Google Analytics, which sets identifiers (cookies) and processes data such as your IP address and device information to give us usage statistics; we do not use it for advertising. Google Analytics works with a consent choice that is stored on your device (Google Consent Mode: analytics storage is "denied" by default and becomes "granted" only when you accept; advertising storage is always denied). Before you decide it is not loaded and nothing is sent to Google; if you accept it is loaded and starts counting your visits; if you decline it is never loaded. You can reset the choice by clearing this site\'s data in your browser. It is never loaded in the Android app.',
         },
         {
           h: '7. Processing by External AI Providers',
@@ -405,20 +405,16 @@ const NATIVE_ABOUT_STAR = {
 
 // Disclosures about web-payment data and the Pro waitlist: removed from the app's copy (the full wording stays on the web pages).
 const NATIVE_TEXT_REPLACEMENTS = [
-  [' באתר בלבד, ורק לאחר שתאשרו עוגיות אנליטיקה, אנחנו טוענים גם את Google Analytics, שקובע מזהים (עוגיות) ומעבד נתונים כמו כתובת ה-IP ופרטי המכשיר כדי לספק לנו סטטיסטיקות שימוש; איננו משתמשים בו לפרסום. Google Analytics אינו נטען לפני שתאשרו, ואינו נטען לעולם באפליקציית האנדרואיד.', ''],
-  [' On the website only, and only after you accept analytics cookies, we also load Google Analytics, which sets identifiers (cookies) and processes data such as your IP address and device information to give us usage statistics; we do not use it for advertising. Google Analytics is not loaded before you accept, and it is never loaded in the Android app.', ''],
-  ['מצב המנוי, מזהה לקוח אצל ספק התשלומים (אם אי פעם התחלת מנוי בתשלום), ', ''],
-  ['the subscription state, a payment-provider customer ID (only if you ever started a paid subscription), ', ''],
-  ['החשבון, המכסה והמנוי', 'החשבון והמכסה'],
-  ['account, quota and subscription', 'account and quota'],
+  [' באתר בלבד, ורק לאחר שתאשרו עוגיות אנליטיקה, אנחנו טוענים גם את Google Analytics, שקובע מזהים (עוגיות) ומעבד נתונים כמו כתובת ה-IP ופרטי המכשיר כדי לספק לנו סטטיסטיקות שימוש; איננו משתמשים בו לפרסום. Google Analytics פועל לפי בחירת הסכמה השמורה במכשיר שלכם (Google Consent Mode: אחסון האנליטיקה מוגדר כברירת מחדל כ-"denied" והופך ל-"granted" רק כשתאשרו; אחסון הפרסום חסום תמיד). לפני שתחליטו הוא אינו נטען ושום דבר אינו נשלח ל-Google; אם תאשרו הוא נטען ומתחיל לספור את הביקורים שלכם; אם תסרבו הוא לא ייטען לעולם. אפשר לאפס את הבחירה על ידי ניקוי נתוני האתר בדפדפן. הוא אינו נטען לעולם באפליקציית האנדרואיד.', ''],
+  [' On the website only, and only after you accept analytics cookies, we also load Google Analytics, which sets identifiers (cookies) and processes data such as your IP address and device information to give us usage statistics; we do not use it for advertising. Google Analytics works with a consent choice that is stored on your device (Google Consent Mode: analytics storage is "denied" by default and becomes "granted" only when you accept; advertising storage is always denied). Before you decide it is not loaded and nothing is sent to Google; if you accept it is loaded and starts counting your visits; if you decline it is never loaded. You can reset the choice by clearing this site\'s data in your browser. It is never loaded in the Android app.', ''],
+  ['המסלול שלך (חינמי או Pro, כולל גישת Pro שהענקנו), ', ''],
+  ['your plan (Free or Pro, including any Pro access we granted), ', ''],
   [', הרשמות לרשימת ההמתנה ובקשות', ' ובקשות'],
   ['Feedback, waitlist sign-ups and deletion requests', 'Feedback and deletion requests'],
   [' אם תצטרפו לרשימת ההמתנה ל-Pro, נשמור את כתובת האימייל, את השפה, את התאריך, את גרסת ההודעה שראיתם, ואם הייתם מחוברים — את מזהה החשבון. נשתמש בהם רק כדי לעדכן אתכם פעם אחת כש-Pro יהיה זמין, ונשמור אותם עד אז או עד שתבקשו להסיר אותם (דרך עמוד מחיקת הנתונים או במייל).', ''],
   [' If you join the Pro waitlist we store your email address, your language, the date, the version of the notice you saw and, if you were signed in, your account id. We use them only to tell you once when Pro is available, and keep them until then or until you ask us to remove them (through the data-deletion page or by email).', ''],
-  [' ומזהה לקוח אצל ספק התשלומים, אם אי פעם התחלת מנוי בתשלום)', ')'],
   ['waitlist and deletion-request messages', 'deletion-request messages'],
   ['בהרשמה לרשימת ההמתנה ובבקשת מחיקה', 'בבקשת מחיקה'],
-  [' and, if you ever started a paid subscription, a payment-provider customer ID)', ')'],
 ];
 const applyNativeReplacements = (p) => NATIVE_TEXT_REPLACEMENTS.reduce((t, [from, to]) => t.split(from).join(to), p);
 
