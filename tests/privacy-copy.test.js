@@ -219,3 +219,13 @@ test('the accessibility statement is dated October 2026 (he + en), like the Term
   assert.equal(MODAL_DATA.accessibility.he.summary, 'הצהרת הנגישות עודכנה לאחרונה באוקטובר 2026.');
   assert.equal(MODAL_DATA.accessibility.en.summary, 'This accessibility statement was last updated in October 2026.');
 });
+
+test('§9 describes the in-app "Delete my account" menu item exactly as /data-deletion does (he + en), in the Android copy too', () => {
+  for (const data of [MODAL_DATA, modalDataFor(true)]) {
+    assert.match(sec2(data, 'en'), /open the account menu and choose "Delete my account"/);
+    assert.match(sec2(data, 'he'), /בתפריט החשבון, בחרו "מחק את החשבון שלי"/);
+  }
+  const nav = readFileSync(new URL('../components/Navbar.jsx', import.meta.url), 'utf8');
+  assert.match(nav, /'מחק את החשבון שלי' : 'Delete my account'/);
+});
+function sec2(data, lang) { return data.privacy[lang].sections.find((s) => /Your Rights|הזכויות שלך/.test(s.h)).p; }
