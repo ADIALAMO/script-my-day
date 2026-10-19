@@ -452,6 +452,26 @@ export default function AdminDashboard({ adminEmail }) {
             <div className="p-6 space-y-6">
               <BudgetBar label="Paid image spend"  block={stats?.budget?.image} />
               <BudgetBar label="Identity spend"    block={stats?.budget?.identity} />
+              <BudgetBar label="Paid script engine (Gemini Flash, deny)" block={stats?.budget?.script} />
+
+              {/* Which stage served each script (last 14 UTC days) — real volume data for tuning DAILY_SCRIPT_BUDGET */}
+              <div className="pt-4 border-t border-white/5">
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-2">Scripts by serving stage</p>
+                {(stats?.scriptStages?.length ?? 0) === 0 ? (
+                  <p className="text-[11px] font-mono text-white/25">no data yet</p>
+                ) : (
+                  <div className="space-y-1.5 text-[11px] font-mono text-white/55">
+                    {stats.scriptStages.map((d) => (
+                      <div key={d.day}>
+                        <span className="text-white/35">{d.day}</span>{' '}
+                        {Object.entries(d.counts).filter(([k]) => !k.startsWith('paid')).map(([k, v]) => `${k} ${v}`).join(' · ')}
+                        {' '}<span className="text-white/25">| paid: {Object.entries(d.counts).filter(([k]) => k.startsWith('paid:')).map(([k, v]) => `${k.slice(5)} ${v}`).join(', ') || '-'}
+                        {d.counts.paid_in ? ` | tokens ${d.counts.paid_in}/${d.counts.paid_out}` : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Live OpenRouter prepaid balance */}
               <div className="flex items-center justify-between pt-4 border-t border-white/5">

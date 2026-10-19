@@ -415,18 +415,22 @@ export default async function handler(req, res) {
         const panels = await run(t);
         return panels ? { panels, engine } : null;
       };
+      // PRIVACY ROUTES (same switch as the scripts: DAILY_SCRIPT_BUDGET > 0 and an OpenRouter key): the screenplay goes only to OpenRouter models with
+      // provider.data_collection "deny" — the free OpenRouter net and the direct (free-tier) Google key are not asked at all.
+      const privacy = !!openrouterKey && checkBudgetUsd('script') > 0;
+      const denyOpts = privacy ? { provider: PRIMARY_PROVIDER } : {};
       const race = [];
       if (openrouterKey) {
         race.push({ run: timed('Gemini Flash-Lite (OpenRouter)', (t) => runPrimaryPaid(instruction, cleanScript, openrouterKey, t)), delayMs: 0 });
-        race.push({ run: timed('OpenRouter', (t) => runOpenRouterModel('google/gemma-3-27b-it', instruction, cleanScript, openrouterKey, t)), delayMs: HEDGE_DELAY_MS });
+        race.push({ run: timed('OpenRouter', (t) => runOpenRouterModel('google/gemma-3-27b-it', instruction, cleanScript, openrouterKey, t, denyOpts)), delayMs: HEDGE_DELAY_MS });
       }
       let won = await raceWithHedge(race);
       if (!won) {
         const fallbacks = [];
         const step = (engine, run) => async (t) => { const panels = await run(t); return panels ? { panels, engine } : null; };
-        if (openrouterKey) for (const m of ['google/gemma-3-12b-it', 'deepseek/deepseek-chat']) fallbacks.push(step('OpenRouter', (t) => runOpenRouterModel(m, instruction, cleanScript, openrouterKey, t)));
-        if (openrouterFreeKey) for (const m of FREE_STORYBOARD_MODELS) fallbacks.push(step('OpenRouter (free)', (t) => runOpenRouterModel(m, instruction, cleanScript, openrouterFreeKey, t)));
-        if (geminiKey) {
+        if (openrouterKey) for (const m of ['google/gemma-3-12b-it', 'deepseek/deepseek-chat']) fallbacks.push(step('OpenRouter', (t) => runOpenRouterModel(m, instruction, cleanScript, openrouterKey, t, denyOpts)));
+        if (openrouterFreeKey && !privacy) for (const m of FREE_STORYBOARD_MODELS) fallbacks.push(step('OpenRouter (free)', (t) => runOpenRouterModel(m, instruction, cleanScript, openrouterFreeKey, t)));
+        if (geminiKey && !privacy) {
           fallbacks.push(step('Gemini (direct)', (t) => runGeminiModel('gemini-2.5-flash', instruction, cleanScript, geminiKey, t)));
           fallbacks.push(step('Gemini (direct)', (t) => runGeminiModel('gemini-2.5-flash-lite', instruction, cleanScript, geminiKey, t)));
         }

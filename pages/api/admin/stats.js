@@ -4,6 +4,8 @@ import { isAdminRequest } from '../../../lib/api-utils.js';
 import redis from '../../../lib/redis.js';
 import { KLEIN_COST_USD } from '../../../lib/circuit-breaker.js';
 import { IDENTITY_MAX_COST_USD } from '../../../lib/identity.js';
+import { readScriptStages } from '../../../lib/script-stats.js';
+import { globalCheckKey, checkBudgetUsd, checkCostUsd } from '../../../lib/budget.js';
 
 function isAllowedAdminSession(email) {
   if (!email || !process.env.ADMIN_EMAILS) return false;
@@ -88,12 +90,14 @@ export default async function handler(req, res) {
     'stats:comic:total',                    // 6
     `usage:image:paid:global:${today}`,     // 7  (paid faceless image count)
     `usage:identity:global:${today}`,       // 8  (identity call count)
+    globalCheckKey('script'),               // 9  (paid script engine call count)
   ];
 
-  const [countersR, proCountR, openrouter] = await Promise.allSettled([
+  const [countersR, proCountR, openrouter, stagesR] = await Promise.allSettled([
     redis.mget(...keys),
     redis.scard('stats:pro:members'),
     fetchOpenRouterCredits(),
+    readScriptStages(14),
   ]);
 
   // Fail-open: a Redis blip yields zeros, never a 500 — the dashboard still renders.
@@ -118,9 +122,12 @@ export default async function handler(req, res) {
       poster: { today: c[3], total: c[4] },
       comic:  { today: c[5], total: c[6] },
     },
+    // which stage served each script, last 14 UTC days, newest first (lib/script-stats.js: counts and token totals only)
+    scriptStages: stagesR.status === 'fulfilled' ? stagesR.value : [],
     budget: {
       image:    budgetBlock(c[7], process.env.DAILY_IMAGE_BUDGET,    KLEIN_COST_USD),
       identity: budgetBlock(c[8], process.env.DAILY_IDENTITY_BUDGET, IDENTITY_MAX_COST_USD),
+      script:   budgetBlock(c[9], String(checkBudgetUsd('script')), checkCostUsd('script')),   // paid Gemini Flash script engine (counted at the upper-bound price per call)
       openrouter: orBalance, // live prepaid balance, or null if unreachable
     },
   });

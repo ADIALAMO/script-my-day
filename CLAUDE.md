@@ -115,6 +115,12 @@ Two independent cascades, each tries providers in order and returns the first su
   medium is the only text-to-image model currently listed there per HF's own docs; untested for
   latency/availability as of this writing — the free tier has shifted mostly to CPU inference).
 
+**Script privacy routes (`fix/audit-age-script-history`)**: Stage 0 of the text cascade is paid **Gemini 2.5 Flash through OpenRouter** with `provider.data_collection:"deny"` (`runPaidScript` in lib/story-service.js; budget `DAILY_SCRIPT_BUDGET`
+default $10, 0 = OFF = the old cascade; counter `usage:script:paid:global:<day>` at `SCRIPT_PAID_COST_USD` 0.008/call; own circuit `script_paid`; budget spent / circuit open / budget unverifiable = skipped, never an error). While the budget env is > 0 the journal
+text goes ONLY to deny-capable OpenRouter models: after Stage 0 only Gemma 27b/12b and DeepSeek run (all probe-verified to accept `deny`, scripts/probe-script-routes.mjs, 2026-10-20); the free Google key (Stage 1), Cohere and the free models are NOT asked, also when the paid
+budget is spent. Stats: `stats:script:stage:<day>` hash (lib/script-stats.js: stage served, `paid:<outcome>`, paid token totals; 60 days; admin dashboard card + `scriptStages` in /api/admin/stats). The creator credit is the protagonist name (`protagonistNameFrom`, utils/producer-name.js).
+The comic storyboard follows the same switch: while the budget env is > 0 every OpenRouter storyboard call carries `deny` and the free OpenRouter net and the direct free-tier Google key are NOT asked (tests/integration/38-storyboard-privacy.test.js).
+
 ### 2. FLUX image prompting → skill `flux-prompt`
 All image providers are FLUX-family. **FLUX wants clean positive prose, not keyword
 stacks, weights, or negations.** Negation/anatomy nouns *summon* defects — do **not**

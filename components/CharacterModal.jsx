@@ -251,8 +251,8 @@ export default function CharacterModal({
                 </p>
                 <p className="text-gray-500 text-[11.5px] leading-relaxed">
                   {isHebrew
-                    ? 'מאשרים פעם אחת ממשיכים. לא בן/בת 18? אין בעיה — אפשר להמשיך ליצור תסריטים, פוסטרים וקומיקס בלי תמונה.'
-                    : 'Confirm once and you can continue. Not 18 yet? No problem — you can keep creating scripts, posters and comics without a photo.'}
+                    ? 'מאשרים פעם אחת וממשיכים. לא רוצים להשתמש בתמונה? אפשר להמשיך ליצור גם בלעדיה.'
+                    : 'Confirm once and you can continue. Don\'t want to use a photo? You can keep creating without one.'}
                 </p>
                 <button
                   type="button"
@@ -265,7 +265,7 @@ export default function CharacterModal({
                     ${adultOk ? 'bg-[#d4a373] border-[#d4a373]' : 'bg-transparent border-white/25'}`}>
                     {adultOk && <Check size={13} className="text-black" />}
                   </span>
-                  <span className="text-gray-200 text-[12px] font-bold">{isHebrew ? 'אני בן 18 ומעלה' : 'I am 18 or older'}</span>
+                  <span className="text-gray-200 text-[12px] font-bold">{isHebrew ? 'אני בן/בת 18 ומעלה' : 'I am 18 or older'}</span>
                 </button>
                 <p className="text-gray-600 text-[10.5px] leading-relaxed">
                   {isHebrew ? 'בהמשך אתה מסכים ל' : 'By continuing you agree to the '}

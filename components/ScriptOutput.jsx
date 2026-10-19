@@ -1,3 +1,4 @@
+import { splitBold } from '../utils/script-markup.js';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { displayProducerName } from '../utils/producer-name.js';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -782,7 +783,7 @@ function ScriptOutput({ script, lang, genre, setIsTypingGlobal, producerName, ge
               style={{ lineHeight: 1.8 }}
               className={`script-font text-xl md:text-3xl text-gray-100 whitespace-pre-wrap [overflow-wrap:anywhere] text-start ${innerScroll ? 'pb-6' : 'pb-40'}`}
             >
-              {currentDisplayText}
+              {splitBold(currentDisplayText).map((seg, i) => (seg.bold ? <strong key={i} className={`font-bold text-white${seg.italic ? ' italic' : ''}`}>{seg.text}</strong> : seg.italic ? <em key={i}>{seg.text}</em> : <span key={i}>{seg.text}</span>))}
               {isTyping && (
                 <motion.span
                   animate={{ opacity: [1, 0, 1] }}

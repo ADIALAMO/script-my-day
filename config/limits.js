@@ -216,3 +216,14 @@ export const GUEST_SCRIPT_BUDGET = {
 export const SCRIPT_MONTHLY_LIMITS = {
   pro: envInt('PRO_SCRIPTS_PER_MONTH', 150),
 };
+
+// ─── Script generation: PAID first engine with privacy routes ─────────────────────────
+// Gemini 2.5 Flash through OpenRouter, provider.data_collection = "deny" (lib/story-service.js, Stage 0). Budget: DAILY_SCRIPT_BUDGET (USD/day, default 10, 0 = OFF =
+// the old cascade with the free Google key first), counted per call at SCRIPT_PAID_COST_USD (lib/budget.js). Price basis (OpenRouter endpoints API, 2026-10-20):
+// $0.30 / 1M in, $2.50 / 1M out. Live probe (scripts/probe-script-routes.mjs): English entry 3.1k in / 1.4k out = $0.0044, Hebrew 3.7k in / 2.4k out = $0.0071 → 0.008 per call.
+export const SCRIPT_PAID = {
+  model:      process.env.SCRIPT_PAID_MODEL?.trim() || 'google/gemini-2.5-flash',
+  maxTokens:  envInt('SCRIPT_PAID_MAX_TOKENS', 4000),
+  timeoutMs:  envInt('SCRIPT_PAID_TIMEOUT_MS', 36000),        // a Hebrew script took 22 s in the probe
+  fallbackReserveMs: envInt('SCRIPT_PAID_FALLBACK_RESERVE_MS', 12000),   // time kept for the deny-only fallbacks if the paid call hangs
+};
