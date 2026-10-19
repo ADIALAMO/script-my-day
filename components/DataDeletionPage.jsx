@@ -1,3 +1,4 @@
+import { useDocumentLang } from '../utils/document-lang.js';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
@@ -99,6 +100,7 @@ export default function DataDeletionPage() {
   const { data: session } = useSession();
   const native = useNative();   // Android app: the Pro-waitlist line and the payment-provider line are hidden
   const [lang, setLang] = useState('he');
+  useDocumentLang(lang);   // <html lang> follows the UI language (WCAG 3.1.1)
   const isHe = lang === 'he';
   const t = COPY[lang];
 
@@ -251,6 +253,7 @@ export default function DataDeletionPage() {
                   value={email}
                   onChange={e => { setEmail(e.target.value); if (state === 'error') setState('idle'); }}
                   placeholder={t.emailPh}
+                  aria-label={isHe ? 'האימייל שלך' : 'Your email address'}
                   dir="ltr"
                   disabled={state === 'sending'}
                   className={`w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3.5 px-4 text-white text-[13px] placeholder-white/25 outline-none focus:border-[#d4a373]/50 transition-colors disabled:opacity-50 mb-3 ${isHe ? 'text-right' : ''}`}
@@ -259,6 +262,7 @@ export default function DataDeletionPage() {
                   value={note}
                   onChange={e => setNote(e.target.value)}
                   placeholder={t.notePh}
+                  aria-label={t.notePh}
                   rows={2}
                   disabled={state === 'sending'}
                   className={`w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3.5 px-4 text-white text-[13px] placeholder-white/25 outline-none focus:border-[#d4a373]/50 transition-colors disabled:opacity-50 mb-3 resize-none ${isHe ? 'text-right' : ''}`}

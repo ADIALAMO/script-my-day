@@ -197,7 +197,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'תקן ורמת ההתאמה',
-          p: 'האתר נבנה בהשראת המלצות התקן הישראלי ת"י 5568 והנחיות הנגישות הבינלאומיות WCAG 2.0 ברמה AA, ככל שהדבר ניתן בפלטפורמה. אנו נעזרים בניגודיות צבעים גבוהה, טקסט קריא, ותמיכה בהתאמות תצוגה במכשירים שונים.',
+          p: 'LifeScript שואפת לפעול לפי המלצות התקן הישראלי ת"י 5568 והנחיות WCAG 2.0 ברמה AA, וממשיכה לשפר את הנגישות. אם משהו לא עובד עבורכם, נשמח שתפנו אלינו (ראו בהמשך).',
         },
         {
           h: 'התאמות חלקיות',
@@ -219,7 +219,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'Standard & Conformance Level',
-          p: 'The site is built following the recommendations of Israeli Standard SI 5568 and the international WCAG 2.0 Level AA accessibility guidelines, to the extent feasible on the platform. We rely on high color contrast, readable text, and support for display adaptations across devices.',
+          p: 'LifeScript aims to follow the recommendations of Israeli Standard SI 5568 and WCAG 2.0 Level AA, and we are continuing to improve accessibility. If something isn\'t working for you, please contact us (see below).',
         },
         {
           h: 'Partial Conformance',

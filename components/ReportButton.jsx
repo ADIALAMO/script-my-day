@@ -41,7 +41,7 @@ export default function ReportButton({ kind = 'panel', sources, galleryRef, scri
         onClick={(e) => { e.stopPropagation(); setOpen(true); }}
         aria-label={t(isScript ? REPORT_COPY.buttonAriaScript : REPORT_COPY.buttonAria)}
         title={t(isScript ? REPORT_COPY.buttonAriaScript : REPORT_COPY.buttonAria)}
-        className={`flex items-center gap-1.5 ${compact ? 'p-1.5 rounded-lg bg-black/55 text-white/55 hover:text-red-300' : 'px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/35 hover:text-red-300'} transition-colors ${className}`}
+        className={`flex items-center gap-1.5 ${compact ? `p-2 rounded-lg bg-black/55 text-white/55 hover:text-red-300${/!p-/.test(className) ? '' : " relative after:absolute after:-inset-[9px] after:content-['']"}` : 'px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/35 hover:text-red-300'} transition-colors ${className}`}
       >
         <Flag size={compact ? 11 : 12} />
         {!compact && <span>{t(REPORT_COPY.button)}</span>}

@@ -2,7 +2,7 @@ import { Html, Head, Main, NextScript } from 'next/document';
 
 export default function Document() {
   return (
-    <Html lang="he" style={{ backgroundColor: '#030712' }}>
+    <Html lang="en" style={{ backgroundColor: '#030712' }}>
       <Head>
         {/*
           GA4 Consent Mode v2 + the gtag STUB. gtag.js itself is NOT loaded here: utils/ga.js loads it only on the website and only

@@ -541,6 +541,7 @@ export default function AuthModal({ isOpen, onClose, lang = 'en', context = 'gen
                               onChange={e => { setEmail(e.target.value); setEmailError(''); }}
                               onKeyDown={e => e.key === 'Enter' && handleEmailSignIn()}
                               placeholder={isHe ? 'כתובת מייל שלך...' : 'your@email.com'}
+                              aria-label={isHe ? 'כתובת המייל שלך' : 'Your email address'}
                               dir={isHe ? 'rtl' : 'ltr'}
                               className={`w-full bg-white/[0.04] border ${emailError ? 'border-red-500/50' : 'border-white/10'} rounded-xl px-4 py-3 ${isHe ? 'pr-9 text-right' : 'pl-9'} text-white text-[13px] placeholder-white/20 focus:outline-none focus:border-[#d4a373]/40 transition-colors duration-200`}
                             />

@@ -314,6 +314,7 @@ const ScriptForm = ({ onSubmit, onCancel, loading, locked = false, lang, produce
             disabled={isLocked}
             className={`w-full px-6 py-8 md:px-10 md:py-10 text-lg md:text-xl text-white bg-black/40 border border-white/10 rounded-[2rem] md:rounded-[3rem] focus:border-[#d4a373]/50 focus:bg-black/60 outline-none transition-all duration-500 min-h-[220px] md:min-h-[280px] shadow-[inset_0_2px_40px_rgba(0,0,0,0.7)] leading-relaxed resize-none backdrop-blur-sm placeholder-gray-700 ${isLocked ? 'opacity-50 cursor-not-allowed grayscale-[0.5]' : ''}`}
             placeholder={lang === 'he' ? 'איך עבר היום? ספר לי במילים שלך...' : 'How was your day? Tell me in your own words...'}
+            aria-label={lang === 'he' ? 'הסיפור או היום שלך' : 'Your story or your day'}
             style={{ fontFamily: "'Courier Prime', 'Courier New', monospace" }}
           />
           <div className="absolute -bottom-10 right-2 flex items-center gap-3">
@@ -385,8 +386,9 @@ const ScriptForm = ({ onSubmit, onCancel, loading, locked = false, lang, produce
       </div>
 
       <div data-tour="creator" className="mb-6 relative group max-w-[320px]">
-        <label className="block text-[#d4a373] text-[10px] uppercase tracking-[0.4em] mb-2 font-black italic">{lang === 'he' ? 'קרדיט ליוצר/ת:' : 'CREATOR CREDIT:'}</label>
+        <label htmlFor="creator-credit" className="block text-[#d4a373] text-[10px] uppercase tracking-[0.4em] mb-2 font-black italic">{lang === 'he' ? 'קרדיט ליוצר/ת:' : 'CREATOR CREDIT:'}</label>
         <input
+          id="creator-credit" autoComplete="name"
           type="text" value={producerName}
           placeholder={lang === 'he' ? 'שמך — יופיע בקרדיטי הפוסטר' : 'Your name — appears in poster credits'}
           onChange={(e) => {
