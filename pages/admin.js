@@ -371,7 +371,7 @@ export default function AdminDashboard({ adminEmail }) {
           </div>
         </header>
 
-        <main className="max-w-3xl mx-auto px-6 py-10 space-y-6">
+        <main id="main-content" tabIndex={-1} className="max-w-3xl mx-auto px-6 py-10 space-y-6 outline-none">
 
           {/* ── Live toolbar ─────────────────────────────────────────────── */}
           <div className="flex items-center justify-between px-1">

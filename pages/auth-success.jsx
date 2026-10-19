@@ -94,3 +94,6 @@ export default function AuthSuccess() {
     </>
   );
 }
+
+// pages/_app.js wraps this page in its <main id="main-content"> (it has no <main> of its own)
+AuthSuccess.needsMain = true;

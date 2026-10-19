@@ -55,3 +55,16 @@ test('accessibility statement: general aim, no itemized gaps, no high-contrast c
   }
   assert.match(MODAL_DATA.accessibility.en.sections.find((x) => /5568/.test(x.p)).p, /aims to follow the recommendations of Israeli Standard SI 5568 and WCAG 2\.0 Level AA/);
 });
+
+test('skip link label follows <html lang> continuously (MutationObserver), not only on focus', () => {
+  const s = src('components/SkipLink.jsx');
+  assert.match(s, /MutationObserver/); assert.match(s, /attributeFilter: \['lang'\]/); assert.doesNotMatch(s, /onFocus=/);
+});
+
+test('exactly one <main> per page: _app wraps in a <div> unless the page sets needsMain; pages that own a <main> give it id="main-content"', () => {
+  const app = src('pages/_app.js');
+  assert.match(app, /Component\.needsMain \? 'main' : 'div'/);
+  assert.doesNotMatch(app.replace(/\/\*[\s\S]*?\*\/|\{\/\*[\s\S]*?\*\/\}/g, ''), /<main/);
+  for (const p of ['pages/index.js', 'components/LegalPage.jsx', 'components/DataDeletionPage.jsx', 'pages/admin.js']) assert.match(src(p), /<main id="main-content"/, p);
+  for (const p of ['pages/auth-relay-complete.jsx', 'pages/auth-relay-start.jsx', 'pages/auth-success.jsx', 'pages/i/[code].jsx']) { assert.match(src(p), /\.needsMain = true;/, p); assert.doesNotMatch(code(p), /<main/, p); }
+});

@@ -117,3 +117,6 @@ export default function AuthRelayComplete() {
     </>
   );
 }
+
+// pages/_app.js wraps this page in its <main id="main-content"> (it has no <main> of its own)
+AuthRelayComplete.needsMain = true;
