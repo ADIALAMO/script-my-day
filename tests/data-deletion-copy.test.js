@@ -31,8 +31,12 @@ test('the timeline states what is real: manual processing after verification, th
   for (const lang of ['en', 'he']) assert.match(MODAL_DATA.privacy[lang].sections.find((x) => x.h.startsWith('9.')).p, lang === 'en' ? /within 30 days of receiving it/ : /תוך 30 ימים מקבלתה/);
 });
 
-test('no payment provider on the page (there is none): no customer ID, no payment provider, no Stripe — in both languages', () => {
-  assert.doesNotMatch(page.replace(/\/\/.*$/gm, ''), /customer ID|מזהה לקוח|ספק התשלומים|payment[- ]provider|Stripe/i);
+test('the deletion list names a payment-provider customer ID only conditionally ("if one exists"), never Stripe, and hides it in the app', () => {
+  const code = page.replace(/\/\/.*$/gm, '');
+  assert.match(code, /מזהה הלקוח שלך אצל ספק התשלומים \(אם קיים\)/);
+  assert.match(code, /Your payment-provider customer ID \(if one exists\)/);
+  assert.match(code, /!\(native && \/ספק התשלומים\|payment-provider\/\.test\(line\)\)/);
+  assert.doesNotMatch(code, /Stripe/i);
 });
 
 test('Hebrew additions are gender-neutral (plural / infinitive forms)', () => {
