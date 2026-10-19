@@ -38,6 +38,19 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ── Keyboard focus (WCAG 2.4.7) ─────────────────────────────────────────────
+   ONE shared ring for every interactive element, shown only for keyboard focus (:focus-visible: a mouse click or a tap never draws it). !important on purpose:
+   many components carry `outline-none` / `focus:outline-none` (inputs with only a border-colour change, the account avatar, the script edit box) and this rule is
+   what makes focus visible there without touching each component. Text fields get an INSET ring (negative offset) so an overflow-hidden parent can never clip it.
+   Programmatic focus targets (tabindex="-1": <main> after the skip link) are excluded: they are not controls. */
+:where(a[href], button, input, textarea, select, summary, [role="button"], [role="checkbox"], [role="radio"], [role="tab"], [role="menuitem"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--color-gold) !important;
+  outline-offset: 2px !important;
+}
+:where(input, textarea, select):focus-visible {
+  outline-offset: -2px !important;
+}
+
 /* ── Typography ─────────────────────────────────────────────────────────────── */
 .script-font {
   font-family: var(--font-courier);
