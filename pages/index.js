@@ -953,6 +953,7 @@ function HomePage() {
         isMuteLocked={scriptLoading}
         onStartTour={tour.start}
         tourDisabled={tourBlocked}
+        tourRunning={tour.running}
         tourStages={{ ...tour.reached, script: tour.reached.script || !!script }}
       />
       {ScrollDebug && debugScroll && <ScrollDebug />}
