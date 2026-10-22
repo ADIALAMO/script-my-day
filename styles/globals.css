@@ -22,6 +22,34 @@
   color-scheme: dark;
 }
 
+/* ── Guide button attention (until it has been pressed once: utils/guide-attention.js) ─────────────────────────────────────────────────────────────────
+   A gold glow ring that expands and fades every 2 s, plus a gentle bounce every 4 s (it happens only in the last 20% of each 4 s cycle, so it is not constant).
+   Reduced motion: no animation at all, just a static soft gold ring. Keyboard focus: the animation stops while the button has :focus-visible so the glow never
+   fights the focus ring (same gold); a disabled button never animates. */
+@keyframes tour-glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 163, 115, 0.6); }
+  50% { box-shadow: 0 0 0 8px rgba(212, 163, 115, 0); }
+}
+@keyframes tour-bounce {
+  0%, 80%, 100% { transform: scale(1); }
+  85% { transform: scale(1.08); }
+  90% { transform: scale(0.97); }
+  95% { transform: scale(1.03); }
+}
+.tour-button--attention {
+  animation: tour-glow-pulse 2s ease-in-out infinite, tour-bounce 4s ease-in-out infinite;
+}
+.tour-button--attention:focus-visible,
+.tour-button--attention:disabled {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-button--attention {
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(212, 163, 115, 0.35);
+  }
+}
+
 /* ── System notices (limit / error / "not available" messages) ─────────────────
    ONE token set for every system notice, in the brand gold instead of alarm red. To try another shade, change these three variables (or the .system-notice*
    rules below) and every notice follows. Destructive actions (delete / remove / cancel buttons) deliberately keep their red. */

@@ -1,3 +1,4 @@
+import { hasSeenGuide, markGuideSeen, shouldAttract } from '../utils/guide-attention.js';
 import { hasSavedHistory, clearPersonalLocalData, SIGN_OUT_CONFIRM } from '../utils/sign-out-cleanup.js';
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -237,7 +238,7 @@ function AvatarDropdown({ session, tier, hasBillingCustomer, isHe, anchor, onClo
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHistoryOpen, onOpenAuthModal, tierRefreshToken = 0, onDropdownToggle, closeDropdownRef, isMusicMuted, onToggleMute, isMuteLocked = false, onStartTour, tourDisabled = false, tourStages }) {
+export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHistoryOpen, onOpenAuthModal, tierRefreshToken = 0, onDropdownToggle, closeDropdownRef, isMusicMuted, onToggleMute, isMuteLocked = false, onStartTour, tourDisabled = false, tourRunning = false, tourStages }) {
   const native = useNative();
   const { data: session, status } = useSession();
   const isAuthenticated = status === 'authenticated';
@@ -248,6 +249,8 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [referralOpen, setReferralOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [guideSeen, setGuideSeen] = useState(true);   // true until the stored flag has been read after mount: no flash, no hydration mismatch
+  useEffect(() => { setGuideSeen(hasSeenGuide()); }, []);
   const guideBtnRef = useRef(null);
   const [mounted, setMounted] = useState(false);
   const avatarBtnRef = useRef(null);
@@ -341,10 +344,10 @@ export default function Navbar({ lang, onLanguageToggle, historyCount = 0, onHis
             data-tour="guide"
             aria-haspopup="menu"
             aria-expanded={guideOpen}
-            onClick={() => { setDropdownOpen(false); setGuideOpen((o) => !o); }}
+            onClick={() => { setDropdownOpen(false); setGuideOpen((o) => !o); markGuideSeen(); setGuideSeen(true); }}
             disabled={tourDisabled && !guideOpen}
             aria-label={isHe ? 'הדרכה' : 'Guide'}
-            className={`group relative flex items-center justify-center gap-1.5 h-8 md:h-9 w-8 md:w-auto md:px-3 border border-white/15 rounded-xl [@media(hover:hover)]:hover:border-[#d4a373]/40 [@media(hover:hover)]:hover:bg-[#d4a373]/8 transition-all duration-300 shrink-0 ${tourDisabled && !guideOpen ? 'opacity-30' : ''}`}
+            className={`group relative flex items-center justify-center gap-1.5 h-8 md:h-9 w-8 md:w-auto md:px-3 border border-white/15 rounded-xl [@media(hover:hover)]:hover:border-[#d4a373]/40 [@media(hover:hover)]:hover:bg-[#d4a373]/8 transition-all duration-300 shrink-0 ${tourDisabled && !guideOpen ? 'opacity-30' : ''} ${shouldAttract({ seen: guideSeen, tourRunning, disabled: tourDisabled, menuOpen: guideOpen }) ? 'tour-button--attention' : ''}`}
           >
             <CircleHelp size={14} className="text-[#d4a373]/75 md:w-[15px] md:h-[15px]" />
             <span className={`hidden md:inline text-[10px] font-black uppercase tracking-widest text-[#d4a373]/75 ${isHe ? 'font-heebo' : ''}`}>{isHe ? 'הדרכה' : 'Guide'}</span>
