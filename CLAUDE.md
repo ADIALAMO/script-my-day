@@ -381,3 +381,8 @@ concentrated launch (Product Hunt + communities) → fundraise once there's trac
 `providers` · `flux-prompt` · `identity` · `quota` · `bilingual` · `growth`. They activate
 automatically when you touch the matching area; read the relevant one before changing that
 subsystem.
+
+## Security review
+For any change touching auth, R2/Redis keys, rate limits, secrets, webhooks, admin routes,
+content-safety logic, or data deletion: delegate to the `security-auditor` subagent
+(`.claude/agents/security-auditor.md`) for a focused review before merging.
