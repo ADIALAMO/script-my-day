@@ -35,3 +35,4 @@ waitlist-backups/
 
 # stripe-customer cleanup backups hold payment-provider customer ids — never commit
 stripe-customer-backups/
+.claude/settings.local.json
