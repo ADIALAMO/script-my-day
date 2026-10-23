@@ -216,8 +216,8 @@ export default function CharacterModal({
             </p>
             <button
               onClick={onClose}
-              className="absolute top-[22px] left-5 rtl:left-auto rtl:right-5 w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all duration-150"
-              style={isHebrew ? { left: 'auto', right: '1.25rem' } : {}}
+              className="absolute top-[22px] right-5 rtl:right-auto rtl:left-5 w-7 h-7 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all duration-150"
+              style={isHebrew ? { right: 'auto', left: '1.25rem' } : {}}
             >
               <X size={13} />
             </button>
