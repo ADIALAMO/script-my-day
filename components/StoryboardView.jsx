@@ -509,61 +509,6 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                     <div className="absolute inset-0 bg-gradient-to-t from-[#050710]/85 via-transparent to-black/15 pointer-events-none z-10" />
                   )}
 
-                  {/* Export action bar — desktop: download (+ share) · mobile: share */}
-                  {imgState === 'loaded' && imgUrl && (
-                    <div className="absolute bottom-0 inset-x-0 z-20 flex items-center justify-center gap-2 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out">
-                      {/* Replace this panel's image — budget-limited (regensLeft) across the comic */}
-                      {onRegenerate && (
-                        <button
-                          type="button"
-                          onClick={() => onRegenerate(idx)}
-                          disabled={regensLeft <= 0}
-                          title={regensLeft > 0
-                            ? (isHebrew ? `החלף תמונה • נותרו ${regensLeft}` : `Replace image • ${regensLeft} left`)
-                            : (isHebrew ? 'נגמרו ההחלפות' : 'No replacements left')}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-white/80 disabled:hover:border-white/20 disabled:hover:bg-black/75"
-                        >
-                          <RefreshCw size={10} />
-                          <span>{isHebrew ? 'החלף' : 'Replace'}{regensLeft > 0 ? ` ${regensLeft}` : ''}</span>
-                        </button>
-                      )}
-                      {(() => {
-                        // Only native Android share (not download) waits on compositeWatermark
-                        // long enough to need this; see exportFrame's comment above for why the
-                        // guard/indicator are click-triggered and use aria-disabled, not `disabled`.
-                        const showPreparing = isCapacitorNative() && preparingPanels.has(panel.panel);
-                        return (
-                          <button
-                            type="button"
-                            onPointerDown={() => prewarmFrame(imgUrl, panel.panel)}
-                            onClick={() => exportFrame(imgUrl, panel.panel, isDesktop ? 'download' : 'share')}
-                            aria-disabled={showPreparing}
-                            style={showPreparing ? { pointerEvents: 'none' } : undefined}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200"
-                          >
-                            {showPreparing ? (
-                              <>
-                                <Loader2 size={10} className="animate-spin" />
-                                <span>{isHebrew ? 'מכין...' : 'Preparing...'}</span>
-                              </>
-                            ) : (
-                              <>
-                                {isDesktop ? <Download size={10} /> : <Share2 size={10} />}
-                                <span>{isDesktop ? (isHebrew ? 'הורד' : 'Download') : (isHebrew ? 'שתף' : 'Share')}</span>
-                              </>
-                            )}
-                          </button>
-                        );
-                      })()}
-                      {isDesktop && (
-                        <button type="button" onClick={() => exportFrame(imgUrl, panel.panel, 'share')} aria-label={isHebrew ? 'שתף' : 'Share'} className="flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-sm border border-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-black/90 transition-all duration-200">
-                          <Share2 size={10} />
-                          <span>{isHebrew ? 'שתף' : 'Share'}</span>
-                        </button>
-                      )}
-                    </div>
-                  )}
-
                   {/* Report — always reachable (not hover-only): small flag, top-right of a finished image */}
                   {imgState === 'loaded' && imgUrl && (
                     <div className="absolute top-3 right-3 z-30" data-tour="report-panel">
@@ -589,6 +534,63 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                     </span>
                   </div>
                 </div>
+
+                {/* Export action bar — desktop: download (+ share) · mobile: share.
+                   A normal-flow row UNDER the image, always visible: it used to slide up over the art on group-hover, which on a
+                   phone only "appeared" after a tap (sticky hover) covering the panel, and never for keyboard users. */}
+                {imgState === 'loaded' && imgUrl && (
+                  <div className="flex flex-wrap items-center justify-center gap-2 px-4 pt-3">
+                    {/* Replace this panel's image — budget-limited (regensLeft) across the comic */}
+                    {onRegenerate && (
+                      <button
+                        type="button"
+                        onClick={() => onRegenerate(idx)}
+                        disabled={regensLeft <= 0}
+                        title={regensLeft > 0
+                          ? (isHebrew ? `החלף תמונה • נותרו ${regensLeft}` : `Replace image • ${regensLeft} left`)
+                          : (isHebrew ? 'נגמרו ההחלפות' : 'No replacements left')}
+                        className="flex items-center gap-1.5 whitespace-nowrap px-3 py-2 bg-white/5 border border-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-white/10 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-white/80 disabled:hover:border-white/20 disabled:hover:bg-white/5"
+                      >
+                        <RefreshCw size={10} />
+                        <span>{isHebrew ? 'החלף' : 'Replace'}{regensLeft > 0 ? ` ${regensLeft}` : ''}</span>
+                      </button>
+                    )}
+                    {(() => {
+                      // Only native Android share (not download) waits on compositeWatermark
+                      // long enough to need this; see exportFrame's comment above for why the
+                      // guard/indicator are click-triggered and use aria-disabled, not `disabled`.
+                      const showPreparing = isCapacitorNative() && preparingPanels.has(panel.panel);
+                      return (
+                        <button
+                          type="button"
+                          onPointerDown={() => prewarmFrame(imgUrl, panel.panel)}
+                          onClick={() => exportFrame(imgUrl, panel.panel, isDesktop ? 'download' : 'share')}
+                          aria-disabled={showPreparing}
+                          style={showPreparing ? { pointerEvents: 'none' } : undefined}
+                          className="flex items-center gap-1.5 whitespace-nowrap px-3 py-2 bg-white/5 border border-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-white/10 transition-all duration-200"
+                        >
+                          {showPreparing ? (
+                            <>
+                              <Loader2 size={10} className="animate-spin" />
+                              <span>{isHebrew ? 'מכין...' : 'Preparing...'}</span>
+                            </>
+                          ) : (
+                            <>
+                              {isDesktop ? <Download size={10} /> : <Share2 size={10} />}
+                              <span>{isDesktop ? (isHebrew ? 'הורד' : 'Download') : (isHebrew ? 'שתף' : 'Share')}</span>
+                            </>
+                          )}
+                        </button>
+                      );
+                    })()}
+                    {isDesktop && (
+                      <button type="button" onClick={() => exportFrame(imgUrl, panel.panel, 'share')} aria-label={isHebrew ? 'שתף' : 'Share'} className="flex items-center gap-1.5 whitespace-nowrap px-3 py-2 bg-white/5 border border-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/80 hover:text-white hover:border-[#d4a373]/50 hover:bg-white/10 transition-all duration-200">
+                        <Share2 size={10} />
+                        <span>{isHebrew ? 'שתף' : 'Share'}</span>
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* ── Content zone ─────────────────────────────── */}
                 <div className="p-4 space-y-3">
