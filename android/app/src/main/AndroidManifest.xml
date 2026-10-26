@@ -20,6 +20,15 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- Android App Links: open my-life-script.vercel.app links directly in the app -->
+            <!-- Verified via public/.well-known/assetlinks.json on the web origin -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="my-life-script.vercel.app" />
+            </intent-filter>
         </activity>
 
         <provider
