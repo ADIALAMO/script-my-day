@@ -509,9 +509,10 @@ export default function StoryboardView({ panels, lang, panelImages, onClose, unl
                     <div className="absolute inset-0 bg-gradient-to-t from-[#050710]/85 via-transparent to-black/15 pointer-events-none z-10" />
                   )}
 
-                  {/* Report — always reachable (not hover-only): small flag, top-right of a finished image */}
+                  {/* Report — always reachable (not hover-only): small flag, bottom-right of a finished image
+                      (top-right is the scene badge; the action row below the image never overlaps it) */}
                   {imgState === 'loaded' && imgUrl && (
-                    <div className="absolute top-3 right-3 z-30" data-tour="report-panel">
+                    <div className="absolute bottom-3 right-3 z-30" data-tour="report-panel">
                       <ReportButton
                         kind="panel" compact lang={lang}
                         sources={[imgUrl]}
