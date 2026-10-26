@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.lifescript.studio",
+      "sha256_cert_fingerprints": [
+        "E9:08:83:33:26:58:96:ED:30:B1:1F:91:04:03:2C:84:A8:CB:64:C5:DB:BE:1E:57:9B:EC:E5:6A:93:98:EB:D6"
+      ]
+    }
+  }
+]

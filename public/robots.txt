@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /auth-relay-start
+Disallow: /auth-relay-complete
+Disallow: /auth-success
+Disallow: /api/
+
+Sitemap: https://my-life-script.vercel.app/sitemap.xml
