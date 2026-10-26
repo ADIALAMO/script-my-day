@@ -44,6 +44,15 @@ export default function Document() {
         <meta name="theme-color" content="#030712" />
 
         {/*
+          Chrome's native "Add to Home screen" / app-install banner for Android.
+          Chrome shows this automatically to Android visitors who don't have
+          the app installed, pointing at the Play Store listing. Harmless
+          inside the Android app's own Capacitor WebView -- this banner is a
+          Chrome-tab UI feature, not something embedded WebViews render.
+        */}
+        <meta name="google-play-app" content="app-id=app.lifescript.studio" />
+
+        {/*
           Google Fonts, loaded non-render-blocking. The old @import in
           globals.css forced the browser to wait on this fetch before
           painting ANYTHING — including the dark background set moments
