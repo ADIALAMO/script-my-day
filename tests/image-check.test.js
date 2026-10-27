@@ -78,7 +78,7 @@ test('imageHash is the SHA-256 of the DECODED bytes, independent of the claimed 
 });
 
 test('pinned slugs and request defaults', () => {
-  assert.equal(NEMOTRON_SLUG, 'nvidia/nemotron-3.5-content-safety:free');
+  assert.equal(NEMOTRON_SLUG, 'nvidia/nemotron-3.5-content-safety');   // the PAID route (DeepInfra); ':free' cannot be combined with deny
   assert.equal(FALLBACK_SLUG, 'google/gemini-2.5-flash-lite');
   assert.equal(NEMOTRON_MAX_TOKENS, 512);
   const keep = process.env.IMAGE_CHECK_REASONING_EFFORT;

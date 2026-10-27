@@ -96,6 +96,7 @@ export function createProviders() {
   // A failure mode is an HTTP status ('402', '500') or '403:<variant>': a 403 whose body is OpenRouter's real "Key limit exceeded" answer ('keylimit') or one of
   // its look-alikes that must NOT be treated as a credit failure. Anything else answers the plain 'mock failure' text with that status.
   const KEY_LIMIT_BODY = { error: { message: 'Key limit exceeded (total limit). Manage it using https://openrouter.ai/workspaces/default/keys/KEYID $0.00 of $0.00 used; does not reset.', code: 403, metadata: { limit_source: 'openrouter_key_limit', remedy_hint: "Raise or remove this API key's usage limit at https://openrouter.ai/settings/keys, or use a key without a limit.", scope: 'key_limit', limit_usd: 0, spend_usd: 0, resets_at: null } } };
+  const POLICY_404 = (what) => ({ error: { message: `No endpoints found matching your data policy (${what}). Configure: https://openrouter.ai/settings/privacy`, code: 404, metadata: { routing_funnel: [{ step: 'Initial Endpoints', endpoint_count: 1 }], failed_routing_step: 'Filter by Data Policy' } } });
   const FAIL_BODIES = {
     '403:keylimit': () => json(KEY_LIMIT_BODY, 403),
     '403:scope': () => json({ error: { message: 'Key limit exceeded', code: 403, metadata: { scope: 'key_limit' } } }, 403),
@@ -103,6 +104,9 @@ export function createProviders() {
     '403:otherscope': () => json({ error: { message: 'Forbidden', code: 403, metadata: { scope: 'model_access', limit_source: 'provider' } } }, 403),
     '403:plain': () => json({ error: { message: 'Forbidden', code: 403 } }, 403),
     '403:garbage': () => text('<html>forbidden</html>', 403),
+    // OpenRouter's answer when NO endpoint satisfies provider.data_collection "deny" (probe 2026-10-27), and a look-alike whose text names "safety" (must never be read as a content refusal)
+    '404:policy': () => json(POLICY_404('Free model training'), 404),
+    '404:policysafety': () => json(POLICY_404('Safety retention'), 404),
   };
   const fail = (f) => {
     if (FAIL_BODIES[String(f)]) return FAIL_BODIES[String(f)]();
@@ -173,6 +177,8 @@ export function createProviders() {
       if (model.includes('grok-imagine')) { count('grok', { model }); const f = failing('grok'); if (f) return fail(f); if (refuse.grok) return refusedImage; return json(img); }
       if (model.includes('gemini-2.5-flash-image')) { count('gemini-image', { model }); const f = failing('gemini-image'); if (f) return fail(f); return json(img); }
       if (model.includes('nemotron')) {
+        // like the real route: the ':free' variant has ONE endpoint (NVIDIA, trains on data), so provider.data_collection "deny" leaves nothing to route to
+        if (model.endsWith(':free') && body?.provider?.data_collection === 'deny') { count('moderation-free-deny', { model }); return json(POLICY_404('Free model training'), 404); }
         count('moderation', { model }); bodies.push({ provider: 'moderation', body });
         if (mode.moderation === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; }
         const f = failing('moderation'); if (f) return fail(f);
