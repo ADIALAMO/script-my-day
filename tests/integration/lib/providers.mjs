@@ -79,7 +79,18 @@ export function createProviders() {
   const hooks = { afterPut: null };   // test hooks (see setup.mjs): run something right after an object is stored
 
   const count = (provider, extra = {}) => { counts[provider] = (counts[provider] || 0) + 1; log.push({ provider, ...extra }); };
-  const failing = (provider) => (mode[provider] && mode[provider] !== 'ok' ? mode[provider] : null);
+  // A failure mode is a status ('500'), '<status>x<N>' = fail the first N calls with that status and then answer normally ('429x1'), or a '403:<variant>' body (below).
+  const hits = {};
+  const failing = (provider) => {
+    const v = mode[provider];
+    if (!v || v === 'ok') return null;
+    const m = /^(\d{3})x(\d+)$/.exec(String(v));
+    if (!m) return v;
+    hits[provider] = (hits[provider] || 0) + 1;
+    return hits[provider] <= Number(m[2]) ? m[1] : null;
+  };
+  // What a 429 looks like: optional Retry-After header (seconds) and body text, set per test through providers.rate429 (reset between scenarios).
+  const rate429 = { retryAfter: null, body: null };
   const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json' } });
   const text = (t, status) => new Response(t, { status });
   // A failure mode is an HTTP status ('402', '500') or '403:<variant>': a 403 whose body is OpenRouter's real "Key limit exceeded" answer ('keylimit') or one of
@@ -93,7 +104,11 @@ export function createProviders() {
     '403:plain': () => json({ error: { message: 'Forbidden', code: 403 } }, 403),
     '403:garbage': () => text('<html>forbidden</html>', 403),
   };
-  const fail = (f) => (FAIL_BODIES[String(f)] ? FAIL_BODIES[String(f)]() : text('mock failure', Number(f)));
+  const fail = (f) => {
+    if (FAIL_BODIES[String(f)]) return FAIL_BODIES[String(f)]();
+    if (Number(f) === 429) return new Response(rate429.body ?? 'mock failure', { status: 429, headers: rate429.retryAfter === null ? {} : { 'retry-after': String(rate429.retryAfter) } });
+    return text('mock failure', Number(f));
+  };
 
   async function handle(url, init = {}) {
     const u = new URL(url);
@@ -219,8 +234,8 @@ export function createProviders() {
   }
 
   return {
-    handle, refuse, bodies, counts, log, telegram, s3puts, s3deletes, s3copies, s3objects, hooks, mode, latency, moderationVerdict, checkGemini, imgSafety, ageVerdict, scriptOutputs, sbVisuals, sbRaw, handlers, unexpected,
-    reset() { for (const k of Object.keys(counts)) delete counts[k]; log.length = 0; telegram.length = 0; s3puts.length = 0; s3deletes.length = 0; s3copies.length = 0; s3objects.clear(); for (const k of Object.keys(mode)) delete mode[k]; latency.gemini = null; moderationVerdict.value = 'safe'; moderationVerdict.raw = undefined; moderationVerdict.nonString = false; moderationVerdict.nullLength = false; moderationVerdict.queue.length = 0; checkGemini.value = 'safe'; checkGemini.raw = undefined; checkGemini.block = false; ageVerdict.value = 'adult'; ageVerdict.raw = undefined; ageVerdict.block = false; scriptOutputs.queue.length = 0; sbVisuals.queue.length = 0; sbRaw.queue.length = 0; checkGemini.queue.length = 0; ageVerdict.queue.length = 0; imgSafety.value = 'safe'; imgSafety.raw = undefined; imgSafety.block = false; imgSafety.queue.length = 0; handlers.r2 = null; hooks.afterPut = null; for (const k of Object.keys(refuse)) delete refuse[k]; bodies.length = 0; },
+    handle, refuse, bodies, counts, log, telegram, s3puts, s3deletes, s3copies, s3objects, hooks, mode, rate429, latency, moderationVerdict, checkGemini, imgSafety, ageVerdict, scriptOutputs, sbVisuals, sbRaw, handlers, unexpected,
+    reset() { for (const k of Object.keys(counts)) delete counts[k]; log.length = 0; telegram.length = 0; s3puts.length = 0; s3deletes.length = 0; s3copies.length = 0; s3objects.clear(); for (const k of Object.keys(mode)) delete mode[k]; latency.gemini = null; moderationVerdict.value = 'safe'; moderationVerdict.raw = undefined; moderationVerdict.nonString = false; moderationVerdict.nullLength = false; moderationVerdict.queue.length = 0; checkGemini.value = 'safe'; checkGemini.raw = undefined; checkGemini.block = false; ageVerdict.value = 'adult'; ageVerdict.raw = undefined; ageVerdict.block = false; scriptOutputs.queue.length = 0; sbVisuals.queue.length = 0; sbRaw.queue.length = 0; checkGemini.queue.length = 0; ageVerdict.queue.length = 0; imgSafety.value = 'safe'; imgSafety.raw = undefined; imgSafety.block = false; imgSafety.queue.length = 0; handlers.r2 = null; hooks.afterPut = null; for (const k of Object.keys(refuse)) delete refuse[k]; bodies.length = 0; for (const k of Object.keys(hits)) delete hits[k]; rate429.retryAfter = null; rate429.body = null; },
     snapshot() { return { ...counts, 'r2-put': s3puts.length }; },
     paidTotal() { return Object.entries(counts).filter(([k]) => PAID.has(k)).reduce((n, [, v]) => n + v, 0); },
     paid() { return Object.fromEntries(Object.entries(counts).filter(([k]) => PAID.has(k))); },
