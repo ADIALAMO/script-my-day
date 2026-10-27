@@ -293,15 +293,16 @@ scenario('T15', 'budget independence: exhausting the MINOR budget (DAILY_MINOR_C
     return { actual: 'minor budget empty; image and text unaffected' };
   });
 
-scenario('T16', 'the four counters are separate keys: one call of each kind moves only its own counter',
-  'image 1, text 1, minor 1, image-safety second opinion 2 (selfie + sheet) (each in its own key)', async () => {
+scenario('T16', 'the five counters are separate keys: one call of each kind moves only its own counter',
+  'image 1, text 1, minor 1, image-safety second opinion 2 (selfie + sheet), Nemotron primary 2 (selfie + sheet; the poster\'s failed attempts gave their slots back) (each in its own key)', async () => {
     await posterWithNemotronDown('d');
     ctx.advance(120_000);   // let the Nemotron circuit that the poster's failures opened expire, so the upload's own image check uses Nemotron again
     await callScript(await makeUser('t16a', 'free'), 'drama', '198.51.100.38');
     await up(await makeUser('t16b', 'free'), '198.51.100.39');
     assert.deepEqual([SPEND(), TEXT_SPEND(), MINOR_SPEND(), IMGSAFETY_SPEND()], [1, 1, 1, 2], 'the upload makes TWO second opinions now: the selfie and the generated sheet');
-    assert.deepEqual(fake.keys('usage:check:').sort(), ['usage:check:imgsafety:global:2026-10-15', 'usage:check:minor:global:2026-10-15', 'usage:check:paid:global:2026-10-15', 'usage:check:text:global:2026-10-15']);
-    return { actual: 'four independent counters' };
+    assert.equal(fake.num('usage:check:nemotron:global:2026-10-15'), 2, 'the paid primary checker counts its own verdicts (selfie + sheet); the poster\'s technical failures released their slots');
+    assert.deepEqual(fake.keys('usage:check:').sort(), ['usage:check:imgsafety:global:2026-10-15', 'usage:check:minor:global:2026-10-15', 'usage:check:nemotron:global:2026-10-15', 'usage:check:paid:global:2026-10-15', 'usage:check:text:global:2026-10-15']);
+    return { actual: 'five independent counters' };
   });
 
 scenario('T17', 'circuit independence: a failing text classifier opens ONLY check_text, a failing image fallback ONLY check_gemini, a failing screen ONLY check_minor — and the others keep serving',

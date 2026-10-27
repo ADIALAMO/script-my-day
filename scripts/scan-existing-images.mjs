@@ -3,7 +3,7 @@
  * ONE-TIME scan of images that were stored BEFORE the output check existed (panels/, posters/ in the public bucket — or a local folder such as
  * public/gallery). MANUAL ONLY: nothing here is scheduled or automatic.
  *
- * It lists the objects, classifies each one with the SAME strict checkers the app uses (NVIDIA Nemotron free; optionally the paid Gemini
+ * It lists the objects, classifies each one with the SAME strict checkers the app uses (the paid NVIDIA Nemotron on DeepInfra with data_collection deny — about $0.00015 per image; optionally the paid Gemini
  * Flash-Lite fallback via OpenRouter) and writes a results file of KEYS + VERDICTS only. Image bytes are held in memory for one request and are
  * never written anywhere or printed. The default run is a DRY RUN: it prints counts and the keys classified unsafe. Moving anything is a
  * separate, explicit step (--quarantine-from) with a typed confirmation, and it only MOVES (copy to the private bucket, then delete the public
@@ -159,7 +159,7 @@ export async function run({ argv, deps }) {
     const byPrefix = {};
     for (const o of objects) { const p = o.key.split('/')[0]; byPrefix[p] = (byPrefix[p] || 0) + 1; }
     log(`${objects.length} object(s), ${(bytes / 1048576).toFixed(1)} MB${Object.keys(byPrefix).length ? ` — ${Object.entries(byPrefix).map(([p, n]) => `${p}: ${n}`).join(', ')}` : ''}`);
-    log(`estimate if every image used the paid route: ≈ $${(objects.length * COST_PER_PAID_CALL).toFixed(2)} (the free Nemotron route costs $0)`);
+    log(`estimate if every image used the paid route: ≈ $${(objects.length * COST_PER_PAID_CALL).toFixed(2)} (the Nemotron route costs about $0.00015 per image too)`);
     return { code: 0, summary: { objects: objects.length, bytes } };
   }
 

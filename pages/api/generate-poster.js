@@ -8,7 +8,8 @@ import { reservePosterQuota, releasePosterQuota } from '../../lib/poster-quota.j
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 import { sanitize } from '../../utils/input-processor.js';
 import { checkContent } from '../../lib/content-blocklist.js';
-import { checkImage, markImageChecked } from '../../lib/image-check.js';
+import { checkImage, markImageChecked, DENY_PROVIDER } from '../../lib/image-check.js';
+import { notePolicyRouting404 } from '../../lib/policy-routing.js';
 import { isContentRefusal, ContentRefusalError, openRouterRefusal } from '../../lib/content-safety.js';
 import {
   PROVIDERS,
@@ -203,12 +204,14 @@ async function runOpenRouterKlein(prompt, seed) {
       model: 'black-forest-labs/flux.2-klein-4b',
       messages: [{ role: 'user', content: prompt }],
       seed,
+      provider: DENY_PROVIDER,   // only endpoints that do not train on the prompt; a 404 "no endpoint matches" is a technical failure → the cascade moves on
     }),
     signal: AbortSignal.timeout(25000),
   });
 
   if (!res.ok) {
     const err = await res.text();
+    await notePolicyRouting404('openrouter', res.status, err);   // counted + announced if the deny filter left no endpoint (never a refusal: see isContentRefusal)
     throw new Error(providerErrorMessage('OpenRouter', res.status, err));
   }
 

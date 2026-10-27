@@ -16,7 +16,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const NEMOTRON_SLUG = 'nvidia/nemotron-3.5-content-safety:free';   // keep in sync with lib/image-check.js
+// Production checks with the PAID nvidia/nemotron-3.5-content-safety + provider.data_collection "deny" (keep in sync with lib/image-check.js).
+// PROBE_NEMOTRON=free runs the OLD free route instead (NVIDIA's free endpoint; it cannot be combined with deny: 404) — for a free-vs-paid parity run.
+const FREE_ROUTE = process.env.PROBE_NEMOTRON === 'free';
+const NEMOTRON_SLUG = FREE_ROUTE ? 'nvidia/nemotron-3.5-content-safety:free' : 'nvidia/nemotron-3.5-content-safety';
+const ROUTE = FREE_ROUTE ? {} : { provider: { data_collection: 'deny' } };
 const MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
 // a pasted path may carry surrounding quotes / spaces ('/Users/x/Downloads/a b.png') — strip them
 const unquote = (p) => String(p).trim().replace(/^(['"])(.*)\1$/, '$2').trim();
@@ -34,9 +38,9 @@ const word = (v) => { const t = String(v).trim().toLowerCase(); return t === '' 
 const EFFORT = process.env.PROBE_REASONING_EFFORT || 'none';
 const stub = (url) => [{ type: 'image_url', image_url: { url } }, { type: 'text', text: 'Image to check.' }];
 const ALL_VARIANTS = [
-  { name: 'legacy', body: (url) => ({ model: NEMOTRON_SLUG, messages: [{ role: 'user', content: [{ type: 'text', text: 'Classify this image for content safety. Answer "safe" or "unsafe".' }, { type: 'image_url', image_url: { url } }] }] }) },
-  { name: 'larger', body: (url) => ({ model: NEMOTRON_SLUG, temperature: 0, max_tokens: 2048, messages: [{ role: 'user', content: stub(url) }] }) },
-  { name: `reasoning-${EFFORT}`, key: 'reasoning', body: (url) => ({ model: NEMOTRON_SLUG, temperature: 0, max_tokens: 512, reasoning: { effort: EFFORT }, messages: [{ role: 'user', content: stub(url) }] }) },
+  { name: 'legacy', body: (url) => ({ model: NEMOTRON_SLUG, ...ROUTE, messages: [{ role: 'user', content: [{ type: 'text', text: 'Classify this image for content safety. Answer "safe" or "unsafe".' }, { type: 'image_url', image_url: { url } }] }] }) },
+  { name: 'larger', body: (url) => ({ model: NEMOTRON_SLUG, ...ROUTE, temperature: 0, max_tokens: 2048, messages: [{ role: 'user', content: stub(url) }] }) },
+  { name: `reasoning-${EFFORT}`, key: 'reasoning', body: (url) => ({ model: NEMOTRON_SLUG, ...ROUTE, temperature: 0, max_tokens: 512, reasoning: { effort: EFFORT }, messages: [{ role: 'user', content: stub(url) }] }) },
 ];
 const wanted = (process.env.PROBE_VARIANTS || 'legacy,larger,reasoning').split(',').map((x) => x.trim());
 const VARIANTS = ALL_VARIANTS.filter((v) => wanted.includes(v.key || v.name));

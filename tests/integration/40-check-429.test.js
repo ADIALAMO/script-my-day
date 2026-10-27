@@ -134,18 +134,18 @@ scenario('R7', 'the credit path is untouched: 402 and a key-limit 403 are NOT re
     return { actual: 'unchanged' };
   });
 
-scenario('R8', 'Nemotron is unchanged: its own retry still works, its 429 is counted, and its circuit keeps 45 s; the other 429 durations are as before',
-  'passes after Nemotron retry; check_nemotron 45 s; generation providers 45 s; 503 20 s; 500 15 s', async () => {
+scenario('R8', 'Nemotron (now a paid check like the others): its own retry still works, its 429 is counted, and its circuit pauses 10 s; generation providers keep 45 s, other statuses are as before',
+  'passes after Nemotron retry; the five check circuits 10 s; generation providers 45 s; 503 20 s; 500 15 s', async () => {
     providers.mode.moderation = '429x1';
     const u = await makeUser('r8', 'admin');
     const r = await callPoster(u);
     assert.equal(r.body.isPlaceholder, undefined); assert.equal(calls('moderation'), 2); assert.equal(openFor('check_nemotron'), null); assert.equal(c429('check_nemotron'), 1);
     ctx.fresh();
     const dur = async (name, status) => { await cb.recordFailure(redis, name, status); return openFor(name); };
-    for (const name of ['check_gemini', 'check_imgsafety', 'check_text', 'check_minor']) {
+    for (const name of ['check_nemotron', 'check_gemini', 'check_imgsafety', 'check_text', 'check_minor']) {
       const d = await dur(name, 429); assert.ok(d > 0 && d <= 10_000 + 1000, `${name} 429: ${d}`);
     }
-    for (const name of ['check_nemotron', 'cloudflare', 'openrouter', 'script_paid', 'storyboard_gemini', 'grok_identity']) {
+    for (const name of ['cloudflare', 'openrouter', 'script_paid', 'storyboard_gemini', 'grok_identity']) {
       const d = await dur(name, 429); assert.ok(d > 40_000 && d <= 45_000 + 1000, `${name} 429: ${d}`);
     }
     const d503 = await dur('check_text', 503); assert.ok(d503 > 10_000 && d503 <= 20_000 + 1000, `check_text 503: ${d503}`);
