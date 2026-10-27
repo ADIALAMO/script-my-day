@@ -144,6 +144,11 @@ export default async function handler(req, res) {
         console.warn('🛑 generateScript: a provider refused the content — request ended');
         return res.status(422).json({ success: false, code: CODES.CONTENT_REFUSED, message: 'Content refused.' });
       }
+      if (result.credit) {
+        // The AI provider account is out of credit (HTTP 402; already counted + announced to the owner): retrying cannot help, so say so — without any detail.
+        console.error('❌ generateScript failed: provider credit exhausted');
+        return res.status(503).json({ success: false, code: CODES.SERVICE_UNAVAILABLE, message: 'Service temporarily unavailable.' });
+      }
       console.error('❌ generateScript failed:', result.error);
       return res.status(500).json({
         success: false,
@@ -162,14 +167,15 @@ export default async function handler(req, res) {
       await giveBack();
       return res.status(422).json({ success: false, code: CODES.CONTENT_REFUSED, message: 'Content refused.' });
     };
-    const unavailable = async () => {
+    const unavailable = async (credit = false) => {
       await giveBack();
+      if (credit) return res.status(503).json({ success: false, code: CODES.SERVICE_UNAVAILABLE, message: 'Service temporarily unavailable.' });   // the classifier's credit ran out (counted + announced by the circuit breaker)
       return res.status(503).json({ success: false, code: CODES.CONTENT_CHECK_UNAVAILABLE, message: 'Safety check unavailable.' });
     };
     // Anything unexpected inside the output check (a thrown error) must never leak the reserved quota slot: give it back and say the check is unavailable.
     try {
       let check = await checkTextOutput(result.output, { genre: cleanGenre, budgetMs: left() });
-      if (check.verdict === 'unavailable') return unavailable();
+      if (check.verdict === 'unavailable') return unavailable(check.credit === true);
       if (check.verdict !== 'safe') {
         if (left() < REGEN_MIN_LEFT_MS) return refuse(`${check.stage}, no time to regenerate`);
         console.warn(`🛑 generate-script: output held back (${check.stage}) — regenerating once`);
@@ -180,7 +186,7 @@ export default async function handler(req, res) {
         await recordScriptStage(again);
         if (!again.success) return refuse('regeneration failed');
         check = await checkTextOutput(again.output, { genre: cleanGenre, budgetMs: left() });
-        if (check.verdict === 'unavailable') return unavailable();
+        if (check.verdict === 'unavailable') return unavailable(check.credit === true);
         if (check.verdict !== 'safe') return refuse(`${check.stage} (after regeneration)`);
         result = again;
       }

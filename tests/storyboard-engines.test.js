@@ -111,7 +111,7 @@ test('the route wires it: OpenRouter Gemini Flash-Lite leads (deny, schema, budg
   assert.match(src, /raceWithHedge\(race\)/);
   assert.match(src, /PRIMARY_MODEL = process\.env\.STORYBOARD_PRIMARY_MODEL\?\.trim\(\) \|\| 'google\/gemini-2\.5-flash-lite'/);
   assert.match(src, /PRIMARY_PROVIDER = \{ data_collection: 'deny' \}/);
-  assert.match(src, /runPrimaryPaid\(instruction, cleanScript, openrouterKey, t\)/);
+  assert.match(src, /runPrimaryPaid\(instruction, cleanScript, openrouterKey, t(, credit)?\)/);   // `credit`: the per-request out-of-credit (402) marker
   assert.match(src, /reserveCheckBudget\('storyboard'\)/);
   assert.match(src, /releaseCheckBudget\('storyboard'\)/);
   assert.match(src, /PRIMARY_CIRCUIT = 'storyboard_gemini'/);

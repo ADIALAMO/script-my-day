@@ -32,6 +32,8 @@ import { buildCharacterKeys, objectKeySecretConfigured, sniffImage, decodeDataUr
 import { RETENTION, SELFIE_MAX_BYTES } from '../../config/limits.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 import { checkImage } from '../../lib/image-check.js';
+import { isCreditStatus, noteCreditFailure } from '../../lib/credit-failure.js';
+import { extractStatusCode } from '../../lib/circuit-breaker.js';
 import { readAdultConfirmation } from '../../lib/adult-confirmation.js';
 import { screenApparentMinor } from '../../lib/minor-screen.js';
 import { ContentRefusalError } from '../../lib/content-safety.js';
@@ -170,7 +172,7 @@ export default async function handler(req, res) {
       await giveBackReservation(); refundOnCrash = false;
       return selfieCheck.verdict === 'unsafe'
         ? res.status(422).json({ success: false, code: CODES.SAFETY_REJECTED })
-        : res.status(503).json({ success: false, code: CODES.CONTENT_CHECK_UNAVAILABLE });
+        : res.status(503).json({ success: false, code: selfieCheck.credit ? CODES.SERVICE_UNAVAILABLE : CODES.CONTENT_CHECK_UNAVAILABLE });   // credit: the AI account is out of credit (already counted + announced) — "try again" cannot help
     }
 
     // (4b) Best-effort screen for a photo that CLEARLY shows a child ("Star Yourself" is 18+). NOT age verification. "minor" -> MINOR_REJECTED;
@@ -181,6 +183,7 @@ export default async function handler(req, res) {
     if (minor.unavailable) {
       console.warn(`🛑 upload-character: apparent-minor screen unavailable (${minor.result}) — failing closed, nothing stored`);
       await giveBackReservation(); refundOnCrash = false;
+      if (minor.credit) return res.status(503).json({ success: false, code: CODES.SERVICE_UNAVAILABLE });   // the AI account is out of credit (already counted + announced)
       return res.status(503).json({ success: false, code: CODES.PHOTO_CHECK_UNAVAILABLE });
     }
     if (minor.reject) {
@@ -220,9 +223,13 @@ export default async function handler(req, res) {
       console.warn(`⚠️ Character sheet generation failed: ${e.message}`);
       await dropRaw();
       await giveBackReservation(); refundOnCrash = false;
-      return e instanceof ContentRefusalError
-        ? res.status(422).json({ success: false, code: CODES.CONTENT_REFUSED })
-        : res.status(503).json({ success: false, code: CODES.CHARACTER_SHEET_FAILED });
+      if (e instanceof ContentRefusalError) return res.status(422).json({ success: false, code: CODES.CONTENT_REFUSED });
+      // The sheet generator has no circuit of its own: a 402 ("<model> 402: …", see lib/identity.js) is counted + announced here.
+      if (isCreditStatus(extractStatusCode(e.message))) {
+        await noteCreditFailure('character-sheet');
+        return res.status(503).json({ success: false, code: CODES.SERVICE_UNAVAILABLE });
+      }
+      return res.status(503).json({ success: false, code: CODES.CHARACTER_SHEET_FAILED });
     }
     refundOnCrash = false;   // the provider answered: money was (probably) spent. The paths below decide what is given back.
     await dropRaw();         // the generator has read the photo; it is not needed any more, whatever happens next
@@ -235,7 +242,7 @@ export default async function handler(req, res) {
       console.warn(`🛑 upload-character: generated sheet not stored — output check ${check.verdict} (via ${check.via}${check.why ? `, ${check.why}` : ''})`);
       await releaseSheetQuota(sheetKey);   // the user is not charged for a sheet they cannot use (the global budget slot keeps the real provider cost)
       return check.verdict === 'unavailable'
-        ? res.status(503).json({ success: false, code: CODES.CONTENT_CHECK_UNAVAILABLE })
+        ? res.status(503).json({ success: false, code: check.credit ? CODES.SERVICE_UNAVAILABLE : CODES.CONTENT_CHECK_UNAVAILABLE })
         : res.status(422).json({ success: false, code: CODES.CONTENT_REFUSED });
     }
 

@@ -37,6 +37,7 @@ lib/
   agent.js          buildScriptPrompt + SYSTEM_PROMPT + per-genre GENRE_DNA
   story-service.js  generateScript() 5-stage text cascade
   circuit-breaker.js  Redis circuit breaker (circuit:img:* keys)
+  credit-failure.js   OpenRouter credit (HTTP 402): counter + deduped Telegram alert + recovery notice
   identity.js       "Star yourself" providers, gate, credit accounting
   quota.js          TIER_LIMITS — single source of truth for limits
   blob-store.js     Cloudflare R2 put/decode
@@ -44,6 +45,7 @@ lib/
   messages.js       CODES.* — localized message symbols
   redis.js  stripe.js  api-utils.js
 components/  React UI (PosterRenderer, StoryboardView, CharacterModal, UpgradeModal, …)
+tools/quality-eval/  OFFLINE script-quality benchmark (never part of the app; own keys/budget) — see model inventory below
 constants/   genres.js, language.js, modalData.js, showcase.js (bilingual copy)
 hooks/       usePosterGeneration, useStoryboardGeneration, useCharacter, …
 ```
@@ -114,6 +116,22 @@ Two independent cascades, each tries providers in order and returns the first su
   `runHuggingFace` to a model confirmed to actually work on the free `hf-inference` tier (SD3-
   medium is the only text-to-image model currently listed there per HF's own docs; untested for
   latency/availability as of this writing — the free tier has shifted mostly to CPU inference).
+
+**Model inventory (production code, verified 2026-10-27)** — every model the app can call, through which key, in which order:
+
+| Feature | Model id | Key | Role |
+|---|---|---|---|
+| Script | `google/gemini-2.5-flash` | `OPENROUTER_API_KEY` | Stage 0, `deny` |
+| Script | `google/gemma-3-27b-it`, `google/gemma-3-12b-it`, `deepseek/deepseek-chat` | `OPENROUTER_API_KEY` | Stages 2 / 4, `deny` |
+| Script (privacy mode OFF only) | direct Gemini flash models, Cohere `command-r-plus-08-2024`, `google/gemma-4-31b-it:free` | `GOOGLE_GEMINI_API_KEY`, `COHERE_API_KEY`, `OPENROUTER_FREE_KEY` | Stages 1 / 3 / 5 — not asked while `DAILY_SCRIPT_BUDGET` > 0 (the default) |
+| Storyboard | `google/gemini-2.5-flash-lite` leader; `google/gemma-3-27b-it` hedge; then gemma-3-12b, deepseek | `OPENROUTER_API_KEY` | `deny` |
+| Storyboard (privacy mode OFF only) | `:free` net on `OPENROUTER_FREE_KEY`, direct `gemini-2.5-flash` / `-flash-lite` on `GOOGLE_GEMINI_API_KEY` | | last fallbacks |
+| Faceless image | Cloudflare `flux-1-schnell` (P1) → `black-forest-labs/flux.2-klein-4b` via OpenRouter (**P3, active paid fallback**, capped by `DAILY_IMAGE_BUDGET`) | Cloudflare / `OPENROUTER_API_KEY` | HF is off unless `HF_PROVIDER_ENABLED` |
+| Star Yourself image + Character Sheet | `x-ai/grok-imagine-image-quality`, `google/gemini-2.5-flash-image` | `OPENROUTER_API_KEY` | quality tier Grok→Gemini, free taste Gemini→Grok |
+| Image check | `nvidia/nemotron-3.5-content-safety:free` primary, `google/gemini-2.5-flash-lite` fallback / second opinion / text classifier / minor screen | `OPENROUTER_API_KEY` | Gemini calls carry `deny`; **the Nemotron `:free` call is made with the PAID key, so a drained balance stops it too**, and it (like Klein and Grok/Gemini-image) sends no `provider.data_collection` |
+
+`OPENROUTER_FREE_KEY` is dormant in production while privacy mode is on. **`anthropic/claude-haiku-5.5` and `openai/gpt-6-luna` are only the JUDGES of `tools/quality-eval`** (offline benchmark, same OpenRouter key); they show up in the OpenRouter activity dashboard but are not called by the app. Probe scripts in `scripts/` also call Nemotron / Gemini Flash-Lite with the production key.
+Direct Google (`generativelanguage.googleapis.com`) calls exist at two places only (script Stage 1, storyboard last fallback); both are gated on privacy mode being OFF. `GOOGLE_GEMINI_API_KEY` is documented as FREE tier (`NEXT_PUBLIC_GEMINI_API_TIER` defaults to `free`).
 
 **Script privacy routes (`fix/audit-age-script-history`)**: Stage 0 of the text cascade is paid **Gemini 2.5 Flash through OpenRouter** with `provider.data_collection:"deny"` (`runPaidScript` in lib/story-service.js; budget `DAILY_SCRIPT_BUDGET`
 default $10, 0 = OFF = the old cascade; counter `usage:script:paid:global:<day>` at `SCRIPT_PAID_COST_USD` 0.008/call; own circuit `script_paid`; budget spent / circuit open / budget unverifiable = skipped, never an error). While the budget env is > 0 the journal
@@ -248,6 +266,13 @@ A frame failure is classified: network, timeout, non-JSON, 5xx, placeholder, unc
 (never a restored comic — that would spend credits unasked). The retryable tile says "Frame didn't load" + "Retry this frame"; two or more show "Generate missing frames" (2 at a time). The comic's session (`comicSeed`, `sessionId`, `unlocked`) is
 saved in the History entry (`comicMeta`) together with the text-only panels, so reopening an entry whose images never arrived makes its frames "missing, retryable" (the server session lasts 24 h); an old entry without it shows plain lost frames.
 A retry of a frame whose request never arrived / failed is a normal first attempt (the server rolls failed attempts back); if the server DID render it and only the answer was lost, it counts as one of the comic's replacements.
+
+### 4e. OpenRouter credit exhaustion (`fix/openrouter-credit-resilience`)
+One OpenRouter balance pays for scripts, storyboards, Klein, Grok / Gemini-image AND every safety check (Nemotron `:free` included: OpenRouter documents errors "including for free models" at a negative balance). When it runs out every call answers **HTTP 402**.
+- **Circuit breaker** ([lib/circuit-breaker.js](lib/circuit-breaker.js)): a 402 on an `OPENROUTER_CIRCUITS` circuit pauses it a flat **5 min** — no strike counting, never until midnight (a top-up must bring the app back within minutes). Every other status, and 402 on non-OpenRouter providers (huggingface / cloudflare), keep the old rules (429 45 s, 503 20 s, 410/403/402-two-strike → midnight, default 15 s). `recordSuccess` of a PAID OpenRouter circuit clears the pause (Nemotron is excluded: it is `:free` and may keep answering at a zero balance).
+- **Alert** ([lib/credit-failure.js](lib/credit-failure.js)): `noteCreditFailure` (called by `recordFailure`, plus explicitly for the script cascade's later stages, the storyboard's later engines and the character-sheet generator) increments `stats:credit402:<UTC day>:<path>` (script, storyboard, poster-image, star-yourself-image, image-check, text-check, photo-check, character-sheet; 7 days) and sends ONE Telegram per 30 min for the whole account (`alert:credit-402`); `noteCreditRecovery` announces the end once (flag `credit:outage`) and re-arms the alert. Fixed text, no user data.
+- **User answer**: `CODES.SERVICE_UNAVAILABLE` (not retryable, no price / provider words): script + storyboard 503, poster / panel 200 with the placeholder, upload-character 503. It replaces `SCRIPT_FAIL` / `STORYBOARD_FAIL` / `PROVIDERS_BUSY` / `CONTENT_CHECK_UNAVAILABLE` / `PHOTO_CHECK_UNAVAILABLE` / `CHARACTER_SHEET_FAILED` ONLY when the cause was a 402 (the `credit` flag on the check results; it never changes a verdict — checks stay fail-closed, no image is shown or marked `imgok` unchecked). Frame failures with this code are terminal (no auto-retry).
+- Tests: tests/integration/39-credit-failure.test.js.
 
 ### 4b. Android app (Capacitor) — Google Play payments policy
 Inside the native shell **nothing may show a price, a subscription, Stripe or an "upgrade" prompt**. `hooks/useNative.js`
