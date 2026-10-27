@@ -21,7 +21,7 @@ import {
   recordPaidImage,
 } from '../../lib/circuit-breaker.js';
 
-import { isCreditStatus } from '../../lib/credit-failure.js';
+import { isCreditStatus, providerErrorMessage } from '../../lib/credit-failure.js';
 
 const PROVIDERS_SET = new Set(PROVIDERS);
 import {
@@ -209,7 +209,7 @@ async function runOpenRouterKlein(prompt, seed) {
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`OpenRouter ${res.status}: ${err.substring(0, 150)}`);
+    throw new Error(providerErrorMessage('OpenRouter', res.status, err));
   }
 
   const data = await res.json();

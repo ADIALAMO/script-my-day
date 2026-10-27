@@ -82,6 +82,18 @@ export function createProviders() {
   const failing = (provider) => (mode[provider] && mode[provider] !== 'ok' ? mode[provider] : null);
   const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json' } });
   const text = (t, status) => new Response(t, { status });
+  // A failure mode is an HTTP status ('402', '500') or '403:<variant>': a 403 whose body is OpenRouter's real "Key limit exceeded" answer ('keylimit') or one of
+  // its look-alikes that must NOT be treated as a credit failure. Anything else answers the plain 'mock failure' text with that status.
+  const KEY_LIMIT_BODY = { error: { message: 'Key limit exceeded (total limit). Manage it using https://openrouter.ai/workspaces/default/keys/KEYID $0.00 of $0.00 used; does not reset.', code: 403, metadata: { limit_source: 'openrouter_key_limit', remedy_hint: "Raise or remove this API key's usage limit at https://openrouter.ai/settings/keys, or use a key without a limit.", scope: 'key_limit', limit_usd: 0, spend_usd: 0, resets_at: null } } };
+  const FAIL_BODIES = {
+    '403:keylimit': () => json(KEY_LIMIT_BODY, 403),
+    '403:scope': () => json({ error: { message: 'Key limit exceeded', code: 403, metadata: { scope: 'key_limit' } } }, 403),
+    '403:source': () => json({ error: { message: 'Key limit exceeded', code: 403, metadata: { limit_source: 'openrouter_key_limit' } } }, 403),
+    '403:otherscope': () => json({ error: { message: 'Forbidden', code: 403, metadata: { scope: 'model_access', limit_source: 'provider' } } }, 403),
+    '403:plain': () => json({ error: { message: 'Forbidden', code: 403 } }, 403),
+    '403:garbage': () => text('<html>forbidden</html>', 403),
+  };
+  const fail = (f) => (FAIL_BODIES[String(f)] ? FAIL_BODIES[String(f)]() : text('mock failure', Number(f)));
 
   async function handle(url, init = {}) {
     const u = new URL(url);
@@ -119,13 +131,13 @@ export function createProviders() {
       const img = { choices: [{ message: { content: null, images: [{ image_url: { url: PNG_DATA_URI } }] } }] };
       if (model.includes('gemini-2.5-flash') && /storyboard artist/i.test((body?.messages || []).find((m) => m.role === 'system')?.content || '')) {   // the PAID FIRST engine of the storyboard: Gemini Flash-Lite through OpenRouter
         count('storyboard-gemini', { model }); bodies.push({ provider: 'storyboard-gemini', body });
-        const f = failing('storyboard-gemini'); if (f === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; } if (f) return text('mock failure', Number(f));
+        const f = failing('storyboard-gemini'); if (f === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; } if (f) return fail(f);
         if (mode.orNoSchema && body?.response_format) return text('{"error":{"message":"No endpoints found that can handle the requested parameters"}}', 404);
         return json({ choices: [{ finish_reason: 'stop', message: { content: sbRaw.queue.length ? sbRaw.queue.shift() : storyboardJson(sbVisuals.queue.shift()) } }], usage: { prompt_tokens: 2500, completion_tokens: 700 } });
       }
       if (model.includes('gemini-2.5-flash-lite') && body?.response_format?.json_schema?.name === 'image_safety') {   // the SECOND-OPINION image check (own counter, switch and control)
         count('gemini-imgsafety', { model }); bodies.push({ provider: 'gemini-imgsafety', body });
-        const f = failing('gemini-imgsafety'); if (f === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; } if (f) return text('mock failure', Number(f));
+        const f = failing('gemini-imgsafety'); if (f === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; } if (f) return fail(f);
         if (imgSafety.queue.length) imgSafety.value = imgSafety.queue.shift();
         if (imgSafety.block) return json({ choices: [{ finish_reason: 'content_filter', native_finish_reason: 'IMAGE_SAFETY', message: { content: null } }] });
         return json({ choices: [{ finish_reason: 'stop', message: { content: imgSafety.raw ?? JSON.stringify({ verdict: imgSafety.value }) } }] });
@@ -134,7 +146,7 @@ export function createProviders() {
         count('gemini-check', { model, hasImage: JSON.stringify(body.messages).includes('image_url'), isAge: body?.response_format?.json_schema?.name === 'apparent_age' }); bodies.push({ provider: 'gemini-check', body });
         const hasImage = JSON.stringify(body.messages).includes('image_url');
         // three independent failure switches: image check, text classifier, minor screen
-        const f = failing(body?.response_format?.json_schema?.name === 'apparent_age' ? 'gemini-check-age' : hasImage ? 'gemini-check' : 'gemini-check-text'); if (f === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; } if (f) return text('mock failure', Number(f));
+        const f = failing(body?.response_format?.json_schema?.name === 'apparent_age' ? 'gemini-check-age' : hasImage ? 'gemini-check' : 'gemini-check-text'); if (f === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; } if (f) return fail(f);
         const isAge = body?.response_format?.json_schema?.name === 'apparent_age';
         const ctl = isAge ? ageVerdict : checkGemini;
         if (ctl.queue.length) ctl.value = ctl.queue.shift();   // per-call sequence: ['unsafe', 'safe'] …
@@ -142,13 +154,13 @@ export function createProviders() {
         const t = ctl.raw ?? JSON.stringify(isAge ? { apparent_age: ctl.value } : { verdict: ctl.value });
         return json({ choices: [{ finish_reason: 'stop', message: { content: t } }] });
       }
-      if (model.includes('flux.2-klein')) { count('klein', { model }); const f = failing('klein'); if (f) return text('mock failure', Number(f)); if (refuse.klein) return refusedImage; return json(img); }
-      if (model.includes('grok-imagine')) { count('grok', { model }); const f = failing('grok'); if (f) return text('mock failure', Number(f)); if (refuse.grok) return refusedImage; return json(img); }
-      if (model.includes('gemini-2.5-flash-image')) { count('gemini-image', { model }); const f = failing('gemini-image'); if (f) return text('mock failure', Number(f)); return json(img); }
+      if (model.includes('flux.2-klein')) { count('klein', { model }); const f = failing('klein'); if (f) return fail(f); if (refuse.klein) return refusedImage; return json(img); }
+      if (model.includes('grok-imagine')) { count('grok', { model }); const f = failing('grok'); if (f) return fail(f); if (refuse.grok) return refusedImage; return json(img); }
+      if (model.includes('gemini-2.5-flash-image')) { count('gemini-image', { model }); const f = failing('gemini-image'); if (f) return fail(f); return json(img); }
       if (model.includes('nemotron')) {
         count('moderation', { model }); bodies.push({ provider: 'moderation', body });
         if (mode.moderation === 'timeout') { const e = new Error('The operation timed out'); e.name = 'TimeoutError'; throw e; }
-        const f = failing('moderation'); if (f) return text('mock failure', Number(f));
+        const f = failing('moderation'); if (f) return fail(f);
         const v = moderationVerdict;
         if (v.nullLength) return json({ choices: [{ finish_reason: 'length', message: { content: null, reasoning: 'thinking about the image ...' } }], usage: { prompt_tokens: 300, completion_tokens: 40 } });   // what the real route returned with max_tokens: 40
         if (v.queue.length) { const q = v.queue.shift(); return typeof q === 'number' ? text('mock failure', q) : json({ choices: [{ message: { content: q } }] }); }
@@ -159,7 +171,7 @@ export function createProviders() {
       const isStoryboard = /storyboard artist/i.test(system);
       const prov = model.endsWith(':free') ? 'openrouter-free' : 'openrouter-text';
       count(prov, { model });
-      const f = failing(prov); if (f) return text('mock failure', Number(f));
+      const f = failing(prov); if (f) return fail(f);
       if (isStoryboard && mode.orNoSchema && body?.response_format) return text('{"error":{"message":"No endpoints found that can handle the requested parameters"}}', 404);   // no provider supports json_schema
       const userText = (body?.messages || []).map((m) => (typeof m.content === 'string' ? m.content : '')).join(' ');
       return json({ choices: [{ message: { content: isStoryboard ? (sbRaw.queue.length ? sbRaw.queue.shift() : storyboardJson(sbVisuals.queue.shift())) : (scriptOutputs.queue.length ? scriptOutputs.queue.shift() : scriptText(userText)) } }] });
@@ -171,14 +183,14 @@ export function createProviders() {
     }
 
     if (host === 'api.cloudflare.com' && u.pathname.includes('/ai/run/')) {
-      count('cloudflare'); bodies.push({ provider: 'cloudflare', body }); const f = failing('cloudflare'); if (f) return text('mock failure', Number(f));
+      count('cloudflare'); bodies.push({ provider: 'cloudflare', body }); const f = failing('cloudflare'); if (f) return fail(f);
       if (refuse.cloudflare) return text('{"errors":[{"code":8007,"message":"AiError: Input prompt contains NSFW content"}],"success":false}', 400);
       if (mode.cloudflareSchema) return text('{"errors":[{"code":5006,"message":"Additional or unevaluated properties \'/seed\' at \'/\' not allowed"}]}', 400);
       return json({ result: { image: PNG_B64 }, success: true });
     }
 
     if (host === 'image.pollinations.ai') {   // still mocked so that a regression (anything calling it) is COUNTED and asserted on
-      count('pollinations'); const f = failing('pollinations'); if (f) return text('mock failure', Number(f));
+      count('pollinations'); const f = failing('pollinations'); if (f) return fail(f);
       return new Response(PNG_BYTES, { status: 200, headers: { 'content-type': 'image/png' } });
     }
 

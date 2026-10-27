@@ -229,6 +229,110 @@ scenario('K11', 'dedupe: many 402s on different paths inside 30 min → ONE aler
     return { actual: 'one alert per 30 min' };
   });
 
+// ── Per-API-key limit: OpenRouter answers HTTP 403 {error:{metadata:{scope:"key_limit", limit_source:"openrouter_key_limit"}}} (the exact body is in providers.mjs) ──
+const noKeyDetails = () => assert.ok(!/workspaces|KEYID|settings\/keys|remedy|total limit/i.test(providers.telegram.join('\n')), 'the alert never repeats the key-management URL or the provider message');
+const strikes = (name) => fake.get(`circuit:img:strikes:${name}`);
+
+scenario('K13', 'KEY LIMIT (403 key_limit) on the script cascade behaves exactly like a 402: 503 SERVICE_UNAVAILABLE, quota back, ONE fixed-text alert, counter, 5-min circuit pause, no strikes',
+  '503 SERVICE_UNAVAILABLE; 1 alert without key details; script counter; script_paid ≤ 5 min with lastError 402', async () => {
+    providers.mode['openrouter-text'] = '403:keylimit';
+    const u = await makeUser('k13', 'free');
+    const warnings = []; const origWarn = console.warn; console.warn = (...x) => { warnings.push(x.join(' ')); };
+    let r; try { r = await callScript(u); } finally { console.warn = origWarn; }
+    assert.ok(!/workspaces|KEYID/.test(warnings.join('\n')), 'no key URL in the server logs (Gemma / DeepSeek / paid stage)');
+    assert.equal(r.status, 503); assert.equal(r.body.code, 'SERVICE_UNAVAILABLE'); clean(r.body);
+    assert.equal(fake.num(`usage:script:${u.identifier}:${DAY}`), 0);
+    assert.equal(creditAlerts().length, 1); noKeyDetails(); assert.equal(counter('script') >= 1, true);
+    const st = JSON.parse(fake.get('circuit:img:script_paid')); assert.equal(st.lastError, 402);
+    assert.ok(st.openUntil - Date.now() <= 5 * 60_000 + 1000);
+    assert.equal(strikes('script_paid'), null, 'no strike counter for a key-limit 403');
+    return { actual: '503 SERVICE_UNAVAILABLE, 1 alert, circuit 5 min' };
+  });
+
+scenario('K13b', 'KEY LIMIT: either marker alone counts (scope "key_limit" OR limit_source "openrouter_key_limit")',
+  'both → 503 SERVICE_UNAVAILABLE', async () => {
+    for (const mode of ['403:scope', '403:source']) {
+      providers.mode['openrouter-text'] = mode; ctx.advance(6 * 60_000);
+      const u = await makeUser(`k13b-${mode.slice(4)}`, 'free');
+      const r = await callScript(u, 'drama', `198.51.100.${mode === '403:scope' ? 84 : 85}`);
+      assert.equal(r.status, 503, mode); assert.equal(r.body.code, 'SERVICE_UNAVAILABLE', mode);
+    }
+    return { actual: 'scope-only and source-only both counted' };
+  });
+
+scenario('K14', 'KEY LIMIT on the storyboard engines → 503 SERVICE_UNAVAILABLE, comic back, alert + counter',
+  '503 SERVICE_UNAVAILABLE; comic 0; 1 alert', async () => {
+    providers.mode['storyboard-gemini'] = '403:keylimit'; providers.mode['openrouter-text'] = '403:keylimit';
+    const u = await makeUser('k14', 'free');
+    const r = await callStoryboard(u);
+    assert.equal(r.status, 503); assert.equal(r.body.code, 'SERVICE_UNAVAILABLE'); clean(r.body);
+    assert.equal(fake.num(`usage:comic:${u.identifier}:2026-10`), 0);
+    assert.equal(creditAlerts().length, 1); noKeyDetails(); assert.equal(counter('storyboard') >= 1, true);
+    assert.equal(JSON.parse(fake.get('circuit:img:storyboard_gemini')).lastError, 402);
+    return { actual: '503 SERVICE_UNAVAILABLE' };
+  });
+
+scenario('K15', 'KEY LIMIT on BOTH image checkers (and later the second opinion) → placeholder SERVICE_UNAVAILABLE, nothing shown / stored / marked checked; the pause stays a flat 5 min however often it repeats',
+  'placeholder SERVICE_UNAVAILABLE; imgok 0; r2 puts 0; no strikes; 2nd round still ≤ 5 min', async () => {
+    providers.mode.moderation = '403:keylimit'; providers.mode['gemini-check'] = '403:keylimit';
+    const u = await makeUser('k15', 'admin');
+    const r = await callPoster(u);
+    assert.equal(r.status, 200); assert.equal(r.body.code, 'SERVICE_UNAVAILABLE'); assert.equal(r.body.isPlaceholder, true);
+    assert.ok(r.body.imageUrl.startsWith('data:image/svg+xml'));
+    assert.deepEqual(fake.keys('imgok:'), []); assert.equal(providers.s3puts.length, 0);
+    assert.equal(creditAlerts().length, 1); noKeyDetails(); assert.equal(counter('image-check') >= 1, true);
+    ctx.advance(6 * 60_000);
+    const again = await callPoster(u, {}, '198.51.100.86');
+    assert.equal(again.body.code, 'SERVICE_UNAVAILABLE');
+    assert.ok(openUntil('check_nemotron') - Date.now() <= 5 * 60_000 + 1000, 'still a 5-min pause, never midnight');
+    assert.equal(strikes('check_nemotron'), null);
+    delete providers.mode.moderation; delete providers.mode['gemini-check']; providers.mode['gemini-imgsafety'] = '403:keylimit'; ctx.advance(6 * 60_000);
+    const second = await callPoster(u, {}, '198.51.100.87');
+    assert.equal(second.body.code, 'SERVICE_UNAVAILABLE'); assert.deepEqual(fake.keys('imgok:'), []);
+    return { actual: 'withheld every time, SERVICE_UNAVAILABLE' };
+  });
+
+scenario('K16', 'KEY LIMIT on Klein (cascade exhausted) and on the Star Yourself sheet generator → SERVICE_UNAVAILABLE; the thrown message carries the "(key limit)" marker but not the key URL',
+  'poster placeholder SERVICE_UNAVAILABLE; sheet 503 SERVICE_UNAVAILABLE, raw deleted', async () => {
+    const warnings = []; const origWarn = console.warn; console.warn = (...a) => { warnings.push(a.join(' ')); };
+    try {
+      providers.mode.cloudflare = '500'; providers.mode.klein = '403:keylimit'; providers.mode['gemini-image'] = '403:keylimit';
+      const u = await makeUser('k16', 'free');
+      const r = await callPoster(u);
+      assert.equal(r.status, 200); assert.equal(r.body.code, 'SERVICE_UNAVAILABLE'); assert.equal(r.body.isPlaceholder, true);
+      assert.equal(counter('poster-image'), 1);
+      const up = await invoke(upload, { body: { selfieBase64: PNG_DATA_URI, consent: true, adult: true }, cookies: u.cookies, ip: '198.51.100.88' });
+      assert.equal(up.status, 503); assert.equal(up.body.code, 'SERVICE_UNAVAILABLE');
+      assert.ok(providers.s3deletes.some((d) => /-raw\./.test(d.key)), 'raw selfie deleted');
+      assert.equal(counter('character-sheet'), 1);
+    } finally { console.warn = origWarn; }
+    const log = warnings.join('\n');
+    assert.match(log, /\(key limit\)/); assert.ok(!/workspaces|KEYID/.test(log), 'the logs do not repeat the key URL either');
+    return { actual: 'Klein + sheet: SERVICE_UNAVAILABLE; marker in logs, no key URL' };
+  });
+
+scenario('K17', 'REGRESSION: a 403 that is NOT a key limit (plain forbidden, a different scope, an HTML body) keeps today\'s behaviour — no credit alert/counter, CONTENT_CHECK_UNAVAILABLE / SCRIPT_FAIL, and the two-strike rule (5 min, then until midnight)',
+  'no credit signals; strike 1 → 5 min; strike 2 → midnight', async () => {
+    for (const variant of ['403:plain', '403:otherscope', '403:garbage']) {
+      ctx.fresh?.();
+      providers.mode.moderation = variant; providers.mode['gemini-check'] = variant;
+      const u = await makeUser(`k17-${variant.slice(4)}`, 'admin');
+      const r = await callPoster(u, {}, '198.51.100.89');
+      assert.equal(r.body.code, 'CONTENT_CHECK_UNAVAILABLE', variant); assert.equal(r.body.serviceUnavailable, undefined);
+      assert.equal(creditAlerts().length, 0, variant); assert.equal(fake.keys('stats:credit402').length, 0, variant);
+      assert.ok(openUntil('check_nemotron') - Date.now() <= 5 * 60_000 + 1000, `${variant}: strike 1 = 5 min`); assert.equal(strikes('check_nemotron'), '1');
+      ctx.advance(6 * 60_000);
+      await callPoster(u, {}, '198.51.100.90');
+      assert.equal(openUntil('check_nemotron'), Date.parse('2026-10-16T00:00:00Z'), `${variant}: strike 2 = until midnight (unchanged)`);
+    }
+    // the script cascade too: a plain 403 is an ordinary failure
+    ctx.fresh?.(); providers.mode['openrouter-text'] = '403:plain';
+    const su = await makeUser('k17-script', 'free');
+    const sr = await callScript(su, 'drama', '198.51.100.91');
+    assert.equal(sr.status, 500); assert.equal(sr.body.code, 'SCRIPT_FAIL'); assert.equal(creditAlerts().length, 0);
+    return { actual: 'plain / other-scope / HTML 403: unchanged' };
+  });
+
 scenario('K12', 'copy: SERVICE_UNAVAILABLE has he + en text, is NOT retryable (no Try-again button), Hebrew in the existing masculine-singular style, and names no provider, balance or price',
   'both languages, not retryable, no "נסו", no internals', async () => {
     const en = getMsg(CODES.SERVICE_UNAVAILABLE, 'en'); const he = getMsg(CODES.SERVICE_UNAVAILABLE, 'he');
