@@ -3,7 +3,7 @@ import redis from '../../lib/redis.js';
 import { CODES } from '../../lib/messages.js';
 import { nextMidnightUTC, isAdminRequest, extractDevTier, isValidComicSeed } from '../../lib/api-utils.js';
 import { paidImageBudgetReached, getOpenProviders, recordFailure, recordSuccess } from '../../lib/circuit-breaker.js';
-import { isCreditStatus, noteCreditFailure } from '../../lib/credit-failure.js';
+import { isCreditStatus, creditStatus, readErrorBody, noteCreditFailure } from '../../lib/credit-failure.js';
 import { reserveCheckBudget, releaseCheckBudget, checkMaxCalls, checkBudgetUsd } from '../../lib/budget.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { limitFor } from '../../lib/quota.js';
@@ -237,13 +237,14 @@ async function runOpenRouterModel(model, staticInstruction, script, apiKey, time
     });
     clearTimeout(timeoutId);
     if (!resp.ok) {
-      logAttempt('openrouter', model, { ...tag, schema, status: resp.status, ms: Date.now() - t0 });
-      if (credit && isCreditStatus(resp.status)) credit.hit = true;
+      const status = resp.status === 403 ? creditStatus(403, await readErrorBody(resp)) : resp.status;   // a key-limit 403 is a credit failure (402)
+      logAttempt('openrouter', model, { ...tag, schema, status: resp.status, ...(status !== resp.status ? { keyLimit: true } : {}), ms: Date.now() - t0 });
+      if (credit && isCreditStatus(status)) credit.hit = true;
       const left = timeoutMs - (Date.now() - t0);
       if (schema && [400, 404, 422].includes(resp.status) && left >= 3000) {
         return runOpenRouterModel(model, staticInstruction, script, apiKey, left, { schema: false, provider, meta, tag, credit });
       }
-      if (meta) { meta.technical = true; meta.status = resp.status; }   // no completion was produced: nothing was billed
+      if (meta) { meta.technical = true; meta.status = status; }   // no completion was produced: nothing was billed
       return null;
     }
     const data = await resp.json();
