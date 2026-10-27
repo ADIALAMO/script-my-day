@@ -31,7 +31,7 @@ test('RETRYABLE: network failure, timeout, non-JSON body, 5xx, placeholder, unch
 });
 
 test('TERMINAL: refusals, blocked prompts, budget and quota answers are never retryable', () => {
-  for (const code of [CODES.CONTENT_REFUSED, CODES.CONTENT_BLOCKED, CODES.IMAGE_BUDGET_REACHED, CODES.QUOTA_PANEL_REGEN, CODES.QUOTA_PANEL_DAILY, CODES.NEEDS_ACCOUNT]) {
+  for (const code of [CODES.CONTENT_REFUSED, CODES.CONTENT_BLOCKED, CODES.IMAGE_BUDGET_REACHED, CODES.QUOTA_PANEL_REGEN, CODES.QUOTA_PANEL_DAILY, CODES.NEEDS_ACCOUNT, CODES.SERVICE_UNAVAILABLE]) {   // SERVICE_UNAVAILABLE = out of AI credit: no retry, no auto-retry
     for (const kind of ['api', 'placeholder', 'http']) {
       const c = classifyFrameFailure({ kind, status: 429, code });
       assert.equal(c.retryable, false, `${kind}/${code}`);

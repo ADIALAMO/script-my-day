@@ -3,6 +3,7 @@ import redis from '../../lib/redis.js';
 import { CODES } from '../../lib/messages.js';
 import { nextMidnightUTC, isAdminRequest, extractDevTier, isValidComicSeed } from '../../lib/api-utils.js';
 import { paidImageBudgetReached, getOpenProviders, recordFailure, recordSuccess } from '../../lib/circuit-breaker.js';
+import { isCreditStatus, noteCreditFailure } from '../../lib/credit-failure.js';
 import { reserveCheckBudget, releaseCheckBudget, checkMaxCalls, checkBudgetUsd } from '../../lib/budget.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { limitFor } from '../../lib/quota.js';
@@ -207,7 +208,8 @@ async function runGeminiModel(model, staticInstruction, script, apiKey, timeoutM
 // provider.require_parameters:true, so a provider that cannot honour it is skipped at once instead of rambling for 15 s. If OpenRouter says
 // no endpoint supports that (400/404/422) the SAME model is asked once more without the schema inside the same time budget.
 // max_tokens 2000 (was 750: a 7-panel answer — more in Hebrew — was cut off mid-array, which no parse strategy could read).
-async function runOpenRouterModel(model, staticInstruction, script, apiKey, timeoutMs, { schema = true, provider = null, meta = null, tag = {} } = {}) {
+// `credit` (optional, one object per request): { hit } is set when OpenRouter answered 402 = the account is out of credit (the route then answers SERVICE_UNAVAILABLE).
+async function runOpenRouterModel(model, staticInstruction, script, apiKey, timeoutMs, { schema = true, provider = null, meta = null, tag = {}, credit = null } = {}) {
   const t0 = Date.now();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -236,9 +238,10 @@ async function runOpenRouterModel(model, staticInstruction, script, apiKey, time
     clearTimeout(timeoutId);
     if (!resp.ok) {
       logAttempt('openrouter', model, { ...tag, schema, status: resp.status, ms: Date.now() - t0 });
+      if (credit && isCreditStatus(resp.status)) credit.hit = true;
       const left = timeoutMs - (Date.now() - t0);
       if (schema && [400, 404, 422].includes(resp.status) && left >= 3000) {
-        return runOpenRouterModel(model, staticInstruction, script, apiKey, left, { schema: false, provider, meta, tag });
+        return runOpenRouterModel(model, staticInstruction, script, apiKey, left, { schema: false, provider, meta, tag, credit });
       }
       if (meta) { meta.technical = true; meta.status = resp.status; }   // no completion was produced: nothing was billed
       return null;
@@ -274,7 +277,7 @@ const PRIMARY_MODEL = process.env.STORYBOARD_PRIMARY_MODEL?.trim() || 'google/ge
 const PRIMARY_PROVIDER = { data_collection: 'deny' };
 const PRIMARY_CIRCUIT = 'storyboard_gemini';
 
-async function runPrimaryPaid(instruction, script, apiKey, timeoutMs) {
+async function runPrimaryPaid(instruction, script, apiKey, timeoutMs, credit = null) {
   let open = new Set();
   try { open = await getOpenProviders(redis); } catch { /* fail-open on the circuit read only */ }
   if (open.has(PRIMARY_CIRCUIT)) { logAttempt('openrouter', PRIMARY_MODEL, { paid: true, skipped: 'circuit-open' }); return null; }
@@ -287,9 +290,10 @@ async function runPrimaryPaid(instruction, script, apiKey, timeoutMs) {
   if (!b.ok) { logAttempt('openrouter', PRIMARY_MODEL, { paid: true, skipped: 'budget', usedToday: b.used, maxToday: b.max }); return null; }
   const meta = {};
   const tag = { paid: true, usedToday: b.used, maxToday: b.max, capUsd: checkBudgetUsd('storyboard') };
-  const panels = await runOpenRouterModel(PRIMARY_MODEL, instruction, script, apiKey, timeoutMs, { schema: true, provider: PRIMARY_PROVIDER, meta, tag });
+  const panels = await runOpenRouterModel(PRIMARY_MODEL, instruction, script, apiKey, timeoutMs, { schema: true, provider: PRIMARY_PROVIDER, meta, tag, credit });
   if (panels) { await recordSuccess(redis, PRIMARY_CIRCUIT); return panels; }
   if (meta.technical) {
+    if (credit && isCreditStatus(meta.status)) credit.counted = true;   // recordFailure below counts + announces it
     await releaseCheckBudget('storyboard');                       // no completion -> nothing billed -> the slot goes back
     await recordFailure(redis, PRIMARY_CIRCUIT, meta.status ?? null);
   } else if (meta.timedOut) {
@@ -396,6 +400,7 @@ export default async function handler(req, res) {
     const geminiKey = process.env.GOOGLE_GEMINI_API_KEY?.trim();
     const openrouterKey = process.env.OPENROUTER_API_KEY?.trim();
     const openrouterFreeKey = process.env.OPENROUTER_FREE_KEY?.trim();
+    const credit = { hit: false, counted: false };   // set by the OpenRouter calls when the account answers 402 (out of credit)
 
     // Style prefix/suffix are injected here (server-side) rather than in the prompt,
     // so every engine's bare "visual" gets the same FLUX framing.
@@ -418,10 +423,10 @@ export default async function handler(req, res) {
       // PRIVACY ROUTES (same switch as the scripts: DAILY_SCRIPT_BUDGET > 0 and an OpenRouter key): the screenplay goes only to OpenRouter models with
       // provider.data_collection "deny" — the free OpenRouter net and the direct (free-tier) Google key are not asked at all.
       const privacy = !!openrouterKey && checkBudgetUsd('script') > 0;
-      const denyOpts = privacy ? { provider: PRIMARY_PROVIDER } : {};
+      const denyOpts = { credit, ...(privacy ? { provider: PRIMARY_PROVIDER } : {}) };
       const race = [];
       if (openrouterKey) {
-        race.push({ run: timed('Gemini Flash-Lite (OpenRouter)', (t) => runPrimaryPaid(instruction, cleanScript, openrouterKey, t)), delayMs: 0 });
+        race.push({ run: timed('Gemini Flash-Lite (OpenRouter)', (t) => runPrimaryPaid(instruction, cleanScript, openrouterKey, t, credit)), delayMs: 0 });
         race.push({ run: timed('OpenRouter', (t) => runOpenRouterModel('google/gemma-3-27b-it', instruction, cleanScript, openrouterKey, t, denyOpts)), delayMs: HEDGE_DELAY_MS });
       }
       let won = await raceWithHedge(race);
@@ -429,7 +434,7 @@ export default async function handler(req, res) {
         const fallbacks = [];
         const step = (engine, run) => async (t) => { const panels = await run(t); return panels ? { panels, engine } : null; };
         if (openrouterKey) for (const m of ['google/gemma-3-12b-it', 'deepseek/deepseek-chat']) fallbacks.push(step('OpenRouter', (t) => runOpenRouterModel(m, instruction, cleanScript, openrouterKey, t, denyOpts)));
-        if (openrouterFreeKey && !privacy) for (const m of FREE_STORYBOARD_MODELS) fallbacks.push(step('OpenRouter (free)', (t) => runOpenRouterModel(m, instruction, cleanScript, openrouterFreeKey, t)));
+        if (openrouterFreeKey && !privacy) for (const m of FREE_STORYBOARD_MODELS) fallbacks.push(step('OpenRouter (free)', (t) => runOpenRouterModel(m, instruction, cleanScript, openrouterFreeKey, t, { credit })));
         if (geminiKey && !privacy) {
           fallbacks.push(step('Gemini (direct)', (t) => runGeminiModel('gemini-2.5-flash', instruction, cleanScript, geminiKey, t)));
           fallbacks.push(step('Gemini (direct)', (t) => runGeminiModel('gemini-2.5-flash-lite', instruction, cleanScript, geminiKey, t)));
@@ -443,6 +448,12 @@ export default async function handler(req, res) {
 
     if (!enrichedPanels) {
       await releaseComicQuota(comicReservationKey); // nothing was produced → no comic spent
+      if (credit.hit) {
+        // The AI provider account is out of credit (HTTP 402): retrying cannot help, so say so — without any detail. The paid engine's own 402 was already counted
+        // and announced by the circuit breaker; a 402 seen only by the later engines is counted here.
+        if (!credit.counted) await noteCreditFailure('storyboard');
+        return res.status(503).json({ success: false, code: CODES.SERVICE_UNAVAILABLE, message: 'Service temporarily unavailable.' });
+      }
       return res.status(500).json({ success: false, code: CODES.STORYBOARD_FAIL, message: 'All storyboard engines offline.' });
     }
 
@@ -454,7 +465,7 @@ export default async function handler(req, res) {
     let outCheck = await checkTextOutput(storyboardText(enrichedPanels), { genre, budgetMs: left() });
     if (outCheck.verdict === 'unavailable') {
       await releaseComicQuota(comicReservationKey);
-      return res.status(503).json({ success: false, code: CODES.CONTENT_CHECK_UNAVAILABLE, message: 'Safety check unavailable.' });
+      return res.status(503).json({ success: false, code: outCheck.credit ? CODES.SERVICE_UNAVAILABLE : CODES.CONTENT_CHECK_UNAVAILABLE, message: outCheck.credit ? 'Service temporarily unavailable.' : 'Safety check unavailable.' });
     }
     if (outCheck.verdict !== 'safe') {
       console.warn(`🛑 generate-storyboard: output held back (${outCheck.stage})`);
@@ -465,7 +476,7 @@ export default async function handler(req, res) {
       const recheck = again ? await checkTextOutput(storyboardText(again), { genre, budgetMs: left() }) : null;
       if (recheck?.verdict === 'unavailable') {
         await releaseComicQuota(comicReservationKey);
-        return res.status(503).json({ success: false, code: CODES.CONTENT_CHECK_UNAVAILABLE, message: 'Safety check unavailable.' });
+        return res.status(503).json({ success: false, code: recheck.credit ? CODES.SERVICE_UNAVAILABLE : CODES.CONTENT_CHECK_UNAVAILABLE, message: recheck.credit ? 'Service temporarily unavailable.' : 'Safety check unavailable.' });
       }
       if (!recheck || recheck.verdict !== 'safe') {
         await releaseComicQuota(comicReservationKey);

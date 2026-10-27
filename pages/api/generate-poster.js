@@ -14,11 +14,14 @@ import {
   PROVIDERS,
   extractStatusCode,
   getOpenProviders,
+  getOpenCreditProviders,
   recordFailure,
   recordSuccess,
   paidImageBudgetReached,
   recordPaidImage,
 } from '../../lib/circuit-breaker.js';
+
+import { isCreditStatus } from '../../lib/credit-failure.js';
 
 const PROVIDERS_SET = new Set(PROVIDERS);
 import {
@@ -537,6 +540,8 @@ export default async function handler(req, res) {
   let refused = false;
   let imageCheck = null;        // set when a provider PRODUCED an image that the output check did not pass
   let producedWithFace = false; // that image was a paid identity image (real money spent)
+  let imageCheckCredit = false; // the checker was unavailable because the OpenRouter credit ran out (answered SERVICE_UNAVAILABLE instead of "try again")
+  let creditHit = false;        // a generation provider answered 402 (the circuit breaker already counted + announced it)
   for (const provider of liveCascade) {
     try {
       const result = await provider.fn(finalPrompt, seed, { characterImageUrl, negativePrompt });
@@ -553,6 +558,7 @@ export default async function handler(req, res) {
       if (check.verdict !== 'safe') {
         console.warn(`🛑 output check: ${check.verdict} (via ${check.via}${check.why ? `, ${check.why}` : ''}) for an image from ${provider.key}`);
         imageCheck = check.verdict;
+        imageCheckCredit = check.credit === true;
         producedWithFace = result.faceApplied === true;
         break;
       }
@@ -597,6 +603,7 @@ export default async function handler(req, res) {
         break;
       }
       const code = extractStatusCode(e.message);
+      if (isCreditStatus(code)) creditHit = true;
       await recordFailure(redis, provider.key, code);
       console.warn(`⚠️ ${provider.key} failed: ${e.message}`);
     }
@@ -612,13 +619,14 @@ export default async function handler(req, res) {
     }
     await releaseReservations();   // poster slot / panel reservation: always returned
     const unsafe = imageCheck === 'unsafe';
+    // Checker down because the OpenRouter credit ran out: the image is still NOT shown (fail-closed, unchanged), but the user is told the truth instead of "try again".
     return res.status(200).json({
       success: true,
-      code: unsafe ? CODES.CONTENT_REFUSED : CODES.CONTENT_CHECK_UNAVAILABLE,
+      code: unsafe ? CODES.CONTENT_REFUSED : (imageCheckCredit ? CODES.SERVICE_UNAVAILABLE : CODES.CONTENT_CHECK_UNAVAILABLE),
       imageUrl: makePlaceholderImage('Scene unavailable', unsafe ? 'Content not allowed' : 'Safety check unavailable'),
       provider: 'placeholder',
       isPlaceholder: true,
-      ...(unsafe ? { contentRefused: true } : { checkUnavailable: true }),
+      ...(unsafe ? { contentRefused: true } : { checkUnavailable: true, ...(imageCheckCredit ? { serviceUnavailable: true } : {}) }),
       details: unsafe ? `Image rejected by the output check (${trackLabel}).` : `Output check unavailable (${trackLabel}).`,
     });
   }
@@ -639,12 +647,15 @@ export default async function handler(req, res) {
   // All cascade providers failed. Return a placeholder so the frontend always
   // gets a renderable imageUrl rather than a broken image icon.
   console.error(`❌ Image cascade exhausted (${trackLabel}) — returning placeholder`);
+  const openCreditCircuits = creditHit ? new Set() : await getOpenCreditProviders(redis);
   await releaseReservations(); // no image was produced → the attempt must not burn a replacement, a poster slot or an identity credit
+  // Out of OpenRouter credit (a 402 just now, or an OpenRouter circuit still open because of one) and nothing else could serve it → "temporarily unavailable", not "busy, try again".
+  const outOfCredit = creditHit || ['openrouter', 'grok_identity', 'gemini_identity'].some((k) => openCreditCircuits.has(k));
   return res.status(200).json({
     success: true,
     // The spend cap removed the paid fallback and no free provider could serve this request →
     // say so honestly instead of the generic "providers busy".
-    code: paidImageCapped ? CODES.IMAGE_BUDGET_REACHED : CODES.PROVIDERS_BUSY,
+    code: paidImageCapped ? CODES.IMAGE_BUDGET_REACHED : (outOfCredit ? CODES.SERVICE_UNAVAILABLE : CODES.PROVIDERS_BUSY),
     imageUrl: makePlaceholderImage(),
     provider: 'placeholder',
     isPlaceholder: true,

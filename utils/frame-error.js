@@ -11,6 +11,7 @@ export const RESUME_CONCURRENCY = 2;
 const TERMINAL_CODES = new Set([
   CODES.CONTENT_BLOCKED, CODES.CONTENT_REFUSED, CODES.IMAGE_BUDGET_REACHED,
   CODES.QUOTA_PANEL_REGEN, CODES.QUOTA_PANEL_DAILY, CODES.NEEDS_ACCOUNT,
+  CODES.SERVICE_UNAVAILABLE,   // the AI account is out of credit: asking again (or retrying automatically) cannot help until it is topped up
 ]);
 
 /**

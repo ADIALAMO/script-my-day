@@ -311,7 +311,7 @@ export function useStoryboardGeneration({
     // actually generated. Must be treated as a failure here: never uploaded to
     // R2, never persisted to history, never shown as if it were a real panel.
     if (data.isPlaceholder) {
-      if (data.code === CODES.IMAGE_BUDGET_REACHED || data.code === CODES.CONTENT_REFUSED || data.code === CODES.CONTENT_CHECK_UNAVAILABLE) setComicNotice((n) => n || getMsg(data.code, lang));
+      if (data.code === CODES.IMAGE_BUDGET_REACHED || data.code === CODES.CONTENT_REFUSED || data.code === CODES.CONTENT_CHECK_UNAVAILABLE || data.code === CODES.SERVICE_UNAVAILABLE) setComicNotice((n) => n || getMsg(data.code, lang));
       settleError(classifyFrameFailure({ kind: 'placeholder', status, code: data.code }));
       return;
     }
@@ -477,7 +477,7 @@ export function useStoryboardGeneration({
 
       // A placeholder/failure must NOT replace a good image or burn a replacement.
       if (!data.success || !data.imageUrl || data.isPlaceholder) {
-        if (data.code === CODES.CONTENT_BLOCKED || data.code === CODES.CONTENT_REFUSED || data.code === CODES.CONTENT_CHECK_UNAVAILABLE) setComicNotice(getMsg(data.code, lang));
+        if (data.code === CODES.CONTENT_BLOCKED || data.code === CODES.CONTENT_REFUSED || data.code === CODES.CONTENT_CHECK_UNAVAILABLE || data.code === CODES.SERVICE_UNAVAILABLE) setComicNotice(getMsg(data.code, lang));
         dispatchPanelImages({ type: 'SET_PANEL', idx, payload: { loading: false, url: oldUrl, error: !oldUrl } });
         return;
       }
