@@ -73,3 +73,37 @@ test('sanitizeLogText / describeRateLimitBody: no URLs, e-mails, key ids, non-AS
   assert.equal(describeRateLimitBody('<html>rate limited https://x.example/y</html>').raw, '<html>rate limited [url]');
   assert.equal(sanitizeLogText('a\nb\u0000c'), 'a b c');   // control characters become spaces
 });
+
+test('retryPauseMs: the SAME-model branch waits longer (1.5-2.0 s) only when there is no Retry-After; Retry-After handling is identical in both branches', () => {
+  assert.equal(retryPauseMs(null, () => 0, true), 1500); assert.equal(retryPauseMs(undefined, () => 0.9999, true), 2000);
+  for (let i = 0; i < 200; i++) { const p = retryPauseMs(null, Math.random, true); assert.ok(p >= 1500 && p <= 2000, String(p)); const q = retryPauseMs(null, Math.random, false); assert.ok(q >= 300 && q <= 700, String(q)); }
+  for (const same of [true, false]) {
+    assert.equal(retryPauseMs(0, Math.random, same), 0); assert.equal(retryPauseMs(1000, Math.random, same), 1000); assert.equal(retryPauseMs(1500, Math.random, same), 1500);
+    assert.equal(retryPauseMs(1501, Math.random, same), null); assert.equal(retryPauseMs(Infinity, Math.random, same), null);
+  }
+});
+
+test('callWithRetry: the call gets the attempt index (0, then 1 for the retry) and `sameModel` picks the pause', async () => {
+  for (const [sameModel, want] of [[false, 300], [true, 1500]]) {
+    const attempts = []; let t = 0; const sleeps = [];
+    const call = async (timeoutMs, attempt) => { attempts.push(attempt); t += 100; return attempt === 0 ? { kind: 'technical', status: 429, retryAfterMs: null } : { kind: 'ok' }; };
+    const r = await callWithRetry(call, 8000, { sleep: async (ms) => { sleeps.push(ms); t += ms; }, random: () => 0, now: () => t, sameModel });
+    assert.equal(r.kind, 'ok'); assert.deepEqual(attempts, [0, 1]); assert.deepEqual(sleeps, [want], `sameModel=${sameModel}`);
+  }
+});
+
+test('retryModelFor: unset = google/gemini-2.5-flash; set but EMPTY = the same model; a value = that model', async () => {
+  const { retryModelFor, DEFAULT_RETRY_MODEL } = await import('../lib/image-check.js');
+  const prev = process.env.IMAGE_CHECK_RETRY_MODEL;
+  try {
+    delete process.env.IMAGE_CHECK_RETRY_MODEL; assert.equal(retryModelFor('google/gemini-2.5-flash-lite'), 'google/gemini-2.5-flash'); assert.equal(DEFAULT_RETRY_MODEL, 'google/gemini-2.5-flash');
+    process.env.IMAGE_CHECK_RETRY_MODEL = ''; assert.equal(retryModelFor('google/gemini-2.5-flash-lite'), 'google/gemini-2.5-flash-lite');
+    process.env.IMAGE_CHECK_RETRY_MODEL = '   '; assert.equal(retryModelFor('google/gemini-2.5-flash-lite'), 'google/gemini-2.5-flash-lite');
+    process.env.IMAGE_CHECK_RETRY_MODEL = 'google/gemini-3.1-flash-lite-preview'; assert.equal(retryModelFor('x'), 'google/gemini-3.1-flash-lite-preview');
+    process.env.IMAGE_CHECK_RETRY_MODEL = ' google/gemini-2.5-flash-lite '; assert.equal(retryModelFor('x'), 'google/gemini-2.5-flash-lite', 'trimmed');
+    // anything that is not a google/gemini-* slug is IGNORED (default used): a typo, another family, a free route, a path trick
+    for (const bad of ['meta-llama/llama-3.3-70b-instruct:free', 'nvidia/nemotron-3.5-content-safety:free', 'openai/gpt-6-luna', 'gemini-2.5-flash', 'google/gemma-3-27b-it', 'google/gemini-2.5-flash:free', 'google/gemini-2.5-flash/../x', 'google/gemini-', 'GOOGLE/gemini-2.5-flash']) {
+      process.env.IMAGE_CHECK_RETRY_MODEL = bad; assert.equal(retryModelFor('google/gemini-2.5-flash-lite'), 'google/gemini-2.5-flash', bad);
+    }
+  } finally { if (prev === undefined) delete process.env.IMAGE_CHECK_RETRY_MODEL; else process.env.IMAGE_CHECK_RETRY_MODEL = prev; }
+});
