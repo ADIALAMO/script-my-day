@@ -473,6 +473,23 @@ export default function AdminDashboard({ adminEmail }) {
                 )}
               </div>
 
+              {/* Star Yourself outcomes (last 7 UTC days): numbers only. started = the sum of the server outcomes; decode_failed / heic_detected are browser-side and advisory */}
+              <div className="pt-4 border-t border-white/5">
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-2">Star Yourself outcomes (7 days)</p>
+                {(stats?.characterOutcomes?.length ?? 0) === 0 ? (
+                  <p className="text-[11px] font-mono text-white/25">no data yet</p>
+                ) : (
+                  <div className="space-y-1.5 text-[11px] font-mono text-white/55">
+                    {stats.characterOutcomes.map((d) => (
+                      <div key={d.day}>
+                        <span className="text-white/35">{d.day}</span>{' '}
+                        {Object.entries(d.counts).filter(([, v]) => v > 0).map(([k, v]) => `${k} ${v}`).join(' · ')}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Live OpenRouter prepaid balance */}
               <div className="flex items-center justify-between pt-4 border-t border-white/5">
                 <div className="flex items-center gap-2">

@@ -32,6 +32,7 @@ import { buildCharacterKeys, objectKeySecretConfigured, sniffImage, decodeDataUr
 import { RETENTION, SELFIE_MAX_BYTES } from '../../config/limits.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
 import { checkImage } from '../../lib/image-check.js';
+import { outcomeFor, recordCharacterRequest } from '../../lib/character-stats.js';
 import { isCreditStatus, noteCreditFailure } from '../../lib/credit-failure.js';
 import { extractStatusCode } from '../../lib/circuit-breaker.js';
 import { readAdultConfirmation } from '../../lib/adult-confirmation.js';
@@ -48,7 +49,24 @@ const CHARACTER_SHEET_PROMPT =
   'reference photo, preserving their facial features, comic illustration style, ' +
   'neutral plain background, front-facing, even lighting';
 
+/**
+ * Outcome counters (lib/character-stats.js): every POST adds ONE `started` and exactly ONE outcome derived from the FINAL response (status + body.code), so
+ * started = the sum of the outcomes. Done here, around the handler, so none of the many return points inside needs to know about it. Requests carrying the admin
+ * API KEY are not counted (admin-tier user accounts are). Numbers only; bounded; can never change the response.
+ */
 export default async function handler(req, res) {
+  if (req.method !== 'POST') return handleUpload(req, res);   // 405: not an upload attempt, not counted
+  const seen = { status: null, code: null, success: false };
+  const originalJson = res.json.bind(res);
+  res.json = (body) => { seen.status = res.statusCode; seen.code = body?.code ?? null; seen.success = body?.success === true; return originalJson(body); };
+  try {
+    return await handleUpload(req, res);
+  } finally {
+    if (!isAdminRequest(req)) await recordCharacterRequest(outcomeFor(seen.status ?? 500, seen.code, seen.success));
+  }
+}
+
+async function handleUpload(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
 
   // ── Rate limiting (sliding window, before any paid AI call) ──────────────
@@ -280,7 +298,7 @@ export default async function handler(req, res) {
       try { await deletePreviousCharacter(identifier, previousPointer, [keys.sheet, keys.raw]); } catch { /* deletePreviousCharacter never throws; belt and braces */ }
     }
 
-    console.log(`🎭 Character ready for ${identifier}`);
+    console.log('🎭 Character ready');   // no account id in the logs
     return res.status(200).json({ success: true, characterImageUrl: styledUrl, sheetGenerated: true });
   } catch (err) {
     try { await dropRaw(); } catch { /* deleteRawSelfie never throws; belt and braces */ }

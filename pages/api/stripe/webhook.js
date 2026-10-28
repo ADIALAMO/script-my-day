@@ -28,15 +28,15 @@ function collectRawBody(req) {
 
 async function activatePro(userId, stripeCustomerId) {
   const out = await grantPaidPro(userId, stripeCustomerId);
-  if (!out.changed) console.warn(`ℹ️ Stripe webhook: Pro grant for ${userId} left unchanged (${out.reason})`);
+  if (!out.changed) console.warn(`ℹ️ Stripe webhook: Pro grant left unchanged (${out.reason})`);
   if (!stripeCustomerId) {
-    console.warn(`⚠️ Stripe webhook: Pro activated for ${userId} — no customer ID, billing portal disabled`);
+    console.warn('⚠️ Stripe webhook: Pro activated — no customer ID, billing portal disabled');
   }
 }
 
 async function revokePro(userId) {
   const out = await revokePaidPro(userId);
-  if (!out.changed) console.warn(`ℹ️ Stripe webhook: Pro revoke for ${userId} skipped (${out.reason})`);
+  if (!out.changed) console.warn(`ℹ️ Stripe webhook: Pro revoke skipped (${out.reason})`);
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -72,7 +72,7 @@ export default async function handler(req, res) {
   // logged — never the payload — so a skipped event can still be found in the Stripe dashboard and replayed later.
   // The signature is verified FIRST: a forged request still gets 400, whatever the flag says.
   if (process.env.NEXT_PUBLIC_BILLING_ENABLED !== 'true') {
-    console.warn(`ℹ️ Stripe webhook ignored (billing not enabled): type=${event.type} id=${event.id}`);
+    console.warn(`ℹ️ Stripe webhook ignored (billing not enabled): type=${event.type}`);
     return res.status(200).json({ received: true, ignored: true });
   }
 
@@ -97,7 +97,7 @@ export default async function handler(req, res) {
         const userId = session.metadata?.userId;
         if (!userId) {
           // This means checkout/index.js didn't pass metadata — programmer error.
-          console.error('❌ checkout.session.completed: no userId in session.metadata.', session.id);
+          console.error('❌ checkout.session.completed: no userId in session.metadata.');
           break;
         }
 
@@ -119,7 +119,7 @@ export default async function handler(req, res) {
         const userId = subscription.metadata?.userId;
 
         if (!userId) {
-          console.error('❌ customer.subscription.deleted: no userId in subscription.metadata.', subscription.id);
+          console.error('❌ customer.subscription.deleted: no userId in subscription.metadata.');
           break;
         }
 
@@ -133,9 +133,7 @@ export default async function handler(req, res) {
       // the product's behavior here, and nothing in this branch may throw: ids only, no user data.
       case 'invoice.payment_failed': {
         const invoice = event.data?.object ?? {};
-        const subRef = invoice.subscription ?? invoice.parent?.subscription_details?.subscription;
-        const subscriptionId = typeof subRef === 'string' ? subRef : (subRef?.id ?? 'n/a');
-        console.warn(`⚠️ Stripe invoice.payment_failed (invoice=${invoice.id ?? 'n/a'}, subscription=${subscriptionId}, attempt=${invoice.attempt_count ?? 'n/a'}) — logged only, Pro unchanged.`);
+        console.warn(`⚠️ Stripe invoice.payment_failed (attempt=${invoice.attempt_count ?? 'n/a'}) — logged only, Pro unchanged.`);
         break;
       }
 
