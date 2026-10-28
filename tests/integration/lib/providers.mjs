@@ -231,6 +231,7 @@ export function createProviders() {
 
     if (host === 'api.telegram.org') {
       const msg = body?.text ?? ''; telegram.push(msg); count('telegram');
+      const tf = failing('telegram'); if (tf) return text('mock failure', Number(tf));   // Telegram down (a test switch: mode.telegram = '500')
       return json({ ok: true });
     }
 

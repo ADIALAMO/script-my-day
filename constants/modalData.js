@@ -37,7 +37,7 @@ export const MODAL_DATA = {
         },
         {
           h: '7. הגבלת גיל, AI ושירותי צד שלישי',
-          p: 'LifeScript מיועדת לבני 18 ומעלה. שירותי ה-AI שבהם אנחנו משתמשים דורשים משתמשים בוגרים, והסיפורים שנוצרים עשויים לכלול נושאים בוגרים. בהמשך שימוש אתה מצהיר שאתה בן/בת 18 ומעלה. הפיצ\'ר "לככב בסיפור" (העלאת תמונת פנים) דורש בנוסף אישור נפרד, חד-פעמי, שאתה בן/בת 18 ומעלה. LIFESCRIPT משתמשת בשירותי AI חיצוניים (Google AI, OpenRouter ואחרים). אנחנו לא אחראים לשינויים במדיניות ספקים אלו. התוכן שנוצר מבוסס על בינה מלאכותית ועשוי להכיל אי-דיוקים; האחריות על השימוש בו חלה על המשתמש בלבד.',
+          p: 'LifeScript מיועדת לבני 18 ומעלה. שירותי ה-AI שבהם אנחנו משתמשים דורשים משתמשים בוגרים, והסיפורים שנוצרים עשויים לכלול נושאים בוגרים. בהמשך שימוש אתה מצהיר שאתה בן/בת 18 ומעלה. הפיצ\'ר "לככב בסיפור" (העלאת תמונת פנים) דורש בנוסף אישור נפרד, חד-פעמי, שאתה בן/בת 18 ומעלה. LIFESCRIPT משתמשת בשירותי AI חיצוניים דרך OpenRouter (בהם Google, xAI, Black Forest Labs ו-DeepInfra) וב-Cloudflare; ראה מדיניות הפרטיות, סעיף 7. אנחנו לא אחראים לשינויים במדיניות ספקים אלו. התוכן שנוצר מבוסס על בינה מלאכותית ועשוי להכיל אי-דיוקים; האחריות על השימוש בו חלה על המשתמש בלבד.',
         },
         {
           h: '8. אחריות, אחריות על תוכן המשתמש ושיפוי',
@@ -48,7 +48,7 @@ export const MODAL_DATA = {
           p: 'על תנאים אלו יחולו דיני מדינת ישראל, ומקום השיפוט הבלעדי יהיה בתל אביב. אנו רשאים לעדכן תנאים אלו מעת לעת; המשך השימוש לאחר עדכון מהווה הסכמה. השירות מופעל תחת השם LIFESCRIPT. בכל שאלה, בקשת מחיקה או פנייה בנושא פרטיות ניתן לפנות אל adialamo@gmail.com.',
         },
       ],
-      summary: 'עודכן לאחרונה: אוקטובר 2026',
+      summary: 'עודכן לאחרונה: 28 באוקטובר 2026',
     },
     en: {
       title: 'TERMS',
@@ -79,7 +79,7 @@ export const MODAL_DATA = {
         },
         {
           h: '7. Age Restriction, AI & Third-Party Services',
-          p: 'LifeScript is intended for adults aged 18 and over. The AI services we use require adult users, and generated stories may include mature themes. By continuing to use the service you confirm that you are 18 or older. The "Star Yourself" feature (uploading a face photo) additionally asks you to confirm once, separately, that you are 18 or older. LIFESCRIPT uses third-party AI services (Google AI, OpenRouter, and others). We are not responsible for changes in their policies. AI-generated content may contain inaccuracies; the user bears sole responsibility for how it is used.',
+          p: 'LifeScript is intended for adults aged 18 and over. The AI services we use require adult users, and generated stories may include mature themes. By continuing to use the service you confirm that you are 18 or older. The "Star Yourself" feature (uploading a face photo) additionally asks you to confirm once, separately, that you are 18 or older. LIFESCRIPT uses third-party AI services through OpenRouter (including Google, xAI, Black Forest Labs and DeepInfra) and Cloudflare; see the Privacy Policy, section 7. We are not responsible for changes in their policies. AI-generated content may contain inaccuracies; the user bears sole responsibility for how it is used.',
         },
         {
           h: '8. Warranty, Responsibility for Your Content & Indemnification',
@@ -90,7 +90,7 @@ export const MODAL_DATA = {
           p: 'These terms are governed by the laws of the State of Israel, with exclusive jurisdiction in Tel Aviv. We may update these terms from time to time; continued use after an update constitutes acceptance. The service operates under the name LIFESCRIPT. For any question, deletion request, or privacy matter, contact adialamo@gmail.com.',
         },
       ],
-      summary: 'Last updated: October 2026',
+      summary: 'Last updated: 28 October 2026',
     },
   },
 
@@ -100,7 +100,7 @@ export const MODAL_DATA = {
   privacy: {
     he: {
       title: 'פרטיות',
-      summary: '"הפרטיות שלך היא התסריט הכי חשוב שאנחנו מגנים עליו." · עודכן אוקטובר 2026',
+      summary: '"הפרטיות שלך היא התסריט הכי חשוב שאנחנו מגנים עליו." · עודכן 28 באוקטובר 2026',
       sections: [
         {
           h: '1. מה נשמר ומה לא',
@@ -142,7 +142,7 @@ export const MODAL_DATA = {
     },
     en: {
       title: 'PRIVACY',
-      summary: '"Your privacy is the most important script we protect." · Updated October 2026',
+      summary: '"Your privacy is the most important script we protect." · Updated 28 October 2026',
       sections: [
         {
           h: '1. What We Store and What We Don\'t',
@@ -322,7 +322,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'מנגנון AI מרובה-ספקים',
-          p: 'מאחורי כל לחיצה פועל מנגנון שמריץ בו-זמנית מספר מודלי שפה — Gemini Flash, Gemma ו-DeepSeek — ובוחר אוטומטית את המהיר שמחזיר תוצאה. לתמונות, קסקדה של ספקים ויזואליים — Gemini, FLUX, Cloudflare AI ועוד — עוזרת להגיש פוסטר ופאנלים גם בעומס גבוה.',
+          p: 'מאחורי כל לחיצה המערכת מנסה מודלי AI בזה אחר זה — קודם Gemini, ו-Gemma ו-DeepSeek כגיבוי — כדי שתסריט יגיע גם כשאחד עמוס. לתמונות, קסקדה של ספקים — Cloudflare AI, FLUX וב"לככב בסיפור" גם Grok ו-Gemini — עוזרת להגיש פוסטר ופאנלים גם בעומס גבוה.',
         },
         {
           h: 'מהתסריט ללוח הסיפור',
@@ -352,7 +352,7 @@ export const MODAL_DATA = {
         },
         {
           h: 'Intelligent Multi-Provider AI Engine',
-          p: 'Behind every click, an engine simultaneously races multiple language models — Gemini Flash, Gemma, and DeepSeek — automatically selecting the fastest model that returns a result. For visuals, a cascade of image providers — Gemini, FLUX, Cloudflare AI, and more — helps deliver your poster and panels even under heavy load.',
+          p: 'Behind every click, the system tries AI models in turn — Gemini first, with Gemma and DeepSeek as backups — so a script is delivered even when one is busy. For visuals, a cascade of image providers — Cloudflare AI, FLUX and, for Star Yourself, Grok and Gemini — helps deliver your poster and panels even under heavy load.',
         },
         {
           h: 'From Script to Storyboard',

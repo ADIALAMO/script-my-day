@@ -88,10 +88,10 @@ test('no copy, doc or comment claims age verification — every mention is a den
 test('privacy text discloses the text classifier and the photo screen in both languages, and never as age verification', async () => {
   const { privacyProvidersEn, privacyProvidersHe } = await import('../constants/ai-provider-copy.js');
   const en = privacyProvidersEn(); const he = privacyProvidersHe();
-  assert.match(en, /generated scripts and comics is also checked by an automatic safety classifier/);
-  assert.match(en, /clearly shows a child — a best-effort check that cannot confirm the age of anyone/);
-  assert.match(he, /תסריטים וקומיקס שנוצרו נבדק גם הוא על ידי מסווג בטיחות אוטומטי/);
-  assert.match(he, /מציגה בבירור ילד — בדיקה מאמץ סביר שאינה יכולה לאשר את גילו של איש/);
+  assert.match(en, /script or comic text that we generate for you is then checked by an automatic safety classifier/);
+  assert.match(en, /clearly shows a child\. This is a basic check and cannot reliably determine anyone's age/);
+  assert.match(he, /התסריט או טקסט הקומיקס שנוצרו עבורך בודק לאחר מכן מסווג בטיחות אוטומטי/);
+  assert.match(he, /מציגה בבירור ילד\. זו בדיקה בסיסית, והיא אינה יכולה לקבוע בוודאות את גילו של אדם/);
   assert.doesNotMatch(en, /age verification/i);
 });
 

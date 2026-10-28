@@ -26,9 +26,11 @@ test('the provider-policy review note stays next to the privacy text, and no own
 
 // ── retention numbers in the wording must be the ones the code enforces (config/limits.js) ──────────
 import { execFileSync } from 'node:child_process';
-import { RETENTION, GUEST_RETENTION, COMIC } from '../config/limits.js';
+import { RETENTION, GUEST_RETENTION, COMIC, PROVIDER_RETENTION } from '../config/limits.js';
 
-const enforced = () => new Set([RETENTION.characterPointerDays, RETENTION.characterObjectDays, RETENTION.posterObjectDays, RETENTION.panelObjectDays, RETENTION.deletionLogDays, RETENTION.referralCookieDays, GUEST_RETENTION.ipDays, Math.round(COMIC.sessionTtlSec / 3600)]);
+const enforced = () => new Set([RETENTION.characterPointerDays, RETENTION.characterObjectDays, RETENTION.posterObjectDays, RETENTION.panelObjectDays, RETENTION.deletionLogDays, RETENTION.referralCookieDays, GUEST_RETENTION.ipDays, Math.round(COMIC.sessionTtlSec / 3600),
+  // retention PUBLISHED by the AI providers (quoted in §7 as "according to what the providers publish"; not enforced by us)
+  PROVIDER_RETENTION.googleAiStudioDays, PROVIDER_RETENTION.xaiDays, PROVIDER_RETENTION.blackForestLabsDays]);
 const UNIT = /(\d+)\s*(?:days?|hours?|ימים|יום|שעות)/gi;
 
 test('every "N days/hours" in the privacy and terms text is a retention value that exists in config/limits.js', () => {
@@ -156,9 +158,9 @@ test('terms §5: we ourselves do not train on or sell the photo; providers act u
   assert.doesNotMatch(sec('terms', 'he', 5), /לא משתפים אותה מעבר לעיבוד הנדרש/);
 });
 
-test('terms last-updated date is October 2026 in both languages', () => {
-  assert.equal(MODAL_DATA.terms.he.summary, 'עודכן לאחרונה: אוקטובר 2026');
-  assert.equal(MODAL_DATA.terms.en.summary, 'Last updated: October 2026');
+test('terms last-updated date is 28 October 2026 in both languages', () => {
+  assert.equal(MODAL_DATA.terms.he.summary, 'עודכן לאחרונה: 28 באוקטובר 2026');
+  assert.equal(MODAL_DATA.terms.en.summary, 'Last updated: 28 October 2026');
 });
 
 test('18+ wording (DRAFT, needs owner/legal review): Terms §5 and Privacy §2 state the age rules, the account record with its time, and the real retention — in he + en', () => {
@@ -201,13 +203,16 @@ test('changing the object retention in config changes the wording: CHARACTER_OBJ
 });
 
 test('§7: the apparent-minor photo check is described as best-effort, never age verification, and as FAILING CLOSED (photo not used, nothing stored or generated, retry) — he + en', () => {
-  assert.match(sec('privacy', 'en', 7), /a best-effort check that cannot confirm the age of anyone\. If this check cannot run \(for example during a provider outage\), the photo is not used: nothing is stored or generated, nothing is used from your quota, and you can try again in a moment\./);
-  assert.match(sec('privacy', 'he', 7), /בדיקה מאמץ סביר שאינה יכולה לאשר את גילו של איש\. אם הבדיקה אינה יכולה לפעול \(למשל בעת תקלה אצל ספק\), לא נעשה בתמונה שימוש: דבר אינו נשמר או נוצר, לא נוצל דבר מהמכסה שלכם, ואפשר לנסות שוב בעוד רגע\./);
+  assert.match(sec('privacy', 'en', 7), /This is a basic check and cannot reliably determine anyone's age\. If a check cannot run \(for example during an outage\), the image is not shown or used: nothing is stored or generated, nothing is used from your quota, and you can try again in a moment\./);
+  assert.match(sec('privacy', 'he', 7), /זו בדיקה בסיסית, והיא אינה יכולה לקבוע בוודאות את גילו של אדם\. אם בדיקה אינה יכולה לפעול \(למשל בעת תקלה\), התמונה אינה מוצגת ואינה בשימוש: לא נשמר ולא נוצר דבר, לא נוצל דבר מהמכסה שלך, ואפשר לנסות שוב בעוד רגע\./);
 });
 
-test('§7 names every AI provider the code really uses: Google Gemini API (free tier), OpenRouter, Cloudflare Workers AI, Cohere', () => {
-  for (const lang of ['en', 'he']) { const t = sec('privacy', lang, 7); for (const n of ['Gemini API', 'OpenRouter', 'Cloudflare Workers AI', 'Cohere']) assert.ok(t.includes(n), `${lang}: ${n}`); }
-  assert.match(sec('privacy', 'en', 7), /free \(unpaid\) Gemini API tier/); assert.match(sec("privacy", "he", 7), /במסלול החינמי \(ללא תשלום\) של Gemini API/);
+test('§7 names every AI provider production really uses (OpenRouter and the companies behind it, Cloudflare Workers AI) and not the ones it does not (direct Gemini API free tier, Cohere)', () => {
+  for (const lang of ['en', 'he']) {
+    const t = sec('privacy', lang, 7);
+    for (const n of ['OpenRouter', 'Google AI Studio', 'xAI', 'Black Forest Labs', 'DeepInfra', 'Cloudflare Workers AI', 'NVIDIA']) assert.ok(t.includes(n), `${lang}: ${n}`);
+    for (const n of ['Cohere', 'Gemini API']) assert.ok(!t.includes(n), `${lang}: ${n} is not used in production any more`);
+  }
 });
 
 test('§4: reporting a generated script stores/sends no text — only reason, genre, language reach the team, the script is hidden on the device (he + en)', () => {

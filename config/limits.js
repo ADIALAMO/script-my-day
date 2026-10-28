@@ -202,6 +202,17 @@ export const RETENTION = {
   referralCookieDays:   envInt('REFERRAL_COOKIE_DAYS', 30),   // ls_ref cookie set by /i/<code>
 };
 
+// ─── Retention PUBLISHED by the AI providers (NOT enforced by us, so kept apart from RETENTION) ───
+// What OpenRouter shows as each endpoint's data policy (openrouter.ai model pages) — CHECKED 2026-10-27: Google AI Studio keeps prompts up to 55 days (gemini-2.5-flash /
+// flash-lite), xAI 30 days (grok-imagine), Black Forest Labs 30 days (flux.2-klein). DeepInfra publishes none; Google's cloud service for Gemini images publishes only
+// abuse-monitoring retention (no number). The privacy text (§7) quotes these as "according to what the providers publish" and builds the numbers from here, so the
+// "N days" test (tests/privacy-copy.test.js) knows them. Re-check them when a provider or model changes.
+export const PROVIDER_RETENTION = {
+  googleAiStudioDays:  55,
+  xaiDays:             30,
+  blackForestLabsDays: 30,
+};
+
 // ─── Global daily budget for GUEST (anonymous) script generation ─────────────────────
 // Every guest script is a paid-or-free-tier Gemini call; the per-IP limit (2/day) does not bound the
 // AGGREGATE (many IPs). This caps all guests together per UTC day. Signed-in users are never counted
