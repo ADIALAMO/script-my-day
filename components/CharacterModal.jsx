@@ -2,7 +2,10 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Check, Loader2, Camera, Sparkles, RefreshCw, Crown, ShieldCheck } from 'lucide-react';
 import { isCapacitorNative } from '../utils/platform.js';
-import { getMsg, CODES } from '../lib/messages.js';
+import { getMsg, CODES, isNativeShell } from '../lib/messages.js';
+import { classifyPickedFile } from '../utils/image-file.js';
+import { sendCharacterEvent } from '../utils/character-event.js';
+import { characterFileMessage } from '../constants/character-file-copy.js';
 
 // Downscale a selected file to a JPEG data URI (max 1024px, q0.9) before upload.
 // Keeps the request well under the endpoint's body limit and trims R2/latency cost.
@@ -80,7 +83,10 @@ export default function CharacterModal({
 
   const handleFile = useCallback(async (file) => {
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
+    // Classify first (type / extension), decode second: Safari can open HEIC, so a HEIC-looking file is still TRIED — the kind only picks the message
+    // and the count when the decode fails.
+    const kind = classifyPickedFile(file);
+    if (kind === 'not_image') {
       setFileError(isHebrew ? 'בחר קובץ תמונה' : 'Please choose an image file');
       return;
     }
@@ -91,7 +97,9 @@ export default function CharacterModal({
       setChanging(false);
       setConsented(false); // require fresh biometric consent for each uploaded photo (the 18+ declaration is asked once per account, not here)
     } catch {
-      setFileError(isHebrew ? 'לא ניתן לקרוא את התמונה' : 'Could not read that image');
+      // The browser could not open the photo (this never reaches the server). Tell the user what to do, and count it (a fixed word, nothing else is sent).
+      if (kind === 'heic') { sendCharacterEvent('heic_detected'); setFileError(characterFileMessage('heic', isHebrew, isNativeShell())); }
+      else { sendCharacterEvent('decode_failed'); setFileError(characterFileMessage('decode_failed', isHebrew)); }
     }
   }, [isHebrew]);
 

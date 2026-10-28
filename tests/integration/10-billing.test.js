@@ -102,8 +102,8 @@ scenarioBilling('K5', 'customer.subscription.deleted revokes a PAID Pro but NOT 
     return { actual: 'only the paid Pro was revoked' };
   });
 
-scenarioBilling('K6', 'invoice.payment_failed is logged (ids only, no e-mail), answers 200, changes no access, and survives malformed payloads',
-  '200 ×5; tier unchanged; log lines carry invoice/subscription ids but not the e-mail', async () => {
+scenarioBilling('K6', 'invoice.payment_failed is logged (fixed text + the attempt number: no invoice / subscription id, no e-mail), answers 200, changes no access, and survives malformed payloads',
+  '200 ×5; tier unchanged; log lines carry NO invoice / subscription id and no e-mail', async () => {
     const u = await makeUser('k6', 'paid');
     const lines = []; const ow = console.warn; console.warn = (...a) => lines.push(a.join(' '));
     const results = [];
@@ -115,7 +115,8 @@ scenarioBilling('K6', 'invoice.payment_failed is logged (ids only, no e-mail), a
     const logged = lines.filter((l) => l.includes('invoice.payment_failed'));
     assert.equal(logged.length, 5);
     assert.ok(!logged.join('\n').includes('private@person.test'));
-    assert.match(logged[0], /invoice=in_\d+, subscription=sub_x, attempt=2/);
+    assert.match(logged[0], /payment_failed \(attempt=2\) — logged only/);
+    assert.ok(!/in_\d+|sub_(x|new|obj)|invoice=|subscription=/.test(logged.join('\n')), 'no Stripe object id in the log');
     return { actual: `5×200, access unchanged, ${logged.length} log lines, no PII`, evidence: logged[0] };
   });
 
@@ -182,15 +183,15 @@ scenario('K10', 'billing flag unset (or any value but "true"): signed customer.s
     return { actual: 'Pro unchanged after 15 ignored events (5 flag values × 3 types)' };
   });
 
-scenario('K11', 'billing flag unset: the ignored event logs ONLY its type and id — no payload, no e-mail, no user id, no customer id',
-  'one log line "type=… id=…"; nothing from the payload', async () => {
+scenario('K11', 'billing flag unset: the ignored event logs ONLY its type — no event id, no payload, no e-mail, no user id, no customer id',
+  'one log line "type=…"; nothing from the payload', async () => {
     const u = await makeUser('k11', 'free');
     const e = ev('invoice.payment_failed', { id: 'in_k11', subscription: 'sub_k11', customer: 'cus_SECRETCUSTOMER', customer_email: 'private@person.test', metadata: { userId: u.id } });
     const { r, lines } = await logged(() => send(e));
     assert.equal(r.status, 200);
     const text = lines.join('\n');
-    assert.match(text, new RegExp(`type=invoice\\.payment_failed id=${e.id}`));
-    for (const secret of ['private@person.test', 'cus_SECRETCUSTOMER', u.id, 'sub_k11', 'in_k11']) assert.ok(!text.includes(secret), `log leaks ${secret}`);
+    assert.match(text, /type=invoice\.payment_failed/);
+    for (const secret of ['private@person.test', 'cus_SECRETCUSTOMER', u.id, 'sub_k11', 'in_k11', e.id]) assert.ok(!text.includes(secret), `log leaks ${secret}`);
     return { actual: `logged: ${lines.join(' | ')}` };
   });
 
