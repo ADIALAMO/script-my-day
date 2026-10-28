@@ -4,7 +4,6 @@ import { isAdminRequest } from '../../../lib/api-utils.js';
 import redis from '../../../lib/redis.js';
 import { KLEIN_COST_USD } from '../../../lib/circuit-breaker.js';
 import { IDENTITY_MAX_COST_USD } from '../../../lib/identity.js';
-import { readScriptStages } from '../../../lib/script-stats.js';
 import { readCharacterOutcomes } from '../../../lib/character-stats.js';
 import { globalCheckKey, checkBudgetUsd, checkCostUsd } from '../../../lib/budget.js';
 
@@ -94,11 +93,10 @@ export default async function handler(req, res) {
     globalCheckKey('script'),               // 9  (paid script engine call count)
   ];
 
-  const [countersR, proCountR, openrouter, stagesR, charR] = await Promise.allSettled([
+  const [countersR, proCountR, openrouter, charR] = await Promise.allSettled([
     redis.mget(...keys),
     redis.scard('stats:pro:members'),
     fetchOpenRouterCredits(),
-    readScriptStages(14),
     readCharacterOutcomes(7),
   ]);
 
@@ -124,8 +122,6 @@ export default async function handler(req, res) {
       poster: { today: c[3], total: c[4] },
       comic:  { today: c[5], total: c[6] },
     },
-    // which stage served each script, last 14 UTC days, newest first (lib/script-stats.js: counts and token totals only)
-    scriptStages: stagesR.status === 'fulfilled' ? stagesR.value : [],
     // Star Yourself outcomes, last 7 UTC days, newest first (lib/character-stats.js: counts only; started = the sum of the server outcomes)
     characterOutcomes: charR.status === 'fulfilled' ? charR.value : [],
     budget: {
