@@ -111,6 +111,9 @@ function BudgetBar({ label, block }) {
 
 // ── Pro source badge ─────────────────────────────────────────────────────────────
 // Maps how a user got Pro (lib/pro-source.js + PRO_ALLOWLIST) to a color + label.
+// Auto-refresh interval. One cycle = 12 Upstash commands (tests/integration/45-admin-refresh-cost.test.js); a tab left visible costs 12 x 288 = ~3.5K commands a day (free tier: 500K per MONTH).
+const AUTO_REFRESH_MS = 5 * 60 * 1000;
+
 const SOURCE_STYLES = {
   stripe:    { label: 'Stripe',    icon: CreditCard,  className: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' },
   admin:     { label: 'Admin',     icon: UserCog,      className: 'bg-violet-500/15 border-violet-500/30 text-violet-400' },
@@ -182,7 +185,7 @@ export default function AdminDashboard({ adminEmail }) {
       .catch(err => { setAllUsers({ _error: err.message }); setAllUsersLoading(false); });
   }, []);
 
-  // Pro waitlist — fetched on mount and on demand ONLY (not in the 30 s auto-refresh: it is a list of e-mail addresses)
+  // Pro waitlist — fetched on mount and on demand ONLY (not in the auto-refresh: it is a list of e-mail addresses)
   const WAITLIST_LIMIT = 50;
   const [waitlist, setWaitlist] = useState(null);
   const [waitlistLoading, setWaitlistLoading] = useState(true);
@@ -241,7 +244,7 @@ export default function AdminDashboard({ adminEmail }) {
       .catch(err => { setProUsers({ _error: err.message }); setProUsersLoading(false); });
   }, []);
 
-  // Active creators: 34 Upstash commands per read, so it is fetched on page load and on the manual Refresh button ONLY — never by the 30 s auto-refresh
+  // Active creators: 34 Upstash commands per read, so it is fetched on page load and on the manual Refresh button ONLY — never by the auto-refresh
   const [creators, setCreators] = useState(null);
   const fetchCreators = useCallback(() => {
     fetch('/api/admin/active-creators', { cache: 'no-store' })
@@ -250,10 +253,19 @@ export default function AdminDashboard({ adminEmail }) {
       .catch(() => setCreators(null));
   }, []);
 
+  // Script stages: 14 Upstash reads, so (like the creators) fetched on page load and on the manual Refresh button ONLY
+  const [scriptStages, setScriptStages] = useState(null);
+  const fetchScriptStages = useCallback(() => {
+    fetch('/api/admin/script-stages', { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then(data => setScriptStages(Array.isArray(data?.scriptStages) ? data.scriptStages : null))
+      .catch(() => setScriptStages(null));
+  }, []);
+
   const refreshAll = useCallback(() => {
     fetchHealth(); fetchStats(); fetchProUsers();
     // Keep whatever page/filter/search the admin is currently on rather than
-    // resetting to page 0 every 30s — that would be jarring mid-browse.
+    // resetting to page 0 on every auto-refresh — that would be jarring mid-browse.
     fetchAllUsers(allUsersOffset, allUsersTier, allUsersSearch);
   }, [fetchHealth, fetchStats, fetchProUsers, fetchAllUsers, allUsersOffset, allUsersTier, allUsersSearch]);
 
@@ -264,7 +276,7 @@ export default function AdminDashboard({ adminEmail }) {
   const refreshAllRef = useRef(refreshAll);
   useEffect(() => { refreshAllRef.current = refreshAll; }, [refreshAll]);
 
-  // Initial load + 30s auto-refresh for a live, real-time feel. The stats endpoint
+  // Initial load + a slow auto-refresh (AUTO_REFRESH_MS: every cycle costs Upstash commands, the free tier allows 500K per MONTH). The stats endpoint
   // is O(1) (one mget + one scard + one OpenRouter ping) so polling is cheap.
   // The auto-refresh pauses while the tab is hidden (every cycle costs Upstash commands) and refreshes once when the tab comes back after a stale period.
   useEffect(() => {
@@ -273,11 +285,12 @@ export default function AdminDashboard({ adminEmail }) {
     const visible = () => typeof document === 'undefined' || document.visibilityState !== 'hidden';
     refreshAllRef.current();
     fetchCreators();
-    const id = setInterval(() => { if (visible()) run(); }, 30_000);
-    const onVisible = () => { if (visible() && Date.now() - last >= 30_000) run(); };
+    fetchScriptStages();
+    const id = setInterval(() => { if (visible()) run(); }, AUTO_REFRESH_MS);
+    const onVisible = () => { if (visible() && Date.now() - last >= AUTO_REFRESH_MS) run(); };
     document.addEventListener('visibilitychange', onVisible);
     return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVisible); };
-  }, [fetchCreators]);
+  }, [fetchCreators, fetchScriptStages]);
 
   // ── All Users: filter/search/pagination handlers ─────────────────────────
   const handleTierFilterChange = (tier) => {
@@ -397,7 +410,7 @@ export default function AdminDashboard({ adminEmail }) {
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
               </span>
               <span className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-black">
-                Live · auto-refresh 30s
+                Live · auto-refresh 5 min
               </span>
               {stats?.timestamp && (
                 <span className="text-[10px] text-white/20 font-mono hidden sm:block">
@@ -406,7 +419,7 @@ export default function AdminDashboard({ adminEmail }) {
               )}
             </div>
             <button
-              onClick={() => { refreshAll(); fetchCreators(); }}
+              onClick={() => { refreshAll(); fetchCreators(); fetchScriptStages(); }}
               disabled={statsLoading || healthLoading}
               className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-white/25 hover:text-[#d4a373] transition-colors disabled:opacity-30"
             >
@@ -473,11 +486,11 @@ export default function AdminDashboard({ adminEmail }) {
               {/* Which stage served each script (last 14 UTC days) — real volume data for tuning DAILY_SCRIPT_BUDGET */}
               <div className="pt-4 border-t border-white/5">
                 <p className="text-[10px] uppercase tracking-widest text-white/40 mb-2">Scripts by serving stage</p>
-                {(stats?.scriptStages?.length ?? 0) === 0 ? (
+                {(scriptStages?.length ?? 0) === 0 ? (
                   <p className="text-[11px] font-mono text-white/25">no data yet</p>
                 ) : (
                   <div className="space-y-1.5 text-[11px] font-mono text-white/55">
-                    {stats.scriptStages.map((d) => (
+                    {scriptStages.map((d) => (
                       <div key={d.day}>
                         <span className="text-white/35">{d.day}</span>{' '}
                         {Object.entries(d.counts).filter(([k]) => !k.startsWith('paid')).map(([k, v]) => `${k} ${v}`).join(' · ')}

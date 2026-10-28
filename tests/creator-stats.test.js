@@ -94,9 +94,24 @@ test('admin page: creators are fetched on load and on the manual Refresh button 
   const page = read('pages/admin.js');
   const refreshAll = page.slice(page.indexOf('const refreshAll = useCallback'), page.indexOf('// refreshAll\'s identity'));
   assert.ok(!refreshAll.includes('fetchCreators'), 'refreshAll (called by the interval) must not fetch the creators');
-  assert.match(page, /onClick=\{\(\) => \{ refreshAll\(\); fetchCreators\(\); \}\}/);
+  assert.match(page, /onClick=\{\(\) => \{ refreshAll\(\); fetchCreators\(\);/);
   assert.match(page, /refreshAllRef\.current\(\);\s*\n\s*fetchCreators\(\);/);
   assert.match(page, /document\.visibilityState !== 'hidden'/);
-  assert.match(page, /setInterval\(\(\) => \{ if \(visible\(\)\) run\(\); \}, 30_000\)/);
+  assert.match(page, /setInterval\(\(\) => \{ if \(visible\(\)\) run\(\); \}, AUTO_REFRESH_MS\)/);
   assert.match(page, /addEventListener\('visibilitychange'/); assert.match(page, /removeEventListener\('visibilitychange'/);
+});
+
+test('admin page: auto-refresh every 5 minutes; the script-stage list is load / Refresh only, like the creators; stats no longer carries it', () => {
+  const page = read('pages/admin.js');
+  assert.match(page, /const AUTO_REFRESH_MS = 5 \* 60 \* 1000;/);
+  assert.ok(!/30_000/.test(page), 'no 30 s interval left');
+  assert.match(page, /auto-refresh 5 min/);
+  const refreshAll = page.slice(page.indexOf('const refreshAll = useCallback'), page.indexOf('// refreshAll\'s identity'));
+  assert.ok(!refreshAll.includes('fetchScriptStages') && !refreshAll.includes('fetchCreators'));
+  assert.match(page, /onClick=\{\(\) => \{ refreshAll\(\); fetchCreators\(\); fetchScriptStages\(\); \}\}/);
+  assert.match(page, /fetchCreators\(\);\s*\n\s*fetchScriptStages\(\);/);
+  assert.match(page, /\/api\/admin\/script-stages/);
+  const stats = read('pages/api/admin/stats.js');
+  assert.ok(!stats.includes('scriptStages') && !stats.includes('readScriptStages'));
+  assert.match(read('pages/api/admin/script-stages.js'), /requireAdmin/);
 });
