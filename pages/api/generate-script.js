@@ -6,6 +6,7 @@ import { sanitize } from '../../utils/input-processor';
 import { CODES } from '../../lib/messages.js';
 import { nextMidnightUTC, isAdminRequest } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
+import { recordCreator } from '../../lib/creator-stats.js';
 import { reserveScriptQuota, releaseScriptQuota } from '../../lib/script-quota.js';
 import { reserveGuestScriptBudget, releaseGuestScriptBudget } from '../../lib/guest-budget.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
@@ -209,6 +210,7 @@ export default async function handler(req, res) {
     } catch (err) {
       console.warn(`⚠️ Script stats counter skipped (Redis unavailable): ${err.message}`);
     }
+    if (!isAdmin) await recordCreator(identifier, tier);   // distinct creators per day (lib/creator-stats.js): numbers only, bounded, never throws
 
     return res.status(200).json({
       success: true,

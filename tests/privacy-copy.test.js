@@ -28,7 +28,7 @@ test('the provider-policy review note stays next to the privacy text, and no own
 import { execFileSync } from 'node:child_process';
 import { RETENTION, GUEST_RETENTION, COMIC, PROVIDER_RETENTION } from '../config/limits.js';
 
-const enforced = () => new Set([RETENTION.characterPointerDays, RETENTION.characterObjectDays, RETENTION.posterObjectDays, RETENTION.panelObjectDays, RETENTION.deletionLogDays, RETENTION.referralCookieDays, GUEST_RETENTION.ipDays, Math.round(COMIC.sessionTtlSec / 3600),
+const enforced = () => new Set([RETENTION.characterPointerDays, RETENTION.characterObjectDays, RETENTION.posterObjectDays, RETENTION.panelObjectDays, RETENTION.deletionLogDays, RETENTION.referralCookieDays, RETENTION.creatorStatsDays, GUEST_RETENTION.ipDays, Math.round(COMIC.sessionTtlSec / 3600),
   // retention PUBLISHED by the AI providers (quoted in §7 as "according to what the providers publish"; not enforced by us)
   PROVIDER_RETENTION.googleAiStudioDays, PROVIDER_RETENTION.xaiDays, PROVIDER_RETENTION.blackForestLabsDays]);
 const UNIT = /(\d+)\s*(?:days?|hours?|ימים|יום|שעות)/gi;

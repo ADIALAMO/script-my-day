@@ -7,6 +7,7 @@ import { isCreditStatus, creditStatus, readErrorBody, noteCreditFailure } from '
 import { warnIfPrivacyModeOff } from '../../lib/privacy-mode.js';
 import { reserveCheckBudget, releaseCheckBudget, checkMaxCalls, checkBudgetUsd } from '../../lib/budget.js';
 import { getSessionAndTier } from '../../lib/auth.js';
+import { recordCreator } from '../../lib/creator-stats.js';
 import { limitFor } from '../../lib/quota.js';
 import { reserveComicQuota, releaseComicQuota, unlockedPanelsForNewComic } from '../../lib/comic-quota.js';
 import { openComicSession } from '../../lib/comic-guard.js';
@@ -514,6 +515,7 @@ export default async function handler(req, res) {
     } catch (err) {
       console.warn(`⚠️ Comic stats counter skipped (Redis unavailable): ${err.message}`);
     }
+    if (!isAdmin) await recordCreator(identifier, tier);   // distinct creators per day (lib/creator-stats.js)
 
     // ── Decide this comic's provider mode ONCE, here, instead of letting each of
     // up to 7 panel requests race the same decision independently ─────────────

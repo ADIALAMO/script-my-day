@@ -490,6 +490,33 @@ export default function AdminDashboard({ adminEmail }) {
                 )}
               </div>
 
+              {/* Active creators: DISTINCT people who successfully created a script, poster, comic or Star Yourself character (lib/creator-stats.js). Counts only. */}
+              <div className="pt-4 border-t border-white/5">
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-2">Active creators</p>
+                {!stats?.activeCreators ? (
+                  <p className="text-[11px] font-mono text-white/25">no data yet</p>
+                ) : (
+                  <div className="space-y-2 text-[11px] font-mono text-white/55">
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      {[['Today', stats.activeCreators.today], ['7 days', stats.activeCreators.d7], ['30 days', stats.activeCreators.d30]].map(([label, v]) => (
+                        <div key={label} className="rounded-lg bg-white/[0.03] py-2">
+                          <div className="text-lg font-black text-white tabular-nums">{v.total}</div>
+                          <div className="text-white/35">{label}</div>
+                          <div className="text-white/25">signed-in {v.in} · guest {v.guest}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <p>Today: returning {stats.activeCreators.today.returning} (also created in the previous 6 days) · new {stats.activeCreators.today.fresh}</p>
+                    <div className="space-y-1">
+                      {stats.activeCreators.daily.map((d) => (
+                        <div key={d.day}><span className="text-white/35">{d.day}</span> {d.total} <span className="text-white/25">(signed-in {d.in} · guest {d.guest})</span></div>
+                      ))}
+                    </div>
+                    <p className="text-white/25">Distinct people per UTC day, successful creations only, admin key excluded. Someone who creates as a guest and signed in on the same day counts twice in the totals.</p>
+                  </div>
+                )}
+              </div>
+
               {/* Live OpenRouter prepaid balance */}
               <div className="flex items-center justify-between pt-4 border-t border-white/5">
                 <div className="flex items-center gap-2">

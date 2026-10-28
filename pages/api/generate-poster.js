@@ -2,6 +2,7 @@ import redis from '../../lib/redis.js';
 import { CODES } from '../../lib/messages.js';
 import { nextMidnightUTC, isAdminRequest, isValidComicSeed } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
+import { recordCreator } from '../../lib/creator-stats.js';
 import { limitFor } from '../../lib/quota.js';
 import { guardComicPanel } from '../../lib/comic-guard.js';
 import { reservePosterQuota, releasePosterQuota } from '../../lib/poster-quota.js';
@@ -397,6 +398,7 @@ export default async function handler(req, res) {
   // not increment the poster counter.  However, each panel request must still be gated
   // against the tier's unlock limit so that direct API calls cannot bypass the paywall.
   let refereeUserId  = null; // set for an authed standalone-poster request → referral activation
+  let creator        = null; // { identifier, tier } of a standalone-poster request (not the admin key) → distinct-creator count after success
 
   if (!isAdmin) {
     if (isComic) {
@@ -418,6 +420,7 @@ export default async function handler(req, res) {
       // ── Standalone movie poster quota ──────────────────────────────────────
       const { tier, identifier, userId } = await getSessionAndTier(req, res);
       refereeUserId = userId; // authed → eligible to activate a pending referral on success
+      creator = { identifier, tier };
       // The poster quota is RESERVED atomically (INCR then compare; rolled back on refusal and whenever no
       // image is produced) — see lib/poster-quota.js. Anonymous = a single LIFETIME taste poster per IP.
       // Redis trouble fails open, as before.
@@ -452,6 +455,7 @@ export default async function handler(req, res) {
     } catch (e) {
       console.warn(`⚠️ Poster stats counter skipped (Redis unavailable): ${e.message}`);
     }
+    if (creator) await recordCreator(creator.identifier, creator.tier);   // distinct creators per day (lib/creator-stats.js)
   };
 
   const agentPrompt =

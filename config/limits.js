@@ -200,6 +200,7 @@ export const RETENTION = {
   panelObjectDays:      envInt('PANEL_OBJECT_DAYS', 30),        // R2 rule `panels/` 30 days
   deletionLogDays:      envInt('DELETION_LOG_DAYS', 45),   // must stay PAST the 30-day processing SLA promised on /data-deletion + Privacy §9, so the record outlives the deadline (tests/data-deletion-copy.test.js)
   referralCookieDays:   envInt('REFERRAL_COOKIE_DAYS', 30),   // ls_ref cookie set by /i/<code>
+  creatorStatsDays:     envInt('CREATOR_STATS_DAYS', 60),     // stats:creators:<day>:* (lib/creator-stats.js): one-way keyed hashes in a HyperLogLog, expire this many days after their day ends
 };
 
 // ─── Retention PUBLISHED by the AI providers (NOT enforced by us, so kept apart from RETENTION) ───
