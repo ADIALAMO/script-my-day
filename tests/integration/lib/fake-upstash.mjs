@@ -16,6 +16,7 @@ export async function createFakeUpstash() {
   const strings = new Map();   // key -> string
   const sets = new Map();      // key -> Set
   const zsets = new Map();     // key -> Map(member -> score)
+  const hlls = new Map();      // key -> Set (HyperLogLog emulated EXACTLY: tests check logic, not the ~1% estimation error)
   const expiry = new Map();    // key -> epoch ms
   const stats = { commands: {}, total: 0 };
   const control = { failCommands: new Set(), downEverything: false };
@@ -23,10 +24,10 @@ export async function createFakeUpstash() {
   const now = () => Date.now();
   const alive = (k) => {
     const e = expiry.get(k);
-    if (e !== undefined && now() >= e) { strings.delete(k); sets.delete(k); zsets.delete(k); expiry.delete(k); return false; }
-    return strings.has(k) || sets.has(k) || zsets.has(k);
+    if (e !== undefined && now() >= e) { strings.delete(k); sets.delete(k); zsets.delete(k); hlls.delete(k); expiry.delete(k); return false; }
+    return strings.has(k) || sets.has(k) || zsets.has(k) || hlls.has(k);
   };
-  const del = (k) => { const had = alive(k); strings.delete(k); sets.delete(k); zsets.delete(k); expiry.delete(k); return had; };
+  const del = (k) => { const had = alive(k); strings.delete(k); sets.delete(k); zsets.delete(k); hlls.delete(k); expiry.delete(k); return had; };
   const num = (v) => { const n = parseInt(v, 10); if (!Number.isFinite(n) || String(n) !== String(v).trim()) throw new Error('ERR value is not an integer or out of range'); return n; };
 
   function evalSlidingWindow(keys, args) {
@@ -95,6 +96,8 @@ export async function createFakeUpstash() {
         const all = [...strings.keys(), ...sets.keys(), ...zsets.keys()].filter((k) => alive(k) && re.test(k));
         return ['0', all];
       }
+      case 'PFADD': { alive(a[0]); const h = hlls.get(a[0]) || new Set(); let ch = hlls.has(a[0]) ? 0 : 1; for (const m of a.slice(1)) if (!h.has(m)) { h.add(m); ch = 1; } hlls.set(a[0], h); return ch; }
+      case 'PFCOUNT': { const u = new Set(); for (const k of a) { alive(k); for (const m of hlls.get(k) || []) u.add(m); } return u.size; }
       case 'SCARD': { alive(a[0]); return sets.get(a[0])?.size ?? 0; }
       case 'SMEMBERS': { alive(a[0]); return [...(sets.get(a[0]) || [])]; }
       case 'SISMEMBER': { alive(a[0]); return sets.get(a[0])?.has(a[1]) ? 1 : 0; }
@@ -141,13 +144,16 @@ export async function createFakeUpstash() {
     control,
     /** direct inspection helpers for assertions (bypass the HTTP layer) */
     get: (k) => (alive(k) && strings.has(k) ? strings.get(k) : null),
+    /** exact member count of a HyperLogLog key, and its raw members (to assert that no raw id is stored) */
+    hll: (k) => { alive(k); return hlls.get(k)?.size ?? 0; },
+    hllMembers: (k) => { alive(k); return [...(hlls.get(k) || [])]; },
     num: (k) => (alive(k) && strings.has(k) ? Number(strings.get(k)) : 0),
     ttl: (k) => exec(['TTL', k]),
-    keys: (prefix = '') => [...strings.keys(), ...sets.keys(), ...zsets.keys()].filter((k) => k.startsWith(prefix) && alive(k)),
+    keys: (prefix = '') => [...strings.keys(), ...sets.keys(), ...zsets.keys(), ...hlls.keys()].filter((k) => k.startsWith(prefix) && alive(k)),
     set: (k, v, exSeconds) => exec(exSeconds ? ['SET', k, String(v), 'EX', exSeconds] : ['SET', k, String(v)]),
     del: (k) => del(k),
     exec,
-    flush() { strings.clear(); sets.clear(); zsets.clear(); expiry.clear(); stats.commands = {}; stats.total = 0; },
+    flush() { strings.clear(); sets.clear(); zsets.clear(); hlls.clear(); expiry.clear(); stats.commands = {}; stats.total = 0; },
     close: () => new Promise((r) => server.close(r)),
   };
 }
