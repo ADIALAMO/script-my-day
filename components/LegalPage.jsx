@@ -120,7 +120,7 @@ export default function LegalPage({ contentKey }) {
                 <h2 className="text-[#d4a373] font-bold text-[14px] mb-3 leading-snug">
                   {section.h}
                 </h2>
-                <p className="text-white/58 text-[13px] leading-[1.85]">
+                <p className="text-white/58 text-[13px] leading-[1.85] whitespace-pre-line">
                   {section.p}
                 </p>
               </section>

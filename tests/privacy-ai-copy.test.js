@@ -1,95 +1,108 @@
-// Privacy §3 (accounts), §7 (external AI providers, free-tier Gemini disclosure) and §8 (sharing): wording guards.
-// The Gemini tier is read from NEXT_PUBLIC_GEMINI_API_TIER at module load, so each case runs in its own node process.
+// Privacy §3 (accounts), §7 (external AI providers) and §8 (sharing), the Terms' provider sentence, the About page and the dates: wording guards.
+// §7 describes PRODUCTION with privacy mode ON (OpenRouter with data_collection "deny"; the direct Google key, Cohere and the free routes are not used).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { MODAL_DATA as m } from '../constants/modalData.js';
+import { PROVIDER_RETENTION } from '../config/limits.js';
 
-const ROOT = new URL('..', import.meta.url).pathname;
-const render = (tier) => {
-  const env = { ...process.env };
-  delete env.NEXT_PUBLIC_GEMINI_API_TIER;
-  if (tier !== undefined) env.NEXT_PUBLIC_GEMINI_API_TIER = tier;
-  const out = execFileSync(process.execPath, ['--input-type=module', '-e',
-    "const {MODAL_DATA:m}=await import('./constants/modalData.js');" +
-    "const sec=(l,n)=>m.privacy[l].sections.find(s=>s.h.startsWith(n+'.')).p;" +
-    "console.log(JSON.stringify({he7:sec('he',7),en7:sec('en',7),he3:sec('he',3),en3:sec('en',3),he8:sec('he',8),en8:sec('en',8),all:[m.privacy,m.terms].flatMap(d=>['he','en'].flatMap(l=>[d[l].title,d[l].summary||'',...d[l].sections.flatMap(x=>[x.h,x.p])])).join('\\n'),privSummaries:[m.privacy.he.summary,m.privacy.en.summary].join('\\n')}))"],
-  { cwd: ROOT, env, encoding: 'utf8' });
-  return JSON.parse(out);
-};
-const FREE_HE = /במסלול החינמי \(ללא תשלום\) של Gemini API[^.]*Google עשויה להשתמש בתוכן שנשלח כדי לשפר את מוצריה, ובודקים אנושיים עשויים לקרוא אותו/;
-const FREE_EN = /free \(unpaid\) Gemini API tier[^.]*Google may use submitted content to improve its products and human reviewers may read it/;
+const sec = (doc, l, n) => m[doc][l].sections.find((s) => s.h.startsWith(`${n}.`)).p;
+const read = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
+const ALL = JSON.stringify({ p: m.privacy, t: m.terms, a: m.about });
 
-test('default (variable unset) = free tier: §7 discloses it in Hebrew and English', () => {
-  const r = render(undefined);
-  assert.match(r.he7, FREE_HE);
-  assert.match(r.en7, FREE_EN);
+test('no bracketed internal note or TODO/owner remark appears in any user-visible policy or terms text', () => {
+  const t = [m.privacy, m.terms].flatMap((d) => ['he', 'en'].flatMap((l) => [d[l].title, d[l].summary, ...d[l].sections.flatMap((s) => [s.h, s.p])])).join('\n');
+  assert.doesNotMatch(t, /\[[^\]]*\]/, 'no [bracketed] text');
+  assert.doesNotMatch(t, /OWNER-CONFIRM|\bTODO\b|REMOVE THIS|\bDRAFT\b/);
 });
 
-test('NEXT_PUBLIC_GEMINI_API_TIER=free behaves like the default; an unknown value falls back to the conservative free wording', () => {
-  for (const v of ['free', 'FREE', 'yes', '']) {
-    const r = render(v);
-    assert.match(r.he7, FREE_HE, `he, value "${v}"`);
-    assert.match(r.en7, FREE_EN, `en, value "${v}"`);
+test('the legal copy no longer says "free routes", the outdated backup-check sentence, Cohere, the free Gemini tier, or that models race each other', () => {
+  for (const re of [/free routes/i, /some of these run on free/i, /When the primary safety check is unavailable/i, /backup safety check may be run/i, /Cohere/, /free \(unpaid\)/i, /Gemini API tier/i,
+    /simultaneously races/i, /מסלולים הם חינמיים/, /בדיקת הבטיחות הראשית אינה זמינה/, /בדיקת בטיחות גיבוי/, /המסלול החינמי/, /במסלול החינמי/, /ספק גיבוי נוסף/, /בו-זמנית מספר מודלי שפה/]) {
+    assert.doesNotMatch(ALL, re, String(re));
   }
 });
 
-test("NEXT_PUBLIC_GEMINI_API_TIER=paid removes the free-tier sentence in both languages, the rest of §7 stays", () => {
-  const r = render('paid');
-  assert.doesNotMatch(r.he7, /ללא תשלום|בודקים אנושיים/);
-  assert.doesNotMatch(r.en7, /free \(unpaid\)|human reviewers/);
-  for (const [lang, t] of [['he', r.he7], ['en', r.en7]]) {
-    for (const name of ['Google', 'OpenRouter', 'Cloudflare', 'Cohere']) assert.ok(t.includes(name), `${lang}: ${name}`);
-    assert.ok(!t.includes('Pollinations'), `${lang}: Pollinations was removed from every image chain and must not be named as a provider`);
-    assert.match(t, lang === 'he' ? /תמונת הפנים/ : /face photo/);
-  }
-  assert.match(r.en7, /\(a\) Google \(Gemini API\) receives your text to create scripts and the comic plan\. \(b\) OpenRouter/);
-  assert.match(r.en7, /backup safety check may be run on a generated image through our AI gateway provider \(OpenRouter\), with routing set to providers that state they do not collect the data or train on it \(the OpenRouter data_collection=deny setting\) — a statement we cannot independently verify/);
-  assert.doesNotMatch(r.en7, /generated images for a safety check/, 'the checker is not described as a Google free-tier flow');
-  assert.match(r.en7, /a content-safety model that checks face photos and generated images/);
-  assert.match(r.he7, /ותמונות שנוצרו\)/);
-  assert.match(r.he7, /בדיקת בטיחות גיבוי על תמונה שנוצרה דרך שער ה-AI שלנו \(OpenRouter\), בניתוב המוגדר לספקים שמצהירים כי אינם אוספים את המידע ואינם מאמנים עליו \(הגדרת data_collection=deny של OpenRouter\) — הצהרה שאיננו יכולים לאמת באופן עצמאי/);
-  assert.doesNotMatch(r.he7, /ותוכנית הקומיקס, וכאשר/);
+test('§7 says who sees what, in both languages: OpenRouter and every company that receives text or images, the safety checks on EVERY image, and the Character Sheet re-sent per poster', () => {
+  for (const [l, must] of [
+    ['en', ['OpenRouter', 'Google AI Studio', 'DeepInfra', 'Nebius', 'Novita', 'Parasail', 'StreamLake', 'Cloudflare Workers AI', 'Black Forest Labs', 'xAI (Grok)', 'Gemini image models on Google Cloud', 'NVIDIA safety model',
+      'every generated image, and the face photo and Character Sheet, is checked automatically by two services', 'Each time you create a poster or panel with your character, the Character Sheet is sent']],
+    ['he', ['OpenRouter', 'Google AI Studio', 'DeepInfra', 'Nebius', 'Novita', 'Parasail', 'StreamLake', 'Cloudflare Workers AI', 'Black Forest Labs', 'xAI (Grok)', 'Google Cloud', 'מודל בטיחות של NVIDIA',
+      'כל תמונה שנוצרה, וכן תמונת הפנים וגיליון הדמות, נבדקת אוטומטית בשני שירותים', 'בכל פעם שאתה יוצר פוסטר או פאנל עם הדמות שלך, גיליון הדמות נשלח']],
+  ]) { const t = sec('privacy', l, 7); for (const n of must) assert.ok(t.includes(n), `${l}: ${n}`); }
 });
 
-test('no bracketed internal note or TODO/owner remark appears in any user-visible policy or terms text, either value', () => {
-  for (const v of [undefined, 'paid']) {
-    const t = render(v).all;
-    assert.doesNotMatch(t, /\[[^\]]*\]/, 'no [bracketed] text');
-    assert.doesNotMatch(t, /OWNER-CONFIRM|\bTODO\b|REMOVE THIS|\bDRAFT\b/);
-  }
+test('§7 explains "deny": providers that state they do not TRAIN — not that they delete — with the published retention from config, "according to what the providers publish", unverifiable', () => {
+  const en = sec('privacy', 'en', 7); const he = sec('privacy', 'he', 7); const P = PROVIDER_RETENTION;
+  assert.match(en, /data_collection=deny option, which allows only providers that state they do not train on the data\. It does not mean the provider deletes the data after the request\./);
+  assert.match(he, /data_collection=deny של OpenRouter, שמתירה רק ספקים שמצהירים שאינם מאמנים על המידע\. האפשרות הזו אינה אומרת שהספק מוחק את המידע בתום הבקשה\./);
+  assert.match(en, /According to what the providers publish, Google may keep requests for up to 55 days/); assert.equal(P.googleAiStudioDays, 55);
+  assert.ok(en.includes(`up to ${P.googleAiStudioDays} days`) && en.includes(`${P.xaiDays} days`) && he.includes(`עד ${P.googleAiStudioDays} ימים`) && he.includes(`${P.xaiDays} ימים`), 'the numbers come from PROVIDER_RETENTION');
+  assert.match(en, /DeepInfra states that it does not keep them/); assert.match(he, /DeepInfra מצהירה שהיא אינה שומרת אותן/);
+  assert.match(en, /abuse monitoring/); assert.match(he, /ניטור שימוש לרעה/);
+  assert.match(en, /We rely on these published statements and cannot independently verify them/); assert.match(he, /ואיננו יכולים לאמת אותן באופן עצמאי/);
+  assert.match(en, /OpenRouter handles the requests it passes on under its own privacy policy/);
+  assert.doesNotMatch(en, /do not collect the data/i); assert.doesNotMatch(he, /אינם אוספים את המידע/);
 });
 
-test('§7 is honest in both languages: names the providers, no retention promise, sensitive-data warning, no ad/sale use', () => {
-  const r = render(undefined);
-  assert.match(r.en7, /cannot promise that your content is not retained/);
-  assert.match(r.he7, /איננו יכולים להבטיח שהתוכן שלך אינו נשמר/);
-  assert.match(r.en7, /Do not enter highly sensitive information/);
-  assert.match(r.he7, /אל תזין מידע רגיש במיוחד/);
-  assert.match(r.en7, /do not sell your content or use it for advertising/);
+test('§7 text classifier bullet: it checks what we GENERATE (script / comic text), not the user\'s own entry, which only meets a keyword list on our server (he + en)', () => {
+  assert.match(sec('privacy', 'en', 7), /The finished script or comic text that we generate for you is then checked by an automatic safety classifier on Google's Gemini models; your own entry is not sent to that classifier, it is only screened against a keyword list on our server\./);
+  assert.match(sec('privacy', 'he', 7), /את התסריט או טקסט הקומיקס שנוצרו עבורך בודק לאחר מכן מסווג בטיחות אוטומטי במודלי Gemini של Google; הטקסט שכתבת בעצמך אינו נשלח למסווג הזה, הוא נבדק רק מול רשימת מילים בשרת שלנו\./);
+  // the code really does that: the AI classifier gets the OUTPUT, the entry only goes through the local blocklist
+  const script = read('pages/api/generate-script.js');
+  assert.match(script, /checkContent\(`\$\{safeJournalEntry\}/); assert.match(script, /checkTextOutput\(result\.output/);
+  assert.doesNotMatch(script, /checkTextOutput\(safeJournalEntry/);
+  const sb = read('pages/api/generate-storyboard.js');
+  assert.match(sb, /checkTextOutput\(storyboardText\(enrichedPanels\)/);
+});
+
+test('§7 is honest: no retention promise, sensitive-data warning, no ad/sale use; the "age" check is basic and cannot reliably determine age; bullets are separate lines', () => {
+  const en = sec('privacy', 'en', 7); const he = sec('privacy', 'he', 7);
+  assert.match(en, /we cannot promise that your content is not kept or used by these providers/); assert.match(he, /איננו יכולים להבטיח שהתוכן שלך אינו נשמר או משמש אצל ספקים אלה/);
+  assert.match(en, /Do not enter highly sensitive information/); assert.match(he, /אל תזין מידע רגיש במיוחד/);
+  assert.match(en, /do not sell your content or use it for advertising/); assert.match(he, /לא מוכרים את התוכן ולא משתמשים בו לפרסום/);
+  assert.match(en, /This is a basic check and cannot reliably determine anyone's age\./); assert.match(he, /זו בדיקה בסיסית, והיא אינה יכולה לקבוע בוודאות את גילו של אדם\./);
+  assert.doesNotMatch(en, /age verification/i);
+  assert.match(he, /לא נשמר ולא נוצר דבר, לא נוצל דבר מהמכסה שלך/);
+  for (const t of [en, he]) assert.equal(t.split('\n').filter((l) => l.startsWith('• ')).length, 4, 'four bullets');
+  assert.match(read('components/LegalPage.jsx'), /leading-\[1\.85\] whitespace-pre-line/, 'LegalPage shows the line breaks');
+});
+
+test('§2 and Terms §5/§7 say which companies see the photo, that they keep it for their stated period, and that our deletion does not delete their copies (he + en)', () => {
+  for (const [l, a, b] of [['en', /xAI \(Grok\) or to Google \(Gemini image models\)/, /deleting it from our storage does not delete those copies, and we do not control them/], ['he', /ל-xAI \(Grok\) או ל-Google \(מודלי Gemini לתמונות\)/, /מחיקה מהאחסון שלנו אינה מוחקת עותקים אלה, והם אינם בשליטתנו/]]) {
+    const s2 = sec('privacy', l, 2); assert.match(s2, a); assert.match(s2, b);
+  }
+  assert.match(sec('terms', 'en', 5), /checked and processed by external AI providers, who may keep it for the period they state \(Privacy Policy, section 7\)/);
+  assert.match(sec('terms', 'he', 5), /נבדקת ומעובדת על ידי ספקי AI חיצוניים, שעשויים לשמור אותה למשך התקופה שהם מצהירים עליה/);
+  assert.match(sec('terms', 'en', 7), /through OpenRouter \(including Google, xAI, Black Forest Labs and DeepInfra\) and Cloudflare; see the Privacy Policy, section 7/);
+  assert.match(sec('terms', 'he', 7), /דרך OpenRouter \(בהם Google, xAI, Black Forest Labs ו-DeepInfra\) וב-Cloudflare; ראה מדיניות הפרטיות, סעיף 7/);
 });
 
 test('§3 no longer claims email/name/avatar is the ONLY personal data; §8 no longer says inputs are not shared', () => {
-  const r = render(undefined);
-  assert.doesNotMatch(r.en3, /only personally identifying/i);
-  assert.doesNotMatch(r.he3, /המידע המזהה אישית היחיד/);
-  assert.match(r.en3, /other personal data described in sections 2, 4, 5 and 6/);
-  assert.match(r.he3, /מידע אישי נוסף המתואר בסעיפים 2, 4, 5 ו-6/);
-  assert.doesNotMatch(r.en8, /do not sell, share, or repurpose/i);
-  assert.doesNotMatch(r.he8, /לא משתפים ולא מעבדים/);
-  assert.match(r.en8, /only with the service providers/);
-  assert.match(r.he8, /רק עם ספקי השירות/);
+  const en3 = sec('privacy', 'en', 3), he3 = sec('privacy', 'he', 3), en8 = sec('privacy', 'en', 8), he8 = sec('privacy', 'he', 8);
+  assert.doesNotMatch(en3, /only personally identifying/i);
+  assert.doesNotMatch(he3, /המידע המזהה אישית היחיד/);
+  assert.match(en3, /other personal data described in sections 2, 4, 5 and 6/);
+  assert.match(he3, /מידע אישי נוסף המתואר בסעיפים 2, 4, 5 ו-6/);
+  assert.doesNotMatch(en8, /do not sell, share, or repurpose/i);
+  assert.match(en8, /only with the service providers/);
+  assert.match(he8, /רק עם ספקי השירות/);
 });
 
-test('privacy header says October 2026 in both languages', () => {
-  const r = render(undefined);
-  assert.match(r.privSummaries, /עודכן אוקטובר 2026/);
-  assert.match(r.privSummaries, /Updated October 2026/);
-  assert.doesNotMatch(r.privSummaries, /יוני 2026|June 2026/);
+test('privacy and terms carry the day they were updated (28 October 2026) in both languages; the accessibility statement is a separate document and keeps its own date', () => {
+  assert.match(m.privacy.he.summary, /עודכן 28 באוקטובר 2026/); assert.match(m.privacy.en.summary, /Updated 28 October 2026/);
+  assert.equal(m.terms.he.summary, 'עודכן לאחרונה: 28 באוקטובר 2026'); assert.equal(m.terms.en.summary, 'Last updated: 28 October 2026');
+  assert.doesNotMatch(m.privacy.he.summary + m.privacy.en.summary, /יוני 2026|June 2026/);
+  assert.match(m.accessibility.en.summary, /October 2026/);
 });
 
-test('the variable is documented in .env.example with both values explained', () => {
-  const env = readFileSync(new URL('../.env.example', import.meta.url), 'utf8');
-  assert.match(env, /^NEXT_PUBLIC_GEMINI_API_TIER=free$/m);
-  assert.match(env, /'paid'/);
+test('the About page describes the engine as it is: models tried in turn, not raced', () => {
+  const en = JSON.stringify(m.about.en); const he = JSON.stringify(m.about.he);
+  assert.match(en, /tries AI models in turn — Gemini first, with Gemma and DeepSeek as backups/); assert.match(he, /מנסה מודלי AI בזה אחר זה — קודם Gemini, ו-Gemma ו-DeepSeek כגיבוי/);
+  assert.match(en, /Cloudflare AI, FLUX and, for Star Yourself, Grok and Gemini/);
+});
+
+test('NEXT_PUBLIC_GEMINI_API_TIER and geminiTier() are gone (the direct Google free tier is not used in production, so the policy has no tier switch)', () => {
+  assert.doesNotMatch(read('.env.example'), /GEMINI_API_TIER/);
+  assert.doesNotMatch(read('constants/ai-provider-copy.js'), /geminiTier|GEMINI_API_TIER/);
 });

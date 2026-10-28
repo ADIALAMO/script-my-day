@@ -4,6 +4,7 @@ import { CODES } from '../../lib/messages.js';
 import { nextMidnightUTC, isAdminRequest, extractDevTier, isValidComicSeed } from '../../lib/api-utils.js';
 import { paidImageBudgetReached, getOpenProviders, recordFailure, recordSuccess } from '../../lib/circuit-breaker.js';
 import { isCreditStatus, creditStatus, readErrorBody, noteCreditFailure } from '../../lib/credit-failure.js';
+import { warnIfPrivacyModeOff } from '../../lib/privacy-mode.js';
 import { reserveCheckBudget, releaseCheckBudget, checkMaxCalls, checkBudgetUsd } from '../../lib/budget.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { limitFor } from '../../lib/quota.js';
@@ -425,6 +426,7 @@ export default async function handler(req, res) {
       // provider.data_collection "deny" — the free OpenRouter net and the direct (free-tier) Google key are not asked at all.
       const privacy = !!openrouterKey && checkBudgetUsd('script') > 0;
       const denyOpts = { credit, ...(privacy ? { provider: PRIMARY_PROVIDER } : {}) };
+      void warnIfPrivacyModeOff(privacy);   // fire-and-forget (it never rejects and is bounded ~1.5 s): the Privacy Policy describes privacy mode ON, so with it off in production the owner is alerted (lib/privacy-mode.js)
       const race = [];
       if (openrouterKey) {
         race.push({ run: timed('Gemini Flash-Lite (OpenRouter)', (t) => runPrimaryPaid(instruction, cleanScript, openrouterKey, t, credit)), delayMs: 0 });

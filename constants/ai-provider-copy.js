@@ -1,38 +1,35 @@
 // Privacy-policy wording about accounts, external AI providers and data sharing (privacy §3, §7, §8).
-// Lives in its own module so the Google tier disclosure can be switched without editing the policy text.
-//
-// NEXT_PUBLIC_GEMINI_API_TIER — which Google Gemini API plan the production key is on:
-//   'free' (default, also used for any unknown value): the policy tells users that Google may use submitted content to improve
-//                                                      its products and that human reviewers may read it (Google's terms for the free tier).
-//   'paid'                                           : that sentence is removed (set it once billing is enabled on the Google project).
-// It is NEXT_PUBLIC_ because the policy is rendered in the browser; it is read at call time so tests can set it per process.
-export const geminiTier = () => (process.env.NEXT_PUBLIC_GEMINI_API_TIER === 'paid' ? 'paid' : 'free');
+// Lives in its own module so the provider list can be corrected without touching the rest of the policy text.
+// §7 describes PRODUCTION with "privacy mode" ON (an OpenRouter key and DAILY_SCRIPT_BUDGET > 0): the direct Google key, Cohere and the free routes are not used.
+// If privacy mode is ever OFF in production the policy is wrong — lib/privacy-mode.js raises a deduped Telegram alert and a log line.
+import { PROVIDER_RETENTION } from '../config/limits.js';
+
+const P = PROVIDER_RETENTION;
+const xaiBfl = (same, sep) => (P.xaiDays === P.blackForestLabsDays ? same(P.xaiDays) : sep(P.xaiDays, P.blackForestLabsDays));
 
 export const privacyAccountHe = () =>
   'אם אתה נרשם, אנחנו שומרים את כתובת האימייל והשם שלך (מ-Google או מקישור הכניסה) וכן, בהתחברות עם Google, את כתובת תמונת הפרופיל שלך ואת רשומת ההתחברות הטכנית שספריית ההתחברות שומרת עבור חשבון ה-Google שלך, כדי לנהל את החשבון והמכסה. מידע זה נשמר עד שתבקש למחוק את חשבונך. מלבד נתוני החשבון, אנחנו מחזיקים מידע אישי נוסף המתואר בסעיפים 2, 4, 5 ו-6 (למשל תמונות פנים שהעלית, כתובות IP של גולשים שאינם מחוברים).';
 export const privacyAccountEn = () =>
   'If you sign up, we store your email address and name (from Google or the magic-link sign-in) and, for Google sign-in, your profile-photo URL and the technical sign-in record that the sign-in library keeps for your Google account, to manage your account and quota. This data is kept until you ask us to delete your account. Besides this account data we hold other personal data described in sections 2, 4, 5 and 6 (for example face photos you upload, IP addresses of visitors who are not signed in).';
 
-export const privacyProvidersHe = () =>
-  'כדי ליצור תסריטים, קומיקס ופוסטרים אנחנו שולחים לספקי AI חיצוניים (בהצפנת HTTPS) את הטקסט שכתבת (וכן את שם היוצר, אם הזנת), תיאורי תמונה שנגזרים ממנו, ובפיצ\'ר "לככב בסיפור" גם את תמונת הפנים שלך. הספקים: ' +
-  '(א) Google (Gemini API) מקבלת את הטקסט שלך ליצירת תסריטים ותוכנית הקומיקס.' +
-  (geminiTier() === 'free'
-    ? ' אנחנו משתמשים במסלול החינמי (ללא תשלום) של Gemini API; לפי התנאים של Google למסלול זה, Google עשויה להשתמש בתוכן שנשלח כדי לשפר את מוצריה, ובודקים אנושיים עשויים לקרוא אותו.'
-    : '') +
-  ' (ב) OpenRouter מנתבת בקשות למודלים של ספקים נוספים (למשל Gemma, DeepSeek, FLUX, xAI Grok, Gemini לתמונות, ומודל בטיחות שבודק תמונות פנים ותמונות שנוצרו); חלק מהמסלולים הם חינמיים. כאשר בדיקת הבטיחות הראשית אינה זמינה, ייתכן שתופעל בדיקת בטיחות גיבוי על תמונה שנוצרה דרך שער ה-AI שלנו (OpenRouter), בניתוב המוגדר לספקים שמצהירים כי אינם אוספים את המידע ואינם מאמנים עליו (הגדרת data_collection=deny של OpenRouter) — הצהרה שאיננו יכולים לאמת באופן עצמאי. טקסט של תסריטים וקומיקס שנוצרו נבדק גם הוא על ידי מסווג בטיחות אוטומטי דרך אותו שער, ותמונת פנים שאתה מעלה ל"לככב בסיפור" נבדקת אוטומטית אם היא מציגה בבירור ילד — בדיקה מאמץ סביר שאינה יכולה לאשר את גילו של איש. אם הבדיקה אינה יכולה לפעול (למשל בעת תקלה אצל ספק), לא נעשה בתמונה שימוש: דבר אינו נשמר או נוצר, לא נוצל דבר מהמכסה שלכם, ואפשר לנסות שוב בעוד רגע. לכל ספק מדיניות משלו בנוגע לתיעוד, שמירה ואימון, שלא אימתנו מול כולם, וחלקם עשויים לעבד מידע מחוץ לישראל ולאזור הכלכלי האירופי.' +
-  ' (ג) Cloudflare Workers AI מקבלת תיאורי תמונה ליצירת תמונות.' +
-  ' (ד) ספק גיבוי נוסף: Cohere.' +
-  ' לכן איננו יכולים להבטיח שהתוכן שלך אינו נשמר או משמש אצל ספקים אלה. אל תזין מידע רגיש במיוחד או תמונות של אנשים אחרים ללא הסכמתם. אנחנו לא מוכרים את התוכן ולא משתמשים בו לפרסום.';
-export const privacyProvidersEn = () =>
-  'To create scripts, comics and posters we send to external AI providers (over HTTPS) the text you wrote (and the creator name, if you enter one), image descriptions derived from it and, for "Star Yourself", your face photo. The providers: ' +
-  '(a) Google (Gemini API) receives your text to create scripts and the comic plan.' +
-  (geminiTier() === 'free'
-    ? " We use Google's free (unpaid) Gemini API tier; under Google's terms for that tier, Google may use submitted content to improve its products and human reviewers may read it."
-    : '') +
-  ' (b) OpenRouter routes requests to models from other providers (for example Gemma, DeepSeek, FLUX, xAI Grok, Gemini for images, and a content-safety model that checks face photos and generated images); some of these run on free routes. When the primary safety check is unavailable, a backup safety check may be run on a generated image through our AI gateway provider (OpenRouter), with routing set to providers that state they do not collect the data or train on it (the OpenRouter data_collection=deny setting) — a statement we cannot independently verify. The text of generated scripts and comics is also checked by an automatic safety classifier through the same gateway, and a face photo you upload for "Star Yourself" is automatically checked for whether it clearly shows a child — a best-effort check that cannot confirm the age of anyone. If this check cannot run (for example during a provider outage), the photo is not used: nothing is stored or generated, nothing is used from your quota, and you can try again in a moment. Each provider has its own policy on logging, retention and training, which we have not verified for all of them, and some may process data outside Israel and the EEA.' +
-  ' (c) Cloudflare Workers AI receives image descriptions to create images.' +
-  ' (d) A backup provider: Cohere.' +
-  ' For these reasons we cannot promise that your content is not retained or used by these providers. Do not enter highly sensitive information, or photos of other people without their consent. We do not sell your content or use it for advertising.';
+export const privacyProvidersHe = () => [
+  'כדי ליצור תסריטים, קומיקס ופוסטרים אנחנו שולחים תוכן לשירותי AI חיצוניים (בהצפנת HTTPS). רוב הבקשות עוברות דרך OpenRouter — שער AI שמעביר כל בקשה לחברה שמפעילה את המודל. כך זה עובד:',
+  '• הטקסט שלך — מה שכתבת, שם היוצר אם הזנת, ותיאורי תמונה שנגזרים מהטקסט — נשלח ליצירת התסריט ותוכנית הקומיקס. התסריטים ותוכניות הקומיקס נוצרים על ידי מודלי Gemini של Google (Google AI Studio). אם הם אינם זמינים, משתמשים במודלים שמפעילות חברות אחרות, כמו DeepInfra, Nebius, Novita, Parasail ו-StreamLake. את התסריט או טקסט הקומיקס שנוצרו עבורך בודק לאחר מכן מסווג בטיחות אוטומטי במודלי Gemini של Google; הטקסט שכתבת בעצמך אינו נשלח למסווג הזה, הוא נבדק רק מול רשימת מילים בשרת שלנו.',
+  '• תיאורי תמונה משמשים ליצירת פוסטרים ופאנלים: תחילה אצל Cloudflare Workers AI, ואם היא אינה זמינה אצל Black Forest Labs (מודל FLUX).',
+  '• "לככב בסיפור": תמונת הפנים שלך נשלחת ל-xAI (Grok) או ל-Google (מודלי Gemini לתמונות ב-Google Cloud) ליצירת גיליון הדמות שלך. בכל פעם שאתה יוצר פוסטר או פאנל עם הדמות שלך, גיליון הדמות נשלח לאחת משתי החברות האלה כתמונת ייחוס.',
+  '• בדיקות בטיחות לתמונות: כל תמונה שנוצרה, וכן תמונת הפנים וגיליון הדמות, נבדקת אוטומטית בשני שירותים — מודל בטיחות של NVIDIA שמופעל אצל DeepInfra, ומודל Gemini של Google (כשהראשון עמוס משתמשים במודל Gemini אחר). תמונת הפנים נבדקת גם במודל Gemini של Google אם היא מציגה בבירור ילד. זו בדיקה בסיסית, והיא אינה יכולה לקבוע בוודאות את גילו של אדם. אם בדיקה אינה יכולה לפעול (למשל בעת תקלה), התמונה אינה מוצגת ואינה בשימוש: לא נשמר ולא נוצר דבר, לא נוצל דבר מהמכסה שלך, ואפשר לנסות שוב בעוד רגע.',
+  `כמה זמן הם שומרים: הבקשות נשלחות עם האפשרות data_collection=deny של OpenRouter, שמתירה רק ספקים שמצהירים שאינם מאמנים על המידע. האפשרות הזו אינה אומרת שהספק מוחק את המידע בתום הבקשה. לפי מה שהספקים מפרסמים, Google עשויה לשמור בקשות עד ${P.googleAiStudioDays} ימים, ${xaiBfl((n) => `xAI ו-Black Forest Labs ${n} ימים`, (x, b) => `xAI ${x} ימים ו-Black Forest Labs ${b} ימים`)}, שירות הענן של Google למודלי Gemini לתמונות עשוי לשמור מידע לצורך ניטור שימוש לרעה, ו-DeepInfra מצהירה שהיא אינה שומרת אותן; לספקי מודלים אחרים ול-Cloudflare יש מדיניות משלהם. OpenRouter מטפלת בבקשות שהיא מעבירה לפי מדיניות הפרטיות שלה. אנחנו נשענים על ההצהרות המפורסמות האלה ואיננו יכולים לאמת אותן באופן עצמאי. חלק מהספקים עשויים לעבד מידע מחוץ לישראל ולאזור הכלכלי האירופי.`,
+  'לכן איננו יכולים להבטיח שהתוכן שלך אינו נשמר או משמש אצל ספקים אלה. אל תזין מידע רגיש במיוחד או תמונות של אנשים אחרים ללא הסכמתם. אנחנו לא מוכרים את התוכן ולא משתמשים בו לפרסום.',
+].join('\n');
+export const privacyProvidersEn = () => [
+  'To create your scripts, comics and posters we send content to external AI services (over HTTPS). Nearly all requests go through OpenRouter, an AI gateway that passes each request on to the company that runs the model. This is what is sent, and to whom:',
+  "• Your text (your entry, the creator name if you enter one, and image descriptions derived from your text) is sent to create the script and the comic plan. Scripts and comic plans are created by Google's Gemini models (Google AI Studio). If those are unavailable, models run by other companies are used, such as DeepInfra, Nebius, Novita, Parasail and StreamLake. The finished script or comic text that we generate for you is then checked by an automatic safety classifier on Google's Gemini models; your own entry is not sent to that classifier, it is only screened against a keyword list on our server.",
+  '• Image descriptions are used to create posters and panels: first by Cloudflare Workers AI and, if it is unavailable, by Black Forest Labs (the FLUX model).',
+  '• "Star Yourself": your face photo is sent to xAI (Grok) or to Google (Gemini image models on Google Cloud) to create your Character Sheet. Each time you create a poster or panel with your character, the Character Sheet is sent to one of these two companies as a reference.',
+  "• Safety checks on images: every generated image, and the face photo and Character Sheet, is checked automatically by two services — an NVIDIA safety model hosted by DeepInfra and a Google Gemini model (another Gemini model is used when the first is busy). The face photo is also checked by a Google Gemini model for whether it clearly shows a child. This is a basic check and cannot reliably determine anyone's age. If a check cannot run (for example during an outage), the image is not shown or used: nothing is stored or generated, nothing is used from your quota, and you can try again in a moment.",
+  `How long they keep it: requests are sent with OpenRouter's data_collection=deny option, which allows only providers that state they do not train on the data. It does not mean the provider deletes the data after the request. According to what the providers publish, Google may keep requests for up to ${P.googleAiStudioDays} days, ${xaiBfl((n) => `xAI and Black Forest Labs for ${n} days`, (x, b) => `xAI for ${x} days and Black Forest Labs for ${b} days`)}, Google's cloud service for Gemini images may keep data for abuse monitoring, and DeepInfra states that it does not keep them; other model hosts and Cloudflare have their own policies. OpenRouter handles the requests it passes on under its own privacy policy. We rely on these published statements and cannot independently verify them. Some providers may process data outside Israel and the EEA.`,
+  'For these reasons we cannot promise that your content is not kept or used by these providers. Do not enter highly sensitive information, or photos of other people without their consent. We do not sell your content or use it for advertising.',
+].join('\n');
 
 export const privacySharingHe = () =>
   'אנחנו לא מוכרים את המידע שלך. אנחנו משתפים אותו רק עם ספקי השירות הנחוצים להפעלת השירות (סעיפים 3, 4, 5 ו-7), ולא משתמשים בקלטים שלך לפרסום. LIFESCRIPT מרוויחה מהיכולת לייצר עבורך — לא ממה שאתה כותב.';
