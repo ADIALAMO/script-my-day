@@ -54,7 +54,8 @@ test('the module stores only a keyed hash in a HyperLogLog, with the retention f
   const src = read('lib/creator-stats.js');
   assert.match(src, /pfadd\(key, creatorSegment\(identifier\)\)/);
   assert.match(src, /RETENTION\.creatorStatsDays/);
-  assert.ok(!/console\.(log|warn|error)/.test(src), 'no logging at all');
+  assert.equal((src.match(/console\./g) || []).length, 1, 'one log call: the missing-secret warning');
+  assert.match(src, /console\.warn\('[^'$`]*'\);/, 'fixed text: no interpolation, no values');
   assert.ok(!/\.(set|sadd|incr|zadd)\(/.test(src), 'only PFADD / EXPIREAT / PFCOUNT');
   assert.equal(RETENTION.creatorStatsDays, 60);
 });
@@ -81,10 +82,21 @@ test('privacy text: the usage paragraph says what is counted, one-way keyed hash
   assert.match(MODAL_DATA.privacy.he.summary, /28 באוקטובר 2026/);
 });
 
-test('the admin page has the "Active creators" card with the double-count note, fed by activeCreators', () => {
+test('the admin page has the "Active creators" card with the double-count note, fed by its own route', () => {
   const page = read('pages/admin.js');
   assert.match(page, /Active creators/);
   assert.match(page, /counts twice in the totals/);
-  assert.match(page, /stats\.activeCreators/);
-  assert.match(read('pages/api/admin/stats.js'), /activeCreators: creatorsR\.status === 'fulfilled' \? creatorsR\.value : null/);
+  assert.match(page, /\/api\/admin\/active-creators/);
+  assert.ok(!read('pages/api/admin/stats.js').includes('creator'), 'the auto-refreshed stats route knows nothing about creators');
+});
+
+test('admin page: creators are fetched on load and on the manual Refresh button only (never inside refreshAll / the interval); the interval pauses while the tab is hidden', () => {
+  const page = read('pages/admin.js');
+  const refreshAll = page.slice(page.indexOf('const refreshAll = useCallback'), page.indexOf('// refreshAll\'s identity'));
+  assert.ok(!refreshAll.includes('fetchCreators'), 'refreshAll (called by the interval) must not fetch the creators');
+  assert.match(page, /onClick=\{\(\) => \{ refreshAll\(\); fetchCreators\(\); \}\}/);
+  assert.match(page, /refreshAllRef\.current\(\);\s*\n\s*fetchCreators\(\);/);
+  assert.match(page, /document\.visibilityState !== 'hidden'/);
+  assert.match(page, /setInterval\(\(\) => \{ if \(visible\(\)\) run\(\); \}, 30_000\)/);
+  assert.match(page, /addEventListener\('visibilitychange'/); assert.match(page, /removeEventListener\('visibilitychange'/);
 });

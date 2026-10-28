@@ -241,6 +241,15 @@ export default function AdminDashboard({ adminEmail }) {
       .catch(err => { setProUsers({ _error: err.message }); setProUsersLoading(false); });
   }, []);
 
+  // Active creators: 34 Upstash commands per read, so it is fetched on page load and on the manual Refresh button ONLY — never by the 30 s auto-refresh
+  const [creators, setCreators] = useState(null);
+  const fetchCreators = useCallback(() => {
+    fetch('/api/admin/active-creators', { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then(data => setCreators(data?.activeCreators ?? null))
+      .catch(() => setCreators(null));
+  }, []);
+
   const refreshAll = useCallback(() => {
     fetchHealth(); fetchStats(); fetchProUsers();
     // Keep whatever page/filter/search the admin is currently on rather than
@@ -257,11 +266,18 @@ export default function AdminDashboard({ adminEmail }) {
 
   // Initial load + 30s auto-refresh for a live, real-time feel. The stats endpoint
   // is O(1) (one mget + one scard + one OpenRouter ping) so polling is cheap.
+  // The auto-refresh pauses while the tab is hidden (every cycle costs Upstash commands) and refreshes once when the tab comes back after a stale period.
   useEffect(() => {
+    let last = Date.now();
+    const run = () => { last = Date.now(); refreshAllRef.current(); };
+    const visible = () => typeof document === 'undefined' || document.visibilityState !== 'hidden';
     refreshAllRef.current();
-    const id = setInterval(() => refreshAllRef.current(), 30_000);
-    return () => clearInterval(id);
-  }, []);
+    fetchCreators();
+    const id = setInterval(() => { if (visible()) run(); }, 30_000);
+    const onVisible = () => { if (visible() && Date.now() - last >= 30_000) run(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVisible); };
+  }, [fetchCreators]);
 
   // ── All Users: filter/search/pagination handlers ─────────────────────────
   const handleTierFilterChange = (tier) => {
@@ -390,7 +406,7 @@ export default function AdminDashboard({ adminEmail }) {
               )}
             </div>
             <button
-              onClick={refreshAll}
+              onClick={() => { refreshAll(); fetchCreators(); }}
               disabled={statsLoading || healthLoading}
               className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-white/25 hover:text-[#d4a373] transition-colors disabled:opacity-30"
             >
@@ -492,13 +508,13 @@ export default function AdminDashboard({ adminEmail }) {
 
               {/* Active creators: DISTINCT people who successfully created a script, poster, comic or Star Yourself character (lib/creator-stats.js). Counts only. */}
               <div className="pt-4 border-t border-white/5">
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-2">Active creators</p>
-                {!stats?.activeCreators ? (
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-2">Active creators <span className="normal-case tracking-normal text-white/25">(on load and Refresh only)</span></p>
+                {!creators ? (
                   <p className="text-[11px] font-mono text-white/25">no data yet</p>
                 ) : (
                   <div className="space-y-2 text-[11px] font-mono text-white/55">
                     <div className="grid grid-cols-3 gap-2 text-center">
-                      {[['Today', stats.activeCreators.today], ['7 days', stats.activeCreators.d7], ['30 days', stats.activeCreators.d30]].map(([label, v]) => (
+                      {[['Today', creators.today], ['7 days', creators.d7], ['30 days', creators.d30]].map(([label, v]) => (
                         <div key={label} className="rounded-lg bg-white/[0.03] py-2">
                           <div className="text-lg font-black text-white tabular-nums">{v.total}</div>
                           <div className="text-white/35">{label}</div>
@@ -506,9 +522,9 @@ export default function AdminDashboard({ adminEmail }) {
                         </div>
                       ))}
                     </div>
-                    <p>Today: returning {stats.activeCreators.today.returning} (also created in the previous 6 days) · new {stats.activeCreators.today.fresh}</p>
+                    <p>Today: returning {creators.today.returning} (also created in the previous 6 days) · new {creators.today.fresh}</p>
                     <div className="space-y-1">
-                      {stats.activeCreators.daily.map((d) => (
+                      {creators.daily.map((d) => (
                         <div key={d.day}><span className="text-white/35">{d.day}</span> {d.total} <span className="text-white/25">(signed-in {d.in} · guest {d.guest})</span></div>
                       ))}
                     </div>

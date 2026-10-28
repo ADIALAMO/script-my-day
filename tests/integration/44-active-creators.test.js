@@ -15,6 +15,7 @@ const script = await ctx.route('generate-script');
 const poster = await ctx.route('generate-poster');
 const storyboard = await ctx.route('generate-storyboard');
 const upload = await ctx.route('upload-character');
+const activeRoute = await ctx.route('admin/active-creators');
 const adminStats = await ctx.route('admin/stats');
 const { creatorsKey, readActiveCreators, creatorClass } = await import('../../lib/creator-stats.js');
 const { creatorSegment, ownerSegment, reporterSegment } = await import('../../lib/upload-image.js');
@@ -110,9 +111,11 @@ scenario('D5', '7- and 30-day distinct counts, daily list, and RETURNING creator
     assert.equal(r.daily.length, 14); assert.deepEqual(r.daily[0], { day: day(22), in: 2, guest: 1, total: 3 });
     assert.deepEqual(r.daily[2], { day: day(20), in: 1, guest: 0, total: 1 });
     assert.deepEqual(r.daily[1], { day: day(21), in: 0, guest: 0, total: 0 }, 'quiet days stay in the list as zeros');
-    // the same numbers through the admin route
-    const adm = await invoke(adminStats, { method: 'GET', headers: adminKeyHeader, ip: '198.51.100.99' });
+    // the same numbers through the admin route (a route of its own: the 30 s auto-refresh never calls it)
+    const adm = await invoke(activeRoute, { method: 'GET', headers: adminKeyHeader, ip: '198.51.100.99' });
     assert.equal(adm.status, 200); assert.deepEqual(adm.body.activeCreators, r);
+    const stats = await invoke(adminStats, { method: 'GET', headers: adminKeyHeader, ip: '198.51.100.99' });
+    assert.equal(stats.status, 200); assert.ok(!('activeCreators' in stats.body), 'the auto-refreshed stats route does not carry (or pay for) the creators');
     return { actual: JSON.stringify({ today: r.today, d7: r.d7, d30: r.d30 }) };
   });
 
@@ -129,14 +132,17 @@ scenario('D6', 'counting can never fail or change a response: PFADD failing — 
     return { actual: 'unchanged responses' };
   });
 
-scenario('D7', 'the admin route degrades quietly: activeCreators is null when PFCOUNT fails, the rest of the stats still answer',
-  '200, activeCreators null', async () => {
+scenario('D7', 'the admin route degrades quietly: activeCreators is null when PFCOUNT fails; it is admin-only (401 / 403); GET only',
+  '200 null; 401; 403; 405', async () => {
     fresh();
     fake.control.failCommands.add('PFCOUNT');
-    const adm = await invoke(adminStats, { method: 'GET', headers: adminKeyHeader, ip: '198.51.100.98' });
-    assert.equal(adm.status, 200); assert.equal(adm.body.activeCreators, null); assert.ok(adm.body.users);
+    const adm = await invoke(activeRoute, { method: 'GET', headers: adminKeyHeader, ip: '198.51.100.98' });
+    assert.equal(adm.status, 200); assert.equal(adm.body.activeCreators, null);
     fake.control.failCommands.clear();
-    const empty = await invoke(adminStats, { method: 'GET', headers: adminKeyHeader, ip: '198.51.100.98' });
+    assert.equal((await invoke(activeRoute, { method: 'GET', ip: '198.51.100.97' })).status, 401);
+    assert.equal((await invoke(activeRoute, { method: 'GET', cookies: (await makeUser('d7-free', 'free')).cookies, ip: '198.51.100.97' })).status, 403);
+    assert.equal((await invoke(activeRoute, { method: 'POST', headers: adminKeyHeader, ip: '198.51.100.97' })).status, 405);
+    const empty = await invoke(activeRoute, { method: 'GET', headers: adminKeyHeader, ip: '198.51.100.98' });
     assert.deepEqual(empty.body.activeCreators.today, { in: 0, guest: 0, total: 0, returning: 0, fresh: 0 });
     assert.equal(creatorClass('anonymous'), 'guest'); for (const t of ['free', 'pro', 'admin']) assert.equal(creatorClass(t), 'in');
     return { actual: 'null / zeros' };

@@ -6,7 +6,6 @@ import { KLEIN_COST_USD } from '../../../lib/circuit-breaker.js';
 import { IDENTITY_MAX_COST_USD } from '../../../lib/identity.js';
 import { readScriptStages } from '../../../lib/script-stats.js';
 import { readCharacterOutcomes } from '../../../lib/character-stats.js';
-import { readActiveCreators } from '../../../lib/creator-stats.js';
 import { globalCheckKey, checkBudgetUsd, checkCostUsd } from '../../../lib/budget.js';
 
 function isAllowedAdminSession(email) {
@@ -95,13 +94,12 @@ export default async function handler(req, res) {
     globalCheckKey('script'),               // 9  (paid script engine call count)
   ];
 
-  const [countersR, proCountR, openrouter, stagesR, charR, creatorsR] = await Promise.allSettled([
+  const [countersR, proCountR, openrouter, stagesR, charR] = await Promise.allSettled([
     redis.mget(...keys),
     redis.scard('stats:pro:members'),
     fetchOpenRouterCredits(),
     readScriptStages(14),
     readCharacterOutcomes(7),
-    readActiveCreators(),
   ]);
 
   // Fail-open: a Redis blip yields zeros, never a 500 — the dashboard still renders.
@@ -130,8 +128,6 @@ export default async function handler(req, res) {
     scriptStages: stagesR.status === 'fulfilled' ? stagesR.value : [],
     // Star Yourself outcomes, last 7 UTC days, newest first (lib/character-stats.js: counts only; started = the sum of the server outcomes)
     characterOutcomes: charR.status === 'fulfilled' ? charR.value : [],
-    // distinct creators (lib/creator-stats.js): today / 7 d / 30 d, signed-in vs guest, 14-day daily list; counts only; null when Redis could not answer
-    activeCreators: creatorsR.status === 'fulfilled' ? creatorsR.value : null,
     budget: {
       image:    budgetBlock(c[7], process.env.DAILY_IMAGE_BUDGET,    KLEIN_COST_USD),
       identity: budgetBlock(c[8], process.env.DAILY_IDENTITY_BUDGET, IDENTITY_MAX_COST_USD),
