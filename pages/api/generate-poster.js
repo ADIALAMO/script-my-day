@@ -3,6 +3,8 @@ import { CODES } from '../../lib/messages.js';
 import { nextMidnightUTC, isAdminRequest, isValidComicSeed } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { recordCreator } from '../../lib/creator-stats.js';
+import { recordFunnel } from '../../lib/funnel-stats.js';
+import { platformOfRequest } from '../../lib/client-platform.js';
 import { limitFor } from '../../lib/quota.js';
 import { guardComicPanel } from '../../lib/comic-guard.js';
 import { reservePosterQuota, releasePosterQuota } from '../../lib/poster-quota.js';
@@ -434,6 +436,7 @@ export default async function handler(req, res) {
           });
         }
         posterQuotaKey = q.key;
+        await recordFunnel('poster_req', identifier, tier, platformOfRequest(req));   // funnel: a standalone poster that passed the quota gate
       } catch (e) {
         console.warn(`⚠️ Poster quota reservation skipped (Redis unavailable): ${e.message}`);
       }
@@ -456,6 +459,7 @@ export default async function handler(req, res) {
       console.warn(`⚠️ Poster stats counter skipped (Redis unavailable): ${e.message}`);
     }
     if (creator) await recordCreator(creator.identifier, creator.tier);   // distinct creators per day (lib/creator-stats.js)
+    if (creator) await recordFunnel('poster_ok', creator.identifier, creator.tier, platformOfRequest(req));   // funnel (lib/funnel-stats.js)
   };
 
   const agentPrompt =

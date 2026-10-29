@@ -1,5 +1,8 @@
 import { getSessionAndTier } from '../../lib/auth.js';
 import redis from '../../lib/redis.js';
+import { recordFunnel } from '../../lib/funnel-stats.js';
+import { platformOfRequest } from '../../lib/client-platform.js';
+import { isAdminRequest } from '../../lib/api-utils.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
@@ -18,6 +21,7 @@ export default async function handler(req, res) {
         justSignedUp = true;
         signupMethod = String(flag);
         await redis.del(`signup:fresh:${userId}`);
+        if (!isAdminRequest(req)) await recordFunnel('signup', `u:${userId}`, tier, platformOfRequest(req));   // funnel: once per new account (the flag is read-then-deleted)
       }
     } catch { /* flag unavailable — skip the sign_up event */ }
 

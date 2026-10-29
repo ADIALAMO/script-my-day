@@ -10,6 +10,7 @@ import { useCinematicAudio } from '../hooks/useCinematicAudio';
 import NextStepButton from './NextStepButton';
 import { NEXT_STEPS } from '../constants/tour.js';
 import { replaceCopy } from '../constants/replace-script-copy.js';
+import { funnelEvent } from '../utils/funnel-client.js';
 import { cleanProducerName } from '../utils/producer-name.js';
 
 const LOADING_MESSAGES_HE = ["סורק זכרונות...", "מנתח DNA סיפורי...", "בונה מתח דרמטי...", "מלטש דיאלוגים...", "מעבה דמויות...", "פורש קווי עלילה...", "מדפיס עותקים..."];
@@ -293,6 +294,7 @@ const ScriptForm = ({ onSubmit, onCancel, loading, locked = false, lang, produce
             value={journalEntry}
             onChange={(e) => {
               const value = e.target.value;
+              if (value.trim()) funnelEvent('typed');   // funnel counter: first keystroke with text (once per page load)
               const words = value.trim().split(/\s+/);
 
               // Play typewriter click on each keystroke — the 80 ms throttle

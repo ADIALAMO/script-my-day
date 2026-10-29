@@ -100,7 +100,7 @@ export const MODAL_DATA = {
   privacy: {
     he: {
       title: 'פרטיות',
-      summary: '"הפרטיות שלך היא התסריט הכי חשוב שאנחנו מגנים עליו." · עודכן 28 באוקטובר 2026',
+      summary: '"הפרטיות שלך היא התסריט הכי חשוב שאנחנו מגנים עליו." · עודכן 29 באוקטובר 2026',
       sections: [
         {
           h: '1. מה נשמר ומה לא',
@@ -142,7 +142,7 @@ export const MODAL_DATA = {
     },
     en: {
       title: 'PRIVACY',
-      summary: '"Your privacy is the most important script we protect." · Updated 28 October 2026',
+      summary: '"Your privacy is the most important script we protect." · Updated 29 October 2026',
       sections: [
         {
           h: '1. What We Store and What We Don\'t',

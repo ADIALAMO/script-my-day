@@ -38,6 +38,7 @@ import CinematicLoader from '../components/CinematicLoader';
 import CookieConsent from '../components/CookieConsent';
 import { useScriptHistory } from '../hooks/useScriptHistory';
 import { useGender } from '../hooks/useGender';
+import { funnelEvent } from '../utils/funnel-client.js';
 
 // ── Interaction-gated modals/panels — code-split out of the initial bundle ──
 // Each of these only renders after an explicit user action (sign-in, hitting a
@@ -381,6 +382,7 @@ function HomePage() {
   // Gallery items this user reported on this device (static showcase files: hidden for them only). Loaded after mount (localStorage).
   const [reportedGallery, setReportedGallery] = useState(() => new Set());
   useEffect(() => { setReportedGallery(reportedGalleryRefs()); }, []);
+  useEffect(() => { funnelEvent('landing'); }, []);   // funnel counter (numbers only, once per page load; utils/funnel-client.js)
   const visiblePosters = useMemo(() => filterVisibleGallery(SHOWCASE_POSTERS, 'poster', reportedGallery), [reportedGallery]);
   const visibleReels   = useMemo(() => filterVisibleGallery(SHOWCASE_REELS, 'reel', reportedGallery), [reportedGallery]);
   const [galleryMode,    setGalleryMode]    = useState('grid'); // 'grid' | 'filmstrip'

@@ -89,8 +89,8 @@ test('§3 no longer claims email/name/avatar is the ONLY personal data; §8 no l
   assert.match(he8, /רק עם ספקי השירות/);
 });
 
-test('privacy and terms carry the day they were updated (28 October 2026) in both languages; the accessibility statement is a separate document and keeps its own date', () => {
-  assert.match(m.privacy.he.summary, /עודכן 28 באוקטובר 2026/); assert.match(m.privacy.en.summary, /Updated 28 October 2026/);
+test('privacy (29 October 2026: funnel counters) and terms (28 October 2026) carry the day they were updated in both languages; the accessibility statement is a separate document and keeps its own date', () => {
+  assert.match(m.privacy.he.summary, /עודכן 29 באוקטובר 2026/); assert.match(m.privacy.en.summary, /Updated 29 October 2026/);
   assert.equal(m.terms.he.summary, 'עודכן לאחרונה: 28 באוקטובר 2026'); assert.equal(m.terms.en.summary, 'Last updated: 28 October 2026');
   assert.doesNotMatch(m.privacy.he.summary + m.privacy.en.summary, /יוני 2026|June 2026/);
   assert.match(m.accessibility.en.summary, /October 2026/);

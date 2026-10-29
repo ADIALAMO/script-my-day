@@ -34,6 +34,8 @@ import { enforceRateLimit } from '../../lib/rate-limit.js';
 import { checkImage } from '../../lib/image-check.js';
 import { outcomeFor, recordCharacterRequest } from '../../lib/character-stats.js';
 import { recordCreator } from '../../lib/creator-stats.js';
+import { recordFunnel } from '../../lib/funnel-stats.js';
+import { platformOfRequest } from '../../lib/client-platform.js';
 import { isCreditStatus, noteCreditFailure } from '../../lib/credit-failure.js';
 import { extractStatusCode } from '../../lib/circuit-breaker.js';
 import { readAdultConfirmation } from '../../lib/adult-confirmation.js';
@@ -66,6 +68,7 @@ export default async function handler(req, res) {
     if (!isAdminRequest(req)) {
       const outcome = outcomeFor(seen.status ?? 500, seen.code, seen.success);
       await recordCharacterRequest(outcome);
+      if (outcome !== 'blocked' && req._creator) await recordFunnel('star_start', req._creator.identifier, req._creator.tier, platformOfRequest(req));   // funnel: an attempt past the consent / tier / 18+ / quota gates
       if (outcome === 'succeeded' && req._creator) await recordCreator(req._creator.identifier, req._creator.tier);   // distinct creators per day (lib/creator-stats.js)
     }
   }

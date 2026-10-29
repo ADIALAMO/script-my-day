@@ -8,6 +8,8 @@ import { warnIfPrivacyModeOff } from '../../lib/privacy-mode.js';
 import { reserveCheckBudget, releaseCheckBudget, checkMaxCalls, checkBudgetUsd } from '../../lib/budget.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { recordCreator } from '../../lib/creator-stats.js';
+import { recordFunnel } from '../../lib/funnel-stats.js';
+import { platformOfRequest } from '../../lib/client-platform.js';
 import { limitFor } from '../../lib/quota.js';
 import { reserveComicQuota, releaseComicQuota, unlockedPanelsForNewComic } from '../../lib/comic-quota.js';
 import { openComicSession } from '../../lib/comic-guard.js';
@@ -395,6 +397,8 @@ export default async function handler(req, res) {
         console.warn(`⚠️ Comic quota reservation skipped (Redis unavailable): ${e.message}`);
       }
     }
+
+    if (!isAdmin) await recordFunnel('comic_start', identifier, tier, platformOfRequest(req));   // funnel: a comic that passed the quota gate
 
     const staticInstruction = buildStaticInstruction(lang || 'en', maxPanels, heroDescriptor);
     // Opt 1: track is resolved here so prefix/suffix are injected server-side after parsing,

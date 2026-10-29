@@ -4,6 +4,7 @@ import { track } from '@vercel/analytics';
 import { getMsg, CODES } from '../lib/messages.js';
 import { getGenreLabel } from '../constants/genres.js';
 import { useRotatingMessages } from './useRotatingMessages.js';
+import { funnelEvent } from '../utils/funnel-client.js';
 import { shareReadyFile, makeShareFile, downloadBlob, exportCapabilities, urlToBlob } from '../utils/export-image.js';
 
 const POSTER_MESSAGES_HE = [
@@ -339,6 +340,7 @@ export function usePosterGeneration({
     const method = wantDownload ? 'download' : 'share';
 
     track('Poster Shared', { genre, language: lang, method });
+    funnelEvent('share');
     if (typeof window !== 'undefined' && window.gtag) {
       window.gtag('event', 'content_export', { method, genre });
     }
