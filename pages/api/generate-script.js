@@ -7,6 +7,8 @@ import { CODES } from '../../lib/messages.js';
 import { nextMidnightUTC, isAdminRequest } from '../../lib/api-utils.js';
 import { getSessionAndTier } from '../../lib/auth.js';
 import { recordCreator } from '../../lib/creator-stats.js';
+import { recordFunnel } from '../../lib/funnel-stats.js';
+import { platformOfRequest } from '../../lib/client-platform.js';
 import { reserveScriptQuota, releaseScriptQuota } from '../../lib/script-quota.js';
 import { reserveGuestScriptBudget, releaseGuestScriptBudget } from '../../lib/guest-budget.js';
 import { enforceRateLimit } from '../../lib/rate-limit.js';
@@ -127,6 +129,8 @@ export default async function handler(req, res) {
       }
     }
 
+    if (!isAdmin) await recordFunnel('script_req', identifier, tier, platformOfRequest(req));   // funnel: a request that passed validation and the quota gate
+
     // ── AI generation ─────────────────────────────────────────────────────────
     let result;
     try {
@@ -211,6 +215,7 @@ export default async function handler(req, res) {
       console.warn(`⚠️ Script stats counter skipped (Redis unavailable): ${err.message}`);
     }
     if (!isAdmin) await recordCreator(identifier, tier);   // distinct creators per day (lib/creator-stats.js): numbers only, bounded, never throws
+    if (!isAdmin) await recordFunnel('script_ok', identifier, tier, platformOfRequest(req));   // funnel (lib/funnel-stats.js)
 
     return res.status(200).json({
       success: true,

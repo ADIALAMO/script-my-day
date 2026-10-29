@@ -76,10 +76,10 @@ test('all four routes count only on success and never for the admin key', () => 
 
 test('privacy text: the usage paragraph says what is counted, one-way keyed hash, cannot be read back as a list, retention from config (en + he); date is the update day', () => {
   const en = MODAL_DATA.privacy.en.sections.map((s) => s.p).join('\n'), he = MODAL_DATA.privacy.he.sections.map((s) => s.p).join('\n');
-  assert.ok(en.includes('To count how many different people use the service each day, we add a one-way keyed hash of your account id (or, for visitors who are not signed in, of your network address) to a statistical counter that cannot be read back as a list of identifiers; these counters are kept for up to 60 days.'));
-  assert.ok(he.includes('כדי לספור כמה אנשים שונים משתמשים בשירות בכל יום, אנחנו מוסיפים גיבוב חד-כיווני ומפתחי של מזהה החשבון שלך (או, לגולשים שאינם רשומים, של כתובת הרשת שלך) למונה סטטיסטי שאי אפשר לקרוא ממנו רשימת מזהים; המונים נשמרים עד 60 ימים.'));
-  assert.match(MODAL_DATA.privacy.en.summary, /28 October 2026/);
-  assert.match(MODAL_DATA.privacy.he.summary, /28 באוקטובר 2026/);
+  assert.ok(en.includes('To count how many different people use the service each day, we add a one-way keyed hash of your account id (or, for visitors who are not signed in, of your network address) to a statistical counter that cannot be read back as a list of identifiers (we count in the same way how many different people reached each step of using the service, such as visiting the site, starting to type, creating a script, poster or comic, sharing, and signing up); these counters are kept for up to 60 days.'));
+  assert.ok(he.includes('כדי לספור כמה אנשים שונים משתמשים בשירות בכל יום, אנחנו מוסיפים גיבוב חד-כיווני ומפתחי של מזהה החשבון שלך (או, לגולשים שאינם רשומים, של כתובת הרשת שלך) למונה סטטיסטי שאי אפשר לקרוא ממנו רשימת מזהים (באותו אופן אנחנו סופרים כמה אנשים שונים הגיעו לכל שלב בשימוש, למשל כניסה לאתר, התחלת כתיבה, יצירת תסריט, פוסטר או קומיקס, שיתוף והרשמה); המונים נשמרים עד 60 ימים.'));
+  assert.match(MODAL_DATA.privacy.en.summary, /29 October 2026/);
+  assert.match(MODAL_DATA.privacy.he.summary, /29 באוקטובר 2026/);
 });
 
 test('the admin page has the "Active creators" card with the double-count note, fed by its own route', () => {
@@ -107,9 +107,9 @@ test('admin page: auto-refresh every 5 minutes; the script-stage list is load / 
   assert.ok(!/30_000/.test(page), 'no 30 s interval left');
   assert.match(page, /auto-refresh 5 min/);
   const refreshAll = page.slice(page.indexOf('const refreshAll = useCallback'), page.indexOf('// refreshAll\'s identity'));
-  assert.ok(!refreshAll.includes('fetchScriptStages') && !refreshAll.includes('fetchCreators'));
-  assert.match(page, /onClick=\{\(\) => \{ refreshAll\(\); fetchCreators\(\); fetchScriptStages\(\); \}\}/);
-  assert.match(page, /fetchCreators\(\);\s*\n\s*fetchScriptStages\(\);/);
+  assert.ok(!refreshAll.includes('fetchScriptStages') && !refreshAll.includes('fetchCreators') && !refreshAll.includes('fetchFunnel'));
+  assert.match(page, /onClick=\{\(\) => \{ refreshAll\(\); fetchCreators\(\); fetchFunnel\(\); fetchScriptStages\(\); \}\}/);
+  assert.match(page, /fetchCreators\(\);\s*\n\s*fetchFunnel\(\);\s*\n\s*fetchScriptStages\(\);/);
   assert.match(page, /\/api\/admin\/script-stages/);
   const stats = read('pages/api/admin/stats.js');
   assert.ok(!stats.includes('scriptStages') && !stats.includes('readScriptStages'));

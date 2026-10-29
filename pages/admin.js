@@ -253,6 +253,16 @@ export default function AdminDashboard({ adminEmail }) {
       .catch(() => setCreators(null));
   }, []);
 
+  // Funnel: 50 Upstash commands per read (PFCOUNTs), so (like the creators) fetched on page load and on the manual Refresh button ONLY
+  const [funnel, setFunnel] = useState(null);
+  const [funnelSplit, setFunnelSplit] = useState('all');
+  const fetchFunnel = useCallback(() => {
+    fetch('/api/admin/funnel', { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then(data => setFunnel(Array.isArray(data?.funnel) ? data.funnel : null))
+      .catch(() => setFunnel(null));
+  }, []);
+
   // Script stages: 14 Upstash reads, so (like the creators) fetched on page load and on the manual Refresh button ONLY
   const [scriptStages, setScriptStages] = useState(null);
   const fetchScriptStages = useCallback(() => {
@@ -285,12 +295,13 @@ export default function AdminDashboard({ adminEmail }) {
     const visible = () => typeof document === 'undefined' || document.visibilityState !== 'hidden';
     refreshAllRef.current();
     fetchCreators();
+    fetchFunnel();
     fetchScriptStages();
     const id = setInterval(() => { if (visible()) run(); }, AUTO_REFRESH_MS);
     const onVisible = () => { if (visible() && Date.now() - last >= AUTO_REFRESH_MS) run(); };
     document.addEventListener('visibilitychange', onVisible);
     return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVisible); };
-  }, [fetchCreators, fetchScriptStages]);
+  }, [fetchCreators, fetchFunnel, fetchScriptStages]);
 
   // ── All Users: filter/search/pagination handlers ─────────────────────────
   const handleTierFilterChange = (tier) => {
@@ -419,7 +430,7 @@ export default function AdminDashboard({ adminEmail }) {
               )}
             </div>
             <button
-              onClick={() => { refreshAll(); fetchCreators(); fetchScriptStages(); }}
+              onClick={() => { refreshAll(); fetchCreators(); fetchFunnel(); fetchScriptStages(); }}
               disabled={statsLoading || healthLoading}
               className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-white/25 hover:text-[#d4a373] transition-colors disabled:opacity-30"
             >
@@ -542,6 +553,43 @@ export default function AdminDashboard({ adminEmail }) {
                       ))}
                     </div>
                     <p className="text-white/25">Distinct people per UTC day, successful creations only, admin key excluded. Someone who creates as a guest and signed in on the same day counts twice in the totals.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Funnel (7 days): DISTINCT people per step (lib/funnel-stats.js), union over the 7 days. Counts only. */}
+              <div className="pt-4 border-t border-white/5">
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-2">Funnel (7 days) <span className="normal-case tracking-normal text-white/25">(on load and Refresh only)</span></p>
+                {!funnel ? (
+                  <p className="text-[11px] font-mono text-white/25">no data yet</p>
+                ) : (
+                  <div className="space-y-2 text-[11px] font-mono text-white/55">
+                    <div className="flex flex-wrap gap-1">
+                      {[['all', 'All'], ['web', 'Web'], ['app', 'App'], ['in', 'Signed-in'], ['guest', 'Guest']].map(([key, label]) => (
+                        <button key={key} type="button" onClick={() => setFunnelSplit(key)} aria-pressed={funnelSplit === key}
+                          className={`px-2 py-0.5 rounded-full border text-[10px] ${funnelSplit === key ? 'border-[#d4a373] text-[#d4a373]' : 'border-white/10 text-white/40'}`}>{label}</button>
+                      ))}
+                    </div>
+                    {(() => {
+                      // "all" is the union over the four segments; the splits add the two matching segments (one person is rarely in two)
+                      const n = (r) => funnelSplit === 'all' ? r.total
+                        : funnelSplit === 'web' ? r.web.in + r.web.guest
+                        : funnelSplit === 'app' ? r.app.in + r.app.guest
+                        : funnelSplit === 'in' ? r.web.in + r.app.in
+                        : r.web.guest + r.app.guest;
+                      const names = { landing: 'Landing view', typed: 'Started typing', script_req: 'Script requested', script_ok: 'Script succeeded', poster_req: 'Poster requested', poster_ok: 'Poster succeeded', comic_start: 'Comic started', star_start: 'Star Yourself started', share: 'Share / download', signup: 'Sign-up' };
+                      return funnel.map((r, i) => {
+                        const v = n(r), prev = i > 0 ? n(funnel[i - 1]) : null;
+                        return (
+                          <div key={r.step} className="flex items-baseline gap-2">
+                            <span className="w-40 text-white/45">{names[r.step] || r.step}</span>
+                            <span className="w-10 text-right text-white tabular-nums">{v}</span>
+                            <span className="text-white/25">{prev ? (prev > 0 ? `${Math.round((v / prev) * 100)}% of previous` : '—') : ''}</span>
+                          </div>
+                        );
+                      });
+                    })()}
+                    <p className="text-white/25">Distinct people over 7 days (guests are counted by network address; guest-then-signed-in counts twice). Each step is measured on its own, so a step can exceed the previous one (e.g. sign-up and share are not sequential, and an earlier step may not be measured for that person). Web vs app: browser steps use the native flag, server steps a User-Agent check that excludes in-app browsers. Admin key excluded.</p>
                   </div>
                 )}
               </div>

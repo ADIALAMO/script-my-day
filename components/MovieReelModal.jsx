@@ -8,6 +8,7 @@ import { isReported } from '../utils/reported-store.js';
 import { REPORT_COPY, reportText } from '../constants/report-copy.js';
 import { isImageExpired } from '../utils/expired-image.js';
 import { expiredText } from '../constants/expired-copy.js';
+import { funnelEvent } from '../utils/funnel-client.js';
 
 // ── Canvas dimensions ────────────────────────────────────────────────────────
 const CANVAS_W      = 720;
@@ -942,6 +943,7 @@ export default function MovieReelModal({
 
   const handleShare = useCallback(async () => {
     if (!videoUrl) return;
+    funnelEvent('share');
     const doDownload = (src, ext) => {
       const a = document.createElement('a');
       a.href = src; a.download = `lifescript-reel-${genre || 'film'}.${ext}`;
